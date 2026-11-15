@@ -157,7 +157,7 @@ The Demo page (`/demo/attacks.html`) with one button per attack category (instru
 _Avoid_: Red-team page, jailbreak console
 
 **Five-minute demo**:
-The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace for the Automatic HR helper and then the Agentic Product FAQ (one Retrieved Chunks table against a Search the model made, with the Chunks it found), the HR helper's publish and revert in Live History, the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions, the Organisation cost page, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
+The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace for the Automatic HR helper and then the Agentic Product FAQ (one Retrieved Chunks table against a Search the model made, with the Chunks it found), the HR helper's publish and revert in Live History, the HR helper's Evaluation view (its Evaluation Set and the Run of v1 against v2 whose Regressions explain the revert), the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions, the Organisation cost page, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
 _Avoid_: Walkthrough, showcase script, smoke test
 
 **Demo mode**:
@@ -227,7 +227,7 @@ The chat model that judges every Evaluation Run in an Organisation: one chat-cap
 _Avoid_: Judge, grader model, eval model
 
 **Demo model**:
-The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
+The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk (unless its system prompt says "Don't quote", as HR helper v2's does: then it gives the Chunk's first sentence, uncited), and every answer starts "Demo model (canned answer, not AI)". Asked to judge an Evaluation Run's answer, it judges by rule, as the fake Evaluation Model does. It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
 _Avoid_: Fake model (that is the test double), mock, stub model
 
 **Naive demo model**:

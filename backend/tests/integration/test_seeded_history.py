@@ -5,6 +5,7 @@ Most tests seed a light history (a Conversation a day); the interviewer's walkth
 full one, whose fixed random seed makes the comparison tell its story.
 """
 
+import itertools
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -306,6 +307,108 @@ async def test_the_seed_stops_when_a_visitor_gets_no_reply(
 
     with pytest.raises(SeedError, match="gave a Visitor no reply"):
         await seed(app, ASSETS, history=LIGHT)
+
+    assert isinstance(app.state.clock, SystemClock)
+    await erase_demo(app)
+
+
+async def test_the_hr_helper_has_an_evaluation_set_and_two_runs_that_explain_the_revert(
+    app: FastAPI, new_client: ClientFactory
+) -> None:
+    """Spec 14's demo: the HR helper's Evaluation Set, some of it added from thumbs-down
+    Messages, and two finished Runs judged by the Demo model. The Run of v2 against v1 shows
+    the Regressions behind the revert; the Draft against v3 shows none."""
+    await erase_demo(app)
+    await seed(app, ASSETS, history=LIGHT)
+
+    owner = await signed_in(new_client, content.OWNER)
+    project, agents = await demo_agents(owner)
+    hr = agents["HR helper"]
+    evaluation = ("projects", project, "agents", hr["id"], "evaluation")
+    cases = await get(owner, *evaluation, "cases")
+    assert len(cases) == len(content.EVALUATION_CASES) == 12
+    sources = [case["source"] for case in cases]
+    assert 1 <= sources.count("from_message") <= content.CASES_FROM_MESSAGES
+    assert [case["expect_fallback"] for case in cases].count(True) >= 1
+    with_sources = [case for case in cases if case["expected_sources"]]
+    assert with_sources
+    assert not any(case["stale"] for case in cases)
+    # Each case added from a Message answers a question a Visitor gave a thumbs down.
+    downvoted = set()
+    for conversation in await visitor_conversations(owner, project):
+        if conversation["agent_id"] != hr["id"]:
+            continue
+        found = await get(owner, "projects", project, "conversations", conversation["id"])
+        messages = found["messages"]
+        for asked, answer in itertools.pairwise(messages):
+            if (answer.get("feedback") or {}).get("rating") == "down":
+                downvoted.add(asked["content"])
+    assert {c["question"] for c in cases if c["source"] == "from_message"} <= downvoted
+
+    runs = await get(owner, *evaluation, "runs")
+    assert [run["status"] for run in runs] == ["completed", "completed"]
+    draft_run, v2_run = runs
+    assert v2_run["judge_provider"] == draft_run["judge_provider"] == "demo"
+    assert [(s["kind"], s["version_number"]) for s in v2_run["sides"]] == [
+        ("version", 1),
+        ("version", 2),
+    ]
+    assert [(s["kind"], s["version_number"]) for s in draft_run["sides"]] == [
+        ("version", 3),
+        ("draft", None),
+    ]
+    first, second = v2_run["sides"]
+    assert second["score"] < first["score"]
+
+    # The Owner ran v2 against v1 just before reverting it, and the Editor ran the Draft
+    # against v3 after publishing it: both happened during the history, under its clock.
+    live = await get(owner, "projects", project, "agents", hr["id"], "live-history")
+    reverted = next(e for e in live if e["action"] == "revert")
+    published_v3 = live[0]
+    assert v2_run["finished_at"] <= reverted["occurred_at"]
+    assert published_v3["occurred_at"] <= draft_run["created_at"]
+    assert datetime.fromisoformat(draft_run["finished_at"]) < datetime.now(UTC) - timedelta(
+        hours=12
+    )
+
+    results = await get(owner, *evaluation, "runs", v2_run["id"], "results")
+    regressions = [case for case in results["cases"] if case["change"] == "regression"]
+    assert regressions
+    for case in regressions:
+        on_v2 = [r for r in case["results"] if r["position"] == "second"]
+        failed = [v for r in on_v2 for v in r["verdicts"] if v["outcome"] == "fail"]
+        assert any(v["kind"] == "grounding" for v in failed), case
+        assert all(v["reason"] for v in failed)
+
+    draft_results = await get(owner, *evaluation, "runs", draft_run["id"], "results")
+    assert not [case for case in draft_results["cases"] if case["change"] is not None]
+    # So the Publish dialog shows the Draft clear of Regressions against v3.
+    summary = await get(owner, *evaluation, "publish-summary")
+    assert summary["state"] == "clear"
+
+    # Adding a case from a Message is audited, under the history's clock.
+    events = await owner.client.get(
+        f"/api/organisations/{owner.organisation_id}/audit-events",
+        params={"page_size": 100, "action": "agent.evaluation_case_added_from_message"},
+    )
+    assert events.status_code == 200, events.text
+    added = events.json()["items"]
+    assert len(added) == sources.count("from_message")
+    assert {e["actor"]["name"] for e in added} == {content.OWNER.name}
+
+
+async def test_the_seed_stops_when_an_evaluation_run_does_not_complete(
+    app: FastAPI, monkeypatch: pytest.MonkeyPatch, quiet_seed_history: None
+) -> None:
+    await erase_demo(app)
+
+    async def stalled(*_: object) -> None:
+        """A Run job that never picks the Run up."""
+
+    monkeypatch.setattr("app.evaluation.tasks.run_evaluation", stalled)
+
+    with pytest.raises(SeedError, match="HR helper's Evaluation Run ended queued"):
+        await seed(app, ASSETS)
 
     assert isinstance(app.state.clock, SystemClock)
     await erase_demo(app)

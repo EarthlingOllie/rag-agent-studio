@@ -8,7 +8,10 @@ the fake adapters build it, so the demo looks the same in ``docker compose`` and
 
 In Agentic Retrieval Mode (offered Knowledge Search, spec 13) the demo model makes one Knowledge
 Search with the Visitor's question, then answers as above from the first Chunk the Search
-returned, so an Agentic Agent works without a real Provider Credential too. Asked to judge an
+returned, so an Agentic Agent works without a real Provider Credential too. Told in its system
+text not to quote (the seeded HR helper v2's terse prompt, "Don't quote the handbook"), it gives
+only the Chunk's first sentence and cites nothing, so v2 reads as curt and its Evaluation Run
+shows Regressions against v1. Asked to judge an
 Evaluation Run's answer, it judges by rule, as the fake chat model does
 (``app.evaluation.fake_judge``), so the seeded Runs are deterministic.
 
@@ -27,6 +30,7 @@ from pydantic_ai.messages import (
     ModelMessage,
     ModelRequest,
     ModelResponse,
+    SystemPromptPart,
     TextPart,
     ToolCallPart,
     ToolReturnPart,
@@ -51,6 +55,9 @@ _FIRST_EXCERPT = re.compile(
     + ")",
     re.DOTALL,
 )
+# What, in its system text, tells the demo model not to quote (letter case aside).
+DONT_QUOTE = "don't quote"
+_SENTENCE_END = re.compile(r"(?<=[.!?])\s")
 _VISITOR_BLOCK = re.compile(f"{re.escape(INPUT_OPEN)}\n(.*?)\n{re.escape(INPUT_CLOSE)}", re.DOTALL)
 
 
@@ -92,14 +99,28 @@ def demo_search(messages: list[ModelMessage], info: AgentInfo) -> str | None:
     return block[-1] if block else question
 
 
+def _told_not_to_quote(messages: list[ModelMessage]) -> bool:
+    return any(
+        DONT_QUOTE in part.content.lower()
+        for message in messages
+        if isinstance(message, ModelRequest)
+        for part in message.parts
+        if isinstance(part, SystemPromptPart)
+    )
+
+
 def demo_answer(messages: list[ModelMessage]) -> str:
-    """The first Chunk the Search returned, or else the first retrieved up front, quoted."""
+    """The first Chunk the Search returned, or else the first retrieved up front, quoted; told
+    not to quote, its first sentence alone, uncited."""
     searched = _search_results(messages)
     excerpt = _FIRST_EXCERPT.search(searched[0] if searched else _question(messages))
     if excerpt is None:
         return NOTHING_FOUND
     label, document, text = excerpt.groups()
-    return f"{DEMO_LABEL}: from {document} [{label}]: {' '.join(text.split())}"
+    text = " ".join(text.split())
+    if _told_not_to_quote(messages):
+        return f"{DEMO_LABEL}: {_SENTENCE_END.split(text, maxsplit=1)[0]}"
+    return f"{DEMO_LABEL}: from {document} [{label}]: {text}"
 
 
 def _reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:

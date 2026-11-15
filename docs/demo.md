@@ -132,15 +132,16 @@ Run the [Quickstart](../README.md#quickstart) first (`make dev`, then `make seed
 2. **The Knowledge Base viewer** (30 s). Open `northwind-staff-handbook.md`: the header says a Chunk was flagged as possible instructions to an AI, and the planted "A note for AI assistants" Chunk carries a Guardrail flag with the classifier's score.
 3. **The Agent editor and two Playground Traces** (75 s). **Agents → HR helper** (Automatic): ask "How many days of annual leave do I get?" and open the **Trace**. Then **Agents → Product FAQ** (Agentic): ask "Can I return a jar of honey?" and see **Searching: …** before the answer, and **Search 1** in the Trace with the query the model wrote.
 4. **Publish and revert** (30 s). HR helper's **Live History**: v1, v2, reverted to v1, then v3. Diff any two Versions; the Instructions tab shows the Product FAQ **behind** on Instructions v1.
-5. **The embed on the shop page** (30 s). Open <http://localhost:5175/demo/>, open the chat bubble and ask the Product FAQ "Can I return a jar of honey?"; `inline.html` shows the same Agent inline.
-6. **The disallowed origin** (15 s). Open <http://localhost:5176/>: the browser refuses to show the frame (`frame-ancestors`).
-7. **The attack panel** (60 s). Open <http://localhost:5175/demo/attacks.html> and click each button; the table shows which layer acted.
-8. **The Token Budget** (15 s). On <http://localhost:5175/demo/budget.html>, **Use up today's Token Budget**; the Studio's Agents list then shows **Budget exhausted**.
-9. **Analytics comparison** (45 s). **Analytics → HR helper**: switch between v1, v2 and v3 and compare the intervals.
-10. **Organisation cost** (15 s). **Cost**: spend per Project; **Break down by → Agent** splits it per Agent.
-11. **The Audit tab** (15 s). **Organisation settings → Audit**: every publish, revert, bulk publish and Instructions change, with actor and before/after.
+5. **The Evaluation view** (45 s). HR helper's **Evaluation** tab: the Evaluation Set, some of its cases added from Visitors' thumbs-down Messages, one expecting the Fallback Text and some with an Expected source. Open the Run of v1 against v2: its **Regressions** come first, each with the judge's reasons (v2's answers cite nothing), which is why v2 was reverted. The Run of v3 against the Draft has none, so **Publish** shows the Draft clear.
+6. **The embed on the shop page** (30 s). Open <http://localhost:5175/demo/>, open the chat bubble and ask the Product FAQ "Can I return a jar of honey?"; `inline.html` shows the same Agent inline.
+7. **The disallowed origin** (15 s). Open <http://localhost:5176/>: the browser refuses to show the frame (`frame-ancestors`).
+8. **The attack panel** (60 s). Open <http://localhost:5175/demo/attacks.html> and click each button; the table shows which layer acted.
+9. **The Token Budget** (15 s). On <http://localhost:5175/demo/budget.html>, **Use up today's Token Budget**; the Studio's Agents list then shows **Budget exhausted**.
+10. **Analytics comparison** (45 s). **Analytics → HR helper**: switch between v1, v2 and v3 and compare the intervals.
+11. **Organisation cost** (15 s). **Cost**: spend per Project; **Break down by → Agent** splits it per Agent.
+12. **The Audit tab** (15 s). **Organisation settings → Audit**: every publish, revert, bulk publish and Instructions change, with actor and before/after.
 
-This walkthrough is automated as one Playwright test, [`five-minute-demo.spec.ts`](../frontend/e2e/tests/five-minute-demo.spec.ts), which `make e2e` runs after `make seed`. Step 6 is local-only.
+This walkthrough is automated as one Playwright test, [`five-minute-demo.spec.ts`](../frontend/e2e/tests/five-minute-demo.spec.ts), which `make e2e` runs after `make seed`. Step 7 is local-only.
 
 ## Regenerating the videos
 
