@@ -548,9 +548,29 @@ async def _a_queued_evaluation_run(owner: SignedUpMember, add_member: MemberFact
     return params | {"run_id": started.json()["id"]}, None
 
 
+async def _a_rollout_evaluation(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A Live Agent with an Evaluation Set, and a new Instructions Version to roll out.
+    params, _ = await _an_evaluation_to_start(owner, add_member)
+    agent = _AGENT.format(organisation_id=owner.organisation_id, **params)
+    published = await owner.client.post(f"{agent}/versions", json={"note": "First release"})
+    assert published.status_code == 201, published.text
+    path = PROJECTS.format(organisation_id=owner.organisation_id) + f"/{params['project_id']}"
+    saved = await owner.client.put(f"{path}/instructions", json={"markdown": "# Rules"})
+    assert saved.status_code == 200, saved.text
+    rules = await owner.client.post(f"{path}/instructions/versions", json={"note": "Rules"})
+    assert rules.status_code == 201, rules.text
+    return {
+        "project_id": params["project_id"],
+        "instructions_version_id": rules.json()["id"],
+    }, {"agent_ids": [params["agent_id"]]}
+
+
 _AGENT = PROJECTS + "/{project_id}/agents/{agent_id}"
 _CONVERSATION = _AGENT + "/playground/conversations/{conversation_id}"
 _EVALUATION = _AGENT + "/evaluation"
+_ROLLOUT_EVALUATION = (
+    PROJECTS + "/{project_id}/instructions/versions/{instructions_version_id}/evaluation"
+)
 _EVALUATION_CASE = {"question": "How much leave?", "reference_answer": "25 days."}
 # The Conversations viewer: every Conversation of the Project, Visitors' and the Playground's.
 _CONVERSATIONS = PROJECTS + "/{project_id}/conversations"
@@ -691,6 +711,8 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", _EVALUATION + "/runs/{run_id}/results", EDITOR, _an_evaluation_run),
     ScopedRoute("POST", _EVALUATION + "/runs/{run_id}/cancel", EDITOR, _a_queued_evaluation_run),
     ScopedRoute("GET", _EVALUATION + "/publish-summary", EDITOR, _an_evaluation_run),
+    ScopedRoute("POST", _ROLLOUT_EVALUATION, EDITOR, _a_rollout_evaluation),
+    ScopedRoute("GET", _ROLLOUT_EVALUATION, EDITOR, _a_rollout_evaluation),
     ScopedRoute("GET", _AGENT + "/metrics", EDITOR, _a_live_agent),
     *(
         ScopedRoute(

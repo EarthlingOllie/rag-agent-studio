@@ -6633,6 +6633,60 @@
         "title": "Role",
         "type": "string"
       },
+      "RolloutAgentEvaluationOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "has_set": {
+            "title": "Has Set",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "regressions": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryRegressionOut"
+            },
+            "title": "Regressions",
+            "type": "array"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "not_evaluated",
+              "running",
+              "regressions",
+              "clear"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "name",
+          "state",
+          "has_set",
+          "run",
+          "regressions"
+        ],
+        "title": "RolloutAgentEvaluationOut",
+        "type": "object"
+      },
       "RolloutAgentOut": {
         "properties": {
           "behind": {
@@ -6682,6 +6736,47 @@
           "behind"
         ],
         "title": "RolloutAgentOut",
+        "type": "object"
+      },
+      "RolloutEvaluationIn": {
+        "properties": {
+          "agent_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Agent Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agent_ids"
+        ],
+        "title": "RolloutEvaluationIn",
+        "type": "object"
+      },
+      "RolloutEvaluationOut": {
+        "description": "Each Agent's Rollout evaluation of the Instructions Version. Advisory: Bulk publish never\ndepends on it.",
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/RolloutAgentEvaluationOut"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "instructions_version_number": {
+            "title": "Instructions Version Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "instructions_version_number",
+          "agents"
+        ],
+        "title": "RolloutEvaluationOut",
         "type": "object"
       },
       "RotateCredentialRequest": {
@@ -6926,6 +7021,10 @@
             "title": "Judge Provider",
             "type": "string"
           },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
           "progress": {
             "$ref": "#/components/schemas/ProgressOut"
           },
@@ -6951,6 +7050,7 @@
         },
         "required": [
           "id",
+          "kind",
           "status",
           "created_at",
           "finished_at",
@@ -19893,6 +19993,193 @@
         "summary": "Publish Instructions",
         "tags": [
           "project-instructions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/versions/{instructions_version_id}/evaluation": {
+      "get": {
+        "description": "Each named Agent's (every active Agent's when none is named) Rollout evaluation state\nfor the Instructions Version: ``regressions``, ``not_evaluated``, ``running`` or\n``clear``.",
+        "operationId": "getRolloutEvaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "instructions_version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Instructions Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "agent_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "maxItems": 200,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RolloutEvaluationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Rollout Evaluation",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "post": {
+        "description": "Starts a Rollout evaluation of each selected Agent with an Evaluation Set, skipping the\nothers, and returns the selected Agents' states. Poll the read until none is running.",
+        "operationId": "startRolloutEvaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "instructions_version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Instructions Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RolloutEvaluationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RolloutEvaluationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Project is archived, a selected Agent already has a Run in progress or its Live Version names a Provider Credential that no longer exists (then nothing is started), or there is no Default Model."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Rollout Evaluation",
+        "tags": [
+          "evaluation"
         ]
       }
     },

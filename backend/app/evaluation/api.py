@@ -309,9 +309,10 @@ class ProgressOut(BaseModel):
 class RunSideOut(BaseModel):
     # ``first`` or ``second``; the Draft running alone is the ``first``.
     position: str
-    # ``draft`` or ``version``.
+    # ``draft``, ``version``, or ``rollout``: a Rollout evaluation's second side, the Version's
+    # AgentConfig answering with the new Instructions Version.
     kind: str
-    # The Agent Version, for a ``version`` side.
+    # The Agent Version, for a ``version`` or ``rollout`` side.
     agent_version_id: uuid.UUID | None
     version_number: int | None
     # The Draft revision it ran, for a ``draft`` side.
@@ -358,6 +359,8 @@ class RunCostOut(BaseModel):
 
 class RunOut(BaseModel):
     id: uuid.UUID
+    # ``agent`` (started from the Agent) or ``rollout`` (started by Rollout evaluation).
+    kind: str
     # ``queued``, ``running``, ``completed``, ``failed`` or ``cancelled``.
     status: str
     created_at: datetime
@@ -479,6 +482,7 @@ def _run_out(detail: service.RunDetail) -> RunOut:
     run: EvaluationRun = detail.run
     return RunOut(
         id=run.id,
+        kind=run.kind,
         status=run.status,
         created_at=run.created_at,
         finished_at=run.finished_at,

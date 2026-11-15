@@ -17,7 +17,7 @@ export const notSignedIn: Schemas["ErrorResponse"] = {
 };
 
 /** Default handlers describe a healthy stack, a visitor who is not signed in, no Projects, Documents, Tags, Agents or
- * Conversations (so no Instructions rollout), no Evaluation Sets, and the default Retention Window. */
+ * Conversations (so no Instructions rollout), no Evaluation Sets or Rollout evaluations, and the default Retention Window. */
 export const server = setupServer(
   http.get("*/api/health", () => HttpResponse.json(healthy)),
   http.get("*/api/organisations/:organisationId/projects", () =>
@@ -55,6 +55,11 @@ export const server = setupServer(
         evaluated_live_version_number: null,
         publishing_instructions_version_number: null,
       }),
+  ),
+  // No Agent has been through a Rollout evaluation.
+  http.get(
+    "*/api/organisations/:organisationId/projects/:projectId/instructions/versions/:versionId/evaluation",
+    () => HttpResponse.json({ instructions_version_number: 1, agents: [] }),
   ),
   // Every Organisation keeps the default Retention Window.
   http.get("*/api/organisations/:organisationId", ({ params }) =>

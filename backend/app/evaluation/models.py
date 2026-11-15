@@ -62,9 +62,19 @@ class RunStatus(enum.StrEnum):
 IN_PROGRESS = (RunStatus.QUEUED, RunStatus.RUNNING)
 
 
+class RunKind(enum.StrEnum):
+    # Started from the Agent: any one or two of the Draft and its Versions.
+    AGENT = "agent"
+    # Started by Rollout evaluation: the Live Version against its rollout side.
+    ROLLOUT = "rollout"
+
+
 class SideKind(enum.StrEnum):
     DRAFT = "draft"
     VERSION = "version"
+    # The Live Version's AgentConfig answering with a new Instructions Version, not the one it
+    # pins. Only Rollout evaluation creates one, never the general Run API.
+    ROLLOUT = "rollout"
 
 
 class ResultStatus(enum.StrEnum):
@@ -183,6 +193,8 @@ class EvaluationRun(IdMixin, Base):
         ForeignKey(Agent.id, ondelete="CASCADE"), index=True
     )
     status: Mapped[str] = mapped_column(String(20), default=RunStatus.QUEUED)
+    # A ``RunKind``.
+    kind: Mapped[str] = mapped_column(String(20), server_default=RunKind.AGENT.value)
     started_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey(Member.id, ondelete="SET NULL"))
     # The model that judged the Run's answers and the Evaluation repeats, as they were in force
     # when it started (the Evaluation Model, or else the Default Model), so later changes to
@@ -204,8 +216,9 @@ class EvaluationRun(IdMixin, Base):
 
 
 class EvaluationRunSide(IdMixin, Base):
-    """One side of a Run: the Draft (at a Draft revision) or an Agent Version, with the
-    effective AgentConfig and the Project Instructions text it answered with."""
+    """One side of a Run: the Draft (at a Draft revision), an Agent Version, or a rollout side
+    (an Agent Version's AgentConfig with other Instructions), with the effective AgentConfig and
+    the Project Instructions text it answered with."""
 
     __tablename__ = "evaluation_run_sides"
 

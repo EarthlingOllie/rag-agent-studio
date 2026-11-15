@@ -46,6 +46,7 @@ export function run(
 ): Run {
   return {
     id,
+    kind: "agent",
     status,
     created_at: "2026-11-12T10:00:00Z",
     finished_at:
@@ -542,4 +543,62 @@ export function fakeEvaluationApi(
     }),
   );
   return { requests, estimates };
+}
+
+type RolloutEvaluation = Schemas["RolloutEvaluationOut"];
+type RolloutAgentEvaluation = Schemas["RolloutAgentEvaluationOut"];
+
+/** An Agent's Rollout evaluation state, with no Run or Regressions unless given. */
+export function rolloutAgentEvaluation(
+  agentId: string,
+  name: string,
+  state: RolloutAgentEvaluation["state"],
+  overrides: Partial<RolloutAgentEvaluation> = {},
+): RolloutAgentEvaluation {
+  return {
+    agent_id: agentId,
+    name,
+    state,
+    has_set: true,
+    run: null,
+    regressions: [],
+    ...overrides,
+  };
+}
+
+/**
+ * Fakes the Rollout evaluation routes: each read answers the next of `reads` (the last one
+ * repeating), and starting answers `startStatus` with `startDetail` when given. Records the
+ * requests it receives.
+ */
+export function fakeRolloutEvaluationApi(options: {
+  reads: RolloutEvaluation[] | { status: number };
+  startStatus?: number;
+  startDetail?: string;
+}) {
+  const requests: EvaluationRequest[] = [];
+  let read = 0;
+  const path =
+    "*/api/organisations/:organisationId/projects/:projectId/instructions/versions/:versionId/evaluation";
+  const answer = () => {
+    const { reads } = options;
+    if ("status" in reads)
+      return HttpResponse.json({ detail: "Down" }, { status: reads.status });
+    const found = reads[Math.min(read, reads.length - 1)];
+    read += 1;
+    return HttpResponse.json(found);
+  };
+  server.use(
+    http.get(path, answer),
+    http.post(path, async ({ request }) => {
+      requests.push({ route: "start-rollout", body: await request.json() });
+      if (options.startStatus)
+        return HttpResponse.json(
+          { detail: options.startDetail },
+          { status: options.startStatus },
+        );
+      return answer();
+    }),
+  );
+  return { requests };
 }

@@ -75,6 +75,7 @@ from app.evaluation.models import (
     EvaluationRunCase,
     EvaluationRunSide,
     EvaluationVerdict,
+    RunKind,
     RunStatus,
     SideKind,
     VerdictOutcome,
@@ -167,7 +168,8 @@ class VersionCredentialGoneError(ProviderCredentialGoneError):
 
 @dataclass(frozen=True)
 class SideChoice:
-    """A side to run: the Draft, or the Agent Version ``version_id``."""
+    """A side to run: the Draft, or the Agent Version ``version_id`` (as it is, or as a rollout
+    side)."""
 
     kind: SideKind
     version_id: uuid.UUID | None = None
@@ -715,7 +717,7 @@ async def _in_progress(session: AsyncSession, agent_id: uuid.UUID) -> bool:
 
 
 @dataclass(frozen=True)
-class _Plan:
+class Plan:
     """What a Run of the Agent's set would answer and judge with, and what it would cost."""
 
     agent: AgentWithDraft
@@ -726,7 +728,7 @@ class _Plan:
     estimate: Estimate
 
 
-async def _plan(
+async def plan_run(
     session: AsyncSession,
     scope: OrganisationScope,
     project_id: uuid.UUID,
@@ -737,9 +739,11 @@ async def _plan(
     instructions_draft: bool,
     starting: bool,
     now: datetime,
-) -> _Plan:
+    rollout: InstructionsVersion | None = None,
+) -> Plan:
     """Resolves a Run's sides, judge and repeats, refusing as ``start_run`` says. When
-    ``starting``, the Agent's row is locked and a Run in progress is refused."""
+    ``starting``, the Agent's row is locked and a Run in progress is refused. With ``rollout``,
+    the sides are the Live Version against its rollout side answering with those Instructions."""
     project = await active_project(session, scope, project_id)
     found = await active_agent(session, scope, project_id, agent_id, lock=starting)
     if starting and await _in_progress(session, found.agent.id):
@@ -747,8 +751,10 @@ async def _plan(
     cases = await _cases(session, found.agent.id)
     if not cases:
         raise EmptySetError
-    if sides is None:
-        live = found.agent.live_version_id
+    live = found.agent.live_version_id
+    if rollout is not None:
+        sides = [SideChoice(SideKind.VERSION, live), SideChoice(SideKind.ROLLOUT, live)]
+    elif sides is None:
         sides = [SideChoice(SideKind.DRAFT)]
         if live is not None:
             sides = [SideChoice(SideKind.VERSION, live), *sides]
@@ -760,8 +766,11 @@ async def _plan(
     )
     resolved_sides: list[_Side] = []
     for choice in sides:
-        if choice.kind == SideKind.VERSION:
-            resolved_sides.append(await _version_side(session, scope, found.agent.id, choice))
+        if choice.kind != SideKind.DRAFT:
+            side = await _version_side(session, scope, found.agent.id, choice)
+            if rollout is not None and choice.kind == SideKind.ROLLOUT:
+                side = replace(side, instructions=rollout, instructions_text=rollout.markdown)
+            resolved_sides.append(side)
             continue
         resolved = await resolve_models(session, scope.organisation_id, found.draft)
         resolved_sides.append(_Side(choice, None, resolved, *draft_instructions))
@@ -786,7 +795,7 @@ async def _plan(
         repeats=repeats,
         now=now,
     )
-    return _Plan(found, cases, resolved_sides, judge, repeats, estimated)
+    return Plan(found, cases, resolved_sides, judge, repeats, estimated)
 
 
 async def estimate_run(
@@ -802,7 +811,7 @@ async def estimate_run(
 ) -> Estimate:
     """The estimated Cost of starting a Run with these choices now, refused as ``start_run``
     would be (except while a Run is in progress)."""
-    plan = await _plan(
+    plan = await plan_run(
         session,
         scope,
         project_id,
@@ -839,7 +848,7 @@ async def start_run(
     that can't be resolved (``NoDefaultModelError``, ``ProviderCredentialGoneError``, or
     ``VersionCredentialGoneError`` naming the Version), and for an Organisation with neither an
     Evaluation Model nor a Default Model to judge."""
-    plan = await _plan(
+    plan = await plan_run(
         session,
         scope,
         project_id,
@@ -850,6 +859,16 @@ async def start_run(
         starting=True,
         now=now,
     )
+    run = await add_run(session, scope, plan, RunKind.AGENT, now=now)
+    await session.commit()
+    return run
+
+
+async def add_run(
+    session: AsyncSession, scope: OrganisationScope, plan: Plan, kind: RunKind, *, now: datetime
+) -> EvaluationRun:
+    """Adds the queued Run ``plan`` describes, with its sides and its copy of every case, for
+    the caller to commit."""
     found, cases, resolved_sides, judge, repeats = (
         plan.agent,
         plan.cases,
@@ -862,6 +881,7 @@ async def start_run(
         organisation_id=scope.organisation_id,
         agent_id=found.agent.id,
         status=RunStatus.QUEUED,
+        kind=kind,
         started_by=scope.member_id,
         judge_credential_id=judge.credential.id,
         judge_provider=judge.credential.provider,
@@ -915,7 +935,7 @@ async def start_run(
         )
         for position, case in enumerate(cases)
     )
-    await session.commit()
+    await session.flush()
     return run
 
 

@@ -822,7 +822,7 @@ An Expected source whose Document was deleted or whose passage no longer appears
 _Avoid_: Broken case, invalid source
 
 **Rollout evaluation**:
-The Evaluation Runs Bulk publish's rollout dialog can start, one per selected Agent with an Evaluation Set: the Live Version as it is against its configuration answering with the new Instructions Version. The dialog lists each Agent's Regressions as warnings and marks Agents without an Evaluation Set "not evaluated"; it never blocks.
+The Evaluation Runs Bulk publish's rollout dialog can start with Evaluate rollout, one per selected Agent with an Evaluation Set: the Live Version as it is against its **rollout side**, the Live Version's configuration answering with the new Instructions Version. A rollout side is created only this way, never when an Editor starts a Run, and it isn't the Draft, so a Rollout evaluation never counts in the Evaluation summary; the Runs are kept in each Agent's Run history. The dialog's evaluation column shows each Agent's state, from its latest Rollout evaluation of its current Live Version with those Instructions: Regressions (listed with their Verdicts' reasons, and warned about), running, clear, or "not evaluated" (no Evaluation Set, or none yet). Agents with Regressions stay selected; it never blocks.
 _Avoid_: Bulk evaluation, rollout test
 
 **Evaluation repeats**:

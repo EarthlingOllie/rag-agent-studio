@@ -311,3 +311,97 @@ export function useEvaluationRun(path: AgentPath, runId: string | null) {
       query.state.data && inProgress(query.state.data) ? RUN_POLL_MS : false,
   });
 }
+
+export type RolloutEvaluation = Schemas["RolloutEvaluationOut"];
+export type RolloutAgentEvaluation = Schemas["RolloutAgentEvaluationOut"];
+
+const rolloutEvaluationKey = (
+  organisationId: string,
+  projectId: string,
+  instructionsVersionId: string,
+) =>
+  [
+    "rollout-evaluation",
+    organisationId,
+    projectId,
+    instructionsVersionId,
+  ] as const;
+
+/** Each active Agent's Rollout evaluation of the Instructions Version, read again while one is running. */
+export function useRolloutEvaluation(
+  organisationId: string,
+  projectId: string,
+  instructionsVersionId: string,
+) {
+  return useQuery({
+    queryKey: rolloutEvaluationKey(
+      organisationId,
+      projectId,
+      instructionsVersionId,
+    ),
+    queryFn: async (): Promise<RolloutEvaluation> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/instructions/versions/{instructions_version_id}/evaluation",
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              instructions_version_id: instructionsVersionId,
+            },
+          },
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    refetchInterval: (query) =>
+      (query.state.data?.agents ?? []).some(
+        (agent) => agent.state === "running",
+      )
+        ? RUN_POLL_MS
+        : false,
+  });
+}
+
+/** Starts a Rollout evaluation of the selected Agents; those without an Evaluation Set are skipped. */
+export function useStartRolloutEvaluation(
+  organisationId: string,
+  projectId: string,
+  instructionsVersionId: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (agentIds: string[]): Promise<RolloutEvaluation> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/instructions/versions/{instructions_version_id}/evaluation",
+        {
+          params: {
+            path: {
+              organisation_id: organisationId,
+              project_id: projectId,
+              instructions_version_id: instructionsVersionId,
+            },
+          },
+          body: { agent_ids: agentIds },
+        },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: rolloutEvaluationKey(
+            organisationId,
+            projectId,
+            instructionsVersionId,
+          ),
+        }),
+        // The Rollout evaluations are in each Agent's Run history.
+        queryClient.invalidateQueries({
+          queryKey: ["evaluation", organisationId, projectId],
+        }),
+      ]),
+  });
+}

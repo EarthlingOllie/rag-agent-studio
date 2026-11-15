@@ -56,6 +56,7 @@ from app.evaluation.models import (
     EvaluationVerdict,
     ResultStatus,
     RunStatus,
+    SideKind,
     VerdictKind,
     VerdictOutcome,
 )
@@ -115,7 +116,8 @@ def _trace(
     asked_none = done.refused or (done.fallback and not done.searches)
     return TraceOut(
         message_id=result_id,
-        config_source=side.kind,
+        # A rollout side runs its Version's configuration.
+        config_source=SideKind.VERSION if side.kind == SideKind.ROLLOUT else side.kind,
         agent_version_number=answering.version_number,
         instructions_source=_instructions_source(side),
         instructions_version_id=side.instructions_version_id,

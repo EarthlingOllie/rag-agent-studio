@@ -11,6 +11,7 @@ import {
   useBulkRevert,
   useInstructionsRollout,
 } from "./bulk";
+import { AgentRolloutEvaluation, useRolloutEvaluationSection } from "./RolloutEvaluation";
 
 type Target = { organisationId: string; projectId: string };
 type VersionNumber = { id: string; number: number };
@@ -92,6 +93,9 @@ export function RolloutDialog({ organisationId, projectId, version, onClose }: T
   const publish = useBulkPublish(organisationId, projectId);
   const [deselected, toggle] = useDeselected();
   const failure = bulkFailure(publish.error);
+  const eligible = rollout.data?.agents.filter((agent) => !why(agent, version)) ?? [];
+  const selected = eligible.filter((agent) => !deselected.has(agent.id)).map((agent) => agent.id);
+  const evaluation = useRolloutEvaluationSection({ organisationId, projectId, version, selected });
 
   let body;
   let footer;
@@ -111,8 +115,6 @@ export function RolloutDialog({ organisationId, projectId, version, onClose }: T
       </button>
     );
   } else {
-    const eligible = rollout.data?.agents.filter((agent) => !why(agent, version)) ?? [];
-    const selected = eligible.filter((agent) => !deselected.has(agent.id)).map((agent) => agent.id);
     if (rollout.data)
       body = (
         <>
@@ -120,35 +122,38 @@ export function RolloutDialog({ organisationId, projectId, version, onClose }: T
           {rollout.data.agents.length === 0 ? (
             <p className={text.body}>This Project has no Agents yet.</p>
           ) : (
-            <ul aria-label="Agents" className="flex flex-col divide-y divide-line-soft rounded-xl border border-line">
-              {rollout.data.agents.map((agent) => {
-                const reason = why(agent, version);
-                return (
-                  <li key={agent.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2.5 text-sm">
-                    <label className="flex items-center gap-2 font-medium text-ink">
-                      <input
-                        type="checkbox"
-                        className={field.checkbox}
-                        disabled={reason !== undefined}
-                        checked={reason === undefined && !deselected.has(agent.id)}
-                        onChange={(event) => {
-                          toggle(agent.id, event.currentTarget.checked);
-                        }}
-                      />
-                      {agent.name}
-                    </label>
-                    <Pinned agent={agent} />
-                    {agent.has_draft_changes && (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Badge kind="draft" title="Unpublished Draft changes are not included." />
-                        <span className={text.small}>changes not included</span>
-                      </span>
-                    )}
-                    {reason && <span className={text.small}>{reason}</span>}
-                  </li>
-                );
-              })}
-            </ul>
+            <>
+              <ul aria-label="Agents" className="flex flex-col divide-y divide-line-soft rounded-xl border border-line">
+                {rollout.data.agents.map((agent) => {
+                  const reason = why(agent, version);
+                  return (
+                    <li key={agent.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3.5 py-2.5 text-sm">
+                      <label className="flex items-center gap-2 font-medium text-ink">
+                        <input
+                          type="checkbox"
+                          className={field.checkbox}
+                          disabled={reason !== undefined}
+                          checked={reason === undefined && !deselected.has(agent.id)}
+                          onChange={(event) => {
+                            toggle(agent.id, event.currentTarget.checked);
+                          }}
+                        />
+                        {agent.name}
+                      </label>
+                      <Pinned agent={agent} />
+                      {agent.has_draft_changes && (
+                        <span className="inline-flex items-center gap-1.5">
+                          <Badge kind="draft" title="Unpublished Draft changes are not included." />
+                          <span className={text.small}>changes not included</span>
+                        </span>
+                      )}
+                      {reason ? <span className={text.small}>{reason}</span> : <AgentRolloutEvaluation evaluation={evaluation.byAgent.get(agent.id)} />}
+                    </li>
+                  );
+                })}
+              </ul>
+              {evaluation.section}
+            </>
           )}
         </>
       );

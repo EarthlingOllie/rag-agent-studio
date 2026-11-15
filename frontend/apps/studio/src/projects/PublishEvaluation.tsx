@@ -35,7 +35,7 @@ function instructionsWords(number: number | null, draft: boolean): string {
     : `Instructions v${String(number)}`;
 }
 
-function RegressionList({
+export function RegressionList({
   regressions,
 }: {
   regressions: EvaluationRegression[];

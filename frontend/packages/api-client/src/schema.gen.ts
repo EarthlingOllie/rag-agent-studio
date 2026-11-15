@@ -2285,6 +2285,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/versions/{instructions_version_id}/evaluation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Rollout Evaluation
+         * @description Each named Agent's (every active Agent's when none is named) Rollout evaluation state
+         *     for the Instructions Version: ``regressions``, ``not_evaluated``, ``running`` or
+         *     ``clear``.
+         */
+        get: operations["getRolloutEvaluation"];
+        put?: never;
+        /**
+         * Start Rollout Evaluation
+         * @description Starts a Rollout evaluation of each selected Agent with an Evaluation Set, skipping the
+         *     others, and returns the selected Agents' states. Poll the read until none is running.
+         */
+        post: operations["startRolloutEvaluation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/restore": {
         parameters: {
             query?: never;
@@ -5159,6 +5186,26 @@ export interface components {
          * @enum {string}
          */
         Role: "owner" | "editor";
+        /** RolloutAgentEvaluationOut */
+        RolloutAgentEvaluationOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Has Set */
+            has_set: boolean;
+            /** Name */
+            name: string;
+            /** Regressions */
+            regressions: components["schemas"]["SummaryRegressionOut"][];
+            run: components["schemas"]["RunOut"] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "not_evaluated" | "running" | "regressions" | "clear";
+        };
         /** RolloutAgentOut */
         RolloutAgentOut: {
             /** Behind */
@@ -5174,6 +5221,22 @@ export interface components {
             live_version: components["schemas"]["VersionNumberOut"] | null;
             /** Name */
             name: string;
+        };
+        /** RolloutEvaluationIn */
+        RolloutEvaluationIn: {
+            /** Agent Ids */
+            agent_ids: string[];
+        };
+        /**
+         * RolloutEvaluationOut
+         * @description Each Agent's Rollout evaluation of the Instructions Version. Advisory: Bulk publish never
+         *     depends on it.
+         */
+        RolloutEvaluationOut: {
+            /** Agents */
+            agents: components["schemas"]["RolloutAgentEvaluationOut"][];
+            /** Instructions Version Number */
+            instructions_version_number: number;
         };
         /** RotateCredentialRequest */
         RotateCredentialRequest: {
@@ -5257,6 +5320,8 @@ export interface components {
             judge_model: string;
             /** Judge Provider */
             judge_provider: string;
+            /** Kind */
+            kind: string;
             progress: components["schemas"]["ProgressOut"];
             /** Repeats */
             repeats: number;
@@ -12480,6 +12545,105 @@ export interface operations {
                 };
             };
             /** @description This Project is archived. An Owner can restore it. Or: The Draft is the same as the Current Version, so there's nothing to publish. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getRolloutEvaluation: {
+        parameters: {
+            query?: {
+                agent_id?: string[] | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                instructions_version_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RolloutEvaluationOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startRolloutEvaluation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                instructions_version_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RolloutEvaluationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RolloutEvaluationOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Project is archived, a selected Agent already has a Run in progress or its Live Version names a Provider Credential that no longer exists (then nothing is started), or there is no Default Model. */
             409: {
                 headers: {
                     [name: string]: unknown;

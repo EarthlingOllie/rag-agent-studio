@@ -38,6 +38,7 @@ from app.embed import api as embed_api
 from app.embed import branding_api
 from app.embed.tokens import TokenSigner
 from app.evaluation import api as evaluation_api
+from app.evaluation import rollout_api as evaluation_rollout_api
 from app.evaluation import settings_api as evaluation_settings_api
 from app.evaluation.ports import EvaluationPorts, install_evaluation_ports
 from app.evaluation.settings import evaluation_model_references
@@ -90,6 +91,7 @@ ROUTERS: Sequence[APIRouter] = (
     playground_api.router,
     evaluation_api.router,
     evaluation_api.documents_router,
+    evaluation_rollout_api.router,
     conversations_api.router,
     analytics_api.router,
     analytics_api.cost_router,

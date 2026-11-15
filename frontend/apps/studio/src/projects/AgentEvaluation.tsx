@@ -162,8 +162,9 @@ function RunStatus({ run }: { run: EvaluationRun }) {
   return <Status tone={status.tone}>{status.label}</Status>;
 }
 
-/** A side's name: "Version 2", or "Draft revision 3". */
+/** A side's name: "Version 2", "Draft revision 3", or a Rollout evaluation's "Rollout of Version 2". */
 function sideName(side: EvaluationRunSide): string {
+  if (side.kind === "rollout") return `Rollout of Version ${String(side.version_number)}`;
   return side.kind === "version" ? `Version ${String(side.version_number)}` : `Draft revision ${String(side.draft_revision)}`;
 }
 
@@ -418,6 +419,7 @@ function RunList({ runs, chosen, onChoose }: { runs: EvaluationRun[]; chosen: st
             Run of {formatTime(run.created_at)}
           </button>
           <RunStatus run={run} />
+          {run.kind === "rollout" && <span className="font-medium text-ink-2">Rollout evaluation</span>}
           {run.stale && <Badge kind="runStale" />}
           <span className="text-ink-2">
             {run.sides.map((side) => `${sideName(side)}: ${inProgress(run) ? "running" : percent(side.score)}`).join(" · ")}
