@@ -9,6 +9,7 @@ import {
   BUSY,
   fakeDocumentsApi,
   PLANTED_INJECTION,
+  someDependents,
   STORAGE,
   UNSUPPORTED,
 } from "../test/documents";
@@ -831,6 +832,8 @@ test("an Editor deletes a Document after confirming, and it leaves the list", as
   expect(
     confirmation.getByText("Its 12 chunks stop being retrieved at once."),
   ).toBeInTheDocument();
+  // No case holds an Expected source in it, so there is nothing to warn about.
+  expect(confirmation.queryByText(/Expected sources/)).not.toBeInTheDocument();
   await userEvent.click(confirmation.getByRole("button", { name: "Cancel" }));
   expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
   expect(requests.filter((r) => r.route === "delete")).toEqual([]);
@@ -851,6 +854,108 @@ test("an Editor deletes a Document after confirming, and it leaves the list", as
   expect(
     requests.filter((r) => r.route === "delete").map((r) => r.body),
   ).toEqual([aDocument().id]);
+});
+
+const WARNING_NAMES = "Expected sources in this Document are used by Concierge (1 case) and HR helper (3 cases).";
+
+test("deleting a Document that holds Expected sources warns which Agents and how many cases, and still deletes", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi({
+    documents: [aDocument()],
+    dependents: { [aDocument().id]: someDependents() },
+  });
+  renderStudio(documentsTab());
+  const table = await documentsTable();
+
+  await chooseAction("handbook.pdf", "Delete");
+
+  const dialog = within(screen.getByRole("alertdialog", { name: "Delete handbook.pdf?" }));
+  expect(await dialog.findByRole("status")).toHaveTextContent(
+    `${WARNING_NAMES} Deleting it makes them Stale expectations, skipped by Runs until fixed.`,
+  );
+  // A warning, never a block.
+  await userEvent.click(dialog.getByRole("button", { name: "Delete handbook.pdf" }));
+  await waitFor(() => {
+    expect(table.queryByRole("cell", { name: "handbook.pdf" })).not.toBeInTheDocument();
+  });
+  expect(requests.filter((r) => r.route === "delete")).toHaveLength(1);
+});
+
+test("the warning names a single Agent, or three, in plain words", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const one = aDocument({ id: "d0c00000-0000-4000-8000-000000000002", name: "faq.md" });
+  const agent = (name: string, case_count: number) => ({ agent_id: crypto.randomUUID(), name, case_count });
+  fakeDocumentsApi({
+    documents: [aDocument(), one],
+    dependents: {
+      [aDocument().id]: someDependents({ agents: [agent("Concierge", 2), agent("HR helper", 1), agent("IT desk", 4)] }),
+      [one.id]: someDependents({ agents: [agent("HR helper", 1)] }),
+    },
+  });
+  renderStudio(documentsTab());
+  await documentsTable();
+
+  await chooseAction("handbook.pdf", "Delete");
+  let dialog = within(screen.getByRole("alertdialog", { name: "Delete handbook.pdf?" }));
+  expect(await dialog.findByRole("status")).toHaveTextContent(
+    /^Expected sources in this Document are used by Concierge \(2 cases\), HR helper \(1 case\) and IT desk \(4 cases\)\./,
+  );
+  await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+
+  await chooseAction("faq.md", "Delete");
+  dialog = within(screen.getByRole("alertdialog", { name: "Delete faq.md?" }));
+  expect(await dialog.findByRole("status")).toHaveTextContent(/^Expected sources in this Document are used by HR helper \(1 case\)\./);
+});
+
+test("a new edition of a Document holding Expected sources warns first, and uploads once the Editor goes on", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi({
+    documents: [aDocument()],
+    dependents: { [aDocument().id]: someDependents() },
+  });
+  renderStudio(documentsTab());
+  await documentsTable();
+
+  await uploadNewEdition("handbook.pdf", file("handbook-2027.md", "# Handbook 2027"));
+
+  let dialog = within(await screen.findByRole("dialog", { name: "Upload a new edition of handbook.pdf?" }));
+  expect(dialog.getByRole("status")).toHaveTextContent(
+    `${WARNING_NAMES} Any whose passage isn't in the new edition becomes a Stale expectation, skipped by Runs until fixed.`,
+  );
+  await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "replace")).toEqual([]);
+  expect(screen.queryByRole("list", { name: "Uploads" })).not.toBeInTheDocument();
+
+  await uploadNewEdition("handbook.pdf", file("handbook-2027.md", "# Handbook 2027"));
+  dialog = within(await screen.findByRole("dialog", { name: "Upload a new edition of handbook.pdf?" }));
+  await userEvent.click(dialog.getByRole("button", { name: "Upload new edition" }));
+
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  const uploads = within(screen.getByRole("list", { name: "Uploads" }));
+  expect(await uploads.findByText("Uploaded")).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "replace")).toHaveLength(1);
+});
+
+test("a new edition still uploads when the Expected sources can't be read", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const { requests } = fakeDocumentsApi({ documents: [aDocument()] });
+  server.use(
+    http.get(`${DOCUMENTS}/:documentId/expected-sources`, () => new HttpResponse("Bad gateway", { status: 502 })),
+  );
+  renderStudio(documentsTab());
+  await documentsTable();
+
+  await uploadNewEdition("handbook.pdf", file("handbook-2027.md", "# Handbook 2027"));
+
+  const uploads = within(await screen.findByRole("list", { name: "Uploads" }));
+  expect(await uploads.findByText("Uploaded")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "replace")).toHaveLength(1);
 });
 
 test("a delete that fails says so and keeps the Document", async () => {
@@ -879,6 +984,38 @@ test("a delete that fails says so and keeps the Document", async () => {
   await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
   await chooseAction("handbook.pdf", "Delete");
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+test("a deleted Document's Expected sources aren't asked for again, so the confirmation closes at once", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({ documents: [aDocument()] });
+  // As the API does: once the Document is gone, its Expected sources are Not found (and the
+  // app's query client retries a failed read, which would hold the confirmation open).
+  const asked: string[] = [];
+  let deleted = false;
+  server.use(
+    http.delete(`${DOCUMENTS}/:documentId`, () => {
+      deleted = true;
+      return new HttpResponse(null, { status: 204 });
+    }),
+    http.get(`${DOCUMENTS}/:documentId/expected-sources`, ({ params }) => {
+      asked.push(`${String(params.documentId)}${deleted ? " after delete" : ""}`);
+      return deleted
+        ? HttpResponse.json({ detail: "Not found" }, { status: 404 })
+        : HttpResponse.json({ agents: [], passages: [] });
+    }),
+  );
+  renderStudio(documentsTab());
+  await documentsTable();
+
+  await chooseAction("handbook.pdf", "Delete");
+  const dialog = within(screen.getByRole("alertdialog", { name: "Delete handbook.pdf?" }));
+  await userEvent.click(dialog.getByRole("button", { name: "Delete handbook.pdf" }));
+
+  expect(await screen.findByText("Deleted handbook.pdf.")).toBeInTheDocument();
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  expect(asked).toEqual([aDocument().id]);
 });
 
 test("an archived Project's Documents can't be replaced or deleted", async () => {

@@ -40,6 +40,7 @@ from app.agents.api import (
     archived,
     not_found,
 )
+from app.agents.resolution import NoDefaultModelError, ProviderCredentialGoneError
 from app.agents.service import AgentArchivedError, AgentNotFoundError
 from app.auth.api import Db, ErrorResponse
 from app.conversations.models import Conversation, Message, Search
@@ -71,6 +72,10 @@ router = APIRouter(
 NOT_IN_PROJECT = "That Instructions Version isn't one of this Project's."
 NO_DEFAULT_MODEL = (
     "This Organisation has no Default Model. An Owner can choose one in Settings, Models."
+)
+CREDENTIAL_GONE = (
+    "This Agent uses a Provider Credential that no longer exists. "
+    "Choose another model in its settings."
 )
 QUESTION_MAX = 4000
 
@@ -451,8 +456,10 @@ async def send_message(
         raise archived() from None
     except AgentArchivedError:
         raise agent_archived() from None
-    except service.NoDefaultModelError:
+    except NoDefaultModelError:
         raise HTTPException(status.HTTP_409_CONFLICT, NO_DEFAULT_MODEL) from None
+    except ProviderCredentialGoneError:
+        raise HTTPException(status.HTTP_409_CONFLICT, CREDENTIAL_GONE) from None
     except InstructionsVersionNotFoundError:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NOT_IN_PROJECT) from None
     ingestion: IngestionPorts = request.app.state.ingestion

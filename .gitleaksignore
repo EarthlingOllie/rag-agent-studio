@@ -35,3 +35,9 @@ a7613be7aa3c5531bfb5fba811bfdc789cc8eeb9:frontend/apps/studio/src/projects/Embed
 # docs/tickets/08-guardrails-evaluation/08-05-evidence/merged3-e2e.log: a one-time invite token from an e2e run
 # against a throwaway local stack, in the accept-invite URL Playwright logged.
 1dd64d55d339a2dac5b588c45ac8e85f347a9ffb:docs/tickets/08-guardrails-evaluation/08-05-evidence/merged3-e2e.log:generic-api-key:668
+# Branch claude/fervent-einstein-oo67ih (WID-R2-F1 hardening): settings.py names docker-compose.yml's
+# development-only LOCAL_KEY_WRAPPER_KEY default ("local-dev-only-key-not-a-secret!" in base64) so startup
+# can refuse it outside local and test, and test_settings.py checks that refusal. compose already commits
+# it as its default; it is public, not a secret.
+d3133e45634650c4bfda2b5a272877a62a1303bc:backend/app/core/settings.py:generic-api-key:24
+d3133e45634650c4bfda2b5a272877a62a1303bc:backend/tests/integration/test_settings.py:generic-api-key:64

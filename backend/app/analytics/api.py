@@ -226,9 +226,10 @@ async def get_version_metrics(
 
 class CostAmountsOut(BaseModel):
     # In US dollars, at the prices frozen when each reply was made: Visitor replies, Playground
-    # replies, and both.
+    # replies, Evaluation Runs (their answers and judging), and all of them.
     visitor_usd: Dollars
     playground_usd: Dollars
+    evaluation_usd: Dollars
     total_usd: Dollars
 
 
@@ -262,8 +263,8 @@ async def get_organisation_cost(
     end: EndQuery = None,
 ) -> OrgCostOut:
     """What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most
-    366 days), including today's so far, by Project or by Agent. Playground usage is in its own
-    column. Owners only."""
+    366 days), including today's so far, by Project or by Agent. Playground usage and Evaluation
+    Runs are each in their own column. Owners only."""
     today = clock.now().astimezone(UTC).date()
     first, last = _range(start, end, today)
     lines = await service.org_cost(db, scope, group_by, first, last, today)
@@ -275,19 +276,24 @@ async def get_organisation_cost(
             agent_name=line.agent_name,
             visitor_usd=line.visitor_usd,
             playground_usd=line.playground_usd,
+            evaluation_usd=line.evaluation_usd,
             total_usd=line.total_usd,
         )
         for line in lines
     ]
     visitor = sum((line.visitor_usd for line in lines), Decimal(0))
     playground = sum((line.playground_usd for line in lines), Decimal(0))
+    evaluation = sum((line.evaluation_usd for line in lines), Decimal(0))
     return OrgCostOut(
         start=first,
         end=last,
         group_by=group_by,
         rows=rows,
         total=CostAmountsOut(
-            visitor_usd=visitor, playground_usd=playground, total_usd=visitor + playground
+            visitor_usd=visitor,
+            playground_usd=playground,
+            evaluation_usd=evaluation,
+            total_usd=visitor + playground + evaluation,
         ),
     )
 

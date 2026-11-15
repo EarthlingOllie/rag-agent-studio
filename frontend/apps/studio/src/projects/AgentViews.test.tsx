@@ -50,6 +50,7 @@ test("the Agent's views are a tab row under its header, the current one marked",
   ).toEqual([
     ["Playground", agentPage(hrHelper.id), "page"],
     ["Versions", agentPage(hrHelper.id, "/versions"), null],
+    ["Evaluation", agentPage(hrHelper.id, "/evaluation"), null],
     ["Embed & limits", agentPage(hrHelper.id, "/embed"), null],
     ["Conversations", agentPage(hrHelper.id, "/conversations"), null],
   ]);
@@ -68,7 +69,7 @@ test("the navigation helpers read the Agent's views from the tab row", async () 
   setUp();
   renderStudio(agentPage(hrHelper.id));
 
-  expect(await sectionNames("Agent views")).toEqual(["Playground", "Versions", "Embed & limits", "Conversations"]);
+  expect(await sectionNames("Agent views")).toEqual(["Playground", "Versions", "Evaluation", "Embed & limits", "Conversations"]);
   expect(await currentSection("Agent views")).toBe("Playground");
 
   await openSection("Agent views", "Versions");

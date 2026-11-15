@@ -107,7 +107,25 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await expect(timeline.getByRole("listitem").nth(2)).toContainText("Published v1 → v2");
   });
 
-  await test.step("5. The analytics comparison: v2 was worse, v3 is better but a small sample", async () => {
+  await test.step("5. The Evaluation view: the Run of v1 against v2 shows the Regressions behind the revert", async () => {
+    await openAgentView(page, "Evaluation");
+    // Twelve seeded cases (the evaluation-loop test may be adding its own meanwhile).
+    await expect(page.getByRole("meter", { name: "Cases in the set" })).toHaveAttribute("aria-valuenow", /^1[2-9]$/, { timeout: 15_000 });
+    const set = page.getByRole("table", { name: "Evaluation Cases" });
+    await expect(set.getByRole("row", { name: /Wi-Fi password/ })).toContainText("Expects the Fallback Text.");
+    // The Editor's Run of the Draft against v3, and the Owner's of v1 against v2.
+    const runs = page.getByRole("list", { name: "Evaluation Runs" }).getByRole("listitem");
+    await expect(runs.filter({ hasText: "Version 3:" }).filter({ hasText: "Draft revision" }).first()).toBeVisible();
+    const v2Run = runs.filter({ hasText: "Version 1:" }).filter({ hasText: "Version 2:" });
+    await v2Run.getByRole("button", { name: /^Run of / }).click();
+    const cases = page.getByRole("list", { name: "Cases" });
+    const first = cases.getByRole("listitem").first();
+    await expect(first.getByRole("group", { name: "Result" }).getByText("Regression", { exact: true })).toBeVisible({ timeout: 15_000 });
+    await expect(first.getByRole("group", { name: "Answers of Version 2" })).toContainText("Fake judge: the answer cites nothing to support it.");
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+  });
+
+  await test.step("6. The analytics comparison: v2 was worse, v3 is better but a small sample", async () => {
     await openProjectTab(page, "Analytics");
     await page.getByRole("combobox", { name: "Agent" }).selectOption({ label: "HR helper" });
     const v1 = await thumbsUp(page, "v1");
@@ -120,7 +138,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 
-  await test.step("6. The embed on the shop page: a Visitor chats with the Product FAQ", async () => {
+  await test.step("7. The embed on the shop page: a Visitor chats with the Product FAQ", async () => {
     const shop = await browser.newPage();
     await shop.goto(`${HOST_URL}/demo/`);
     const widget = shop.frameLocator('iframe[title="Chat"]');
@@ -132,7 +150,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await shop.close();
   });
 
-  await test.step("7. The disallowed origin: the browser refuses to show the widget", async () => {
+  await test.step("8. The disallowed origin: the browser refuses to show the widget", async () => {
     const blocked = await browser.newPage();
     await blocked.goto(`${BLOCKED_HOST_URL}/`);
     await expect(blocked.getByRole("heading", { level: 1, name: "This site may not show the chat" })).toBeVisible();
@@ -144,7 +162,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await blocked.close();
   });
 
-  await test.step("8. The attack panel: each button, and the Guardrail layer that acted", async () => {
+  await test.step("9. The attack panel: each button, and the Guardrail layer that acted", async () => {
     const panel = await browser.newPage();
     await panel.goto(`${HOST_URL}/demo/attacks.html`);
     for (const attack of ATTACKS) {
@@ -160,7 +178,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await panel.close();
   });
 
-  await test.step("9. The Token Budget: one click spends it, the widget says so and the Studio alerts", async () => {
+  await test.step("10. The Token Budget: one click spends it, the widget says so and the Studio alerts", async () => {
     const budget = await browser.newPage();
     await budget.goto(`${HOST_URL}/demo/budget.html`);
     const widget = budget.frameLocator('iframe[title="Chat"]');
@@ -177,7 +195,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     await expect(listed.getByText("Budget spent")).toBeVisible({ timeout: 15_000 });
   });
 
-  await test.step("10. Organisation cost: what each Project and Agent spent, the Playground apart", async () => {
+  await test.step("11. Organisation cost: what each Project and Agent spent, the Playground apart", async () => {
     await openSection(page, "Organisation sections", "Cost");
     await expect(page.getByRole("heading", { level: 1, name: "Organisation cost" })).toBeVisible();
     const byProject = page.getByRole("table", { name: "Cost by Project" });
@@ -188,7 +206,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 
-  await test.step("11. The Audit tab is already full of the seeded history", async () => {
+  await test.step("12. The Audit tab is already full of the seeded history", async () => {
     await openSection(page, "Organisation sections", "Settings");
     await openSection(page, "Organisation settings", "Audit");
     const events = page.getByRole("table", { name: "Audit Events" });

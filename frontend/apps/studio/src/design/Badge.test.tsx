@@ -15,6 +15,15 @@ it.each([
   ["flagged", "Flagged"],
   ["checkPassed", "Working"],
   ["checkFailed", "Check failed"],
+  ["evaluationPass", "Pass"],
+  ["evaluationFail", "Fail"],
+  ["unsteady", "Unsteady"],
+  ["evaluationError", "Error"],
+  ["regression", "Regression"],
+  ["improvement", "Improvement"],
+  ["runStale", "Stale"],
+  ["staleExpectation", "Stale expectation"],
+  ["expectedSource", "Expected source"],
 ] satisfies [BadgeKind, string][])("labels the %s badge %s", (kind, label) => {
   render(<Badge kind={kind} />);
   expect(screen.getByText(label)).toBeInTheDocument();

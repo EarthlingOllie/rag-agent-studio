@@ -157,7 +157,14 @@ function Searches({ searches }: { searches: TraceSearch[] }) {
   );
 }
 
-function TraceBody({ trace }: { trace: Trace }) {
+/** Which Project Instructions the answer ran with; an Evaluation Run's answer with none names none. */
+function instructionsFact(trace: Trace): string {
+  if (trace.agent_version_number !== null) return `Pinned by ${answeredBy(trace)}`;
+  return trace.instructions_source === null ? "None" : instructionsUsed(trace);
+}
+
+/** A loaded Trace: the Playground's, a Conversation's, or an Evaluation Run answer's. */
+export function TraceBody({ trace }: { trace: Trace }) {
   const guardrailsId = useId();
   const facts: [string, string][] = [
     // An answer always has its tokens and latency; a fallback reply names no model, and the
@@ -165,10 +172,7 @@ function TraceBody({ trace }: { trace: Trace }) {
     ["Answered by", answeredBy(trace)],
     ["Model", model(trace)],
     // An Agent Version's answer ran with the Instructions the Version pins.
-    [
-      "Instructions",
-      trace.agent_version_number === null ? instructionsUsed(trace) : `Pinned by ${answeredBy(trace)}`,
-    ],
+    ["Instructions", instructionsFact(trace)],
     [
       "Tokens",
       `${String(trace.input_tokens)} input · ${String(trace.output_tokens)} output`,

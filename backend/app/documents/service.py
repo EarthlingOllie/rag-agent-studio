@@ -22,7 +22,7 @@ newer edition of one) can be retried, which queues it for ingestion again.
 import hashlib
 import json
 import uuid
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any
@@ -43,6 +43,7 @@ from app.documents.models import (
     StagedEdition,
 )
 from app.documents.pipeline import stored_keys
+from app.evaluation.models import EvaluationExpectedSource, StaleReason
 from app.projects import service as projects
 from app.projects.models import Project
 from app.storage.port import ObjectNotFoundError, ObjectStore
@@ -511,6 +512,40 @@ async def list_chunks(
     return ChunkPage(list(chunks), total or 0)
 
 
+@dataclass(frozen=True)
+class CurrentChunks:
+    """A Document's name and its current edition's Chunks (ID and text), in Document order."""
+
+    name: str
+    chunks: list[tuple[uuid.UUID, str]]
+
+
+async def current_chunks(
+    session: AsyncSession, document_ids: Iterable[uuid.UUID]
+) -> dict[uuid.UUID, CurrentChunks]:
+    """The current edition's Chunks of each of these Documents that still exists, by Document
+    ID, as retrieval reads them (the Project's active Embedding Model's rows). For other modules
+    that check text against a Knowledge Base, such as Expected sources."""
+    wanted = set(document_ids)
+    found = {
+        document.id: CurrentChunks(document.name, [])
+        for document in await session.scalars(select(Document).where(Document.id.in_(wanted)))
+    }
+    rows = await session.execute(
+        select(Chunk.document_id, Chunk.id, Chunk.text)
+        .join(Document, Document.id == Chunk.document_id)
+        .where(
+            Document.id.in_(wanted),
+            Chunk.edition == Document.edition,
+            Chunk.embedding_model_id == _active_model(Document.project_id),
+        )
+        .order_by(Chunk.ordinal)
+    )
+    for document_id, chunk_id, chunk_text in rows:
+        found[document_id].chunks.append((chunk_id, chunk_text))
+    return found
+
+
 async def clear_chunk_flag(
     session: AsyncSession,
     scope: OrganisationScope,
@@ -582,7 +617,8 @@ async def delete_document(
     now: datetime,
 ) -> list[str]:
     """Deletes the Document and its Chunks in one transaction, so retrieval stops at once, and
-    records ``document.deleted``. Returns its stored objects (originals and converted markdown,
+    records ``document.deleted``. Its Expected sources become Stale expectations
+    (``document_deleted``). Returns its stored objects (originals and converted markdown,
     of the current and any staged edition) for the caller to schedule deletion of."""
     project = await projects.active_project(session, scope, project_id)
     document = await session.scalar(
@@ -602,6 +638,12 @@ async def delete_document(
         update(MessageRetrieval)
         .where(MessageRetrieval.document_id == document.id)
         .values(document_id=None, chunk_id=None)
+    )
+    # Its Expected sources become Stale expectations at once, keeping its name for display.
+    await session.execute(
+        update(EvaluationExpectedSource)
+        .where(EvaluationExpectedSource.document_id == document.id)
+        .values(document_id=None, stale=True, stale_reason=StaleReason.DOCUMENT_DELETED)
     )
     await audit.record(
         session,

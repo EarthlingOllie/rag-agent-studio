@@ -20,6 +20,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any
+from unittest.mock import AsyncMock, patch
 
 import httpx
 import pytest
@@ -27,6 +28,7 @@ from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
 
 from app.core.db import Base
+from app.evaluation import api as evaluation_api
 from app.guardrails.fake import FakeRule
 from app.main import ROUTERS, create_app
 from app.tenancy.models import PLATFORM_TABLES, Role
@@ -492,8 +494,84 @@ async def _a_playground_answer(owner: SignedUpMember, add_member: MemberFactory)
     return params | {"message_id": conversation.json()["messages"][-1]["id"]}, None
 
 
+async def _an_evaluation_case(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_agent(owner, add_member)
+    created = await owner.client.post(
+        _EVALUATION.format(organisation_id=owner.organisation_id, **params) + "/cases",
+        json=_EVALUATION_CASE,
+    )
+    assert created.status_code == 201, created.text
+    return params | {"case_id": created.json()["id"]}, _EVALUATION_CASE
+
+
+async def _evaluation_cases_to_copy(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_evaluation_case(owner, add_member)
+    sibling = await owner.client.post(
+        PROJECTS.format(organisation_id=owner.organisation_id) + f"/{params['project_id']}/agents",
+        json={"name": "Isolation sibling"},
+    )
+    assert sibling.status_code == 201, sibling.text
+    return params | {"agent_id": sibling.json()["id"]}, {
+        "agent_id": params["agent_id"],
+        "case_ids": [params["case_id"]],
+    }
+
+
+async def _an_evaluation_to_start(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A Run needs a Default Model, which the gateway's fake chat model answers and judges as.
+    _, choice = await _a_chat_model_choice(owner, add_member)
+    response = await owner.client.put(
+        f"/api/organisations/{owner.organisation_id}/default-model", json=choice
+    )
+    assert response.status_code == 200, response.text
+    params, _ = await _an_evaluation_case(owner, add_member)
+    return params, None
+
+
+async def _an_evaluation_run(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_evaluation_to_start(owner, add_member)
+    started = await owner.client.post(
+        _EVALUATION.format(organisation_id=owner.organisation_id, **params) + "/runs"
+    )
+    assert started.status_code == 202, started.text
+    return params | {"run_id": started.json()["id"]}, None
+
+
+async def _a_queued_evaluation_run(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _an_evaluation_to_start(owner, add_member)
+    # Its task isn't sent, so it stays queued and can be cancelled.
+    with patch.object(evaluation_api, "enqueue_run", AsyncMock()):
+        started = await owner.client.post(
+            _EVALUATION.format(organisation_id=owner.organisation_id, **params) + "/runs"
+        )
+    assert started.json()["status"] == "queued", started.text
+    return params | {"run_id": started.json()["id"]}, None
+
+
+async def _a_rollout_evaluation(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A Live Agent with an Evaluation Set, and a new Instructions Version to roll out.
+    params, _ = await _an_evaluation_to_start(owner, add_member)
+    agent = _AGENT.format(organisation_id=owner.organisation_id, **params)
+    published = await owner.client.post(f"{agent}/versions", json={"note": "First release"})
+    assert published.status_code == 201, published.text
+    path = PROJECTS.format(organisation_id=owner.organisation_id) + f"/{params['project_id']}"
+    saved = await owner.client.put(f"{path}/instructions", json={"markdown": "# Rules"})
+    assert saved.status_code == 200, saved.text
+    rules = await owner.client.post(f"{path}/instructions/versions", json={"note": "Rules"})
+    assert rules.status_code == 201, rules.text
+    return {
+        "project_id": params["project_id"],
+        "instructions_version_id": rules.json()["id"],
+    }, {"agent_ids": [params["agent_id"]]}
+
+
 _AGENT = PROJECTS + "/{project_id}/agents/{agent_id}"
 _CONVERSATION = _AGENT + "/playground/conversations/{conversation_id}"
+_EVALUATION = _AGENT + "/evaluation"
+_ROLLOUT_EVALUATION = (
+    PROJECTS + "/{project_id}/instructions/versions/{instructions_version_id}/evaluation"
+)
+_EVALUATION_CASE = {"question": "How much leave?", "reference_answer": "25 days."}
 # The Conversations viewer: every Conversation of the Project, Visitors' and the Playground's.
 _CONVERSATIONS = PROJECTS + "/{project_id}/conversations"
 
@@ -528,6 +606,12 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS + "/{project_id}/documents/{document_id}", EDITOR, _a_document),
     ScopedRoute(
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/download", EDITOR, _a_document
+    ),
+    ScopedRoute(
+        "GET",
+        PROJECTS + "/{project_id}/documents/{document_id}/expected-sources",
+        EDITOR,
+        _a_document,
     ),
     ScopedRoute(
         "GET", PROJECTS + "/{project_id}/documents/{document_id}/chunks", EDITOR, _a_document
@@ -611,6 +695,24 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute(
         "GET", _CONVERSATION + "/messages/{message_id}/trace", EDITOR, _a_playground_answer
     ),
+    ScopedRoute("GET", _EVALUATION + "/cases", EDITOR, _an_agent),
+    ScopedRoute("POST", _EVALUATION + "/cases", EDITOR, _an_evaluation_case),
+    ScopedRoute("GET", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),
+    ScopedRoute("POST", _EVALUATION + "/cases/copy", EDITOR, _evaluation_cases_to_copy),
+    ScopedRoute(
+        "GET", _EVALUATION + "/messages/{message_id}/prefill", EDITOR, _a_playground_answer
+    ),
+    ScopedRoute("PUT", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),
+    ScopedRoute("DELETE", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),
+    ScopedRoute("POST", _EVALUATION + "/estimate", EDITOR, _an_evaluation_to_start),
+    ScopedRoute("POST", _EVALUATION + "/runs", EDITOR, _an_evaluation_to_start),
+    ScopedRoute("GET", _EVALUATION + "/runs", EDITOR, _an_evaluation_run),
+    ScopedRoute("GET", _EVALUATION + "/runs/{run_id}", EDITOR, _an_evaluation_run),
+    ScopedRoute("GET", _EVALUATION + "/runs/{run_id}/results", EDITOR, _an_evaluation_run),
+    ScopedRoute("POST", _EVALUATION + "/runs/{run_id}/cancel", EDITOR, _a_queued_evaluation_run),
+    ScopedRoute("GET", _EVALUATION + "/publish-summary", EDITOR, _an_evaluation_run),
+    ScopedRoute("POST", _ROLLOUT_EVALUATION, EDITOR, _a_rollout_evaluation),
+    ScopedRoute("GET", _ROLLOUT_EVALUATION, EDITOR, _a_rollout_evaluation),
     ScopedRoute("GET", _AGENT + "/metrics", EDITOR, _a_live_agent),
     *(
         ScopedRoute(
@@ -644,6 +746,10 @@ async def _policy_left_off(owner: SignedUpMember, add_member: MemberFactory) -> 
 
 async def _a_retention_window(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     return {}, {"retention_days": 30}
+
+
+async def _evaluation_repeats(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {}, {"repeats": 5}
 
 
 ORGANISATION_SCOPED_ROUTES = [
@@ -695,6 +801,13 @@ ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", "/api/organisations/{organisation_id}/default-model", EDITOR),
     ScopedRoute(
         "PUT", "/api/organisations/{organisation_id}/default-model", OWNER, _a_chat_model_choice
+    ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/evaluation-settings", EDITOR),
+    ScopedRoute(
+        "PUT", "/api/organisations/{organisation_id}/evaluation-model", OWNER, _a_chat_model_choice
+    ),
+    ScopedRoute(
+        "PUT", "/api/organisations/{organisation_id}/evaluation-repeats", OWNER, _evaluation_repeats
     ),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/embedding-models", EDITOR),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/theme", EDITOR),

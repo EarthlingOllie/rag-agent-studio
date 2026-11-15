@@ -599,6 +599,24 @@ async def test_the_demo_model_answers_from_the_first_retrieved_chunk(index: int)
     assert model.model_name == "demo-chat"
 
 
+@pytest.mark.parametrize("index", [0, 1], ids=["fake adapters", "live adapters"])
+async def test_told_not_to_quote_the_demo_model_answers_curtly_without_citing(index: int) -> None:
+    """The seeded HR helper v2's system prompt says "Don't quote the handbook": the demo model
+    then gives the first Chunk's first sentence and cites nothing, so v2 reads as curt and its
+    Evaluation Run has Regressions."""
+    model = demo_gateways()[index].chat_model(
+        credential(Provider.DEMO, "demo-no-key-needed"), "demo-chat"
+    )
+    terse = "Answer staff questions in one short sentence. Don't quote the handbook."
+
+    result = await Agent(model, system_prompt=terse).run(DEMO_QUESTION)
+    async with Agent(model, system_prompt=terse).run_stream(DEMO_QUESTION) as streamed:
+        chunks = [chunk async for chunk in streamed.stream_output(debounce_by=None)]
+
+    curt = "Demo model (canned answer, not AI): You can return any unopened item within 30 days."
+    assert result.output == chunks[-1] == curt
+
+
 @pytest.mark.parametrize(
     "question",
     [

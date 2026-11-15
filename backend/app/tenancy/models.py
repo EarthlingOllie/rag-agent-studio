@@ -41,6 +41,7 @@ PLATFORM_TABLES = frozenset(
 
 
 DEFAULT_RETENTION_DAYS = 90
+DEFAULT_EVALUATION_REPEATS = 3
 
 
 class Role(enum.StrEnum):
@@ -63,6 +64,11 @@ class Organisation(IdMixin, Base):
     # purged daily (``app.retention``); metrics are kept.
     retention_days: Mapped[int] = mapped_column(
         Integer, server_default=text("90"), default=DEFAULT_RETENTION_DAYS
+    )
+    # The Evaluation repeats: how many times each side of an Evaluation Run answers every case
+    # (1, 3, 5, 7 or 9), set by Owners (``app.evaluation.settings``).
+    evaluation_repeats: Mapped[int] = mapped_column(
+        Integer, server_default=text("3"), default=DEFAULT_EVALUATION_REPEATS
     )
 
 

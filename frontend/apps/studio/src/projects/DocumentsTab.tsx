@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, useParams } from "@tanstack/react-router";
 import { type ChangeEvent, type DragEvent, type ReactNode, type Ref, type SubmitEvent, useRef, useState } from "react";
 
@@ -27,6 +28,8 @@ import {
 import {
   canReplace,
   type DocumentFilters,
+  type ExpectedSourceDependents,
+  expectedSourcesQuery,
   type DocumentStatus,
   type FailureCategory,
   NO_FILTERS,
@@ -41,6 +44,7 @@ import {
   useUploadLimits,
   useUploads,
 } from "./documents";
+import { DeletionWarning, ExpectedSourceWarning, NEW_EDITION_CONSEQUENCE } from "./ExpectedSourceWarning";
 import { type Project, useProject } from "./projects";
 import { useOrganisationRole } from "./ProjectsPage";
 import { type Tag, tagFailure, useTagChange, useTags } from "./tags";
@@ -679,6 +683,13 @@ function DocumentsSection() {
   const [managingTags, setManagingTags] = useState(false);
   const [editingTags, setEditingTags] = useState<ProjectDocument | null>(null);
   const [deleting, setDeleting] = useState<ProjectDocument | null>(null);
+  // A new edition waiting for the Editor to read the Expected source warning.
+  const [replacing, setReplacing] = useState<{
+    document: ProjectDocument;
+    file: File;
+    dependents: ExpectedSourceDependents;
+  } | null>(null);
+  const queryClient = useQueryClient();
   const documents = useDocuments(organisationId, projectId, filters);
   // The figures are the whole Project's, whatever the filters show.
   const everything = useDocuments(organisationId, projectId);
@@ -716,7 +727,18 @@ function DocumentsSection() {
         },
       });
     },
-    onReplace: replace,
+    onReplace: (document, file) => {
+      // A Document holding Expected sources warns first; if they can't be read, it uploads anyway.
+      queryClient.query(expectedSourcesQuery(organisationId, projectId, document.id)).then(
+        (dependents) => {
+          if (dependents.agents.length > 0) setReplacing({ document, file, dependents });
+          else replace(document, file);
+        },
+        () => {
+          replace(document, file);
+        },
+      );
+    },
     onEditTags: setEditingTags,
     onDelete: (document) => {
       deleteDocument.reset();
@@ -829,7 +851,12 @@ function DocumentsSection() {
           title={`Delete ${deleting.name}?`}
           confirmLabel={`Delete ${deleting.name}`}
           busy={deleteDocument.isPending}
-          body={deleteDocument.isError ? <Notice tone="error">The Document could not be deleted. Try again.</Notice> : undefined}
+          body={
+            <>
+              <DeletionWarning organisationId={organisationId} projectId={projectId} documentId={deleting.id} />
+              {deleteDocument.isError && <Notice tone="error">The Document could not be deleted. Try again.</Notice>}
+            </>
+          }
           onConfirm={() => {
             deleteDocument.mutate(deleting.id, {
               onSuccess: () => {
@@ -843,6 +870,23 @@ function DocumentsSection() {
           }}
         >
           {deletionConsequence(deleting.chunk_count)}
+        </ConfirmDialog>
+      )}
+      {replacing && (
+        <ConfirmDialog
+          open
+          title={`Upload a new edition of ${replacing.document.name}?`}
+          confirmLabel="Upload new edition"
+          body={<ExpectedSourceWarning dependents={replacing.dependents} consequence={NEW_EDITION_CONSEQUENCE} />}
+          onConfirm={() => {
+            replace(replacing.document, replacing.file);
+            setReplacing(null);
+          }}
+          onCancel={() => {
+            setReplacing(null);
+          }}
+        >
+          {`${replacing.file.name} replaces it once it is Ready.`}
         </ConfirmDialog>
       )}
     </section>

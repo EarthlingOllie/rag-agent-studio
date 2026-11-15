@@ -473,8 +473,8 @@ export interface paths {
         /**
          * Get Organisation Cost
          * @description What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most
-         *     366 days), including today's so far, by Project or by Agent. Playground usage is in its own
-         *     column. Owners only.
+         *     366 days), including today's so far, by Project or by Agent. Playground usage and Evaluation
+         *     Runs are each in their own column. Owners only.
          */
         get: operations["getOrganisationCost"];
         put?: never;
@@ -675,6 +675,70 @@ export interface paths {
          *     Credential offers, by credential name.
          */
         get: operations["listEmbeddingModels"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/evaluation-model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Evaluation Model
+         * @description Sets the Evaluation Model to one of a chat-capable credential's chat models, or with both
+         *     fields null goes back to the Default Model (Owners only). Recorded as
+         *     ``organisation.evaluation_model_changed``.
+         */
+        put: operations["setEvaluationModel"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/evaluation-repeats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Evaluation Repeats
+         * @description Sets the Evaluation repeats to 1, 3, 5, 7 or 9 (Owners only). Recorded as
+         *     ``organisation.evaluation_repeats_changed``.
+         */
+        put: operations["setEvaluationRepeats"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/evaluation-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Evaluation Settings
+         * @description The Evaluation Model (null while the Default Model judges) and the Evaluation repeats.
+         *     Open to every Member.
+         */
+        get: operations["getEvaluationSettings"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1133,6 +1197,234 @@ export interface paths {
          *     older Version names may have been deleted. Records ``agent.draft_started_from_version``.
          */
         post: operations["startAgentDraftFromVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/cases": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Cases
+         * @description The Agent's Evaluation Set, oldest case first: with ``q``, the cases whose question
+         *     holds it (letter case aside); with ``kind``, those with that kind of expectation; with
+         *     ``stale``, those with (or without) a Stale expectation; with ``result``, those whose latest
+         *     result is ``pass``, ``fail``, ``unsteady`` (its repeats disagreed), ``error``, or
+         *     ``not_run``.
+         */
+        get: operations["listEvaluationCases"];
+        put?: never;
+        /**
+         * Create Case
+         * @description Adds a case to the Agent's Evaluation Set, of at most 200. A case added from a Message
+         *     is an Audit Event.
+         */
+        post: operations["createEvaluationCase"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/cases/copy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Copy Cases
+         * @description Copies cases of another Agent of the Project into this Agent's Evaluation Set, as
+         *     independent copies, in their set's order; the copies are returned.
+         */
+        post: operations["copyEvaluationCases"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/cases/{case_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Case */
+        get: operations["getEvaluationCase"];
+        /**
+         * Update Case
+         * @description Replaces the case's question and expectations; past Runs keep their copies.
+         */
+        put: operations["updateEvaluationCase"];
+        post?: never;
+        /**
+         * Delete Case
+         * @description Deletes the case, an Audit Event; past Runs keep their copies.
+         */
+        delete: operations["deleteEvaluationCase"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Estimate Run
+         * @description The estimated Cost of starting a Run with these choices now, shown before starting it.
+         *     Nothing is started; refused as starting would be, except while a Run is in progress.
+         */
+        post: operations["estimateEvaluationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/messages/{message_id}/prefill": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Prefill Case
+         * @description A new case from one of the Agent's replies, in the Conversations viewer or the
+         *     Playground: the question it answered and the passages it cited. Nothing is saved, and a case
+         *     keeps no link to the Conversation. Refused once the text has been purged.
+         */
+        get: operations["prefillEvaluationCase"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/publish-summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Publish Summary
+         * @description The Evaluation summary the Publish dialog shows for publishing the Draft with
+         *     ``instructions_version_id`` (the Current Instructions Version when left out). Only Runs of
+         *     the Draft against the current Live Version qualify. The Publish endpoint is unchanged:
+         *     its warnings never block Publishing.
+         */
+        get: operations["getEvaluationPublishSummary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Runs
+         * @description The Agent's Runs, newest first.
+         */
+        get: operations["listEvaluationRuns"];
+        put?: never;
+        /**
+         * Start Run
+         * @description Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft
+         *     (the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll
+         *     it until it is ``completed``, ``failed`` or ``cancelled``.
+         */
+        post: operations["startEvaluationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs/{run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run
+         * @description The Run's status, progress and sides.
+         */
+        get: operations["getEvaluationRun"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs/{run_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Run
+         * @description Cancels a queued or running Run: it stops before its next answer and keeps what it
+         *     answered and spent.
+         */
+        post: operations["cancelEvaluationRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs/{run_id}/results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Run Results
+         * @description Each case as the Run copied it, with every answer, its Verdicts and its Trace.
+         */
+        get: operations["getEvaluationRunResults"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1783,6 +2075,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/expected-sources": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Expected Source Dependents
+         * @description The Agents, by name, and how many of their cases hold an Expected source in the Document
+         *     (the Expected source warning before it is deleted or a new Edition uploaded), and the
+         *     distinct passages used, for the Document viewer to mark.
+         */
+        get: operations["getExpectedSourceDependents"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/retry": {
         parameters: {
             query?: never;
@@ -1965,6 +2279,33 @@ export interface paths {
          *     Current Version. Records ``project.instructions_published``.
          */
         post: operations["publishProjectInstructions"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/versions/{instructions_version_id}/evaluation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Rollout Evaluation
+         * @description Each named Agent's (every active Agent's when none is named) Rollout evaluation state
+         *     for the Instructions Version: ``regressions``, ``not_evaluated``, ``running`` or
+         *     ``clear``.
+         */
+        get: operations["getRolloutEvaluation"];
+        put?: never;
+        /**
+         * Start Rollout Evaluation
+         * @description Starts a Rollout evaluation of each selected Agent with an Evaluation Set, skipping the
+         *     others, and returns the selected Agents' states. Poll the read until none is running.
+         */
+        post: operations["startRolloutEvaluation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2698,6 +3039,82 @@ export interface components {
             /** Models */
             models: components["schemas"]["ModelOut"][];
         };
+        /** CaseIn */
+        CaseIn: {
+            /**
+             * Expect Fallback
+             * @default false
+             */
+            expect_fallback: boolean;
+            /** Expected Sources */
+            expected_sources?: components["schemas"]["ExpectedSourceIn"][];
+            /** Question */
+            question: string;
+            /** Reference Answer */
+            reference_answer?: string | null;
+        };
+        /** CaseOut */
+        CaseOut: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Expect Fallback */
+            expect_fallback: boolean;
+            /** Expected Sources */
+            expected_sources: components["schemas"]["ExpectedSourceOut"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            latest_result: components["schemas"]["LatestResultOut"] | null;
+            /** Question */
+            question: string;
+            /** Reference Answer */
+            reference_answer: string | null;
+            /** Source */
+            source: string;
+            /** Stale */
+            stale: boolean;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
+        };
+        /** CaseResultOut */
+        CaseResultOut: {
+            /** Answer */
+            answer: string | null;
+            /** Error Reason */
+            error_reason: string | null;
+            /** Passed */
+            passed: boolean | null;
+            /** Position */
+            position: string;
+            /** Repeat */
+            repeat: number;
+            /** Status */
+            status: string;
+            trace: components["schemas"]["TraceOut"] | null;
+            /** Verdicts */
+            verdicts: components["schemas"]["VerdictOut"][];
+        };
+        /** CaseSideOut */
+        CaseSideOut: {
+            /** Answered */
+            answered: number;
+            /** Outcome */
+            outcome: string;
+            /** Passed */
+            passed: number;
+            /** Position */
+            position: string;
+            /** Repeats */
+            repeats: number;
+        };
         /** ChangePasswordRequest */
         ChangePasswordRequest: {
             /** Current Password */
@@ -3000,8 +3417,20 @@ export interface components {
             /** Conversation Token */
             conversation_token: string;
         };
+        /** CopyIn */
+        CopyIn: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Case Ids */
+            case_ids: string[];
+        };
         /** CostAmountsOut */
         CostAmountsOut: {
+            /** Evaluation Usd */
+            evaluation_usd: string;
             /** Playground Usd */
             playground_usd: string;
             /** Total Usd */
@@ -3028,6 +3457,8 @@ export interface components {
             agent_id: string | null;
             /** Agent Name */
             agent_name: string | null;
+            /** Evaluation Usd */
+            evaluation_usd: string;
             /** Playground Usd */
             playground_usd: string;
             /**
@@ -3234,6 +3665,18 @@ export interface components {
             /** Confirm Name */
             confirm_name: string;
         };
+        /** DependentAgentOut */
+        DependentAgentOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Case Count */
+            case_count: number;
+            /** Name */
+            name: string;
+        };
         /** DiffLineOut */
         DiffLineOut: {
             /**
@@ -3438,6 +3881,88 @@ export interface components {
         ErrorResponse: {
             /** Detail */
             detail: string;
+        };
+        /**
+         * EstimateOut
+         * @description What a Run is expected to cost: the cases, times the sides, times the repeats, times each
+         *     side's mean Cost per reply over the last 30 days (its model's prices and a fixed token
+         *     allowance with no history), plus judging every answer at the judge's prices and the same
+         *     allowance.
+         */
+        EstimateOut: {
+            /** Answers Usd */
+            answers_usd: string | null;
+            /** Cases */
+            cases: number;
+            /** Judging Usd */
+            judging_usd: string | null;
+            /** Repeats */
+            repeats: number;
+            /** Sides */
+            sides: number;
+            /** Total Usd */
+            total_usd: string | null;
+        };
+        /** EvaluationModelOut */
+        EvaluationModelOut: {
+            /**
+             * Credential Id
+             * Format: uuid
+             */
+            credential_id: string;
+            /** Credential Name */
+            credential_name: string;
+            /** Model */
+            model: string;
+            /** Model Name */
+            model_name: string;
+            provider: components["schemas"]["Provider"];
+        };
+        /** EvaluationSettingsOut */
+        EvaluationSettingsOut: {
+            evaluation_model: components["schemas"]["EvaluationModelOut"] | null;
+            /** Repeats */
+            repeats: number;
+        };
+        /**
+         * ExpectationKind
+         * @enum {string}
+         */
+        ExpectationKind: "expected_source" | "reference_answer" | "fallback";
+        /** ExpectedSourceDependentsOut */
+        ExpectedSourceDependentsOut: {
+            /** Agents */
+            agents: components["schemas"]["DependentAgentOut"][];
+            /** Passages */
+            passages: string[];
+        };
+        /** ExpectedSourceIn */
+        ExpectedSourceIn: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Passage */
+            passage: string;
+        };
+        /** ExpectedSourceOut */
+        ExpectedSourceOut: {
+            /** Document Id */
+            document_id: string | null;
+            /** Document Name */
+            document_name: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Passage */
+            passage: string;
+            /** Stale */
+            stale: boolean;
+            /** Stale Reason */
+            stale_reason: string | null;
         };
         /** Experience */
         "Experience-Input": {
@@ -3850,6 +4375,30 @@ export interface components {
             total_p95_ms: number | null;
         };
         /**
+         * LatestKind
+         * @description A case's latest result as the set shows it: Unsteady over its majority outcome.
+         * @enum {string}
+         */
+        LatestKind: "pass" | "fail" | "unsteady" | "error" | "not_run";
+        /** LatestResultOut */
+        LatestResultOut: {
+            /** Answered */
+            answered: number;
+            /** Outcome */
+            outcome: string;
+            /** Passed */
+            passed: number;
+            /** Repeats */
+            repeats: number;
+            /**
+             * Run Id
+             * Format: uuid
+             */
+            run_id: string;
+            /** Unsteady */
+            unsteady: boolean;
+        };
+        /**
          * LauncherPosition
          * @enum {string}
          */
@@ -4109,6 +4658,38 @@ export interface components {
             override: components["schemas"]["OptionalPricesOut"] | null;
             platform: components["schemas"]["PricesOut"] | null;
         };
+        /** NewCaseIn */
+        NewCaseIn: {
+            /**
+             * Expect Fallback
+             * @default false
+             */
+            expect_fallback: boolean;
+            /** Expected Sources */
+            expected_sources?: components["schemas"]["ExpectedSourceIn"][];
+            /** Question */
+            question: string;
+            /** Reference Answer */
+            reference_answer?: string | null;
+            /**
+             * Source
+             * @default written
+             * @enum {string}
+             */
+            source: "written" | "from_message";
+        };
+        /** OfferedSourceOut */
+        OfferedSourceOut: {
+            /**
+             * Document Id
+             * Format: uuid
+             */
+            document_id: string;
+            /** Document Name */
+            document_name: string;
+            /** Passage */
+            passage: string;
+        };
         /**
          * OperationalSettingsChange
          * @description The settings to change; one left out stays as it is.
@@ -4254,6 +4835,13 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** PrefillOut */
+        PrefillOut: {
+            /** Expected Sources */
+            expected_sources: components["schemas"]["OfferedSourceOut"][];
+            /** Question */
+            question: string;
+        };
         /** PricesOut */
         PricesOut: {
             /** Cached Input */
@@ -4308,6 +4896,13 @@ export interface components {
              * @default 5
              */
             top_k: number;
+        };
+        /** ProgressOut */
+        ProgressOut: {
+            /** Done */
+            done: number;
+            /** Total */
+            total: number;
         };
         /**
          * ProjectInstructions
@@ -4381,6 +4976,27 @@ export interface components {
             /** Note */
             note: string;
         };
+        /**
+         * PublishSummaryOut
+         * @description Whether the Draft has been evaluated against the current Live Version with the
+         *     Instructions being published. Advisory: Publishing never depends on it.
+         */
+        PublishSummaryOut: {
+            /** Evaluated Live Version Number */
+            evaluated_live_version_number: number | null;
+            /** Lower Score */
+            lower_score: boolean;
+            /** Publishing Instructions Version Number */
+            publishing_instructions_version_number: number | null;
+            /** Regressions */
+            regressions: components["schemas"]["SummaryRegressionOut"][];
+            run: components["schemas"]["RunOut"] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "no_set" | "no_run" | "live_changed" | "stale" | "instructions_differ" | "regressions" | "clear";
+        };
         /** RatingChangeRead */
         RatingChangeRead: {
             /** Agent Version Number */
@@ -4451,6 +5067,13 @@ export interface components {
         RecoveryCodesResponse: {
             /** Recovery Codes */
             recovery_codes: string[];
+        };
+        /** RegressionReasonOut */
+        RegressionReasonOut: {
+            /** Kind */
+            kind: string;
+            /** Reason */
+            reason: string | null;
         };
         /** RenewInviteRequest */
         RenewInviteRequest: {
@@ -4563,6 +5186,26 @@ export interface components {
          * @enum {string}
          */
         Role: "owner" | "editor";
+        /** RolloutAgentEvaluationOut */
+        RolloutAgentEvaluationOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Has Set */
+            has_set: boolean;
+            /** Name */
+            name: string;
+            /** Regressions */
+            regressions: components["schemas"]["SummaryRegressionOut"][];
+            run: components["schemas"]["RunOut"] | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "not_evaluated" | "running" | "regressions" | "clear";
+        };
         /** RolloutAgentOut */
         RolloutAgentOut: {
             /** Behind */
@@ -4579,6 +5222,22 @@ export interface components {
             /** Name */
             name: string;
         };
+        /** RolloutEvaluationIn */
+        RolloutEvaluationIn: {
+            /** Agent Ids */
+            agent_ids: string[];
+        };
+        /**
+         * RolloutEvaluationOut
+         * @description Each Agent's Rollout evaluation of the Instructions Version. Advisory: Bulk publish never
+         *     depends on it.
+         */
+        RolloutEvaluationOut: {
+            /** Agents */
+            agents: components["schemas"]["RolloutAgentEvaluationOut"][];
+            /** Instructions Version Number */
+            instructions_version_number: number;
+        };
         /** RotateCredentialRequest */
         RotateCredentialRequest: {
             /**
@@ -4586,6 +5245,127 @@ export interface components {
              * Format: password
              */
             api_key: string;
+        };
+        /** RunCaseOut */
+        RunCaseOut: {
+            /** Case Id */
+            case_id: string | null;
+            /** Change */
+            change: string | null;
+            /** Expect Fallback */
+            expect_fallback: boolean;
+            /** Expected Sources */
+            expected_sources: components["schemas"]["RunExpectedSourceOut"][];
+            /** Question */
+            question: string;
+            /** Reference Answer */
+            reference_answer: string | null;
+            /** Results */
+            results: components["schemas"]["CaseResultOut"][];
+            /** Sides */
+            sides: components["schemas"]["CaseSideOut"][];
+            /** Stale Expectation */
+            stale_expectation: boolean;
+            /** Unsteady */
+            unsteady: boolean;
+        };
+        /** RunCostOut */
+        RunCostOut: {
+            /** Answers Usd */
+            answers_usd: string;
+            /** Estimated Usd */
+            estimated_usd: string | null;
+            /** Judging Usd */
+            judging_usd: string;
+            /** Total Usd */
+            total_usd: string;
+        };
+        /** RunExpectedSourceOut */
+        RunExpectedSourceOut: {
+            /** Document Name */
+            document_name: string;
+            /** Passage */
+            passage: string;
+        };
+        /** RunIn */
+        RunIn: {
+            /**
+             * Instructions Draft
+             * @default false
+             */
+            instructions_draft: boolean;
+            /** Instructions Version Id */
+            instructions_version_id?: string | null;
+            /** Sides */
+            sides?: components["schemas"]["SideIn"][] | null;
+        };
+        /** RunOut */
+        RunOut: {
+            cost: components["schemas"]["RunCostOut"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Message */
+            error_message: string | null;
+            /** Finished At */
+            finished_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Judge Model */
+            judge_model: string;
+            /** Judge Provider */
+            judge_provider: string;
+            /** Kind */
+            kind: string;
+            progress: components["schemas"]["ProgressOut"];
+            /** Repeats */
+            repeats: number;
+            /** Sides */
+            sides: components["schemas"]["RunSideOut"][];
+            /** Stale */
+            stale: boolean;
+            /** Status */
+            status: string;
+        };
+        /** RunResultsOut */
+        RunResultsOut: {
+            /** Cases */
+            cases: components["schemas"]["RunCaseOut"][];
+            run: components["schemas"]["RunOut"];
+        };
+        /** RunSideOut */
+        RunSideOut: {
+            /** Agent Version Id */
+            agent_version_id: string | null;
+            /** Cases Errored */
+            cases_errored: number;
+            /** Cases Failed */
+            cases_failed: number;
+            /** Cases Passed */
+            cases_passed: number;
+            /** Draft Revision */
+            draft_revision: number | null;
+            /** Instructions Draft */
+            instructions_draft: boolean;
+            /** Instructions Version Number */
+            instructions_version_number: number | null;
+            /** Kind */
+            kind: string;
+            /** Model Name */
+            model_name: string;
+            /** Model Provider */
+            model_provider: string;
+            /** Position */
+            position: string;
+            /** Score */
+            score: number | null;
+            /** Version Number */
+            version_number: number | null;
         };
         /**
          * ScopedAgentOut
@@ -4664,6 +5444,35 @@ export interface components {
             credential_id?: string | null;
             /** Model Id */
             model_id: string;
+        };
+        /**
+         * SetEvaluationModelRequest
+         * @description A chat-capable credential and one of its chat models, or both null to judge with the
+         *     Default Model.
+         */
+        SetEvaluationModelRequest: {
+            /** Credential Id */
+            credential_id: string | null;
+            /** Model */
+            model: string | null;
+        };
+        /** SetEvaluationRepeatsRequest */
+        SetEvaluationRepeatsRequest: {
+            /**
+             * Repeats
+             * @enum {integer}
+             */
+            repeats: 1 | 3 | 5 | 7 | 9;
+        };
+        /** SideIn */
+        SideIn: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "draft" | "version";
+            /** Version Id */
+            version_id?: string | null;
         };
         /** SignInRequest */
         SignInRequest: {
@@ -4755,6 +5564,15 @@ export interface components {
             upload_id: string;
             /** Url */
             url: string;
+        };
+        /** SummaryRegressionOut */
+        SummaryRegressionOut: {
+            /** Case Id */
+            case_id: string | null;
+            /** Question */
+            question: string;
+            /** Reasons */
+            reasons: components["schemas"]["RegressionReasonOut"][];
         };
         /** SwitchOrganisationRequest */
         SwitchOrganisationRequest: {
@@ -5142,6 +5960,15 @@ export interface components {
             msg: string;
             /** Error Type */
             type: string;
+        };
+        /** VerdictOut */
+        VerdictOut: {
+            /** Kind */
+            kind: string;
+            /** Outcome */
+            outcome: string;
+            /** Reason */
+            reason: string | null;
         };
         /** VersionAuthor */
         VersionAuthor: {
@@ -7055,6 +7882,150 @@ export interface operations {
             };
         };
     };
+    setEvaluationModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetEvaluationModelRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSettingsOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not a chat model of this Organisation */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setEvaluationRepeats: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetEvaluationRepeatsRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSettingsOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not 1, 3, 5, 7 or 9 */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getEvaluationSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationSettingsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listInvites: {
         parameters: {
             query?: never;
@@ -8483,6 +9454,694 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DraftConflictOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listEvaluationCases: {
+        parameters: {
+            query?: {
+                q?: string | null;
+                kind?: components["schemas"]["ExpectationKind"] | null;
+                stale?: boolean | null;
+                result?: components["schemas"]["LatestKind"] | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    createEvaluationCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["NewCaseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Project or Agent is archived, or the Evaluation Set holds 200 cases. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The question is empty or too long, the case has no expectation, Expect Fallback Text is combined with another expectation, or an Expected source's passage is empty or too long or its Document isn't the Project's. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    copyEvaluationCases: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CopyIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Project or Agent is archived, or the Evaluation Set holds 200 cases. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Agent copied from is this one or not of the Project, or a case isn't in its set. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEvaluationCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                case_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    updateEvaluationCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                case_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CaseIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CaseOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The question is empty or too long, the case has no expectation, Expect Fallback Text is combined with another expectation, or an Expected source's passage is empty or too long or its Document isn't the Project's. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteEvaluationCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                case_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    estimateEvaluationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RunIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EstimateOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Project or Agent is archived, the Evaluation Set is empty, there is no Default Model, or a side names a Provider Credential that no longer exists. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A side isn't the Draft or one of the Agent's Versions, the two sides are the same, or the chosen Instructions Version isn't the Project's. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    prefillEvaluationCase: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                message_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrefillOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Message's text has been purged. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getEvaluationPublishSummary: {
+        parameters: {
+            query?: {
+                instructions_version_id?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PublishSummaryOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The chosen Instructions Version isn't the Project's. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listEvaluationRuns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startEvaluationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["RunIn"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Project or Agent is archived, it already has a Run in progress, the Evaluation Set is empty, there is no Default Model, or a side names a Provider Credential that no longer exists. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A side isn't the Draft or one of the Agent's Versions, the two sides are the same, or the chosen Instructions Version isn't the Project's. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEvaluationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                run_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancelEvaluationRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                run_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Run has already finished. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getEvaluationRunResults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                run_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunResultsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -10323,6 +11982,48 @@ export interface operations {
             };
         };
     };
+    getExpectedSourceDependents: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                document_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExpectedSourceDependentsOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     retryDocument: {
         parameters: {
             query?: never;
@@ -10844,6 +12545,105 @@ export interface operations {
                 };
             };
             /** @description This Project is archived. An Owner can restore it. Or: The Draft is the same as the Current Version, so there's nothing to publish. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getRolloutEvaluation: {
+        parameters: {
+            query?: {
+                agent_id?: string[] | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                instructions_version_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RolloutEvaluationOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startRolloutEvaluation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                instructions_version_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RolloutEvaluationIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RolloutEvaluationOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Project is archived, a selected Agent already has a Run in progress or its Live Version names a Provider Credential that no longer exists (then nothing is started), or there is no Default Model. */
             409: {
                 headers: {
                     [name: string]: unknown;

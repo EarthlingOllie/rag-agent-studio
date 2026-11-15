@@ -6,6 +6,22 @@ import { server } from "./server";
 export type ProjectDocument = Schemas["DocumentOut"];
 export type UploadLimits = Schemas["UploadLimitsOut"];
 export type Tag = Schemas["TagOut"];
+export type ExpectedSourceDependents = Schemas["ExpectedSourceDependentsOut"];
+
+const NO_DEPENDENTS: ExpectedSourceDependents = { agents: [], passages: [] };
+const DEPENDENTS = "*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/expected-sources";
+
+/** Two Agents' cases holding Expected sources in a Document. */
+export function someDependents(overrides: Partial<ExpectedSourceDependents> = {}): ExpectedSourceDependents {
+  return {
+    agents: [
+      { agent_id: "a9e00000-0000-4000-8000-000000000002", name: "Concierge", case_count: 1 },
+      { agent_id: "a9e00000-0000-4000-8000-000000000001", name: "HR helper", case_count: 3 },
+    ],
+    passages: ["25 days of annual leave"],
+    ...overrides,
+  };
+}
 
 export const DUPLICATE_TAG = "This Project already has a Tag with that name.";
 
@@ -89,7 +105,14 @@ export function anUploadLimits(overrides: Partial<UploadLimits> = {}): UploadLim
  * `limits.document_quota`.
  */
 export function fakeDocumentsApi(
-  options: { documents?: ProjectDocument[]; tags?: Tag[]; limits?: Partial<UploadLimits>; failing?: string[] } = {},
+  options: {
+    documents?: ProjectDocument[];
+    tags?: Tag[];
+    limits?: Partial<UploadLimits>;
+    failing?: string[];
+    // Who holds Expected sources in each Document, by Document ID; none by default.
+    dependents?: Record<string, ExpectedSourceDependents>;
+  } = {},
 ) {
   let documents = [...(options.documents ?? [])];
   let tags = [...(options.tags ?? [])];
@@ -115,6 +138,7 @@ export function fakeDocumentsApi(
       );
     }),
     ...fakeTagRoutes(),
+    http.get(DEPENDENTS, ({ params }) => HttpResponse.json(options.dependents?.[params.documentId as string] ?? NO_DEPENDENTS)),
     http.get("*/api/organisations/:organisationId/projects/:projectId/documents/statuses", () => {
       documents = documents.map((document) => advance(document, contentOf.get(document.id) ?? "", options.failing ?? []));
       requests.push({ route: "statuses" });
@@ -320,9 +344,19 @@ function listed(document: DocumentDetail): ProjectDocument {
 
 /**
  * A stand-in for the Document viewer's API: the Document list (just this Document), the
- * Document with its markdown, and its Chunks a page at a time, as the API pages them.
+ * Document with its markdown, its Chunks a page at a time, as the API pages them, and the
+ * passages of it used as Expected sources.
  */
-export function fakeDocumentViewerApi({ document, chunks }: { document: DocumentDetail; chunks: Chunk[] }) {
+export function fakeDocumentViewerApi({
+  document,
+  chunks,
+  passages = [],
+}: {
+  document: DocumentDetail;
+  chunks: Chunk[];
+  // The passages of it used as Expected sources.
+  passages?: string[];
+}) {
   const requests: { offset: number; limit: number }[] = [];
   // Clearing a flag (DELETE …/chunks/{id}/flag) takes it off the Chunk and the Document's count.
   const cleared: string[] = [];
@@ -330,6 +364,7 @@ export function fakeDocumentViewerApi({ document, chunks }: { document: Document
   let items = chunks;
   server.use(
     http.get("*/api/organisations/:organisationId/projects/:projectId/documents", () => HttpResponse.json([listed(current)])),
+    http.get(DEPENDENTS, () => HttpResponse.json({ ...someDependents(), passages })),
     http.get("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId", ({ params }) =>
       params.documentId === document.id ? HttpResponse.json(current) : HttpResponse.json({ detail: "Not found" }, { status: 404 }),
     ),

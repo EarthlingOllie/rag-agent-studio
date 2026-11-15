@@ -37,6 +37,11 @@ from app.documents.ports import build_ports, install_ports
 from app.embed import api as embed_api
 from app.embed import branding_api
 from app.embed.tokens import TokenSigner
+from app.evaluation import api as evaluation_api
+from app.evaluation import rollout_api as evaluation_rollout_api
+from app.evaluation import settings_api as evaluation_settings_api
+from app.evaluation.ports import EvaluationPorts, install_evaluation_ports
+from app.evaluation.settings import evaluation_model_references
 from app.feedback import api as feedback_api
 from app.gateway.adapters import build_model_gateway
 from app.guardrails.pipeline import build_pipeline
@@ -71,6 +76,7 @@ ROUTERS: Sequence[APIRouter] = (
     credentials_api.router,
     credentials_api.providers_router,
     default_model_api.router,
+    evaluation_settings_api.router,
     pricing_api.router,
     theme_api.router,
     theme_api.fonts_router,
@@ -83,6 +89,9 @@ ROUTERS: Sequence[APIRouter] = (
     agent_versions_api.router,
     bulk_api.router,
     playground_api.router,
+    evaluation_api.router,
+    evaluation_api.documents_router,
+    evaluation_rollout_api.router,
     conversations_api.router,
     analytics_api.router,
     analytics_api.cost_router,
@@ -134,6 +143,16 @@ def _lifespan(
         install_ports(app.state.ingestion)
         # The Guardrails around the Agent runtime: the input classifier checks every message.
         app.state.guardrails = build_pipeline(settings)
+        # Evaluation Run tasks enqueued from here run in the worker; in tests they run eagerly in
+        # this process and answer through the API's own gateway, Guardrails and clock.
+        app.state.evaluation = EvaluationPorts(
+            open_gateway=lambda _client: app.state.model_gateway,
+            guardrails=app.state.guardrails,
+            embedders=app.state.ingestion.embedders,
+            judge_timeout_s=settings.evaluation_judge_timeout_s,
+            clock=lambda: app.state.clock,
+        )
+        install_evaluation_ports(app.state.evaluation)
         if settings.object_store_create_bucket:
             await app.state.ingestion.object_store.prepare()
         logger.info("API started", extra={"environment": settings.environment})
@@ -159,6 +178,7 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     app.state.credential_references.register(default_model_references)
     app.state.credential_references.register(agent_references)
     app.state.credential_references.register(project_embedding_references)
+    app.state.credential_references.register(evaluation_model_references)
     for router in ROUTERS:
         app.include_router(router)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.

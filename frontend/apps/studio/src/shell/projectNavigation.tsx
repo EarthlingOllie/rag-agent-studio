@@ -63,7 +63,12 @@ export function useProjectSwitcherItems(organisationId: string, projectId: strin
 
 export const AGENT = `${PROJECT}/agents/$agentId` as const;
 
-type AgentViewPath = typeof AGENT | `${typeof AGENT}/versions` | `${typeof AGENT}/embed` | `${typeof AGENT}/conversations`;
+type AgentViewPath =
+  | typeof AGENT
+  | `${typeof AGENT}/versions`
+  | `${typeof AGENT}/evaluation`
+  | `${typeof AGENT}/embed`
+  | `${typeof AGENT}/conversations`;
 
 /**
  * An Agent's views, in order: the tabs under its header.
@@ -72,6 +77,7 @@ type AgentViewPath = typeof AGENT | `${typeof AGENT}/versions` | `${typeof AGENT
 export const AGENT_VIEWS: { label: string; to: AgentViewPath; fuzzy?: boolean }[] = [
   { label: "Playground", to: AGENT },
   { label: "Versions", to: `${AGENT}/versions` },
+  { label: "Evaluation", to: `${AGENT}/evaluation` },
   { label: "Embed & limits", to: `${AGENT}/embed` },
   { label: "Conversations", to: `${AGENT}/conversations`, fuzzy: true },
 ];

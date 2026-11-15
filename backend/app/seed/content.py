@@ -165,8 +165,9 @@ THEME = ThemeSettings(
 # through the API under a clock set in the past. Days count back from today (day 28 is four weeks
 # ago): on day 28 the Organisation is set up, Instructions v1 published, and the Agents published;
 # on day 17 the Editor publishes HR helper v2 (terse, without citations); on day 10 the Owner
-# reverts it; on day 6 Instructions v2 is published and rolled out to the Low-budget helper,
-# leaving the Product FAQ behind; on day 3 the Editor publishes HR helper v3.
+# builds the HR helper's Evaluation Set, runs v1 against v2, and reverts it; on day 6
+# Instructions v2 is published and rolled out to the Low-budget helper, leaving the Product FAQ
+# behind; on day 3 the Editor publishes HR helper v3, and on day 2 runs the Draft against it.
 HISTORY_DAYS = 28
 
 INSTRUCTIONS_V1 = (
@@ -249,6 +250,54 @@ QUESTIONS = {
 }
 # How many questions a Visitor asks in one Conversation, and how often.
 TURN_WEIGHTS = {1: 5, 2: 3, 3: 2}
+
+
+@dataclass(frozen=True)
+class SeedCase:
+    """A case of the HR helper's Evaluation Set (spec 14). The Demo model judges a Reference
+    answer by its key phrase, the part in double quotes."""
+
+    question: str
+    reference_answer: str | None = None
+    # A passage of a seed Document a good answer cites: (its filename, the passage).
+    expected_source: tuple[str, str] | None = None
+    expect_fallback: bool = False
+
+
+HANDBOOK = DOCUMENTS[0].filename
+# The HR helper's Evaluation Set: a case for each question Visitors ask it (in the same words, so
+# a thumbs-down Message's question finds its case), then cases the Owner writes.
+EVALUATION_CASES = (
+    SeedCase(QUESTIONS[HR_AGENT][0], 'Everyone gets "25 days of annual leave" a year.'),
+    SeedCase(QUESTIONS[HR_AGENT][1], 'You can carry "up to five unused days" into next year.'),
+    SeedCase(QUESTIONS[HR_AGENT][2], 'Tell your manager "before 10:00" on your first day off.'),
+    SeedCase(QUESTIONS[HR_AGENT][3], 'Claim "within 30 days", with a receipt.'),
+    SeedCase(QUESTIONS[HR_AGENT][4], 'Yes, "up to three days a week".'),
+    SeedCase(QUESTIONS[HR_AGENT][5], 'Core hours are "10:00 to 16:00", Monday to Friday.'),
+    SeedCase(
+        QUESTIONS[HR_AGENT][6],
+        'The handbook lists "a laptop, a headset and a monitor"; ask HR about anything else.',
+    ),
+    SeedCase(
+        "Do I need a fit note when I'm off sick?",
+        expected_source=(HANDBOOK, "upload a fit note to the HR portal"),
+    ),
+    SeedCase(
+        "How far ahead do I have to book leave?",
+        'Book leave in the HR portal "at least two weeks ahead".',
+        (HANDBOOK, "Book leave in the HR portal at least two weeks ahead"),
+    ),
+    SeedCase(
+        "Can I fly business class?", '"Economy class" is standard for flights under six hours.'
+    ),
+    SeedCase(
+        "My laptop was stolen. What do I do?", 'Report it to the IT service desk "within 24 hours".'
+    ),
+    SeedCase("What's the Wi-Fi password in the office?", expect_fallback=True),
+)
+# At most this many cases are added from the HR helper's thumbs-down Messages; the rest are
+# written.
+CASES_FROM_MESSAGES = 4
 
 
 @dataclass(frozen=True)

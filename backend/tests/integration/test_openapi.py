@@ -9,6 +9,8 @@ _PROJECT = "/api/organisations/{organisation_id}/projects/{project_id}"
 _THEME_IMAGE = "/api/organisations/{organisation_id}/theme/images/{kind}"
 _AGENT = f"{_PROJECT}/agents/{{agent_id}}"
 _PLAYGROUND = f"{_AGENT}/playground/conversations"
+_EVALUATION = f"{_AGENT}/evaluation"
+_ROLLOUT_EVALUATION = f"{_PROJECT}/instructions/versions/{{instructions_version_id}}/evaluation"
 _FEEDBACK = "/api/widget/agents/{public_id}/messages/{message_id}/feedback"
 _RATING = "/api/widget/agents/{public_id}/conversation/rating"
 
@@ -72,6 +74,12 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "listProviders": ("/api/providers", "get"),
         "getDefaultModel": ("/api/organisations/{organisation_id}/default-model", "get"),
         "setDefaultModel": ("/api/organisations/{organisation_id}/default-model", "put"),
+        "getEvaluationSettings": (
+            "/api/organisations/{organisation_id}/evaluation-settings",
+            "get",
+        ),
+        "setEvaluationModel": ("/api/organisations/{organisation_id}/evaluation-model", "put"),
+        "setEvaluationRepeats": ("/api/organisations/{organisation_id}/evaluation-repeats", "put"),
         "getTheme": ("/api/organisations/{organisation_id}/theme", "get"),
         "saveTheme": ("/api/organisations/{organisation_id}/theme", "put"),
         "startThemeImageUpload": (f"{_THEME_IMAGE}/uploads", "post"),
@@ -164,6 +172,26 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "sendPlaygroundMessage": (f"{_PLAYGROUND}/{{conversation_id}}/messages", "post"),
         "getPlaygroundTrace": (
             f"{_PLAYGROUND}/{{conversation_id}}/messages/{{message_id}}/trace",
+            "get",
+        ),
+        "listEvaluationCases": (f"{_EVALUATION}/cases", "get"),
+        "createEvaluationCase": (f"{_EVALUATION}/cases", "post"),
+        "getEvaluationCase": (f"{_EVALUATION}/cases/{{case_id}}", "get"),
+        "updateEvaluationCase": (f"{_EVALUATION}/cases/{{case_id}}", "put"),
+        "deleteEvaluationCase": (f"{_EVALUATION}/cases/{{case_id}}", "delete"),
+        "copyEvaluationCases": (f"{_EVALUATION}/cases/copy", "post"),
+        "prefillEvaluationCase": (f"{_EVALUATION}/messages/{{message_id}}/prefill", "get"),
+        "startEvaluationRun": (f"{_EVALUATION}/runs", "post"),
+        "listEvaluationRuns": (f"{_EVALUATION}/runs", "get"),
+        "getEvaluationRun": (f"{_EVALUATION}/runs/{{run_id}}", "get"),
+        "estimateEvaluationRun": (f"{_EVALUATION}/estimate", "post"),
+        "getEvaluationRunResults": (f"{_EVALUATION}/runs/{{run_id}}/results", "get"),
+        "cancelEvaluationRun": (f"{_EVALUATION}/runs/{{run_id}}/cancel", "post"),
+        "getEvaluationPublishSummary": (f"{_EVALUATION}/publish-summary", "get"),
+        "startRolloutEvaluation": (_ROLLOUT_EVALUATION, "post"),
+        "getRolloutEvaluation": (_ROLLOUT_EVALUATION, "get"),
+        "getExpectedSourceDependents": (
+            f"{_PROJECT}/documents/{{document_id}}/expected-sources",
             "get",
         ),
         "listConversations": (f"{_PROJECT}/conversations", "get"),

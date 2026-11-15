@@ -157,7 +157,7 @@ The Demo page (`/demo/attacks.html`) with one button per attack category (instru
 _Avoid_: Red-team page, jailbreak console
 
 **Five-minute demo**:
-The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace for the Automatic HR helper and then the Agentic Product FAQ (one Retrieved Chunks table against a Search the model made, with the Chunks it found), the HR helper's publish and revert in Live History, the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions, the Organisation cost page, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
+The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace for the Automatic HR helper and then the Agentic Product FAQ (one Retrieved Chunks table against a Search the model made, with the Chunks it found), the HR helper's publish and revert in Live History, the HR helper's Evaluation view (its Evaluation Set and the Run of v1 against v2 whose Regressions explain the revert), the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions, the Organisation cost page, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
 _Avoid_: Walkthrough, showcase script, smoke test
 
 **Demo mode**:
@@ -227,7 +227,7 @@ The chat model that judges every Evaluation Run in an Organisation: one chat-cap
 _Avoid_: Judge, grader model, eval model
 
 **Demo model**:
-The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk, and every answer starts "Demo model (canned answer, not AI)". It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
+The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk (unless its system prompt says "Don't quote", as HR helper v2's does: then it gives the Chunk's first sentence, uncited), and every answer starts "Demo model (canned answer, not AI)". Asked to judge an Evaluation Run's answer, it judges by rule, as the fake Evaluation Model does. It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
 _Avoid_: Fake model (that is the test double), mock, stub model
 
 **Naive demo model**:
@@ -408,6 +408,10 @@ How many of the best-scoring Chunks an Agent is given with each question.
 **Model override**:
 An Agent's own chat model: a chat-capable Provider Credential and one of its chat models, set in the Draft's Behaviour. Without one the Agent uses the Default Model. It is a Credential reference, as are an Agent's Reranker and Guardrail LLM classifier.
 _Avoid_: Agent model, custom model
+
+**Effective model**:
+The chat model an AgentConfig actually answers with: its Model override, or else the Default Model. It is resolved, with the configuration's Reranker and Guardrail LLM classifier, in one place and the same way for the Playground, a Visitor reply and an Evaluation Run. A configuration with no effective model, or naming a Provider Credential that no longer exists, is refused before any question is saved.
+_Avoid_: Resolved model, active model
 
 **Remembered turns**:
 How many earlier question-and-answer pairs of a Conversation the model is given with each new question.
@@ -776,7 +780,7 @@ The warning under the Time series when the Project's Knowledge Base changed duri
 _Avoid_: Disclaimer, KB warning
 
 **Organisation cost**:
-What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage and Evaluation Run cost each in their own column beside Visitor usage, and a total. Only Projects and Agents that replied in the period have a line; archived ones still do. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
+What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage and Evaluation Run cost each in their own column beside Visitor usage, and a total. Only Projects and Agents that replied or ran an Evaluation Run in the period have a line; archived ones still do. An Evaluation Run's cost counts on the days its answers were given. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
 _Avoid_: Billing, invoice, spend report
 
 ## Evaluation
@@ -790,7 +794,7 @@ One standalone question in an Evaluation Set (no earlier turns), with at least o
 _Avoid_: Test case, golden question, eval
 
 **Expected source**:
-A passage of a Document that an Evaluation Case's answer should retrieve and cite. It is matched against the Document's current Edition each Run; when the Document is gone or the passage no longer appears, the expectation is Stale.
+A passage of a Document (up to 1,000 characters, picked from its Chunks) that an Evaluation Case's answer should retrieve and cite. It is matched, ignoring case and whitespace, against the Chunks of the Document's current Edition each time it is checked (when the case is saved, each Run, and as soon as a new Edition of the Document is swapped in): its Verdict passes when the answer cited a Chunk holding it and fails when it didn't (a Chunk retrieved but left uncited is a fail too); when the Document is gone or no Chunk holds the passage, the expectation is Stale. A case may hold several.
 _Avoid_: Ground truth chunk, expected chunk
 
 **Reference answer**:
@@ -798,23 +802,27 @@ What a good answer to an Evaluation Case says, in the Editor's words; answers ar
 _Avoid_: Gold answer, expected output
 
 **Expect Fallback Text**:
-An Evaluation Case's expectation that the Agent says it doesn't know, for a question its Knowledge Base can't answer.
+An Evaluation Case's expectation that the Agent says it doesn't know, for a question its Knowledge Base can't answer: its Verdict passes when the answer is the Fallback Text or the Refusal text. It stands alone, never with an Expected source or a Reference answer, which contradict it.
 _Avoid_: Negative case, unanswerable test
 
 **Evaluation Run**:
-One run of an Agent's Evaluation Set comparing two sides, the first and the second, each the Draft or one of the Agent's Versions, with the Project Instructions it answers with: a Version its pinned ones, the Draft the Instructions Version or Instructions Draft chosen when the Run starts (the Current Instructions Version by default). By default the Live Version is compared with the Draft, or the Draft runs alone while the Agent has none; a Rollout evaluation's second side is the only Version that answers with Instructions other than its pin. Both sides answer every Evaluation Case at the same moment against the same Knowledge Base, through the real Guardrails, as many times as the Evaluation repeats, and the Evaluation Model judges each answer. An Editor starts it, an Agent has at most one in progress, and finished Runs are kept as its history; a Run with a Draft side is stale once the Draft has a newer Draft revision. Its Cost, for the answers and for judging, is frozen when it runs and counts in Organisation cost, never in Version KPIs or the Token Budget. When Publishing, only the latest Run of the Draft against the current Live Version counts, and only if the Draft is published with the Instructions it ran with (otherwise a notice says so): a Regression, or a lower Evaluation score than the Live Version's, is a warning; it never blocks.
+One run of an Agent's Evaluation Set comparing two sides, the first and the second, each the Draft or one of the Agent's Versions, with the Project Instructions it answers with: a Version its pinned ones, the Draft the Instructions Version or Instructions Draft chosen when the Run starts (the Current Instructions Version by default). By default the Live Version is compared with the Draft, or the Draft runs alone while the Agent has none; a Rollout evaluation's second side is the only Version that answers with Instructions other than its pin. Both sides answer every Evaluation Case at the same moment against the same Knowledge Base, through the real Guardrails, as many times as the Evaluation repeats, and the Evaluation Model judges each answer. An Editor starts it, an Agent has at most one in progress (queued or running), which an Editor can cancel (it stops between answers and keeps what it spent), and finished Runs are kept as its history; a Run with a Draft side is stale once the Draft has a newer Draft revision. Before it starts, the Evaluate dialog shows its estimated Cost, which is stored on it: the cases, times the sides, times the Evaluation repeats, times each side's mean Cost per reply over the last 30 days (a Version's from its Usage rollups, the Draft's from its Playground replies; with none, its model's prices for a fixed per-judgement token allowance), plus judging every answer at the judge's prices for the same allowance. Its actual Cost, for the answers and for judging, is frozen when it runs (each answer and judgement at the prices in force then), shown on the Run and in its history, and counts in Organisation cost, never in Version KPIs or the Token Budget. When Publishing, only the latest Run of the Draft against the current Live Version counts, and only if the Draft is published with the Instructions it ran with (otherwise a notice says so): a Regression, or a lower Evaluation score than the Live Version's, is a warning; it never blocks.
 _Avoid_: Eval, test run, benchmark run
+
+**Run side**:
+One of an Evaluation Run's sides, the first or the second: the Draft at its Draft revision, or one of the Agent's Versions, with the Project Instructions it answers with. The Run keeps a copy of each side's effective AgentConfig and Instructions text, and of each Evaluation Case's question and expectations, as they were when it started, so editing the Draft or the Evaluation Set later never rewrites a past Run. While the Draft runs alone it is the first side.
+_Avoid_: Arm, variant, candidate
 
 **Verdict**:
 An Evaluation Case's pass or fail on one expectation in one Evaluation Run (the Expected source retrieved and cited, the answer agreeing with the Reference answer, the Fallback Text given), plus whether every claim in the answer is supported by its Citations; judged verdicts keep the Evaluation Model's one-sentence reason. A repeat passes when every verdict that isn't Stale passes, and a case passes on a side when most of its repeats there do. A case the provider or the Evaluation Model couldn't answer or judge has an Error instead, and is left out of the Evaluation score; a Guardrail block is an answer, and is judged like one.
 _Avoid_: Score, grade, judgement
 
 **Stale expectation**:
-An Expected source whose Document was deleted or whose passage no longer appears in its current Edition. An Evaluation Run skips it, neither pass nor fail, and flags its case for an Editor to fix.
+An Expected source whose Document was deleted or whose passage no longer appears in its current Edition. It is flagged as soon as the Document is deleted or the new Edition is swapped in, and cleared if a later Edition holds the passage again. An Evaluation Run skips it, neither pass nor fail, and flags its case for an Editor to fix.
 _Avoid_: Broken case, invalid source
 
 **Rollout evaluation**:
-The Evaluation Runs Bulk publish's rollout dialog can start, one per selected Agent with an Evaluation Set: the Live Version as it is against its configuration answering with the new Instructions Version. The dialog lists each Agent's Regressions as warnings and marks Agents without an Evaluation Set "not evaluated"; it never blocks.
+The Evaluation Runs Bulk publish's rollout dialog can start with Evaluate rollout, one per selected Agent with an Evaluation Set: the Live Version as it is against its **rollout side**, the Live Version's configuration answering with the new Instructions Version. A rollout side is created only this way, never when an Editor starts a Run, and it isn't the Draft, so a Rollout evaluation never counts in the Evaluation summary; the Runs are kept in each Agent's Run history. The dialog's evaluation column shows each Agent's state, from its latest Rollout evaluation of its current Live Version with those Instructions: Regressions (listed with their Verdicts' reasons, and warned about), running, clear, or "not evaluated" (no Evaluation Set, or none yet). Agents with Regressions stay selected; it never blocks.
 _Avoid_: Bulk evaluation, rollout test
 
 **Evaluation repeats**:
@@ -832,6 +840,10 @@ _Avoid_: Pass rate (the Attack evaluation suite's), accuracy
 **Regression**:
 An Evaluation Case that passes by majority of its repeats on an Evaluation Run's first side (the Live Version, when Publishing) and fails by majority on its second (the Draft). The Publish dialog lists them with their Verdicts' reasons.
 _Avoid_: Breakage, failure
+
+**Evaluation summary**:
+What the Publish dialog's Evaluation section reads for the Instructions Version chosen in it: one state, from the latest completed Evaluation Run of the Draft against the current Live Version (the Draft alone while the Agent has never been Published). It is no set (the Agent has no Evaluation Set: a one-line hint), no Run, Live changed (the Draft was only compared with a Version that is no longer Live), stale (the Draft has a newer Draft revision), Instructions differ ("evaluated with Instructions v3, publishing with v2"), Regressions (or a lower Evaluation score than the Live Version's: a warning listing each Regression with its Verdicts' reasons), or clear. The section offers Evaluate, which starts a Run of the Live Version against the Draft with the chosen Instructions and shows its progress. Every state is advisory: the Publish button stays enabled and Publishing always succeeds.
+_Avoid_: Publish gate, evaluation check
 
 **Expected source warning**:
 The notice before an Editor deletes a Document, or uploads a new Edition of it, that holds an Expected source: which Agents' Evaluation Sets and how many cases. It never blocks; once a new Edition is Ready, its Expected sources are checked again and any whose passage is gone become Stale expectations.

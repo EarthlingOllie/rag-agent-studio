@@ -29,14 +29,18 @@ A fresh demo Organisation also gets four weeks of history (`backend/app/seed/his
 |---|---|
 | 28 | The Organisation is set up; Instructions v1 ("House style"); Product FAQ, Low-budget helper and HR helper v1 published |
 | 17 | The Editor publishes HR helper v2: one-sentence answers, no citations |
-| 10 | The Owner reverts the HR helper to v1 |
+| 10 | The Owner builds the HR helper's Evaluation Set (12 cases, up to four added from Visitors' thumbs-down Messages), runs v1 against v2 (v2's Regressions: answers that no longer cite the handbook) and reverts the HR helper to v1 |
 | 6 | Instructions v2 ("No promises beyond policy"), bulk-published to the Low-budget helper; the Product FAQ stays behind on v1 |
 | 3 | The Editor publishes HR helper v3: cites the handbook, points to HR contacts |
+| 2 | The Editor runs the HR helper's Draft against v3: no Regressions |
 
 Every day until yesterday, Visitors chat with the HR helper (5 a day) and the Product FAQ (3 a
 day) through the widget API, answered by the Demo model, and give thumbs and ratings drawn from a
 fixed random seed: v2 is clearly worse than v1, and v3 looks better but is a small sample
-("low confidence"). The usage rollup then runs for every day. It takes a few minutes; the history
+("low confidence"). The Evaluation Runs are judged by the Demo model, by rule (a Reference
+answer passes when the answer holds its quoted key phrase, grounding when it cites a Chunk), and
+run in the seed's own process under the same clock; the Agent's **Evaluation** tab shows them. The
+usage rollup then runs for every day. It takes a few minutes; the history
 is only made when the Organisation is created, so seeding again never repeats it.
 
 To demo real answers, set `SEED_CREDENTIAL_PROVIDER` (`anthropic` or `openai`) and

@@ -192,9 +192,17 @@ where the Member is: from the Organisation's page they are under down to the pag
     `FlagCount` and Size; Retry, New edition, Edit Tags and Delete are in the ⋯ menu. A selection
     shows `BulkBar` with Add Tag and Remove Tag menus. Changes are confirmed with a toast, Delete
     asks in a `ConfirmDialog`, and refusals, a full quota and failed Documents are `Notice`s.
+    From 14-07 the Expected source warning is a warning `Notice` naming each Agent and its case
+    count ("Expected sources in this Document are used by Concierge (1 case) and HR helper (3
+    cases).") and what the change does: in the delete confirmation's body, and, for a new edition
+    of a Document that holds any, in a plain `ConfirmDialog` ("Upload a new edition of …?", Upload
+    new edition / Cancel) shown after the file is picked. It never blocks; a Document no case
+    uses uploads straight away.
   - **Document viewer**: the breadcrumb ends with the Document's name; a header with its details
     and Download original; the markdown in a panel beside the Chunks, each on a card, flagged ones
-    edged in `flag` and badged Flagged, paged with `Pagination`.
+    edged in `flag` and badged Flagged, paged with `Pagination`. A Chunk holding a passage used as
+    an Expected source has the `expectedSource` badge and the passage in a `mark` (`accent-soft`,
+    `accent-ink`, titled "Used as an Expected source"), matched ignoring case and whitespace.
 - **Projects list** (built in 12-03): the Organisation's page, laid out like the Agents list.
   `PageHeader` "Projects" (the page's one h1, "Each Project holds the Documents its Agents answer
   from.") with New Project, the one primary, on the right; it is hidden while Archived is shown.
@@ -248,7 +256,7 @@ where the Member is: from the Organisation's page they are under down to the pag
   the Version chip, or Not live; Draft while there are unpublished changes); on the right
   "Analytics for this Agent" (a ghost link to Analytics filtered to it) and a ⋯ menu (Discard
   Draft, Archive, or Delete permanently on an archived Agent). Under it a `TabRow` "Agent views"
-  of `tabLink`s (Playground, Versions, Embed & limits, Conversations; the current one has
+  of `tabLink`s (Playground, Versions, Evaluation, Embed & limits, Conversations; the current one has
   `aria-current="page"`, an `accent` underline and `ink` text, and Conversations stays current on
   a Conversation opened from it), then the view. An archived Project's notice stays above it.
   - **Playground**: the Playground is the main column (max 720px, centred); configuration is a
@@ -258,6 +266,48 @@ where the Member is: from the Organisation's page they are under down to the pag
     ones in `flag`).
   - **Versions**: the Live History as a timeline (Revert in the Live Version's ⋯ menu), the
     Versions (Start Draft from in each one's ⋯ menu), then Compare with From/To and `Diff`s.
+  - **Evaluation** (built in 14-02): `PageHeader level={2}` "Evaluation Set" with New case
+    (secondary) and Evaluate (the one primary, disabled with no cases or while a Run is in progress,
+    reading "Evaluating…"), then the cases as a `table.wrap` (Edit and Delete in each row's ⋯ menu;
+    Delete asks in a destructive `ConfirmDialog`). The case editor is a `Dialog` (no corner ✕):
+    Question and Reference answer (`field.textarea`, the missing Reference answer shown as a field
+    error before anything is sent). Under "Runs", the Runs newest first (a `surface.card` list with
+    a `Status` dot, the chosen one on `accent-soft`) and the chosen Run: a progress `Meter` while it
+    runs, then each case on a `surface.panel` with its answer on `sunken`, its Verdicts with the
+    judge's reasons and the `TraceFold`. An archived Agent's set is read only, said in an info
+    `Notice`. From 14-03 each case's row shows its latest result (`evaluationPass` or
+    `evaluationFail` with its count in mono, `unsteady` beside it when its repeats disagreed,
+    `evaluationError`, or "Not run yet" in `muted`); a Run's header names its repeats, a finished
+    Run gives each side's Evaluation score (Errors left out, said beside it), and each case shows
+    its result group above its repeats ("Repeat 2: Fail"). From 14-04 Evaluate opens a `Dialog`
+    (no corner ✕): First side and Second side selects (the Draft or a Version, Live marked; the
+    second may be none), the same side twice shown as a field error with Start Run disabled, and
+    the Draft's Instructions select while a side is the Draft. Each Run in the list names its
+    sides with their scores and a `runStale` badge; a running Run has a secondary Cancel Run; Run
+    detail shows a warning `Notice` when stale, each side's score as a named group, a muted line
+    counting Regressions and improvements, then the cases in that order, each with a `regression`
+    or `improvement` badge and its answers grouped under each side's name. From 14-05 the case
+    editor lists Expected sources (Document name, passage in quotes, Remove; a stale one with its
+    `staleExpectation` badge and reason) above Add Expected source, which opens an inline "Pick a
+    passage" group: a Document select (Ready Documents), its current Chunks in a scrolling list
+    with `Pagination`, each with Use this Chunk, a Passage textarea (up to 1,000 characters) and
+    Add passage / Cancel picking. Expect Fallback Text is a checkbox under the Reference answer;
+    a refused combination is a field error on the field it names. The set's Expectations column
+    and Run detail list each case's Expected sources, Reference answer and "Expects the Fallback
+    Text."; Run detail flags a case that skipped a Stale expectation with the badge and a line,
+    and shows a stale Verdict as "Stale, skipped" in `flag`. From 14-06 the header adds a
+    secondary Copy from another Agent beside New case; a `Meter` "Cases in the set" counts against
+    200, and at 200 both are disabled under a warning `Notice`. Above the table a `layout.toolbar`
+    holds a search box, a `Segmented` "Filter by latest result" (Any result, Pass, Fail, Unsteady,
+    Error, Not run), pill selects for the expectation and the Stale flag, and a ghost Clear
+    filters; nothing matching is an `EmptyState` "No cases match". Copy from another Agent is a
+    `Dialog`: an Agent select (the Project's other Agents), then its cases as tick boxes under
+    "Select all (n)", and Copy n cases; a toast counts the copies. Each Agent Message in the
+    Conversations viewer (unless its text is purged) and in the Playground has a ⋯ menu with Add
+    to Evaluation Set: a loading `Dialog` while it reads the Message, then the case editor titled
+    "Add to Evaluation Set" with an info `Notice` that no link to the Conversation is kept, the
+    question prefilled, and the cited passages as unticked tick boxes ("Cited passages") above
+    Other Expected sources; saving confirms with a toast, a refusal is an error `Notice`.
   - **Embed & limits**: cards for the `CodeBlock` snippet with its launcher, Allowed Origins
     (`EditableList`), Unavailable text, Token Budget (`Meter`), rate limits and the Theme override.
   - Page actions (Saved state, History, Publish) sit in the top bar's right side, portalled with
@@ -275,6 +325,12 @@ where the Member is: from the Organisation's page they are under down to the pag
     inline. On success the dialog closes, a toast confirms, and the copy-link panel
     (`surface.panel`, "New invite") shows above Pending invites; New link on a pending invite
     shows the same panel. Cancel or Escape returns focus to Invite someone.
+  - **Models** (Evaluation section in 14-03): between Default Model and the price table, a
+    `surface.panel` "Evaluation" with the current Evaluation Model ("the Default Model" while none
+    is chosen) and repeats as text. Owners get the form "Choose the Evaluation Model" (Judge with:
+    "Use the Default Model" or a chat-capable credential, then its Model; Save Evaluation Model)
+    and the `Segmented` "Evaluation repeats" (1, 3, 5, 7, 9), which saves on choosing; both
+    confirm with a toast. Editors read a line saying only Owners can change them.
 - **Project Settings** (built in 12-06): `PageHeader level={2}` ("Settings", one line on what they
   control), then a `surface.panel` card per setting with an h3 title and its explanation:
   - **Embedding Model**: the active model in mono on a `sunken` row with **Change** (named "Change
@@ -322,7 +378,7 @@ where the Member is: from the Organisation's page they are under down to the pag
 | `PageHeader`, `StatCard`, `Tag`, `Status`, `FlagCount`, `Notice`, `Section` | Content |
 | `Dialog`, `ConfirmDialog` | Modal dialogs and confirmations (see *Patterns*) |
 | `ToastProvider`, `useToast` | Confirmation after a change, with Undo |
-| `Badge` | Live, Current, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Flagged, Working, Check failed, Version chip |
+| `Badge` | Live, Current, Draft, Not live, Archived, Instructions behind, Budget spent, Blocked by guardrail, Low sample, Flagged, Working, Check failed, Pass, Fail, Unsteady, Error, Version chip |
 | `CodeBlock`, `Meter`, `Diff`, `diffLines` | Copyable code, usage against a limit, line diffs |
 | `EmptyState`, `Skeleton` | Empty, error and loading states |
 | `BulkBar`, `Segmented`, `Pagination`, `EditableList` | Selections, option groups, paging, in-place lists |
@@ -384,6 +440,15 @@ keyboard-complete and tested in `design/*.test.tsx`.
 | `flagged` | Flagged (a Chunk the ingestion scan flagged) | `flag-soft`, `flag` |
 | `checkPassed` | Working (a Provider Credential's last check passed) | `accent-soft` with an accent dot |
 | `checkFailed` | Check failed (the reason goes beside it) | `danger-soft`, `danger` |
+| `evaluationPass` | Pass (an Evaluation Case passed by majority of its repeats) | `accent-soft` |
+| `evaluationFail` | Fail (an Evaluation Case failed by majority of its repeats) | `danger-soft`, `danger` |
+| `unsteady` | Unsteady (an Evaluation Case's repeats disagreed; its count beside it) | `flag-soft`, `flag` |
+| `evaluationError` | Error (every repeat errored; left out of the Evaluation score) | `sunken`, `muted` |
+| `regression` | Regression (passes on a Run's first side, fails on its second) | `danger-soft`, `danger` |
+| `improvement` | Improvement (fails on a Run's first side, passes on its second) | `accent-soft`, `accent-ink` |
+| `runStale` | Stale (a Run with a Draft side whose Draft has moved on) | `flag-soft`, `flag` |
+| `staleExpectation` | Stale expectation (an Expected source whose Document or passage is gone; its reason as the `title`) | `flag-soft`, `flag` |
+| `expectedSource` | Expected source (a Chunk holding a passage an Evaluation Case expects) | `accent-soft`, `accent-ink` |
 | `version` | `v3` (read as "Version 3") | mono chip, `line` border |
 
 `title` adds a hover explanation ("Fewer than 30 rated answers"). The words carry the meaning;

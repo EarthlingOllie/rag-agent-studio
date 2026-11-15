@@ -4,6 +4,7 @@ __pycache__/
 .ruff_cache/
 .pytest_cache/
 .coverage
+.coverage.*
 coverage.xml
 # Attack evaluation reports (make eval, make eval-live)
 /eval-report/

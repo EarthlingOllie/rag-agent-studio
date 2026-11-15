@@ -33,10 +33,11 @@ from tests.documents import create_project, project_path
 from tests.fakes.clock import ControllableClock
 from tests.integration.test_agent_archive import archive as archive_agent
 from tests.integration.test_agent_versions import knowledgeable_project, published
-from tests.integration.test_playground import LEAVE
+from tests.integration.test_playground import LEAVE, delete_credential_row
 from tests.integration.test_playground_errors import INVALID_KEY, failing
 from tests.integration.test_project_instructions_versions import published as instructions
 from tests.integration.test_projects import archive as archive_project
+from tests.integration.test_provider_credentials import VOYAGE_KEY, added
 
 
 def settings_path(member: SignedUpMember, project_id: str, agent_id: str) -> str:
@@ -444,6 +445,24 @@ async def test_without_a_model_the_agent_is_temporarily_unavailable(
     token = await conversation_token(visitor, agent["public_id"])
 
     response = await send(visitor, agent["public_id"], token, "Hello")
+
+    assert response.status_code == 503
+    assert "temporarily unavailable" in response.json()["detail"]
+
+
+async def test_a_live_version_whose_provider_credential_is_gone_is_temporarily_unavailable(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient
+) -> None:
+    project_id = await knowledgeable_project(app, owner)
+    voyage = await added(owner, provider="voyage", api_key=VOYAGE_KEY)
+    created = await create_agent(owner, project_id)
+    reranker = {"credential_id": voyage["id"], "model": "rerank-2.5"}
+    await save_draft(owner, project_id, created["id"], {"retrieval": {"reranker": reranker}})
+    await published(owner, project_id, created["id"])
+    await delete_credential_row(app, voyage["id"])
+    token = await conversation_token(visitor, created["public_id"])
+
+    response = await send(visitor, created["public_id"], token, "How much leave?")
 
     assert response.status_code == 503
     assert "temporarily unavailable" in response.json()["detail"]

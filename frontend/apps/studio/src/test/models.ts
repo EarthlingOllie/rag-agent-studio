@@ -70,7 +70,14 @@ export const claudeDefault: DefaultModel = {
  * A stateful stand-in for the Default Model API. Setting a model the credential doesn't offer
  * for chat is refused with 422, as the API does. Records what it receives.
  */
-export function fakeModelsApi(options: { defaultModel?: DefaultModel | null; credentials?: Credential[] } = {}) {
+export function fakeModelsApi(
+  options: {
+    defaultModel?: DefaultModel | null;
+    credentials?: Credential[];
+    evaluationModel?: EvaluationSettings["evaluation_model"];
+    repeats?: number;
+  } = {},
+) {
   let current = options.defaultModel ?? null;
   const credentials = options.credentials ?? [marketingOpenAi, legalClaude, embeddingsOnlyOpenAi];
   const set: Schemas["SetDefaultModelRequest"][] = [];
@@ -102,7 +109,55 @@ export function fakeModelsApi(options: { defaultModel?: DefaultModel | null; cre
     }),
   );
   fakePricesApi();
-  return { set, listed };
+  const evaluation = fakeEvaluationSettingsApi({ credentials, evaluationModel: options.evaluationModel, repeats: options.repeats });
+  return { set, listed, evaluation };
+}
+
+export type EvaluationSettings = Schemas["EvaluationSettingsOut"];
+
+export const claudeJudge: NonNullable<EvaluationSettings["evaluation_model"]> = {
+  credential_id: legalClaude.id,
+  credential_name: "Legal Claude",
+  provider: "anthropic",
+  model: "claude-sonnet-4-5",
+  model_name: "Claude Sonnet 4.5",
+};
+
+/**
+ * A stateful stand-in for the evaluation settings routes: the Evaluation Model (null while the
+ * Default Model judges) and the Evaluation repeats. Records what it receives.
+ */
+export function fakeEvaluationSettingsApi(
+  options: { credentials?: Credential[]; evaluationModel?: EvaluationSettings["evaluation_model"] | undefined; repeats?: number | undefined } = {},
+) {
+  const credentials = options.credentials ?? [marketingOpenAi, legalClaude];
+  let current: EvaluationSettings = { evaluation_model: options.evaluationModel ?? null, repeats: options.repeats ?? 3 };
+  const models: Schemas["SetEvaluationModelRequest"][] = [];
+  const repeats: number[] = [];
+  server.use(
+    http.get("*/api/organisations/:organisationId/evaluation-settings", () => HttpResponse.json(current)),
+    http.put("*/api/organisations/:organisationId/evaluation-model", async ({ request }) => {
+      const body = (await request.json()) as Schemas["SetEvaluationModelRequest"];
+      models.push(body);
+      const credential = credentials.find((c) => c.id === body.credential_id);
+      const model = credential && (chatModels[credential.id] ?? []).find((m) => m.id === body.model);
+      current = {
+        ...current,
+        evaluation_model:
+          credential && model
+            ? { credential_id: credential.id, credential_name: credential.name, provider: credential.provider, model: model.id, model_name: model.name }
+            : null,
+      };
+      return HttpResponse.json(current);
+    }),
+    http.put("*/api/organisations/:organisationId/evaluation-repeats", async ({ request }) => {
+      const body = (await request.json()) as Schemas["SetEvaluationRepeatsRequest"];
+      repeats.push(body.repeats);
+      current = { ...current, repeats: body.repeats };
+      return HttpResponse.json(current);
+    }),
+  );
+  return { models, repeats };
 }
 
 type ModelPrices = Schemas["ModelPricesOut"];

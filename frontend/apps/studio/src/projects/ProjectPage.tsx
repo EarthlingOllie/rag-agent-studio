@@ -228,15 +228,15 @@ export function ProjectLayout() {
     );
   }
   return (
-    <div className="space-y-6">
-      <ToastProvider>
+    <ToastProvider>
+      <div className="space-y-6">
         {onAgent ? (
           project.data.archived_at !== null && <ArchivedNotice project={project.data} organisationId={organisationId} isOwner={isOwner} />
         ) : (
           <ProjectHeader key={project.data.id} project={project.data} organisationId={organisationId} isOwner={isOwner} />
         )}
-      </ToastProvider>
-      <Outlet />
-    </div>
+        <Outlet />
+      </div>
+    </ToastProvider>
   );
 }

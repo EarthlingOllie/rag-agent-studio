@@ -819,6 +819,234 @@
         "title": "CapabilityModelsOut",
         "type": "object"
       },
+      "CaseIn": {
+        "properties": {
+          "expect_fallback": {
+            "default": false,
+            "title": "Expect Fallback",
+            "type": "boolean"
+          },
+          "expected_sources": {
+            "items": {
+              "$ref": "#/components/schemas/ExpectedSourceIn"
+            },
+            "maxItems": 20,
+            "title": "Expected Sources",
+            "type": "array"
+          },
+          "question": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "reference_answer": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Answer"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "CaseIn",
+        "type": "object"
+      },
+      "CaseOut": {
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expect_fallback": {
+            "title": "Expect Fallback",
+            "type": "boolean"
+          },
+          "expected_sources": {
+            "items": {
+              "$ref": "#/components/schemas/ExpectedSourceOut"
+            },
+            "title": "Expected Sources",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "latest_result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LatestResultOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "reference_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Answer"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "question",
+          "reference_answer",
+          "expected_sources",
+          "expect_fallback",
+          "stale",
+          "source",
+          "created_at",
+          "updated_at",
+          "latest_result"
+        ],
+        "title": "CaseOut",
+        "type": "object"
+      },
+      "CaseResultOut": {
+        "properties": {
+          "answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer"
+          },
+          "error_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Reason"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "position": {
+            "title": "Position",
+            "type": "string"
+          },
+          "repeat": {
+            "title": "Repeat",
+            "type": "integer"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "trace": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TraceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "verdicts": {
+            "items": {
+              "$ref": "#/components/schemas/VerdictOut"
+            },
+            "title": "Verdicts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "position",
+          "repeat",
+          "status",
+          "error_reason",
+          "answer",
+          "passed",
+          "verdicts",
+          "trace"
+        ],
+        "title": "CaseResultOut",
+        "type": "object"
+      },
+      "CaseSideOut": {
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "integer"
+          },
+          "position": {
+            "title": "Position",
+            "type": "string"
+          },
+          "repeats": {
+            "title": "Repeats",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "outcome",
+          "passed",
+          "answered",
+          "repeats",
+          "position"
+        ],
+        "title": "CaseSideOut",
+        "type": "object"
+      },
       "ChangePasswordRequest": {
         "properties": {
           "current_password": {
@@ -1707,8 +1935,37 @@
         "title": "ConversationTokenOut",
         "type": "object"
       },
+      "CopyIn": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "case_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Case Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agent_id",
+          "case_ids"
+        ],
+        "title": "CopyIn",
+        "type": "object"
+      },
       "CostAmountsOut": {
         "properties": {
+          "evaluation_usd": {
+            "title": "Evaluation Usd",
+            "type": "string"
+          },
           "playground_usd": {
             "title": "Playground Usd",
             "type": "string"
@@ -1725,6 +1982,7 @@
         "required": [
           "visitor_usd",
           "playground_usd",
+          "evaluation_usd",
           "total_usd"
         ],
         "title": "CostAmountsOut",
@@ -1789,6 +2047,10 @@
             ],
             "title": "Agent Name"
           },
+          "evaluation_usd": {
+            "title": "Evaluation Usd",
+            "type": "string"
+          },
           "playground_usd": {
             "title": "Playground Usd",
             "type": "string"
@@ -1814,6 +2076,7 @@
         "required": [
           "visitor_usd",
           "playground_usd",
+          "evaluation_usd",
           "total_usd",
           "project_id",
           "project_name",
@@ -2285,6 +2548,30 @@
           "confirm_name"
         ],
         "title": "DeleteProjectRequest",
+        "type": "object"
+      },
+      "DependentAgentOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "case_count": {
+            "title": "Case Count",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "name",
+          "case_count"
+        ],
+        "title": "DependentAgentOut",
         "type": "object"
       },
       "DiffLineOut": {
@@ -2892,6 +3179,231 @@
           "detail"
         ],
         "title": "ErrorResponse",
+        "type": "object"
+      },
+      "EstimateOut": {
+        "description": "What a Run is expected to cost: the cases, times the sides, times the repeats, times each\nside's mean Cost per reply over the last 30 days (its model's prices and a fixed token\nallowance with no history), plus judging every answer at the judge's prices and the same\nallowance.",
+        "properties": {
+          "answers_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answers Usd"
+          },
+          "cases": {
+            "title": "Cases",
+            "type": "integer"
+          },
+          "judging_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judging Usd"
+          },
+          "repeats": {
+            "title": "Repeats",
+            "type": "integer"
+          },
+          "sides": {
+            "title": "Sides",
+            "type": "integer"
+          },
+          "total_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Usd"
+          }
+        },
+        "required": [
+          "cases",
+          "sides",
+          "repeats",
+          "answers_usd",
+          "judging_usd",
+          "total_usd"
+        ],
+        "title": "EstimateOut",
+        "type": "object"
+      },
+      "EvaluationModelOut": {
+        "properties": {
+          "credential_id": {
+            "format": "uuid",
+            "title": "Credential Id",
+            "type": "string"
+          },
+          "credential_name": {
+            "title": "Credential Name",
+            "type": "string"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "provider": {
+            "$ref": "#/components/schemas/Provider"
+          }
+        },
+        "required": [
+          "credential_id",
+          "credential_name",
+          "provider",
+          "model",
+          "model_name"
+        ],
+        "title": "EvaluationModelOut",
+        "type": "object"
+      },
+      "EvaluationSettingsOut": {
+        "properties": {
+          "evaluation_model": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EvaluationModelOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "repeats": {
+            "title": "Repeats",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "evaluation_model",
+          "repeats"
+        ],
+        "title": "EvaluationSettingsOut",
+        "type": "object"
+      },
+      "ExpectationKind": {
+        "enum": [
+          "expected_source",
+          "reference_answer",
+          "fallback"
+        ],
+        "title": "ExpectationKind",
+        "type": "string"
+      },
+      "ExpectedSourceDependentsOut": {
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/DependentAgentOut"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "passages": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Passages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agents",
+          "passages"
+        ],
+        "title": "ExpectedSourceDependentsOut",
+        "type": "object"
+      },
+      "ExpectedSourceIn": {
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "passage": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Passage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "passage"
+        ],
+        "title": "ExpectedSourceIn",
+        "type": "object"
+      },
+      "ExpectedSourceOut": {
+        "properties": {
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "document_name": {
+            "title": "Document Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "passage": {
+            "title": "Passage",
+            "type": "string"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "stale_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale Reason"
+          }
+        },
+        "required": [
+          "id",
+          "document_id",
+          "document_name",
+          "passage",
+          "stale",
+          "stale_reason"
+        ],
+        "title": "ExpectedSourceOut",
         "type": "object"
       },
       "Experience-Input": {
@@ -3976,6 +4488,57 @@
         "title": "LatencyOut",
         "type": "object"
       },
+      "LatestKind": {
+        "description": "A case's latest result as the set shows it: Unsteady over its majority outcome.",
+        "enum": [
+          "pass",
+          "fail",
+          "unsteady",
+          "error",
+          "not_run"
+        ],
+        "title": "LatestKind",
+        "type": "string"
+      },
+      "LatestResultOut": {
+        "properties": {
+          "answered": {
+            "title": "Answered",
+            "type": "integer"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "integer"
+          },
+          "repeats": {
+            "title": "Repeats",
+            "type": "integer"
+          },
+          "run_id": {
+            "format": "uuid",
+            "title": "Run Id",
+            "type": "string"
+          },
+          "unsteady": {
+            "title": "Unsteady",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "outcome",
+          "passed",
+          "answered",
+          "repeats",
+          "run_id",
+          "unsteady"
+        ],
+        "title": "LatestResultOut",
+        "type": "object"
+      },
       "LauncherPosition": {
         "enum": [
           "bottom-right",
@@ -4704,6 +5267,79 @@
         "title": "ModelPricesOut",
         "type": "object"
       },
+      "NewCaseIn": {
+        "properties": {
+          "expect_fallback": {
+            "default": false,
+            "title": "Expect Fallback",
+            "type": "boolean"
+          },
+          "expected_sources": {
+            "items": {
+              "$ref": "#/components/schemas/ExpectedSourceIn"
+            },
+            "maxItems": 20,
+            "title": "Expected Sources",
+            "type": "array"
+          },
+          "question": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Question",
+            "type": "string"
+          },
+          "reference_answer": {
+            "anyOf": [
+              {
+                "maxLength": 4000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Answer"
+          },
+          "source": {
+            "default": "written",
+            "enum": [
+              "written",
+              "from_message"
+            ],
+            "title": "Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question"
+        ],
+        "title": "NewCaseIn",
+        "type": "object"
+      },
+      "OfferedSourceOut": {
+        "properties": {
+          "document_id": {
+            "format": "uuid",
+            "title": "Document Id",
+            "type": "string"
+          },
+          "document_name": {
+            "title": "Document Name",
+            "type": "string"
+          },
+          "passage": {
+            "title": "Passage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_id",
+          "document_name",
+          "passage"
+        ],
+        "title": "OfferedSourceOut",
+        "type": "object"
+      },
       "OperationalSettingsChange": {
         "description": "The settings to change; one left out stays as it is.",
         "properties": {
@@ -5098,6 +5734,27 @@
         "title": "PersonOut",
         "type": "object"
       },
+      "PrefillOut": {
+        "properties": {
+          "expected_sources": {
+            "items": {
+              "$ref": "#/components/schemas/OfferedSourceOut"
+            },
+            "title": "Expected Sources",
+            "type": "array"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "expected_sources"
+        ],
+        "title": "PrefillOut",
+        "type": "object"
+      },
       "PricesOut": {
         "properties": {
           "cached_input": {
@@ -5239,6 +5896,24 @@
           "query"
         ],
         "title": "ProbeRequest",
+        "type": "object"
+      },
+      "ProgressOut": {
+        "properties": {
+          "done": {
+            "title": "Done",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "done",
+          "total"
+        ],
+        "title": "ProgressOut",
         "type": "object"
       },
       "ProjectInstructions": {
@@ -5440,6 +6115,77 @@
         "title": "PublishInstructionsRequest",
         "type": "object"
       },
+      "PublishSummaryOut": {
+        "description": "Whether the Draft has been evaluated against the current Live Version with the\nInstructions being published. Advisory: Publishing never depends on it.",
+        "properties": {
+          "evaluated_live_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluated Live Version Number"
+          },
+          "lower_score": {
+            "title": "Lower Score",
+            "type": "boolean"
+          },
+          "publishing_instructions_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publishing Instructions Version Number"
+          },
+          "regressions": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryRegressionOut"
+            },
+            "title": "Regressions",
+            "type": "array"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "no_set",
+              "no_run",
+              "live_changed",
+              "stale",
+              "instructions_differ",
+              "regressions",
+              "clear"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "state",
+          "run",
+          "regressions",
+          "lower_score",
+          "evaluated_live_version_number",
+          "publishing_instructions_version_number"
+        ],
+        "title": "PublishSummaryOut",
+        "type": "object"
+      },
       "RatingChangeRead": {
         "properties": {
           "agent_version_number": {
@@ -5634,6 +6380,31 @@
           "recovery_codes"
         ],
         "title": "RecoveryCodesResponse",
+        "type": "object"
+      },
+      "RegressionReasonOut": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "kind",
+          "reason"
+        ],
+        "title": "RegressionReasonOut",
         "type": "object"
       },
       "RenewInviteRequest": {
@@ -5862,6 +6633,60 @@
         "title": "Role",
         "type": "string"
       },
+      "RolloutAgentEvaluationOut": {
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "has_set": {
+            "title": "Has Set",
+            "type": "boolean"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "regressions": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryRegressionOut"
+            },
+            "title": "Regressions",
+            "type": "array"
+          },
+          "run": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "enum": [
+              "not_evaluated",
+              "running",
+              "regressions",
+              "clear"
+            ],
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "agent_id",
+          "name",
+          "state",
+          "has_set",
+          "run",
+          "regressions"
+        ],
+        "title": "RolloutAgentEvaluationOut",
+        "type": "object"
+      },
       "RolloutAgentOut": {
         "properties": {
           "behind": {
@@ -5913,6 +6738,47 @@
         "title": "RolloutAgentOut",
         "type": "object"
       },
+      "RolloutEvaluationIn": {
+        "properties": {
+          "agent_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "maxItems": 200,
+            "minItems": 1,
+            "title": "Agent Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "agent_ids"
+        ],
+        "title": "RolloutEvaluationIn",
+        "type": "object"
+      },
+      "RolloutEvaluationOut": {
+        "description": "Each Agent's Rollout evaluation of the Instructions Version. Advisory: Bulk publish never\ndepends on it.",
+        "properties": {
+          "agents": {
+            "items": {
+              "$ref": "#/components/schemas/RolloutAgentEvaluationOut"
+            },
+            "title": "Agents",
+            "type": "array"
+          },
+          "instructions_version_number": {
+            "title": "Instructions Version Number",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "instructions_version_number",
+          "agents"
+        ],
+        "title": "RolloutEvaluationOut",
+        "type": "object"
+      },
       "RotateCredentialRequest": {
         "properties": {
           "api_key": {
@@ -5926,6 +6792,407 @@
           "api_key"
         ],
         "title": "RotateCredentialRequest",
+        "type": "object"
+      },
+      "RunCaseOut": {
+        "properties": {
+          "case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "change": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change"
+          },
+          "expect_fallback": {
+            "title": "Expect Fallback",
+            "type": "boolean"
+          },
+          "expected_sources": {
+            "items": {
+              "$ref": "#/components/schemas/RunExpectedSourceOut"
+            },
+            "title": "Expected Sources",
+            "type": "array"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "reference_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Answer"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/CaseResultOut"
+            },
+            "title": "Results",
+            "type": "array"
+          },
+          "sides": {
+            "items": {
+              "$ref": "#/components/schemas/CaseSideOut"
+            },
+            "title": "Sides",
+            "type": "array"
+          },
+          "stale_expectation": {
+            "title": "Stale Expectation",
+            "type": "boolean"
+          },
+          "unsteady": {
+            "title": "Unsteady",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "case_id",
+          "question",
+          "reference_answer",
+          "expected_sources",
+          "expect_fallback",
+          "stale_expectation",
+          "sides",
+          "unsteady",
+          "change",
+          "results"
+        ],
+        "title": "RunCaseOut",
+        "type": "object"
+      },
+      "RunCostOut": {
+        "properties": {
+          "answers_usd": {
+            "title": "Answers Usd",
+            "type": "string"
+          },
+          "estimated_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Usd"
+          },
+          "judging_usd": {
+            "title": "Judging Usd",
+            "type": "string"
+          },
+          "total_usd": {
+            "title": "Total Usd",
+            "type": "string"
+          }
+        },
+        "required": [
+          "estimated_usd",
+          "answers_usd",
+          "judging_usd",
+          "total_usd"
+        ],
+        "title": "RunCostOut",
+        "type": "object"
+      },
+      "RunExpectedSourceOut": {
+        "properties": {
+          "document_name": {
+            "title": "Document Name",
+            "type": "string"
+          },
+          "passage": {
+            "title": "Passage",
+            "type": "string"
+          }
+        },
+        "required": [
+          "document_name",
+          "passage"
+        ],
+        "title": "RunExpectedSourceOut",
+        "type": "object"
+      },
+      "RunIn": {
+        "properties": {
+          "instructions_draft": {
+            "default": false,
+            "title": "Instructions Draft",
+            "type": "boolean"
+          },
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          },
+          "sides": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/SideIn"
+                },
+                "maxItems": 2,
+                "minItems": 1,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sides"
+          }
+        },
+        "title": "RunIn",
+        "type": "object"
+      },
+      "RunOut": {
+        "properties": {
+          "cost": {
+            "$ref": "#/components/schemas/RunCostOut"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "error_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Message"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "judge_model": {
+            "title": "Judge Model",
+            "type": "string"
+          },
+          "judge_provider": {
+            "title": "Judge Provider",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "progress": {
+            "$ref": "#/components/schemas/ProgressOut"
+          },
+          "repeats": {
+            "title": "Repeats",
+            "type": "integer"
+          },
+          "sides": {
+            "items": {
+              "$ref": "#/components/schemas/RunSideOut"
+            },
+            "title": "Sides",
+            "type": "array"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "created_at",
+          "finished_at",
+          "progress",
+          "judge_provider",
+          "judge_model",
+          "repeats",
+          "error_message",
+          "stale",
+          "sides",
+          "cost"
+        ],
+        "title": "RunOut",
+        "type": "object"
+      },
+      "RunResultsOut": {
+        "properties": {
+          "cases": {
+            "items": {
+              "$ref": "#/components/schemas/RunCaseOut"
+            },
+            "title": "Cases",
+            "type": "array"
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunOut"
+          }
+        },
+        "required": [
+          "run",
+          "cases"
+        ],
+        "title": "RunResultsOut",
+        "type": "object"
+      },
+      "RunSideOut": {
+        "properties": {
+          "agent_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Id"
+          },
+          "cases_errored": {
+            "title": "Cases Errored",
+            "type": "integer"
+          },
+          "cases_failed": {
+            "title": "Cases Failed",
+            "type": "integer"
+          },
+          "cases_passed": {
+            "title": "Cases Passed",
+            "type": "integer"
+          },
+          "draft_revision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Revision"
+          },
+          "instructions_draft": {
+            "title": "Instructions Draft",
+            "type": "boolean"
+          },
+          "instructions_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Number"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "model_name": {
+            "title": "Model Name",
+            "type": "string"
+          },
+          "model_provider": {
+            "title": "Model Provider",
+            "type": "string"
+          },
+          "position": {
+            "title": "Position",
+            "type": "string"
+          },
+          "score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Score"
+          },
+          "version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Number"
+          }
+        },
+        "required": [
+          "position",
+          "kind",
+          "agent_version_id",
+          "version_number",
+          "draft_revision",
+          "instructions_version_number",
+          "instructions_draft",
+          "model_provider",
+          "model_name",
+          "cases_passed",
+          "cases_failed",
+          "cases_errored",
+          "score"
+        ],
+        "title": "RunSideOut",
         "type": "object"
       },
       "ScopedAgentOut": {
@@ -6130,6 +7397,91 @@
           "model_id"
         ],
         "title": "SetEmbeddingModelRequest",
+        "type": "object"
+      },
+      "SetEvaluationModelRequest": {
+        "description": "A chat-capable credential and one of its chat models, or both null to judge with the\nDefault Model.",
+        "properties": {
+          "credential_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Credential Id"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          }
+        },
+        "required": [
+          "credential_id",
+          "model"
+        ],
+        "title": "SetEvaluationModelRequest",
+        "type": "object"
+      },
+      "SetEvaluationRepeatsRequest": {
+        "properties": {
+          "repeats": {
+            "enum": [
+              1,
+              3,
+              5,
+              7,
+              9
+            ],
+            "title": "Repeats",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "repeats"
+        ],
+        "title": "SetEvaluationRepeatsRequest",
+        "type": "object"
+      },
+      "SideIn": {
+        "properties": {
+          "kind": {
+            "enum": [
+              "draft",
+              "version"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Version Id"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "SideIn",
         "type": "object"
       },
       "SignInRequest": {
@@ -6338,6 +7690,40 @@
           "expires_at"
         ],
         "title": "StartUploadResponse",
+        "type": "object"
+      },
+      "SummaryRegressionOut": {
+        "properties": {
+          "case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Case Id"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "reasons": {
+            "items": {
+              "$ref": "#/components/schemas/RegressionReasonOut"
+            },
+            "title": "Reasons",
+            "type": "array"
+          }
+        },
+        "required": [
+          "case_id",
+          "question",
+          "reasons"
+        ],
+        "title": "SummaryRegressionOut",
         "type": "object"
       },
       "SwitchOrganisationRequest": {
@@ -7540,6 +8926,36 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VerdictOut": {
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "outcome": {
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "kind",
+          "outcome",
+          "reason"
+        ],
+        "title": "VerdictOut",
         "type": "object"
       },
       "VersionAuthor": {
@@ -9283,7 +10699,7 @@
     },
     "/api/organisations/{organisation_id}/cost": {
       "get": {
-        "description": "What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most\n366 days), including today's so far, by Project or by Agent. Playground usage is in its own\ncolumn. Owners only.",
+        "description": "What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most\n366 days), including today's so far, by Project or by Agent. Playground usage and Evaluation\nRuns are each in their own column. Owners only.",
         "operationId": "getOrganisationCost",
         "parameters": [
           {
@@ -10340,6 +11756,201 @@
         "summary": "List Embedding Models",
         "tags": [
           "embedding-models"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/evaluation-model": {
+      "put": {
+        "description": "Sets the Evaluation Model to one of a chat-capable credential's chat models, or with both\nfields null goes back to the Default Model (Owners only). Recorded as\n``organisation.evaluation_model_changed``.",
+        "operationId": "setEvaluationModel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEvaluationModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not a chat model of this Organisation"
+          }
+        },
+        "summary": "Set Evaluation Model",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/evaluation-repeats": {
+      "put": {
+        "description": "Sets the Evaluation repeats to 1, 3, 5, 7 or 9 (Owners only). Recorded as\n``organisation.evaluation_repeats_changed``.",
+        "operationId": "setEvaluationRepeats",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetEvaluationRepeatsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Not 1, 3, 5, 7 or 9"
+          }
+        },
+        "summary": "Set Evaluation Repeats",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/evaluation-settings": {
+      "get": {
+        "description": "The Evaluation Model (null while the Default Model judges) and the Evaluation repeats.\nOpen to every Member.",
+        "operationId": "getEvaluationSettings",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationSettingsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Evaluation Settings",
+        "tags": [
+          "models"
         ]
       }
     },
@@ -12713,6 +14324,1320 @@
         "summary": "Start Agent Draft From Version",
         "tags": [
           "agent-versions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/cases": {
+      "get": {
+        "description": "The Agent's Evaluation Set, oldest case first: with ``q``, the cases whose question\nholds it (letter case aside); with ``kind``, those with that kind of expectation; with\n``stale``, those with (or without) a Stale expectation; with ``result``, those whose latest\nresult is ``pass``, ``fail``, ``unsteady`` (its repeats disagreed), ``error``, or\n``not_run``.",
+        "operationId": "listEvaluationCases",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "maxLength": 4000,
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Q"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ExpectationKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "stale",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stale"
+            }
+          },
+          {
+            "in": "query",
+            "name": "result",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LatestKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Result"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CaseOut"
+                  },
+                  "title": "Response Listevaluationcases",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Cases",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "post": {
+        "description": "Adds a case to the Agent's Evaluation Set, of at most 200. A case added from a Message\nis an Audit Event.",
+        "operationId": "createEvaluationCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewCaseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Project or Agent is archived, or the Evaluation Set holds 200 cases."
+          },
+          "422": {
+            "description": "The question is empty or too long, the case has no expectation, Expect Fallback Text is combined with another expectation, or an Expected source's passage is empty or too long or its Document isn't the Project's."
+          }
+        },
+        "summary": "Create Case",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/cases/copy": {
+      "post": {
+        "description": "Copies cases of another Agent of the Project into this Agent's Evaluation Set, as\nindependent copies, in their set's order; the copies are returned.",
+        "operationId": "copyEvaluationCases",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CopyIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CaseOut"
+                  },
+                  "title": "Response Copyevaluationcases",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Project or Agent is archived, or the Evaluation Set holds 200 cases."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Agent copied from is this one or not of the Project, or a case isn't in its set."
+          }
+        },
+        "summary": "Copy Cases",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/cases/{case_id}": {
+      "delete": {
+        "description": "Deletes the case, an Audit Event; past Runs keep their copies.",
+        "operationId": "deleteEvaluationCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Case",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "get": {
+        "operationId": "getEvaluationCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Case",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "put": {
+        "description": "Replaces the case's question and expectations; past Runs keep their copies.",
+        "operationId": "updateEvaluationCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "case_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Case Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CaseIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CaseOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it."
+          },
+          "422": {
+            "description": "The question is empty or too long, the case has no expectation, Expect Fallback Text is combined with another expectation, or an Expected source's passage is empty or too long or its Document isn't the Project's."
+          }
+        },
+        "summary": "Update Case",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/estimate": {
+      "post": {
+        "description": "The estimated Cost of starting a Run with these choices now, shown before starting it.\nNothing is started; refused as starting would be, except while a Run is in progress.",
+        "operationId": "estimateEvaluationRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RunIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EstimateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Project or Agent is archived, the Evaluation Set is empty, there is no Default Model, or a side names a Provider Credential that no longer exists."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A side isn't the Draft or one of the Agent's Versions, the two sides are the same, or the chosen Instructions Version isn't the Project's."
+          }
+        },
+        "summary": "Estimate Run",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/messages/{message_id}/prefill": {
+      "get": {
+        "description": "A new case from one of the Agent's replies, in the Conversations viewer or the\nPlayground: the question it answered and the passages it cited. Nothing is saved, and a case\nkeeps no link to the Conversation. Refused once the text has been purged.",
+        "operationId": "prefillEvaluationCase",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "message_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Message Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PrefillOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Message's text has been purged."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Prefill Case",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/publish-summary": {
+      "get": {
+        "description": "The Evaluation summary the Publish dialog shows for publishing the Draft with\n``instructions_version_id`` (the Current Instructions Version when left out). Only Runs of\nthe Draft against the current Live Version qualify. The Publish endpoint is unchanged:\nits warnings never block Publishing.",
+        "operationId": "getEvaluationPublishSummary",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "instructions_version_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Instructions Version Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishSummaryOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The chosen Instructions Version isn't the Project's."
+          }
+        },
+        "summary": "Get Publish Summary",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs": {
+      "get": {
+        "description": "The Agent's Runs, newest first.",
+        "operationId": "listEvaluationRuns",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/RunOut"
+                  },
+                  "title": "Response Listevaluationruns",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Runs",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "post": {
+        "description": "Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft\n(the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll\nit until it is ``completed``, ``failed`` or ``cancelled``.",
+        "operationId": "startEvaluationRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RunIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Project or Agent is archived, it already has a Run in progress, the Evaluation Set is empty, there is no Default Model, or a side names a Provider Credential that no longer exists."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A side isn't the Draft or one of the Agent's Versions, the two sides are the same, or the chosen Instructions Version isn't the Project's."
+          }
+        },
+        "summary": "Start Run",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs/{run_id}": {
+      "get": {
+        "description": "The Run's status, progress and sides.",
+        "operationId": "getEvaluationRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs/{run_id}/cancel": {
+      "post": {
+        "description": "Cancels a queued or running Run: it stops before its next answer and keeps what it\nanswered and spent.",
+        "operationId": "cancelEvaluationRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Run has already finished."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Run",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs/{run_id}/results": {
+      "get": {
+        "description": "Each case as the Run copied it, with every answer, its Verdicts and its Trace.",
+        "operationId": "getEvaluationRunResults",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "run_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Run Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RunResultsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Run Results",
+        "tags": [
+          "evaluation"
         ]
       }
     },
@@ -16101,6 +19026,80 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/expected-sources": {
+      "get": {
+        "description": "The Agents, by name, and how many of their cases hold an Expected source in the Document\n(the Expected source warning before it is deleted or a new Edition uploaded), and the\ndistinct passages used, for the Document viewer to mark.",
+        "operationId": "getExpectedSourceDependents",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "document_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Document Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExpectedSourceDependentsOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Expected Source Dependents",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/documents/{document_id}/retry": {
       "post": {
         "description": "Processes a Document again from its stored file: it goes back to Queued. When the\nDocument's newer edition is what failed, that edition is retried instead; a Ready Document\nis processed again with the Project's current settings (such as OCR), its Chunks serving\nuntil the new ones replace them.",
@@ -16994,6 +19993,193 @@
         "summary": "Publish Instructions",
         "tags": [
           "project-instructions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/instructions/versions/{instructions_version_id}/evaluation": {
+      "get": {
+        "description": "Each named Agent's (every active Agent's when none is named) Rollout evaluation state\nfor the Instructions Version: ``regressions``, ``not_evaluated``, ``running`` or\n``clear``.",
+        "operationId": "getRolloutEvaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "instructions_version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Instructions Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "agent_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "format": "uuid",
+                    "type": "string"
+                  },
+                  "maxItems": 200,
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Agent Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RolloutEvaluationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Rollout Evaluation",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "post": {
+        "description": "Starts a Rollout evaluation of each selected Agent with an Evaluation Set, skipping the\nothers, and returns the selected Agents' states. Poll the read until none is running.",
+        "operationId": "startRolloutEvaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "instructions_version_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Instructions Version Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RolloutEvaluationIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RolloutEvaluationOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Project is archived, a selected Agent already has a Run in progress or its Live Version names a Provider Credential that no longer exists (then nothing is started), or there is no Default Model."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Rollout Evaluation",
+        "tags": [
+          "evaluation"
         ]
       }
     },

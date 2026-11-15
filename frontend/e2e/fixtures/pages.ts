@@ -22,6 +22,7 @@ export const SIGNED_IN_PAGES: SignedInPage[] = [
   { name: "agents", route: `${PROJECT}/agents` },
   { name: "agent-playground", route: AGENT },
   { name: "agent-versions", route: `${AGENT}/versions` },
+  { name: "agent-evaluation", route: `${AGENT}/evaluation` },
   { name: "agent-embed", route: `${AGENT}/embed` },
   { name: "agent-conversations", route: `${AGENT}/conversations` },
   { name: "agent-conversation", route: `${AGENT}/conversations/$conversationId` },

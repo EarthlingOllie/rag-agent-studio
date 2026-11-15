@@ -19,7 +19,8 @@
 A replacement goes through the same steps as the Document's staged edition: its Chunks are
 written under the new edition number, and in the same transaction the staged edition is swapped
 in and the old edition's Chunks removed, so retrieval goes from the old edition to the new one
-in one step. Until then, and if the replacement fails, the old edition keeps serving. A
+in one step. Once that commits, ``on_new_edition`` is told, so the Document's Expected sources are
+matched again at once. Until then, and if the replacement fails, the old edition keeps serving. A
 replacement doesn't add a Document, so the quota doesn't apply to it.
 
 A failure sets Failed with a ``FailureCategory`` and a readable message. A transient failure
@@ -59,6 +60,10 @@ EMBED_BATCH_SIZE = 32
 
 DeleteObjects = Callable[[list[str]], Awaitable[None]]
 """Schedules deletion of stored objects, by key (the ``documents.delete_objects`` task)."""
+
+NewEdition = Callable[[uuid.UUID], Awaitable[None]]
+"""Told the Document's ID once a Staged edition has been swapped in and committed, for other
+modules that check text against its Chunks (the evaluation module's Expected sources)."""
 
 
 @dataclass(frozen=True)
@@ -266,6 +271,7 @@ async def ingest(
     *,
     chunk_max_tokens: int,
     delete_objects: DeleteObjects,
+    on_new_edition: NewEdition,
     attempt: Attempt,
 ) -> float | None:
     """Processes the Document's Queued edition. Returns the seconds to wait before running
@@ -353,6 +359,7 @@ async def ingest(
         return 0.0
     elif replaced:
         await delete_objects(replaced)
+        await on_new_edition(job.document_id)
     return None
 
 

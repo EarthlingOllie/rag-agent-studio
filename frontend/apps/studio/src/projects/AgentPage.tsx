@@ -36,10 +36,12 @@ import {
 } from "./agents";
 import { AgentBranding } from "./AgentBranding";
 import { AgentEmbed } from "./AgentEmbed";
+import { AgentEvaluation } from "./AgentEvaluation";
 import { LiveHistory } from "./AgentLiveHistory";
 import { LiveStatus, PublishAgent } from "./AgentPublish";
 import { AgentVersions } from "./AgentVersions";
 import { DraftEditor } from "./DraftEditor";
+import { AddToEvaluationSet } from "./EvaluationCaseEditor";
 import { useInstructionsVersions } from "./instructions";
 import { useOrganisationRole } from "./ProjectsPage";
 import { PlaygroundTrace, TraceFold } from "./Trace";
@@ -180,6 +182,8 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
   const [instructionsVersionId, setInstructionsVersionId] = useState("");
   // Set when a reset has started a new Conversation, until the next question.
   const [wasReset, setWasReset] = useState(false);
+  // The answer being added to the Evaluation Set.
+  const [adding, setAdding] = useState<string | null>(null);
   const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
 
   function appendToAnswer(update: (answer: ChatMessage) => ChatMessage) {
@@ -311,7 +315,19 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
               </span>
               <div className="flex min-w-0 flex-1 flex-col gap-2">
                 {message.searches && <Searches queries={message.searches} />}
-                <p className="text-base whitespace-pre-wrap text-ink">{message.content}</p>
+                <div className="flex items-start gap-2">
+                  <p className="min-w-0 flex-1 text-base whitespace-pre-wrap text-ink">{message.content}</p>
+                  {message.messageId && (
+                    <Menu
+                      label={<Icon name="more" />}
+                      triggerLabel="More actions for this answer"
+                      menuLabel="Actions for this answer"
+                      align="end"
+                      triggerClassName={button.iconBare}
+                      items={[{ label: "Add to Evaluation Set", onSelect: () => { setAdding(message.messageId as string); } }]}
+                    />
+                  )}
+                </div>
                 {message.refused && <p className="text-xs font-medium text-flag">Blocked by the input Guardrail: the model wasn&apos;t asked.</p>}
                 {message.citations && <Sources citations={message.citations} organisationId={organisationId} projectId={agent.project_id} />}
                 {message.instructions && <p className={text.small}>{message.instructions}</p>}
@@ -325,6 +341,15 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
           ),
         )}
       </ol>
+      {adding !== null && (
+        <AddToEvaluationSet
+          path={path}
+          messageId={adding}
+          onClose={() => {
+            setAdding(null);
+          }}
+        />
+      )}
       <FormError message={agentFailure(error)} />
       <form
         aria-label="Ask the Draft"
@@ -528,7 +553,7 @@ function AgentSwitcher({ agent, organisationId }: { agent: Agent; organisationId
   );
 }
 
-/** The Agent's views as tabs under its header: Playground, Versions, Embed & limits, Conversations. */
+/** The Agent's views as tabs under its header: Playground, Versions, Evaluation, Embed & limits, Conversations. */
 function AgentViewTabs({ agent, organisationId }: { agent: Agent; organisationId: string }) {
   const views = useAgentViews(organisationId, agent.project_id, agent.id);
   return (
@@ -664,7 +689,7 @@ function AgentTopBar({ agent, organisationId, draftStatus }: { agent: Agent; org
 
 /**
  * One Agent: its header (the page's h1), the top bar's Saved state, History and Publish, then the
- * view its tab row chose (Playground, Versions, Embed & limits, Conversations). An archived Agent's Draft is read only, without
+ * view its tab row chose (Playground, Versions, Evaluation, Embed & limits, Conversations). An archived Agent's Draft is read only, without
  * the Playground, and an Owner can restore it.
  */
 export function AgentPage() {
@@ -745,6 +770,12 @@ export function AgentVersionsView() {
       <AgentVersions agent={agent} organisationId={organisationId} onReplaced={onReplaced} />
     </div>
   );
+}
+
+/** The Evaluation view: the Evaluation Set, Evaluate, and the Runs with their judged answers. */
+export function AgentEvaluationView() {
+  const { agent, organisationId } = useAgentView();
+  return <AgentEvaluation key={`evaluation-${agent.id}`} agent={agent} organisationId={organisationId} />;
 }
 
 /** The Embed & limits view: the snippet, the Operational Settings and the Theme override, as cards. */

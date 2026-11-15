@@ -3,8 +3,16 @@ import { type SubmitEvent, useState } from "react";
 import { FormError } from "../auth/AuthLayout";
 import { Badge, button, field, text } from "../design";
 import { AgentDiffView } from "./AgentDiff";
-import { type Agent, type AgentVersion, agentFailure, publishFailure, useAgentDiff, usePublishAgent } from "./agents";
+import {
+  type Agent,
+  type AgentVersion,
+  agentFailure,
+  publishFailure,
+  useAgentDiff,
+  usePublishAgent,
+} from "./agents";
 import { useInstructionsVersions } from "./instructions";
+import { PublishEvaluation } from "./PublishEvaluation";
 import { useTags } from "./tags";
 
 /** Live with its Version chip, or Not live for an Agent that has never been published; Draft while
@@ -20,9 +28,17 @@ export function LiveStatus({ agent }: { agent: Agent }) {
       ) : (
         <Badge kind="notLive" />
       )}
-      {agent.has_unpublished_changes && <Badge kind="draft" title="The Draft has changes that aren't published yet." />}
+      {agent.has_unpublished_changes && (
+        <Badge
+          kind="draft"
+          title="The Draft has changes that aren't published yet."
+        />
+      )}
       {agent.budget_exhausted && (
-        <Badge kind="budgetSpent" title="Today's Token Budget is spent, so Visitors see the unavailable text until midnight UTC." />
+        <Badge
+          kind="budgetSpent"
+          title="Today's Token Budget is spent, so Visitors see the unavailable text until midnight UTC."
+        />
       )}
       {agent.block_rate_alert && (
         <span
@@ -37,13 +53,22 @@ export function LiveStatus({ agent }: { agent: Agent }) {
 }
 
 /** The Tags' names by ID, so diffs of Tag scoping read as names. */
-export function useTagNames(organisationId: string, projectId: string): Record<string, string> {
+export function useTagNames(
+  organisationId: string,
+  projectId: string,
+): Record<string, string> {
   const tags = useTags(organisationId, projectId);
   return Object.fromEntries((tags.data ?? []).map((tag) => [tag.id, tag.name]));
 }
 
 /** What publishing changes: the saved Draft compared with the Live Version. */
-function ChangesToPublish({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+function ChangesToPublish({
+  agent,
+  organisationId,
+}: {
+  agent: Agent;
+  organisationId: string;
+}) {
   const live = agent.live_version;
   const diff = useAgentDiff(
     organisationId,
@@ -55,17 +80,33 @@ function ChangesToPublish({ agent, organisationId }: { agent: Agent; organisatio
   const names = useTagNames(organisationId, agent.project_id);
   let body;
   if (!live) {
-    body = <p className="text-sm text-muted">This is the first Version: all of the Draft&apos;s settings go live.</p>;
+    body = (
+      <p className="text-sm text-muted">
+        This is the first Version: all of the Draft&apos;s settings go live.
+      </p>
+    );
   } else if (diff.isPending) {
-    body = <p className="text-sm text-muted">Comparing the Draft with the Live Version (v{live.number})…</p>;
+    body = (
+      <p className="text-sm text-muted">
+        Comparing the Draft with the Live Version (v{live.number})…
+      </p>
+    );
   } else if (diff.isError) {
-    body = <p className="text-sm text-muted">The changes could not be loaded. {agentFailure(diff.error)}</p>;
+    body = (
+      <p className="text-sm text-muted">
+        The changes could not be loaded. {agentFailure(diff.error)}
+      </p>
+    );
   } else {
     body = <AgentDiffView diff={diff.data} names={names} />;
   }
   return (
     <section aria-label="Changes to publish" className="flex flex-col gap-2">
-      <h3 className="text-sm font-semibold text-ink">{live ? `Changes from the Live Version (v${String(live.number)})` : "Changes"}</h3>
+      <h3 className="text-sm font-semibold text-ink">
+        {live
+          ? `Changes from the Live Version (v${String(live.number)})`
+          : "Changes"}
+      </h3>
       {body}
     </section>
   );
@@ -80,9 +121,16 @@ function outcome(version: AgentVersion): string {
 
 /**
  * Publishes the saved Draft as the Agent's next Version, which becomes its Live Version. The
- * Version pins the Project's Current Instructions Version, or the one the Editor chooses.
+ * Version pins the Project's Current Instructions Version, or the one the Editor chooses. Its
+ * Evaluation section warns about what the Draft breaks, but Publishing is never blocked.
  */
-export function PublishAgent({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+export function PublishAgent({
+  agent,
+  organisationId,
+}: {
+  agent: Agent;
+  organisationId: string;
+}) {
   const publish = usePublishAgent(organisationId, agent.project_id, agent.id);
   const history = useInstructionsVersions(organisationId, agent.project_id);
   const [note, setNote] = useState("");
@@ -95,20 +143,31 @@ export function PublishAgent({ agent, organisationId }: { agent: Agent; organisa
     const trimmed = note.trim();
     setNoteMissing(!trimmed);
     if (!trimmed) return;
-    publish.mutate(pinned ? { note: trimmed, instructions_version_id: pinned } : { note: trimmed }, {
-      onSuccess: () => {
-        setNote("");
-        setPinned("");
+    publish.mutate(
+      pinned
+        ? { note: trimmed, instructions_version_id: pinned }
+        : { note: trimmed },
+      {
+        onSuccess: () => {
+          setNote("");
+          setPinned("");
+        },
       },
-    });
+    );
   }
 
   let options;
   if (history.isError) {
-    options = <p className="text-sm text-muted">The Instructions Versions could not be loaded.</p>;
+    options = (
+      <p className="text-sm text-muted">
+        The Instructions Versions could not be loaded.
+      </p>
+    );
   } else {
     const versions = history.data?.versions ?? [];
-    const current = versions.find((version) => version.id === history.data?.current_version_id);
+    const current = versions.find(
+      (version) => version.id === history.data?.current_version_id,
+    );
     options = (
       <>
         <label htmlFor="publish-instructions" className={field.label}>
@@ -140,8 +199,21 @@ export function PublishAgent({ agent, organisationId }: { agent: Agent; organisa
   }
 
   return (
-    <form aria-label="Publish" onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
-      <p className={text.muted}>Publishing freezes the saved Draft as a new Version, and Visitors are served it at once.</p>
+    <form
+      aria-label="Publish"
+      onSubmit={onSubmit}
+      noValidate
+      className="flex flex-col gap-4"
+    >
+      <p className={text.muted}>
+        Publishing freezes the saved Draft as a new Version, and Visitors are
+        served it at once.
+      </p>
+      <PublishEvaluation
+        agent={agent}
+        organisationId={organisationId}
+        instructionsVersionId={pinned || null}
+      />
       <div>
         <label htmlFor="publish-note" className={field.label}>
           Note
@@ -152,7 +224,7 @@ export function PublishAgent({ agent, organisationId }: { agent: Agent; organisa
           maxLength={500}
           autoComplete="off"
           className={field.input}
-        value={note}
+          value={note}
           onChange={(event) => {
             setNote(event.target.value);
           }}
@@ -160,9 +232,19 @@ export function PublishAgent({ agent, organisationId }: { agent: Agent; organisa
       </div>
       <div>{options}</div>
       <ChangesToPublish agent={agent} organisationId={organisationId} />
-      <FormError message={noteMissing ? "Add a note of up to 500 characters." : publishFailure(publish.error)} />
+      <FormError
+        message={
+          noteMissing
+            ? "Add a note of up to 500 characters."
+            : publishFailure(publish.error)
+        }
+      />
       <div className="flex justify-end">
-        <button type="submit" className={button.primary} disabled={publish.isPending}>
+        <button
+          type="submit"
+          className={button.primary}
+          disabled={publish.isPending}
+        >
           {publish.isPending ? "Publishing…" : "Publish"}
         </button>
       </div>

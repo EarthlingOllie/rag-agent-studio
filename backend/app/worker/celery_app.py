@@ -18,6 +18,7 @@ celery_app = Celery(
         "app.worker.tasks",
         "app.analytics.tasks",
         "app.documents.tasks",
+        "app.evaluation.tasks",
         "app.projects.tasks",
         "app.re_embedding.tasks",
         "app.embed.tasks",

@@ -21,7 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import audit
 from app.agents.config import AgentConfig
-from app.agents.models import Agent, AgentDraft, AgentVersion
+from app.agents.models import Agent, AgentDraft, AgentVersion, LiveHistoryEntry
 from app.agents.validation import check_draft
 from app.conversations.models import Conversation
 from app.projects.models import Project
@@ -280,6 +280,10 @@ async def delete_agent(
         },
         occurred_at=now,
     )
+    # Conversations and Live History go first: they also reference the Agent's Versions, and
+    # Postgres fires the cascades from ``agents`` in an order that depends on the triggers' oids.
+    await session.execute(delete(Conversation).where(Conversation.agent_id == agent.id))
+    await session.execute(delete(LiveHistoryEntry).where(LiveHistoryEntry.agent_id == agent.id))
     await session.execute(delete(Agent).where(Agent.id == agent.id))
     await session.commit()
 

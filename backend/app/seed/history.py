@@ -33,7 +33,7 @@ from app.credentials.models import ProviderCredential
 from app.documents.models import Document, DocumentStatus
 from app.feedback.models import ConversationRating, ConversationRatingChange, MessageFeedback
 from app.projects.models import Project
-from app.seed import content
+from app.seed import content, evaluation
 from app.seed.client import SeedApi, SeedError, new_client
 from app.tags.models import Tag
 from app.tenancy.models import Organisation
@@ -136,12 +136,26 @@ class _Story:
         elif day == 17:
             await self.publish_hr(self.editor, content.HR_V2)
         elif day == 10:
+            await self.evaluate_v2()
             reverted = await self.owner.call("POST", self.agent_path(content.HR_AGENT, "revert"))
             self.live[content.HR_AGENT] = reverted["number"]
         elif day == 6:
             await self._instructions_v2()
         elif day == 3:
             await self.publish_hr(self.editor, content.HR_V3)
+        elif day == 2:
+            # The Editor checks the Draft against v3, as a baseline for the next change.
+            await evaluation.run(
+                self.editor, self.project, self.agents[content.HR_AGENT]["id"], None
+            )
+
+    async def evaluate_v2(self) -> None:
+        """The Owner builds the HR helper's Evaluation Set, partly from Visitors' thumbs-down
+        Messages, and runs v1 against v2: its Regressions are why v2 is reverted."""
+        agent = self.agents[content.HR_AGENT]["id"]
+        await evaluation.build_set(self.owner, self.project, agent)
+        sides = await evaluation.version_sides(self.owner, self.project, agent, 1, 2)
+        await evaluation.run(self.owner, self.project, agent, sides)
 
     async def _instructions_v2(self) -> None:
         path = self.owner.path("projects", self.project, "instructions")
