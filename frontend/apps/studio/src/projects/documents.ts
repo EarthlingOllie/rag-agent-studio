@@ -217,10 +217,15 @@ export function useDeleteDocument(organisationId: string, projectId: string) {
       );
       if (!response.ok) throw failed(response, error);
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: documentsKey(organisationId, projectId),
-      }),
+    onSuccess: (_, documentId) => {
+      const key = documentsKey(organisationId, projectId);
+      // The deleted Document's own reads (details, chunks, Expected sources) would only be Not
+      // found now, and retried: refetching them would hold the delete open for seconds.
+      return queryClient.invalidateQueries({
+        queryKey: key,
+        predicate: (query) => query.queryKey[key.length] !== documentId,
+      });
+    },
   });
 }
 

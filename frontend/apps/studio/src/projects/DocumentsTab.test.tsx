@@ -986,6 +986,38 @@ test("a delete that fails says so and keeps the Document", async () => {
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 });
 
+test("a deleted Document's Expected sources aren't asked for again, so the confirmation closes at once", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeDocumentsApi({ documents: [aDocument()] });
+  // As the API does: once the Document is gone, its Expected sources are Not found (and the
+  // app's query client retries a failed read, which would hold the confirmation open).
+  const asked: string[] = [];
+  let deleted = false;
+  server.use(
+    http.delete(`${DOCUMENTS}/:documentId`, () => {
+      deleted = true;
+      return new HttpResponse(null, { status: 204 });
+    }),
+    http.get(`${DOCUMENTS}/:documentId/expected-sources`, ({ params }) => {
+      asked.push(`${String(params.documentId)}${deleted ? " after delete" : ""}`);
+      return deleted
+        ? HttpResponse.json({ detail: "Not found" }, { status: 404 })
+        : HttpResponse.json({ agents: [], passages: [] });
+    }),
+  );
+  renderStudio(documentsTab());
+  await documentsTable();
+
+  await chooseAction("handbook.pdf", "Delete");
+  const dialog = within(screen.getByRole("alertdialog", { name: "Delete handbook.pdf?" }));
+  await userEvent.click(dialog.getByRole("button", { name: "Delete handbook.pdf" }));
+
+  expect(await screen.findByText("Deleted handbook.pdf.")).toBeInTheDocument();
+  expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+  expect(asked).toEqual([aDocument().id]);
+});
+
 test("an archived Project's Documents can't be replaced or deleted", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
