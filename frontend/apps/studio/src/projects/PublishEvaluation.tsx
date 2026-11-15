@@ -11,6 +11,7 @@ import {
   evaluationFailure,
   inProgress,
   useEvaluationRun,
+  useEvaluationRuns,
   usePublishSummary,
   useStartEvaluationRun,
 } from "./evaluation";
@@ -236,9 +237,10 @@ export function PublishEvaluation({
   ]);
   const start = useStartEvaluationRun(path);
   const [runId, setRunId] = useState<string | null>(null);
-  const running = useEvaluationRun(path, runId);
-  const evaluating =
-    start.isPending || (running.data !== undefined && inProgress(running.data));
+  // The server's Runs, not only the one started here: a Run started from the Evaluation view
+  // holds the Agent's single active Run just the same.
+  const runs = useEvaluationRuns(path);
+  const evaluating = start.isPending || (runs.data ?? []).some(inProgress);
 
   let body;
   if (summary.isError) {

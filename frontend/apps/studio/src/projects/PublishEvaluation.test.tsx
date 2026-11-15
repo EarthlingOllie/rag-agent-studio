@@ -399,6 +399,31 @@ test("Evaluate starts a Live-against-Draft Run with the dialog's Instructions, s
   ).toBeEnabled();
 });
 
+test("Evaluate is disabled while a Run started elsewhere, such as the Evaluation view, is in progress", async () => {
+  setUp({
+    runs: [
+      results(
+        run("r1000000-0000-4000-8000-000000000008", "running", 2, 6, {
+          sides: liveAgainstDraft.sides,
+        }),
+        [],
+      ),
+    ],
+    summaries: [publishSummary("no_run")],
+  });
+  renderStudio(agentPage);
+  const { form, section } = await evaluationSection();
+  await within(section).findByRole("status");
+
+  expect(
+    await within(section).findByRole("button", { name: "Evaluating…" }),
+  ).toBeDisabled();
+  expect(
+    within(section).queryByRole("button", { name: "Evaluate" }),
+  ).not.toBeInTheDocument();
+  expect(within(form).getByRole("button", { name: "Publish" })).toBeEnabled();
+});
+
 test("Evaluate with the Current Instructions chooses no Instructions Version", async () => {
   const runId = "r1000000-0000-4000-8000-000000000004";
   const { evaluation } = setUp({
