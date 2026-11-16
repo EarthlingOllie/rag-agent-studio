@@ -133,6 +133,9 @@ async function addCase(page: Page, each: Case) {
   await expect(editor).toBeHidden({ timeout: 15_000 });
 }
 
+// A live run spends money and is rare: keep a recording of the whole of it as evidence.
+test.use({ video: { mode: "on", size: { width: 1280, height: 800 } }, viewport: { width: 1280, height: 800 } });
+
 test.describe("live: Claude end to end", () => {
   test.skip(LIVE_KEY === "", "Set E2E_LIVE_ANTHROPIC_KEY (a workspace-scoped Anthropic key) and start the stack with MODEL_GATEWAY=live.");
 
