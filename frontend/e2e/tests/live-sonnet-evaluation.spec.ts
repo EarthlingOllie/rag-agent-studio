@@ -120,7 +120,8 @@ async function draftSaved(page: Page, edit: () => Promise<void>) {
 }
 
 async function addCase(page: Page, each: Case) {
-  await page.getByRole("button", { name: "New case" }).click();
+  // An empty set offers a second "New case" in its empty state; the header's comes first.
+  await page.getByRole("button", { name: "New case" }).first().click();
   const editor = page.getByRole("dialog", { name: "New Evaluation Case" });
   await editor.getByLabel("Question").fill(each.question);
   if (each.reference !== undefined) await editor.getByLabel("Reference answer").fill(each.reference);
