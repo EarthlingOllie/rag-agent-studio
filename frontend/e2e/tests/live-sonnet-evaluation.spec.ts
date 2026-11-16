@@ -130,7 +130,8 @@ async function addCase(page: Page, each: Case) {
     await editor.getByRole("button", { name: "Add Expected source" }).click();
     const picker = editor.getByRole("group", { name: "Pick a passage" });
     await picker.getByLabel("Document").selectOption({ label: each.source.document });
-    await picker.getByLabel("Passage").fill(each.source.passage);
+    // The textbox, not the "Use Chunk N as the passage" buttons beside it.
+    await picker.getByRole("textbox", { name: "Passage", exact: true }).fill(each.source.passage);
     await picker.getByRole("button", { name: "Add passage" }).click();
     await expect(editor.getByRole("list", { name: "Expected sources" })).toContainText(each.source.passage);
   }
@@ -247,9 +248,9 @@ test.describe("live: Claude end to end", () => {
 
     let results: Results | undefined;
     await test.step("evaluate the Draft against Version 1 (Live) and wait for the Run", async () => {
-      await page.getByRole("button", { name: "Evaluate" }).click();
-      const dialog = page.getByRole("form", { name: "Evaluate" });
-      await expect(dialog.getByLabel("First side")).toHaveValue(/.+/);
+      await page.getByRole("button", { name: "Evaluate", exact: true }).click();
+      // The whole dialog: its Start Run button sits in the footer, outside the form.
+      const dialog = page.getByRole("dialog", { name: "Evaluate" });
       await expect(dialog.getByLabel("First side").locator("option:checked")).toHaveText("Version 1 (Live)");
       await expect(dialog.getByLabel("Second side").locator("option:checked")).toHaveText("Draft");
       await expect(dialog.getByRole("status", { name: "Estimated Cost" })).toContainText("$", { timeout: 15_000 });
@@ -279,9 +280,9 @@ test.describe("live: Claude end to end", () => {
       const live = run.sides.find((side) => side.position === "first");
       expect(live?.cases_errored).toBe(0);
       expect(Math.round((live?.score ?? 0) * 100)).toBeGreaterThanOrEqual(MIN_SCORE);
-      const detail = page.getByRole("list", { name: "Cases" });
-      await expect(detail.getByRole("listitem")).toHaveCount(CASES.length);
-      await expect(page.getByRole("group", { name: "Version 1" }).getByText(/Evaluation score: \d+%/)).toBeVisible();
+      // One item per case; each holds Verdicts lists of its own, so only direct children count.
+      await expect(page.getByRole("list", { name: "Cases" }).locator(":scope > li")).toHaveCount(CASES.length);
+      await expect(page.getByRole("group", { name: "Version 1", exact: true }).getByText(/Evaluation score: \d+%/)).toBeVisible();
     });
   });
 });
