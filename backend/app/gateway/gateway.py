@@ -64,7 +64,7 @@ class ModelGateway:
 
     def chat_model(self, credential: ProviderCredential, model: str) -> Model:
         provider, secret = self._secret(credential, Capability.CHAT, model)
-        return self.adapters.chat(provider, secret, model)
+        return self.adapters.chat(provider, secret, model, workspace_id=credential.workspace_id)
 
     def _bedrock_account(self, credential: ProviderCredential) -> BedrockAccount:
         region = str(credential.region)

@@ -186,12 +186,16 @@ _Avoid_: API key, token, connection
 What a Provider Credential can be used for: chat, embeddings or reranking. Each provider offers a fixed set, listed with its models in the capability registry; a credential may be limited to some of them.
 _Avoid_: Feature, scope, permission
 
+**Workspace ID**:
+Anthropic's ID of one of its workspaces (`wrkspc_…`), stored on an Anthropic Provider Credential whose key is a personal or service account key not scoped to one workspace. Every request made with the credential names it in the `anthropic-workspace-id` header. Not a secret. A key scoped to one workspace needs none. The word is Anthropic's; the platform's own groupings are Organisations and Projects.
+_Avoid_: Workspace (on its own, for anything of the platform's), Anthropic project
+
 **Masked suffix**:
 The last four characters of a Provider Credential's secret: all of the secret the platform ever shows after it is saved.
 _Avoid_: Hint, preview, redacted key
 
 **Credential check**:
-A live call to the provider that proves a Provider Credential works, made when it is saved, rotated, or re-checked on demand. It passes or fails with a typed reason (invalid key, missing model access, quota exceeded, provider unreachable; for Bedrock also role not assumable and wrong region). A Bedrock check first assumes the role (or checks the access keys), then checks model access in the credential's region.
+A live call to the provider that proves a Provider Credential works, made when it is saved, rotated, or re-checked on demand. It passes or fails with a typed reason (invalid key, missing model access, quota exceeded, provider unreachable; for Anthropic also workspace required and unknown workspace; for Bedrock also role not assumable and wrong region). A Bedrock check first assumes the role (or checks the access keys), then checks model access in the credential's region.
 _Avoid_: Validation, test call, ping
 
 **Bedrock role**:

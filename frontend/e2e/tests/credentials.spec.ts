@@ -79,6 +79,46 @@ test.describe("provider credentials", () => {
     await expect(page.getByText("No credentials yet.")).toBeVisible();
   });
 
+  test("an Owner adds an Anthropic key with its Workspace ID, then moves it to another workspace when rotating", async ({
+    signedInPage: page,
+    makeAxeBuilder,
+  }) => {
+    const workspace = "wrkspc_01E2eTestOnlyNotRealWorkspace";
+    const other = "wrkspc_02E2eTestOnlyNotRealWorkspace";
+    await openCredentials(page);
+    const form = page.getByRole("region", { name: "Add a credential" });
+    await form.getByLabel("Provider").selectOption("Anthropic");
+    await form.getByLabel("Name").fill("Personal Claude");
+    await form.getByLabel("API key").fill("sk-ant-e2e-test-only-not-a-real-key-w5p1");
+    await expect(form.getByLabel("Workspace ID (optional)")).toHaveAccessibleDescription(/isn't scoped to one workspace/);
+    await form.getByLabel("Workspace ID (optional)").fill(workspace);
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+    await form.getByRole("button", { name: "Check and save" }).click();
+    await expect(page.getByText("Personal Claude was checked and saved.")).toBeVisible();
+    const row = page.getByRole("table", { name: "Provider Credentials" }).getByRole("row", { name: /Personal Claude/ });
+    await expect(row.getByLabel(`Workspace ${workspace}`)).toBeVisible();
+
+    await page.getByRole("button", { name: "Rotate key: Personal Claude" }).click();
+    await expect(page.getByLabel("Workspace ID for Personal Claude")).toHaveValue(workspace);
+    await page.getByLabel("New API key for Personal Claude").fill("sk-ant-e2e-test-only-rotated-key-w6q2");
+    await page.getByLabel("Workspace ID for Personal Claude").fill(other);
+    await page.getByRole("button", { name: "Check and rotate" }).click();
+    await expect(page.getByText("The key of Personal Claude was checked and replaced.")).toBeVisible();
+    await expect(row.getByLabel(`Workspace ${other}`)).toBeVisible();
+    await expect(row).toContainText("••••w6q2");
+
+    // The move is audited, and the Workspace ID survives a reload.
+    const me = (await (await page.request.get("/api/auth/me")).json()) as { organisations: { id: string }[] };
+    const id = me.organisations[0]?.id ?? "";
+    const audit = (await (await page.request.get(`/api/organisations/${id}/audit-events?action=credential.rotated`)).json()) as {
+      items: { before: Record<string, unknown>; after: Record<string, unknown> }[];
+    };
+    expect(audit.items[0]?.before.workspace_id).toBe(workspace);
+    expect(audit.items[0]?.after.workspace_id).toBe(other);
+    await page.reload();
+    await expect(page.getByRole("table", { name: "Provider Credentials" }).getByLabel(`Workspace ${other}`)).toBeVisible();
+  });
+
   test("an Editor sees the Organisation's credentials but can't manage them", async ({ signedInPage: owner, browser }) => {
     await openCredentials(owner);
     const form = owner.getByRole("region", { name: "Add a credential" });

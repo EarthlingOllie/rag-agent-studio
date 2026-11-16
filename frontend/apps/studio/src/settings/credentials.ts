@@ -18,6 +18,10 @@ export const FAILURE_MESSAGES: Record<CheckFailure, string> = {
   provider_unreachable: "We couldn't reach the provider to check the key. Try again in a few minutes.",
   role_not_assumable: "We couldn't assume this role. Check the role ARN, and that the role's trust policy is exactly the one shown, with your external ID.",
   wrong_region: "Bedrock, or this model, isn't available in that region. Choose the region where you enabled model access.",
+  workspace_required:
+    "This key isn't scoped to one workspace, so Anthropic needs to know which to use. Add the Workspace ID, or use a key scoped to a workspace.",
+  unknown_workspace:
+    "Anthropic doesn't know this Workspace ID, or the key can't use that workspace. Copy the ID from the Workspaces page of the Claude Console.",
 };
 
 /** The same reasons for a Bedrock credential, which is an IAM role or AWS access keys. */
@@ -162,13 +166,23 @@ export function useCheckCredential(organisationId: string) {
   });
 }
 
+/**
+ * A new key for a credential. `workspaceId` is for Anthropic: left out, the credential keeps its
+ * Workspace ID; null clears it (a key scoped to one workspace); a value replaces it.
+ */
+export interface Rotation {
+  credentialId: string;
+  apiKey: string;
+  workspaceId?: string | null | undefined;
+}
+
 export function useRotateCredential(organisationId: string) {
   const refresh = useRefresh(organisationId);
   return useMutation({
-    mutationFn: async ({ credentialId, apiKey }: { credentialId: string; apiKey: string }): Promise<Credential> => {
+    mutationFn: async ({ credentialId, apiKey, workspaceId }: Rotation): Promise<Credential> => {
       const { data, error, response } = await api.POST("/api/organisations/{organisation_id}/credentials/{credential_id}/rotate", {
         params: { path: { organisation_id: organisationId, credential_id: credentialId } },
-        body: { api_key: apiKey },
+        body: workspaceId === undefined ? { api_key: apiKey } : { api_key: apiKey, workspace_id: workspaceId },
       });
       if (!data) throw failed(response, error);
       return data;

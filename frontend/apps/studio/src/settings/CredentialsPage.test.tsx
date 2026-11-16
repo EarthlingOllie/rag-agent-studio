@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
-import { fakeCredentialsApi, legalVoyage, marketingOpenAi } from "../test/credentials";
+import { fakeCredentialsApi, legalVoyage, marketingOpenAi, personalClaude } from "../test/credentials";
 import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
@@ -329,4 +329,151 @@ test("deleting the last credential says so and shows the empty list", async () =
 
   expect(await screen.findByText("Marketing OpenAI was deleted.")).toBeInTheDocument();
   expect(await screen.findByText("No credentials yet.")).toBeInTheDocument();
+});
+
+// Anthropic workspaces: a personal or service account key that isn't scoped to one workspace
+// names the workspace its requests use.
+
+const WORKSPACE = "wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ";
+
+test("an Owner adds an Anthropic key with the Workspace ID it works in", async () => {
+  const api = fakeCredentialsApi({ credentials: [] });
+  fakeAuthApi({ signedInAs: adaSession });
+  renderStudio(credentialsPath);
+  const form = await addForm();
+
+  await userEvent.selectOptions(form.getByLabelText("Provider"), "Anthropic");
+  const workspace = form.getByLabelText("Workspace ID (optional)");
+  expect(workspace).not.toBeRequired();
+  expect(workspace).toHaveAccessibleDescription(/isn't scoped to one workspace/);
+  await userEvent.type(form.getByLabelText("Name"), "Personal Claude");
+  await userEvent.type(form.getByLabelText("API key"), "sk-ant-api03-example-p3r5");
+  await userEvent.type(workspace, `  ${WORKSPACE} `);
+  await userEvent.click(form.getByRole("button", { name: "Check and save" }));
+
+  expect(await screen.findByText("Personal Claude was checked and saved.")).toBeInTheDocument();
+  expect(api.added).toEqual([
+    { name: "Personal Claude", provider: "anthropic", api_key: "sk-ant-api03-example-p3r5", capabilities: ["chat"], workspace_id: WORKSPACE },
+  ]);
+  expect(await screen.findByLabelText(`Workspace ${WORKSPACE}`)).toBeInTheDocument();
+  expect(form.getByLabelText("Workspace ID (optional)")).toHaveValue("");
+});
+
+test("an Anthropic key scoped to one workspace is added without a Workspace ID", async () => {
+  const api = fakeCredentialsApi({ credentials: [] });
+  fakeAuthApi({ signedInAs: adaSession });
+  renderStudio(credentialsPath);
+  const form = await addForm();
+
+  await userEvent.selectOptions(form.getByLabelText("Provider"), "Anthropic");
+  await userEvent.type(form.getByLabelText("Name"), "Team Claude");
+  await userEvent.type(form.getByLabelText("API key"), "sk-ant-api03-example-t3am");
+  await userEvent.click(form.getByRole("button", { name: "Check and save" }));
+
+  expect(await screen.findByText("Team Claude was checked and saved.")).toBeInTheDocument();
+  expect(api.added).toEqual([{ name: "Team Claude", provider: "anthropic", api_key: "sk-ant-api03-example-t3am", capabilities: ["chat"] }]);
+});
+
+test("only Anthropic asks for a Workspace ID, and one typed before switching provider isn't sent", async () => {
+  const api = fakeCredentialsApi({ credentials: [] });
+  fakeAuthApi({ signedInAs: adaSession });
+  renderStudio(credentialsPath);
+  const form = await addForm();
+
+  await userEvent.selectOptions(form.getByLabelText("Provider"), "Anthropic");
+  await userEvent.type(form.getByLabelText("Workspace ID (optional)"), WORKSPACE);
+  await userEvent.selectOptions(form.getByLabelText("Provider"), "OpenAI");
+  expect(form.queryByLabelText("Workspace ID (optional)")).not.toBeInTheDocument();
+  await userEvent.type(form.getByLabelText("Name"), "Marketing OpenAI");
+  await userEvent.type(form.getByLabelText("API key"), "sk-proj-example-key-abcd");
+  await userEvent.click(form.getByRole("button", { name: "Check and save" }));
+
+  expect(await screen.findByText("Marketing OpenAI was checked and saved.")).toBeInTheDocument();
+  expect(api.added).toEqual([
+    { name: "Marketing OpenAI", provider: "openai", api_key: "sk-proj-example-key-abcd", capabilities: ["chat", "embeddings"] },
+  ]);
+});
+
+test.each([
+  [
+    "workspace_required",
+    "This key isn't scoped to one workspace, so Anthropic needs to know which to use. Add the Workspace ID, or use a key scoped to a workspace.",
+  ],
+  [
+    "unknown_workspace",
+    "Anthropic doesn't know this Workspace ID, or the key can't use that workspace. Copy the ID from the Workspaces page of the Claude Console.",
+  ],
+])("a %s check failure tells the Owner what to do about the workspace", async (reason, message) => {
+  fakeCredentialsApi({ credentials: [] });
+  fakeAuthApi({ signedInAs: adaSession });
+  renderStudio(credentialsPath);
+  const form = await addForm();
+
+  await userEvent.selectOptions(form.getByLabelText("Provider"), "Anthropic");
+  await userEvent.type(form.getByLabelText("Name"), "Personal Claude");
+  await userEvent.type(form.getByLabelText("API key"), `fail-${reason}-key`);
+  await userEvent.click(form.getByRole("button", { name: "Check and save" }));
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(`The check failed. ${message}`);
+});
+
+test("rotating an Anthropic key keeps its workspace unless the Owner changes it", async () => {
+  const api = fakeCredentialsApi({ credentials: [personalClaude] });
+  await openAsOwner();
+
+  await userEvent.click(screen.getByRole("button", { name: "Rotate key: Personal Claude" }));
+  expect(screen.getByLabelText("Workspace ID for Personal Claude")).toHaveValue(WORKSPACE);
+  await userEvent.type(screen.getByLabelText("New API key for Personal Claude"), "sk-ant-api03-rotated-n3w1");
+  await userEvent.click(screen.getByRole("button", { name: "Check and rotate" }));
+
+  expect(await screen.findByText("The key of Personal Claude was checked and replaced.")).toBeInTheDocument();
+  expect(api.rotated).toEqual([{ id: personalClaude.id, apiKey: "sk-ant-api03-rotated-n3w1" }]);
+  expect(screen.getByLabelText(`Workspace ${WORKSPACE}`)).toBeInTheDocument();
+});
+
+test("an Owner moves an Anthropic credential to another workspace, or clears it, when rotating", async () => {
+  const api = fakeCredentialsApi({ credentials: [personalClaude] });
+  await openAsOwner();
+  const other = "wrkspc_02KxRwas8sYMB6BHy4ILgGVK";
+
+  await userEvent.click(screen.getByRole("button", { name: "Rotate key: Personal Claude" }));
+  await userEvent.type(screen.getByLabelText("New API key for Personal Claude"), "sk-ant-api03-rotated-0th3");
+  await userEvent.clear(screen.getByLabelText("Workspace ID for Personal Claude"));
+  await userEvent.type(screen.getByLabelText("Workspace ID for Personal Claude"), other);
+  await userEvent.click(screen.getByRole("button", { name: "Check and rotate" }));
+  expect(await screen.findByLabelText(`Workspace ${other}`)).toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: "Rotate key: Personal Claude" }));
+  expect(screen.getByLabelText("Workspace ID for Personal Claude")).toHaveValue(other);
+  await userEvent.type(screen.getByLabelText("New API key for Personal Claude"), "sk-ant-api03-scoped-s1ng");
+  await userEvent.clear(screen.getByLabelText("Workspace ID for Personal Claude"));
+  await userEvent.click(screen.getByRole("button", { name: "Check and rotate" }));
+  expect(await screen.findByLabelText("Key ending s1ng")).toBeInTheDocument();
+
+  expect(api.rotated).toEqual([
+    { id: personalClaude.id, apiKey: "sk-ant-api03-rotated-0th3", workspaceId: other },
+    { id: personalClaude.id, apiKey: "sk-ant-api03-scoped-s1ng", workspaceId: null },
+  ]);
+  expect(screen.queryByLabelText(/^Workspace wrkspc_/)).not.toBeInTheDocument();
+});
+
+test("cancelling a rotation puts back the Workspace ID the Owner had edited", async () => {
+  fakeCredentialsApi({ credentials: [personalClaude] });
+  await openAsOwner();
+
+  await userEvent.click(screen.getByRole("button", { name: "Rotate key: Personal Claude" }));
+  await userEvent.clear(screen.getByLabelText("Workspace ID for Personal Claude"));
+  await userEvent.click(screen.getByRole("button", { name: "Cancel" }));
+  await userEvent.click(screen.getByRole("button", { name: "Rotate key: Personal Claude" }));
+
+  expect(screen.getByLabelText("Workspace ID for Personal Claude")).toHaveValue(WORKSPACE);
+});
+
+test("other providers' rotations have no Workspace ID", async () => {
+  fakeCredentialsApi();
+  await openAsOwner();
+
+  await userEvent.click(screen.getByRole("button", { name: "Rotate key: Marketing OpenAI" }));
+
+  expect(screen.queryByLabelText("Workspace ID for Marketing OpenAI")).not.toBeInTheDocument();
 });

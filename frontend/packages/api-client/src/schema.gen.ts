@@ -3137,7 +3137,7 @@ export interface components {
          * @description Why a credential check failed, in terms an Owner can act on.
          * @enum {string}
          */
-        CheckFailure: "invalid_key" | "missing_model_access" | "quota_exceeded" | "provider_unreachable" | "role_not_assumable" | "wrong_region";
+        CheckFailure: "invalid_key" | "missing_model_access" | "quota_exceeded" | "provider_unreachable" | "role_not_assumable" | "wrong_region" | "workspace_required" | "unknown_workspace";
         /** ChunkOut */
         ChunkOut: {
             /** Embedding Model Id */
@@ -3537,6 +3537,8 @@ export interface components {
              * @enum {string}
              */
             provider: "anthropic" | "openai" | "voyage" | "demo";
+            /** Workspace Id */
+            workspace_id?: string | null;
         };
         /** CreateInviteRequest */
         CreateInviteRequest: {
@@ -3601,6 +3603,8 @@ export interface components {
             region: string | null;
             /** Role Arn */
             role_arn: string | null;
+            /** Workspace Id */
+            workspace_id: string | null;
         };
         /** CredentialPricesOut */
         CredentialPricesOut: {
@@ -5245,6 +5249,8 @@ export interface components {
              * Format: password
              */
             api_key: string;
+            /** Workspace Id */
+            workspace_id?: string | null;
         };
         /** RunCaseOut */
         RunCaseOut: {

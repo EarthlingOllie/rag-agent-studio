@@ -56,6 +56,17 @@ class NotRotatableError(Exception):
     """Only API-key credentials are rotated with a new key."""
 
 
+class WorkspaceNotSupportedError(Exception):
+    """Only Anthropic credentials name a workspace."""
+
+
+class _Keep:
+    """``rotate``'s default: the credential keeps its Workspace ID."""
+
+
+KEEP_WORKSPACE = _Keep()
+
+
 class CredentialInUseError(Exception):
     def __init__(self, references: list[CredentialReference]) -> None:
         self.references = references
@@ -94,7 +105,14 @@ def _summary(credential: ProviderCredential) -> dict[str, Any]:
     }
     if credential.provider == Provider.BEDROCK:
         summary |= {"role_arn": credential.role_arn, "region": credential.region}
+    if credential.workspace_id is not None:
+        summary["workspace_id"] = credential.workspace_id
     return summary
+
+
+def _check_workspace(provider: Provider, workspace_id: str | None) -> None:
+    if workspace_id is not None and provider is not Provider.ANTHROPIC:
+        raise WorkspaceNotSupportedError
 
 
 def _check_model(capabilities: Sequence[Capability]) -> str:
@@ -112,6 +130,8 @@ class NewCredential:
     provider: Provider
     api_key: str
     capabilities: Sequence[Capability] | None = None
+    # Anthropic only: the workspace a key that isn't scoped to one works in.
+    workspace_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -224,20 +244,26 @@ class Credentials:
 
     async def create(self, scope: OrganisationScope, new: NewCredential) -> ProviderCredential:
         """Checks the key, then stores the credential. A failed check stores nothing."""
+        _check_workspace(new.provider, new.workspace_id)
         capabilities = await self._capabilities(scope, new.provider, new.name, new.capabilities)
-        result = await self._verifier.check(new.provider, new.api_key)
+        result = await self._verifier.check(
+            new.provider, new.api_key, workspace_id=new.workspace_id
+        )
         if result.failure is not None:
-            details = {
+            details: dict[str, Any] = {
                 "name": new.name,
                 "provider": new.provider,
                 "masked_suffix": _suffix(new.api_key),
             }
+            if new.workspace_id is not None:
+                details["workspace_id"] = new.workspace_id
             raise await self._check_failed(scope, None, details, result.failure)
         credential = ProviderCredential(
             name=new.name,
             provider=new.provider,
             auth_kind=AuthKind.API_KEY,
             masked_suffix=_suffix(new.api_key),
+            workspace_id=new.workspace_id,
         )
         return await self._store(scope, credential, capabilities, new.api_key)
 
@@ -362,7 +388,9 @@ class Credentials:
         """Checks a stored credential again, however it authenticates."""
         if credential.auth_kind == AuthKind.API_KEY:
             return await self._verifier.check(
-                Provider(credential.provider), open_secret(self._envelope, credential)
+                Provider(credential.provider),
+                open_secret(self._envelope, credential),
+                workspace_id=credential.workspace_id,
             )
         capabilities = [Capability(c) for c in credential.capabilities]
         region = str(credential.region)
@@ -408,17 +436,34 @@ class Credentials:
         credential.last_checked_at = self._clock.now()
 
     async def rotate(
-        self, scope: OrganisationScope, credential_id: uuid.UUID, api_key: str
+        self,
+        scope: OrganisationScope,
+        credential_id: uuid.UUID,
+        api_key: str,
+        *,
+        workspace_id: str | _Keep | None = KEEP_WORKSPACE,
     ) -> ProviderCredential:
-        """Replaces the secret, keeping the credential's ID. A failed check keeps the old one."""
+        """Replaces the secret, keeping the credential's ID, and (for Anthropic) its Workspace
+        ID unless one is given (None clears it, for a key scoped to one workspace). A failed
+        check keeps the old key and Workspace ID."""
         credential = await self.get(scope, credential_id, for_update=True)
         if credential.auth_kind != AuthKind.API_KEY:
             raise NotRotatableError
-        result = await self._verifier.check(Provider(credential.provider), api_key)
+        provider = Provider(credential.provider)
+        workspace = credential.workspace_id if isinstance(workspace_id, _Keep) else workspace_id
+        _check_workspace(provider, workspace)
+        result = await self._verifier.check(provider, api_key, workspace_id=workspace)
         if result.failure is not None:
             details = _summary(credential) | {"attempted_suffix": _suffix(api_key)}
+            if workspace != credential.workspace_id:
+                details["attempted_workspace_id"] = workspace
             raise await self._check_failed(scope, credential.id, details, result.failure)
-        before = {"masked_suffix": credential.masked_suffix}
+        before: dict[str, Any] = {"masked_suffix": credential.masked_suffix}
+        after: dict[str, Any] = {"masked_suffix": _suffix(api_key)}
+        if workspace != credential.workspace_id:
+            before["workspace_id"] = credential.workspace_id
+            after["workspace_id"] = workspace
+            credential.workspace_id = workspace
         credential.secret_sealed = seal_secret(
             self._envelope, credential.organisation_id, credential.id, api_key
         )
@@ -430,7 +475,7 @@ class Credentials:
             "credential.rotated",
             credential.id,
             before=before,
-            after={"masked_suffix": credential.masked_suffix},
+            after=after,
         )
         await self._session.commit()
         return credential

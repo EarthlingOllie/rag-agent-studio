@@ -25,8 +25,10 @@ class LiveCredentialVerifier:
         self.api_keys = api_keys
         self.bedrock = bedrock
 
-    async def check(self, provider: Provider, api_key: str) -> CheckResult:
-        return await self.api_keys.check(provider, api_key)
+    async def check(
+        self, provider: Provider, api_key: str, *, workspace_id: str | None = None
+    ) -> CheckResult:
+        return await self.api_keys.check(provider, api_key, workspace_id=workspace_id)
 
     async def check_bedrock(self, access: BedrockAccess) -> CheckResult:
         return await self.bedrock.check(access)

@@ -268,8 +268,11 @@ class FakeModelAdapters:
     def __init__(self, *, chat: ChatBuilder = fake_chat) -> None:
         self._chat = chat
 
-    def chat(self, provider: Provider, secret: str, model: str) -> Model:
-        # The demo model is offline already, so the fakes build it too.
+    def chat(
+        self, provider: Provider, secret: str, model: str, *, workspace_id: str | None = None
+    ) -> Model:
+        # The demo model is offline already, so the fakes build it too. The fakes call no
+        # provider, so they have no use for a workspace.
         if provider is Provider.DEMO:
             return demo_chat_model(model)
         return self._chat(provider, secret, model)

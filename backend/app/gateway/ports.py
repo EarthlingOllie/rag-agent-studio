@@ -50,7 +50,11 @@ class ModelAdapters(Protocol):
     Production calls the providers; the fake (tests, ``docker compose``) answers
     deterministically without any network."""
 
-    def chat(self, provider: Provider, secret: str, model: str) -> Model: ...
+    def chat(
+        self, provider: Provider, secret: str, model: str, *, workspace_id: str | None = None
+    ) -> Model:
+        """A chat model; ``workspace_id`` is the Anthropic workspace its requests name."""
+        ...
 
     def embedder(self, provider: Provider, secret: str, model: str) -> EmbeddingModel: ...
 

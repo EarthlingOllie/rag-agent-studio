@@ -102,6 +102,7 @@ async def test_an_owner_adds_an_api_key_credential_for_each_provider(
         "masked_suffix": suffix,
         "role_arn": None,
         "region": None,
+        "workspace_id": None,
         "capabilities": capabilities,
         "check_status": "passed",
         "check_failure": None,
@@ -201,7 +202,9 @@ class _AddsTheSameNameWhileChecking:
         self._owner, self._name = owner, name
         self._raced = False
 
-    async def check(self, provider: Provider, api_key: str) -> CheckResult:
+    async def check(
+        self, provider: Provider, api_key: str, *, workspace_id: str | None = None
+    ) -> CheckResult:
         if not self._raced:
             self._raced = True
             response = await add_credential(self._owner, name=self._name)
@@ -310,7 +313,9 @@ class _Switchable:
         self.result = CheckResult()
         self.checked: list[tuple[Provider, str]] = []
 
-    async def check(self, provider: Provider, api_key: str) -> CheckResult:
+    async def check(
+        self, provider: Provider, api_key: str, *, workspace_id: str | None = None
+    ) -> CheckResult:
         self.checked.append((provider, api_key))
         return self.result
 

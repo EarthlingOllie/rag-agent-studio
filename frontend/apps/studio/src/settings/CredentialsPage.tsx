@@ -1,4 +1,4 @@
-import { type SubmitEvent, useState } from "react";
+import { type SubmitEvent, useId, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { Badge, button, ConfirmDialog, field, Notice, notice, surface, table, text } from "../design";
@@ -55,11 +55,14 @@ function CredentialActions({
   credential: Credential;
   busy: boolean;
   onCheck: () => void;
-  onRotate: (apiKey: string, done: () => void) => void;
+  onRotate: (apiKey: string, workspaceId: string | null | undefined, done: () => void) => void;
   onDelete: () => void;
 }) {
   const [mode, setMode] = useState<"idle" | "rotating" | "deleting">("idle");
   const [apiKey, setApiKey] = useState("");
+  const current = credential.workspace_id ?? "";
+  const [workspace, setWorkspace] = useState(current);
+  const anthropic = credential.provider === "anthropic";
   const idle = () => {
     setMode("idle");
     setApiKey("");
@@ -70,7 +73,9 @@ function CredentialActions({
         className="flex flex-wrap items-end justify-end gap-2"
         onSubmit={(event: SubmitEvent<HTMLFormElement>) => {
           event.preventDefault();
-          onRotate(apiKey, idle);
+          // Sent only when it changed: an emptied field clears it, for a key scoped to one workspace.
+          const next = workspace.trim();
+          onRotate(apiKey, !anthropic || next === current ? undefined : next || null, idle);
         }}
       >
         <label className={`${field.label} text-left`}>
@@ -86,6 +91,20 @@ function CredentialActions({
             className={field.input}
           />
         </label>
+        {anthropic && (
+          <label className={`${field.label} text-left`}>
+            Workspace ID for {credential.name}
+            <input
+              autoComplete="off"
+              placeholder="Empty for a key scoped to one workspace"
+              value={workspace}
+              onChange={(event) => {
+                setWorkspace(event.target.value);
+              }}
+              className={field.inputMono}
+            />
+          </label>
+        )}
         <button type="submit" className={button.primary} disabled={busy}>
           Check and rotate
         </button>
@@ -106,6 +125,8 @@ function CredentialActions({
           className={button.secondary}
           aria-label={`Rotate key: ${credential.name}`}
           onClick={() => {
+            // From the credential as it is now: a rotation may have moved it to another workspace.
+            setWorkspace(current);
             setMode("rotating");
           }}
         >
@@ -206,6 +227,11 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
                   <td className={`${table.td} font-medium`}>{credential.name}</td>
                   <td className={table.td}>
                     {credential.region ? `${PROVIDER_NAMES[credential.provider]} · ${credential.region}` : PROVIDER_NAMES[credential.provider]}
+                    {credential.workspace_id && (
+                      <span className="block font-mono text-xs break-all text-muted" aria-label={`Workspace ${credential.workspace_id}`}>
+                        {credential.workspace_id}
+                      </span>
+                    )}
                   </td>
                   <td className={table.tdMuted}>{capabilities(credential.capabilities)}</td>
                   <KeyCell credential={credential} />
@@ -226,10 +252,10 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
                             },
                           });
                         }}
-                        onRotate={(apiKey, finished) => {
+                        onRotate={(apiKey, workspaceId, finished) => {
                           start();
                           rotate.mutate(
-                            { credentialId: credential.id, apiKey },
+                            { credentialId: credential.id, apiKey, workspaceId },
                             {
                               onSuccess: (rotated) => {
                                 finished();
@@ -373,28 +399,45 @@ function TextField({
   onChange,
   type = "text",
   placeholder,
+  required = true,
+  mono = type === "password",
+  hint,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   type?: "text" | "password";
   placeholder?: string;
+  required?: boolean;
+  mono?: boolean;
+  hint?: string;
 }) {
-  return (
+  const hintId = useId();
+  const input = (
     <label className={field.label}>
       {label}
       <input
         type={type}
         autoComplete="off"
-        required
+        required={required}
         placeholder={placeholder}
         value={value}
+        aria-describedby={hint === undefined ? undefined : hintId}
         onChange={(event) => {
           onChange(event.target.value);
         }}
-        className={type === "password" ? field.inputMono : field.input}
+        className={mono ? field.inputMono : field.input}
       />
     </label>
+  );
+  if (hint === undefined) return input;
+  return (
+    <div>
+      {input}
+      <p id={hintId} className={field.hint}>
+        {hint}
+      </p>
+    </div>
   );
 }
 
@@ -409,6 +452,7 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
   const add = bedrock ? addBedrock : addKey;
   const [name, setName] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [workspaceId, setWorkspaceId] = useState("");
   const [authKind, setAuthKind] = useState<AwsAuthKind>("aws_role");
   const [roleArn, setRoleArn] = useState("");
   const [region, setRegion] = useState("us-east-1");
@@ -420,6 +464,7 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
     setSaved(`${credential.name} was checked and saved.`);
     setName("");
     setApiKey("");
+    setWorkspaceId("");
     setRoleArn("");
     setAccessKeyId("");
     setSecretAccessKey("");
@@ -451,8 +496,9 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
             addBedrock.mutate(body, { onSuccess: onSaved });
             return;
           }
+          const workspace = providerId === "anthropic" ? workspaceId.trim() : "";
           addKey.mutate(
-            { name, provider: providerId, api_key: apiKey, capabilities: chosen },
+            { name, provider: providerId, api_key: apiKey, capabilities: chosen, ...(workspace ? { workspace_id: workspace } : {}) },
             { onSuccess: onSaved },
           );
         }}
@@ -538,7 +584,20 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
             <TextField label="AWS region" value={region} onChange={setRegion} placeholder="us-east-1" />
           </>
         ) : (
-          <TextField label="API key" type="password" value={apiKey} onChange={setApiKey} />
+          <>
+            <TextField label="API key" type="password" value={apiKey} onChange={setApiKey} />
+            {providerId === "anthropic" && (
+              <TextField
+                label="Workspace ID (optional)"
+                value={workspaceId}
+                onChange={setWorkspaceId}
+                required={false}
+                mono
+                placeholder="wrkspc_…"
+                hint="Only for a personal or service account key that isn't scoped to one workspace: the workspace its requests use. Find it on the Workspaces page of the Claude Console."
+              />
+            )}
+          </>
         )}
         <fieldset className="text-sm text-ink">
           <legend className={field.label}>Use for</legend>

@@ -102,7 +102,9 @@ class _Recording:
         self.result = result
         self.bedrock: list[BedrockAccess] = []
 
-    async def check(self, provider: Provider, api_key: str) -> CheckResult:
+    async def check(
+        self, provider: Provider, api_key: str, *, workspace_id: str | None = None
+    ) -> CheckResult:
         raise AssertionError("A Bedrock credential is never checked as an API key")
 
     async def check_bedrock(self, access: BedrockAccess) -> CheckResult:
@@ -205,6 +207,7 @@ async def test_an_owner_adds_a_bedrock_credential_with_a_role(
         "masked_suffix": None,
         "role_arn": ROLE_ARN,
         "region": "eu-west-2",
+        "workspace_id": None,
         "capabilities": ["chat", "embeddings", "rerank"],
         "check_status": "passed",
         "check_failure": None,
@@ -366,6 +369,7 @@ async def test_an_owner_adds_a_bedrock_credential_with_access_keys(
         "masked_suffix": "MPLE",
         "role_arn": None,
         "region": "us-east-1",
+        "workspace_id": None,
         "capabilities": ["chat", "embeddings", "rerank"],
         "check_status": "passed",
         "check_failure": None,

@@ -28,6 +28,10 @@ class CheckFailure(enum.StrEnum):
     ROLE_NOT_ASSUMABLE = "role_not_assumable"
     # Bedrock: Bedrock, or the model, is not offered in the credential's region.
     WRONG_REGION = "wrong_region"
+    # Anthropic: the key isn't scoped to one workspace, so it needs a Workspace ID.
+    WORKSPACE_REQUIRED = "workspace_required"
+    # Anthropic: the Workspace ID doesn't exist, or the key's user or service account can't use it.
+    UNKNOWN_WORKSPACE = "unknown_workspace"
 
 
 @dataclass(frozen=True)
@@ -65,7 +69,11 @@ class BedrockAccess:
 
 
 class CredentialVerifier(Protocol):
-    async def check(self, provider: Provider, api_key: str) -> CheckResult: ...
+    async def check(
+        self, provider: Provider, api_key: str, *, workspace_id: str | None = None
+    ) -> CheckResult:
+        """Checks an API key; ``workspace_id`` is the Anthropic workspace to check it in."""
+        ...
 
     async def check_bedrock(self, access: BedrockAccess) -> CheckResult: ...
 
@@ -91,7 +99,9 @@ class FakeCredentialVerifier:
     they save.
     """
 
-    async def check(self, provider: Provider, api_key: str) -> CheckResult:
+    async def check(
+        self, provider: Provider, api_key: str, *, workspace_id: str | None = None
+    ) -> CheckResult:
         return _fake_result(api_key, CheckFailure.INVALID_KEY)
 
     async def check_bedrock(self, access: BedrockAccess) -> CheckResult:

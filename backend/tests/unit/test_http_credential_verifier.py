@@ -103,6 +103,108 @@ async def test_provider_errors_become_typed_failures(
     assert not result.passed
 
 
+WORKSPACE = "wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ"
+# Anthropic's documented workspace answers (Authentication > Select a workspace).
+NOT_SCOPED = {
+    "type": "error",
+    "error": {
+        "type": "invalid_request_error",
+        "message": "This API key is not scoped to a workspace, so this request must include the "
+        "anthropic-workspace-id header with the ID of the workspace to use. Add the header, or "
+        "use an API key that is scoped to a workspace.",
+    },
+}
+MALFORMED_WORKSPACE = {
+    "type": "error",
+    "error": {
+        "type": "invalid_request_error",
+        "message": "anthropic-workspace-id header must be a valid workspace ID.",
+    },
+}
+UNKNOWN_WORKSPACE = {
+    "type": "error",
+    "error": {"type": "not_found_error", "message": f"Workspace `{WORKSPACE}` not found."},
+}
+
+
+async def test_an_anthropic_key_is_checked_in_the_workspace_it_names() -> None:
+    seen: list[httpx.Request] = []
+
+    verifier = _verifier(200, ANTHROPIC_MODELS, seen)
+    result = await verifier.check(Provider.ANTHROPIC, KEY, workspace_id=WORKSPACE)
+
+    assert result.passed
+    (request,) = seen
+    assert request.headers["anthropic-workspace-id"] == WORKSPACE
+    assert request.headers["x-api-key"] == KEY
+
+
+async def test_without_a_workspace_no_workspace_header_is_sent() -> None:
+    seen: list[httpx.Request] = []
+
+    await _verifier(200, ANTHROPIC_MODELS, seen).check(Provider.ANTHROPIC, KEY)
+
+    (request,) = seen
+    assert "anthropic-workspace-id" not in request.headers
+
+
+@pytest.mark.parametrize(
+    ("status", "body", "failure"),
+    [
+        (400, NOT_SCOPED, CheckFailure.WORKSPACE_REQUIRED),
+        (400, MALFORMED_WORKSPACE, CheckFailure.UNKNOWN_WORKSPACE),
+        (404, UNKNOWN_WORKSPACE, CheckFailure.UNKNOWN_WORKSPACE),
+        # Other 400s and 404s keep their usual meaning.
+        (400, UNAUTHORISED, CheckFailure.PROVIDER_UNREACHABLE),
+        (
+            404,
+            {"error": {"type": "not_found_error", "message": "Not found"}},
+            CheckFailure.MISSING_MODEL_ACCESS,
+        ),
+        (404, {"error": "not found"}, CheckFailure.MISSING_MODEL_ACCESS),
+        (404, {"error": {"message": 404}}, CheckFailure.MISSING_MODEL_ACCESS),
+        (404, ["not", "an", "object"], CheckFailure.MISSING_MODEL_ACCESS),
+    ],
+)
+async def test_anthropics_workspace_answers_become_workspace_failures(
+    status: int, body: object, failure: CheckFailure
+) -> None:
+    verifier = _verifier(status, body, [])
+
+    assert await verifier.check(Provider.ANTHROPIC, KEY) == CheckResult(failure)
+
+
+async def test_an_error_page_that_isnt_json_keeps_its_usual_meaning() -> None:
+    def answer(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, text="<html>Not found</html>")
+
+    verifier = HttpCredentialVerifier(httpx.AsyncClient(transport=httpx.MockTransport(answer)))
+
+    assert await verifier.check(Provider.ANTHROPIC, KEY) == CheckResult(
+        CheckFailure.MISSING_MODEL_ACCESS
+    )
+
+
+async def test_the_workspace_answers_are_read_only_from_anthropic() -> None:
+    verifier = _verifier(400, NOT_SCOPED, [])
+
+    assert await verifier.check(Provider.OPENAI, KEY) == CheckResult(
+        CheckFailure.PROVIDER_UNREACHABLE
+    )
+
+
+async def test_the_live_verifier_passes_the_workspace_to_the_api_key_check() -> None:
+    seen: list[httpx.Request] = []
+    async with httpx.AsyncClient() as client:
+        live = build_verifier(_settings(), client, SystemClock())
+    assert isinstance(live, LiveCredentialVerifier)
+    live.api_keys = _verifier(200, ANTHROPIC_MODELS, seen)
+
+    assert (await live.check(Provider.ANTHROPIC, KEY, workspace_id=WORKSPACE)).passed
+    (request,) = seen
+    assert request.headers["anthropic-workspace-id"] == WORKSPACE
+
+
 async def test_a_network_error_is_an_unreachable_provider() -> None:
     def fail(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectTimeout("timed out", request=request)

@@ -43,6 +43,9 @@ class ProviderCredential(IdMixin, Base):
     secret_sealed: Mapped[bytes | None] = mapped_column(LargeBinary)
     # Only for providers that have regions (Bedrock).
     region: Mapped[str | None] = mapped_column(String(32))
+    # The Anthropic workspace an identity-backed key (personal or service account, not scoped
+    # to one workspace) works in, sent as ``anthropic-workspace-id``. Not a secret.
+    workspace_id: Mapped[str | None] = mapped_column(String(64))
     # The Owner's IAM role the platform assumes, for Bedrock role credentials. Not a secret.
     role_arn: Mapped[str | None] = mapped_column(String(2048))
     # The last characters of the secret (or of the AWS access key ID), which is all the API

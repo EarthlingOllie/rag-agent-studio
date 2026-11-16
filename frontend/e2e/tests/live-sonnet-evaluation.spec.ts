@@ -10,15 +10,19 @@ import { openSection } from "../fixtures/navigation";
 /*
  * The live end-to-end test: a new Organisation answers and judges with a real Claude model.
  *
- * Skipped unless E2E_LIVE_ANTHROPIC_KEY holds a workspace-scoped Anthropic API key, and it needs a
+ * Skipped unless E2E_LIVE_ANTHROPIC_KEY holds an Anthropic API key, and it needs a
  * stack started with MODEL_GATEWAY=live and CREDENTIAL_VERIFIER=live (the default compose stack
  * uses the offline fakes, which this test would not exercise). It spends real money: about 15 cases
  * answered and judged on two sides, plus a few Playground replies.
+ *
+ * A personal or service account key that isn't scoped to one workspace also needs
+ * E2E_LIVE_ANTHROPIC_WORKSPACE, the Workspace ID (wrkspc_…) its requests should use.
  *
  * E2E_LIVE_MODEL picks the model by its name in the Studio (default Claude Sonnet 5.5), and
  * E2E_LIVE_MIN_SCORE the Live Version's lowest acceptable Evaluation score (default 70).
  */
 const LIVE_KEY = process.env.E2E_LIVE_ANTHROPIC_KEY ?? "";
+const LIVE_WORKSPACE = process.env.E2E_LIVE_ANTHROPIC_WORKSPACE ?? "";
 const MODEL_NAME = process.env.E2E_LIVE_MODEL ?? "Claude Sonnet 5.5";
 const MIN_SCORE = Number(process.env.E2E_LIVE_MIN_SCORE ?? 70);
 const REPORT_DIR = process.env.E2E_LIVE_REPORT_DIR ?? "test-results/live-evaluation";
@@ -137,7 +141,7 @@ async function addCase(page: Page, each: Case) {
 test.use({ video: { mode: "on", size: { width: 1280, height: 800 } }, viewport: { width: 1280, height: 800 } });
 
 test.describe("live: Claude end to end", () => {
-  test.skip(LIVE_KEY === "", "Set E2E_LIVE_ANTHROPIC_KEY (a workspace-scoped Anthropic key) and start the stack with MODEL_GATEWAY=live.");
+  test.skip(LIVE_KEY === "", "Set E2E_LIVE_ANTHROPIC_KEY (and E2E_LIVE_ANTHROPIC_WORKSPACE for a key not scoped to one workspace) and start the stack with MODEL_GATEWAY=live.");
 
   test(`an Owner configures ${MODEL_NAME}, builds a Knowledge Base and an Agent, and evaluates a Draft against the Live Version`, async ({
     signedInPage: page,
@@ -155,6 +159,7 @@ test.describe("live: Claude end to end", () => {
       await form.getByLabel("Provider").selectOption("Anthropic");
       await form.getByLabel("Name").fill("Live Claude");
       await form.getByLabel("API key").fill(LIVE_KEY);
+      if (LIVE_WORKSPACE !== "") await form.getByLabel("Workspace ID (optional)").fill(LIVE_WORKSPACE);
       await form.getByRole("button", { name: "Check and save" }).click();
       await expect(page.getByText("Live Claude was checked and saved.")).toBeVisible({ timeout: 30_000 });
       const row = page.getByRole("table", { name: "Provider Credentials" }).getByRole("row", { name: /Live Claude/ });

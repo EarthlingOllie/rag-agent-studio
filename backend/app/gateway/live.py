@@ -17,6 +17,7 @@ from functools import partial
 from typing import Any
 
 import httpx2
+from anthropic import AsyncAnthropic
 from botocore.exceptions import ClientError
 from pydantic_ai.embeddings import EmbeddingModel, EmbeddingResult, EmbeddingSettings
 from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
@@ -30,6 +31,7 @@ from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.usage import RequestUsage
 
 from app.credentials.bedrock_verifier import AssumedRoleSessions, AwsKeys, ClientFactory
+from app.credentials.http_verifier import WORKSPACE_HEADER
 from app.credentials.registry import Provider
 from app.embeddings.registry import embedding_model
 from app.gateway.demo import demo_chat_model
@@ -220,11 +222,11 @@ class LiveModelAdapters:
         self._client = client
         self.bedrock = bedrock
 
-    def chat(self, provider: Provider, secret: str, model: str) -> Model:
+    def chat(
+        self, provider: Provider, secret: str, model: str, *, workspace_id: str | None = None
+    ) -> Model:
         if provider is Provider.ANTHROPIC:
-            return AnthropicModel(
-                model, provider=AnthropicProvider(api_key=secret, http_client=self._client)
-            )
+            return AnthropicModel(model, provider=self._anthropic(secret, workspace_id))
         if provider is Provider.OPENAI:
             return OpenAIChatModel(model, provider=self._openai(secret))
         if provider is Provider.DEMO:
@@ -245,6 +247,17 @@ class LiveModelAdapters:
         if provider is Provider.VOYAGE:
             return VoyageReranker(self._client, secret, model)
         raise _unsupported(provider)
+
+    def _anthropic(self, secret: str, workspace_id: str | None) -> AnthropicProvider:
+        if workspace_id is None:
+            return AnthropicProvider(api_key=secret, http_client=self._client)
+        # A key that isn't scoped to one workspace names its workspace on every request.
+        client = AsyncAnthropic(
+            api_key=secret,
+            http_client=self._client,
+            default_headers={WORKSPACE_HEADER: workspace_id},
+        )
+        return AnthropicProvider(anthropic_client=client)
 
     def _openai(self, secret: str) -> OpenAIProvider:
         return OpenAIProvider(api_key=secret, http_client=self._client)

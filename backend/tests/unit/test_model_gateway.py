@@ -66,7 +66,11 @@ NO_BEDROCK = BedrockClients(
 
 
 def credential(
-    provider: Provider, secret: str, capabilities: list[Capability] | None = None
+    provider: Provider,
+    secret: str,
+    capabilities: list[Capability] | None = None,
+    *,
+    workspace_id: str | None = None,
 ) -> ProviderCredential:
     organisation_id, credential_id = uuid.uuid4(), uuid.uuid4()
     now = datetime(2026, 11, 5, tzinfo=UTC)
@@ -90,6 +94,7 @@ def credential(
         check_failure=None,
         last_checked_at=now,
         secret_set_at=now,
+        workspace_id=workspace_id,
     )
 
 
@@ -204,6 +209,28 @@ async def test_an_anthropic_credential_gives_a_claude_model_using_its_key() -> N
         request.headers.get("authorization", "").removeprefix("Bearer "),
     }
     assert recorder.body()["model"] == "claude-haiku-4-5"
+    assert "anthropic-workspace-id" not in request.headers
+
+
+async def test_an_anthropic_credential_with_a_workspace_names_it_on_every_request() -> None:
+    # A personal or service account key not scoped to one workspace must say which to use.
+    recorder = Recorder(lambda request: anthropic_stream("Hello from Claude"))
+    gateway = live_gateway(recorder)
+    workspace = "wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ"
+
+    claude = credential(Provider.ANTHROPIC, ANTHROPIC_KEY, workspace_id=workspace)
+    model = gateway.chat_model(claude, "claude-haiku-4-5")
+    await Agent(model).run("Hi")
+    await Agent(model).run("Hi again")
+
+    assert [request.headers["anthropic-workspace-id"] for request in recorder.requests] == [
+        workspace,
+        workspace,
+    ]
+    assert ANTHROPIC_KEY in {
+        recorder.requests[0].headers.get("x-api-key"),
+        recorder.requests[0].headers.get("authorization", "").removeprefix("Bearer "),
+    }
 
 
 async def test_claude_sonnet_5_5_is_sent_no_temperature_which_it_refuses() -> None:

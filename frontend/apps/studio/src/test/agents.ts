@@ -64,6 +64,7 @@ const credential = (
   masked_suffix: "wxyz",
   role_arn: null,
   region: null,
+  workspace_id: null,
   capabilities,
   check_status: "passed",
   check_failure: null,

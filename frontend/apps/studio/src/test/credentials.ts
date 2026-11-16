@@ -52,6 +52,7 @@ export const marketingOpenAi: Credential = {
   masked_suffix: "wxyz",
   role_arn: null,
   region: null,
+  workspace_id: null,
   capabilities: ["chat", "embeddings"],
   check_status: "passed",
   check_failure: null,
@@ -67,11 +68,23 @@ export const legalVoyage: Credential = {
   masked_suffix: "9876",
   role_arn: null,
   region: null,
+  workspace_id: null,
   capabilities: ["embeddings", "rerank"],
   check_status: "failed",
   check_failure: "quota_exceeded",
   last_checked_at: "2026-11-04T17:45:00Z",
   created_at: "2026-11-01T08:00:00Z",
+};
+
+/** An Anthropic personal key that isn't scoped to one workspace, so it names its workspace. */
+export const personalClaude: Credential = {
+  ...marketingOpenAi,
+  id: "c0000000-0000-4000-8000-000000000005",
+  name: "Personal Claude",
+  provider: "anthropic",
+  masked_suffix: "p3r5",
+  workspace_id: "wrkspc_01JwQvzr7rXLA5AGx3HKfFUJ",
+  capabilities: ["chat"],
 };
 
 export const bedrockRole: Credential = {
@@ -82,6 +95,7 @@ export const bedrockRole: Credential = {
   masked_suffix: null,
   role_arn: "arn:aws:iam::111122223333:role/StudioBedrockAccess",
   region: "eu-west-2",
+  workspace_id: null,
   capabilities: ["chat", "embeddings", "rerank"],
   check_status: "failed",
   check_failure: "role_not_assumable",
@@ -117,6 +131,8 @@ function failureOf(value: string): CheckFailure | undefined {
     "provider_unreachable",
     "role_not_assumable",
     "wrong_region",
+    "workspace_required",
+    "unknown_workspace",
   ];
   return reasons.find((reason) => value.startsWith(`fail-${reason}`));
 }
@@ -133,7 +149,7 @@ export function fakeCredentialsApi(
   let credentials = [...(options.credentials ?? [marketingOpenAi, legalVoyage])];
   const added: unknown[] = [];
   let setupRequests = 0;
-  const rotated: { id: string; apiKey: string }[] = [];
+  const rotated: { id: string; apiKey: string; workspaceId?: string | null }[] = [];
   const checked: string[] = [];
   const deleted: string[] = [];
   const references = options.references ?? {};
@@ -161,6 +177,7 @@ export function fakeCredentialsApi(
         provider: body.provider,
         masked_suffix: body.api_key.slice(-4),
         capabilities: body.capabilities ?? [],
+        workspace_id: body.workspace_id ?? null,
       };
       credentials.push(credential);
       return HttpResponse.json(credential, { status: 201 });
@@ -199,11 +216,21 @@ export function fakeCredentialsApi(
       });
     }),
     http.post("*/api/organisations/:organisationId/credentials/:credentialId/rotate", async ({ params, request }) => {
-      const { api_key: apiKey } = (await request.json()) as Schemas["RotateCredentialRequest"];
-      rotated.push({ id: params.credentialId as string, apiKey });
+      const body = (await request.json()) as Schemas["RotateCredentialRequest"];
+      const apiKey = body.api_key;
+      // Left out, the credential keeps its Workspace ID; null clears it.
+      const workspace = "workspace_id" in body ? { workspaceId: body.workspace_id ?? null } : {};
+      rotated.push({ id: params.credentialId as string, apiKey, ...workspace });
       const reason = failureOf(apiKey);
       if (reason) return checkFailed(reason);
-      return replace({ ...find(params.credentialId), masked_suffix: apiKey.slice(-4), check_status: "passed", check_failure: null });
+      const credential = find(params.credentialId);
+      return replace({
+        ...credential,
+        masked_suffix: apiKey.slice(-4),
+        workspace_id: "workspaceId" in workspace ? workspace.workspaceId : credential.workspace_id,
+        check_status: "passed",
+        check_failure: null,
+      });
     }),
     http.delete("*/api/organisations/:organisationId/credentials/:credentialId", ({ params }) => {
       const id = params.credentialId as string;

@@ -29,6 +29,7 @@ from app.credentials.service import (
     NewCredential,
     NotRotatableError,
     UnsupportedCapabilityError,
+    WorkspaceNotSupportedError,
 )
 from app.credentials.verifier import CheckFailure, CredentialVerifier, get_verifier
 from app.tenancy.api import ORGANISATION_PREFIX
@@ -56,6 +57,14 @@ FAILURE_MESSAGES = {
     CheckFailure.PROVIDER_UNREACHABLE: (
         "We couldn't reach the provider to check the key. Try again in a few minutes."
     ),
+    CheckFailure.WORKSPACE_REQUIRED: (
+        "This key isn't scoped to one workspace, so Anthropic needs to know which to use. "
+        "Add the Workspace ID, or use a key scoped to a workspace."
+    ),
+    CheckFailure.UNKNOWN_WORKSPACE: (
+        "Anthropic doesn't know this Workspace ID, or the key can't use that workspace. "
+        "Copy the ID from the Workspaces page of the Claude Console."
+    ),
 }
 BEDROCK_FAILURE_MESSAGES = {
     CheckFailure.INVALID_KEY: (
@@ -81,6 +90,7 @@ BEDROCK_FAILURE_MESSAGES = {
         "We couldn't reach AWS to check the credential. Try again in a few minutes."
     ),
 }
+WORKSPACE_NOT_SUPPORTED = "Only Anthropic credentials take a Workspace ID."
 NOT_ROTATABLE = (
     "Bedrock credentials can't be rotated with an API key. "
     "Add a new Bedrock credential, then delete this one."
@@ -96,6 +106,10 @@ CredentialName = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
 ]
 ApiKeyProvider = Literal[Provider.ANTHROPIC, Provider.OPENAI, Provider.VOYAGE, Provider.DEMO]
+# An Anthropic workspace's ID, as the Claude Console's Workspaces page shows it.
+WorkspaceId = Annotated[
+    str, StringConstraints(strip_whitespace=True, pattern=r"^wrkspc_[A-Za-z0-9]{1,57}$")
+]
 
 
 class CreateCredentialRequest(BaseModel):
@@ -105,6 +119,9 @@ class CreateCredentialRequest(BaseModel):
     api_key: SecretStr
     # What the credential may be used for; defaults to everything the provider offers.
     capabilities: Annotated[list[Capability], Field(min_length=1)] | None = None
+    # Anthropic only: the workspace a key that isn't scoped to one workspace (a personal or
+    # service account key) works in. Leave it out for a key scoped to one workspace.
+    workspace_id: WorkspaceId | None = None
 
 
 # An IAM role in any AWS partition, possibly with a path: arn:aws:iam::123456789012:role/Name
@@ -169,6 +186,9 @@ class BedrockSetupOut(BaseModel):
 
 class RotateCredentialRequest(BaseModel):
     api_key: SecretStr
+    # Anthropic only. Left out, the credential keeps its Workspace ID; null clears it (for a
+    # new key scoped to one workspace); a value replaces it.
+    workspace_id: WorkspaceId | None = None
 
 
 class CredentialOut(BaseModel):
@@ -183,6 +203,8 @@ class CredentialOut(BaseModel):
     role_arn: str | None
     # The AWS region, for Bedrock.
     region: str | None
+    # The Anthropic workspace the key works in, when the key isn't scoped to one workspace.
+    workspace_id: str | None
     capabilities: list[Capability]
     check_status: Literal["passed", "failed"]
     check_failure: CheckFailure | None
@@ -261,6 +283,7 @@ def _out(credential: ProviderCredential) -> CredentialOut:
         masked_suffix=credential.masked_suffix,
         role_arn=credential.role_arn,
         region=credential.region,
+        workspace_id=credential.workspace_id,
         capabilities=[Capability(c) for c in credential.capabilities],
         check_status="passed" if credential.check_status == "passed" else "failed",
         check_failure=None
@@ -310,9 +333,13 @@ async def create_credential(
     body: CreateCredentialRequest, scope: OwnerScope, credentials: CredentialsService
 ) -> CredentialOut | JSONResponse:
     """Checks the key with the provider, then stores it encrypted. A failed check stores nothing."""
-    new = NewCredential(body.name, body.provider, _api_key(body.api_key), body.capabilities)
+    new = NewCredential(
+        body.name, body.provider, _api_key(body.api_key), body.capabilities, body.workspace_id
+    )
     try:
         credential = await credentials.create(scope, new)
+    except WorkspaceNotSupportedError:
+        raise _workspace_not_supported() from None
     except UnsupportedCapabilityError as error:
         raise _unsupported(error) from None
     except DuplicateNameError:
@@ -320,6 +347,10 @@ async def create_credential(
     except CheckFailedError as error:
         return _check_failed(error)
     return _out(credential)
+
+
+def _workspace_not_supported() -> HTTPException:
+    return HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, WORKSPACE_NOT_SUPPORTED)
 
 
 def _unsupported(error: UnsupportedCapabilityError) -> HTTPException:
@@ -436,12 +467,17 @@ async def rotate_credential(
 ) -> CredentialOut | JSONResponse:
     """Replaces the key, keeping the credential's identity. A failed check keeps the old key."""
     api_key = _api_key(body.api_key)
+    workspace = (
+        {"workspace_id": body.workspace_id} if "workspace_id" in body.model_fields_set else {}
+    )
     try:
-        return _out(await credentials.rotate(scope, credential_id, api_key))
+        return _out(await credentials.rotate(scope, credential_id, api_key, **workspace))
     except CredentialNotFoundError:
         raise _not_found() from None
     except NotRotatableError:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NOT_ROTATABLE) from None
+    except WorkspaceNotSupportedError:
+        raise _workspace_not_supported() from None
     except CheckFailedError as error:
         return _check_failed(error)
 

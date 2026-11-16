@@ -1105,7 +1105,9 @@
           "quota_exceeded",
           "provider_unreachable",
           "role_not_assumable",
-          "wrong_region"
+          "wrong_region",
+          "workspace_required",
+          "unknown_workspace"
         ],
         "title": "CheckFailure",
         "type": "string"
@@ -2245,6 +2247,18 @@
             ],
             "title": "Provider",
             "type": "string"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "pattern": "^wrkspc_[A-Za-z0-9]{1,57}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
           }
         },
         "required": [
@@ -2404,6 +2418,17 @@
               }
             ],
             "title": "Role Arn"
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
           }
         },
         "required": [
@@ -2414,6 +2439,7 @@
           "masked_suffix",
           "role_arn",
           "region",
+          "workspace_id",
           "capabilities",
           "check_status",
           "check_failure",
@@ -6786,6 +6812,18 @@
             "title": "Api Key",
             "type": "string",
             "writeOnly": true
+          },
+          "workspace_id": {
+            "anyOf": [
+              {
+                "pattern": "^wrkspc_[A-Za-z0-9]{1,57}$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Workspace Id"
           }
         },
         "required": [
