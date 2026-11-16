@@ -1,10 +1,11 @@
 import { MarkdownEditor } from "@studio/ui";
 import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 
-import { button, field as fields, Section, Segmented } from "../design";
+import { field as fields, Section, Segmented } from "../design";
 import { type Capability, type Credential, useCredentials } from "../settings/credentials";
 import { ChatModelOptions, withoutTools } from "../settings/ModelOptions";
 import { type Agent, StaleDraftError, useSaveDraft, useStoreAgent } from "./agents";
+import { DraftConflict } from "./DraftConflict";
 import { type Draft, DraftRequestError, errorsFor, type FieldError, type ModelChoice, useCredentialModels } from "./draft";
 import { useTags } from "./tags";
 
@@ -448,29 +449,6 @@ const DEFAULT_SEARCH_LIMIT = 3;
 const orNull = (text: string) => (text.trim() === "" ? null : text);
 
 /**
- * Someone else saved the Draft after the revision these edits were made on: the Editor loads
- * their Draft (losing these edits) or saves these edits over theirs.
- */
-function DraftConflict({ latest, onLoad, onKeep }: { latest: Agent; onLoad: () => void; onKeep: () => void }) {
-  return (
-    <div role="alert" className="mx-6 my-4 space-y-2 rounded-xl bg-flag-soft p-3 text-sm text-flag">
-      <p>
-        Someone else saved this Draft while you were editing (saved {new Date(latest.draft_updated_at).toLocaleString()}). Your
-        changes aren&apos;t saved. Load their Draft, or save yours over it.
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className={button.secondary} onClick={onLoad}>
-          Load their changes
-        </button>
-        <button type="button" className={button.secondary} onClick={onKeep}>
-          Save mine over theirs
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/**
  * The Agent's Draft, every group of its AgentConfig. Each change is saved automatically once
  * typing pauses; the status says whether everything is saved, and the API's reasons for
  * refusing a setting appear beside it. Saves name the Draft revision they were made on; when
@@ -626,12 +604,12 @@ export function DraftEditor({
       {conflict && (
         <DraftConflict
           latest={conflict}
-          onLoad={() => {
-            void store(conflict);
+          onLoad={(theirs) => {
+            void store(theirs);
             onReplaced();
           }}
-          onKeep={() => {
-            base.current = conflict.draft_revision;
+          onOverwrite={(theirs) => {
+            base.current = theirs.draft_revision;
             setConflict(null);
             setStatus("saving");
             enqueue(draft, ++latest.current);
