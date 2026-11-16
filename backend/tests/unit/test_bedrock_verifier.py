@@ -491,8 +491,8 @@ class _Answers:
         self.answer = answer
         self.asked: list[object] = []
 
-    async def check(self, *args: object) -> CheckResult:
-        self.asked.append(args)
+    async def check(self, *args: object, **kwargs: object) -> CheckResult:
+        self.asked.append(args + tuple(kwargs.values()))
         return self.answer
 
 
@@ -502,5 +502,5 @@ async def test_the_live_verifier_routes_each_check() -> None:
 
     assert await verifier.check(Provider.OPENAI, "sk-test-key-0000") == PASSED
     assert await verifier.check_bedrock(_role()) == CheckResult(CheckFailure.WRONG_REGION)
-    assert api_keys.asked == [(Provider.OPENAI, "sk-test-key-0000")]
+    assert api_keys.asked == [(Provider.OPENAI, "sk-test-key-0000", None)]
     assert bedrock.asked == [(_role(),)]
