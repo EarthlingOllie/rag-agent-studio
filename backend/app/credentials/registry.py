@@ -65,6 +65,7 @@ PROVIDERS: dict[Provider, ProviderSpec] = {
             (AuthKind.API_KEY,),
             {
                 Capability.CHAT: (
+                    chat("claude-sonnet-5-5", "Claude Sonnet 5.5"),
                     chat("claude-opus-4-1", "Claude Opus 4.1"),
                     chat("claude-sonnet-4-5", "Claude Sonnet 4.5"),
                     chat("claude-haiku-4-5", "Claude Haiku 4.5"),

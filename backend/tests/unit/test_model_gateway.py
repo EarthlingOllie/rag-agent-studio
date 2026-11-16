@@ -206,6 +206,22 @@ async def test_an_anthropic_credential_gives_a_claude_model_using_its_key() -> N
     assert recorder.body()["model"] == "claude-haiku-4-5"
 
 
+async def test_claude_sonnet_5_5_is_sent_no_temperature_which_it_refuses() -> None:
+    # Claude Sonnet 5.5 answers 400 to a non-default temperature; an Agent's Behaviour always has
+    # one (0.7 by default) and the judge asks for 0, so the request must leave it out.
+    recorder = Recorder(lambda request: anthropic_stream("Hello from Claude"))
+    gateway = live_gateway(recorder)
+
+    model = gateway.chat_model(credential(Provider.ANTHROPIC, ANTHROPIC_KEY), "claude-sonnet-5-5")
+    with pytest.warns(UserWarning, match="temperature"):
+        result = await Agent(model, model_settings={"temperature": 0.7}).run("Hi")
+
+    assert result.output == "Hello from Claude"
+    body = recorder.body()
+    assert body["model"] == "claude-sonnet-5-5"
+    assert "temperature" not in body
+
+
 async def test_an_openai_credential_gives_a_gpt_model_using_its_key() -> None:
     recorder = Recorder(lambda request: openai_completion("Hello from GPT"))
     gateway = live_gateway(recorder)

@@ -79,6 +79,14 @@ async def test_a_credentials_models_show_the_platform_price_table(owner: SignedU
     assert listed["unit"] == "per million tokens"
     assert listed["models"] == [
         {
+            "model": "claude-sonnet-5-5",
+            "model_name": "Claude Sonnet 5.5",
+            "capability": "chat",
+            "platform": {"input": "2", "output": "10", "cached_input": "0.1"},
+            "override": None,
+            "effective": {"input": "2", "output": "10", "cached_input": "0.1"},
+        },
+        {
             "model": "claude-opus-4-1",
             "model_name": "Claude Opus 4.1",
             "capability": "chat",
