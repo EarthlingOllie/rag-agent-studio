@@ -7,12 +7,12 @@
 **Blocked by:**
 - None
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] The stale-Draft conflict prompt is a shared, exported Studio component taking the latest Agent from the existing stale-Draft error, with load and overwrite callbacks
-- [ ] The Draft editor uses it, and its existing conflict tests pass unchanged
-- [ ] The component has its own network-seam tests for both choices
-- [ ] No behaviour or API change
-- [ ] New Studio UI uses the design system ([docs/design/README.md](../../design/README.md), `frontend/apps/studio/src/design`): its tokens, recipes and shared patterns (dialogs, toasts, badges, code blocks, meters, diffs, empty and loading states, bulk bar, segmented control, pagination, editable list), never Tailwind palette classes or `dark:`; the palette ratchet passes
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] The stale-Draft conflict prompt is a shared, exported Studio component taking the latest Agent from the existing stale-Draft error, with load and overwrite callbacks
+- [x] The Draft editor uses it, and its existing conflict tests pass unchanged
+- [x] The component has its own network-seam tests for both choices
+- [x] No behaviour or API change
+- [x] New Studio UI uses the design system ([docs/design/README.md](../../design/README.md), `frontend/apps/studio/src/design`): its tokens, recipes and shared patterns (dialogs, toasts, badges, code blocks, meters, diffs, empty and loading states, bulk bar, segmented control, pagination, editable list), never Tailwind palette classes or `dark:`; the palette ratchet passes
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
