@@ -1,7 +1,10 @@
 """Evaluation settings routes (Organisation settings, Models): every Member reads the
-Evaluation Model and the Evaluation repeats; Owners set them."""
+Evaluation Model, the Evaluation repeats and the Evaluation budget with this month's spend;
+Owners set them."""
 
 import uuid
+from datetime import date, datetime
+from decimal import Decimal
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -12,8 +15,9 @@ from app.core.clock import Clock, get_clock
 from app.credentials.registry import Provider
 from app.default_model.api import NOT_FOR_CHAT, NOT_IN_ORGANISATION
 from app.default_model.service import CredentialNotInOrganisationError
-from app.evaluation import settings
+from app.evaluation import budget, settings
 from app.gateway.gateway import CapabilityNotGrantedError, ModelNotOfferedError
+from app.playground.api import Dollars
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import NOT_FOUND, OWNERS_ONLY, OwnerScope, Scope
 
@@ -128,3 +132,63 @@ async def set_evaluation_repeats(
     """Sets the Evaluation repeats to 1, 3, 5, 7 or 9 (Owners only). Recorded as
     ``organisation.evaluation_repeats_changed``."""
     return _out(await settings.set_repeats(db, scope, body.repeats, now=clock.now()))
+
+
+# The largest Evaluation budget, in US dollars.
+EVALUATION_BUDGET_MAX = Decimal(1_000_000)
+
+
+class EvaluationBudgetOut(BaseModel):
+    # The most Live Verdicts may spend per calendar month (UTC), in US dollars; null while
+    # there is none, and then no reply is sampled.
+    evaluation_budget_usd: Dollars | None
+    # The first day of the month counted: this one.
+    month: date
+    # What this month's Live Verdicts have spent, in US dollars. Judgements already under way
+    # when the budget is reached still finish, so it can pass the budget slightly.
+    spent_usd: Dollars
+    # Whether the month's spend has reached the budget, so sampling is paused.
+    exhausted: bool
+    # Midnight UTC on the 1st of next month, when a new month's spend starts.
+    resets_at: datetime
+
+
+class SetEvaluationBudgetRequest(BaseModel):
+    """US dollars and cents above zero, or null for no budget (which stops all sampling)."""
+
+    evaluation_budget_usd: (
+        Annotated[Decimal, Field(gt=0, le=EVALUATION_BUDGET_MAX, decimal_places=2)] | None
+    )
+
+
+def _budget_out(found: budget.EvaluationBudget) -> EvaluationBudgetOut:
+    return EvaluationBudgetOut(
+        evaluation_budget_usd=found.budget_usd,
+        month=found.month,
+        spent_usd=found.spent_usd.normalize() if found.spent_usd else Decimal(0),
+        exhausted=found.exhausted,
+        resets_at=found.resets_at,
+    )
+
+
+@router.get("/evaluation-budget", responses=_NOT_FOUND, operation_id="getEvaluationBudget")
+async def get_evaluation_budget(scope: Scope, db: Db, clock: ClockDep) -> EvaluationBudgetOut:
+    """The Evaluation budget (null while there is none) and this month's spend against it, for
+    the meter. Open to every Member."""
+    return _budget_out(await budget.read_budget(db, scope.organisation_id, clock.now()))
+
+
+@router.put(
+    "/evaluation-budget",
+    responses={**_OWNERS, 422: {"description": "Not dollars and cents above zero"}},
+    operation_id="setEvaluationBudget",
+)
+async def set_evaluation_budget(
+    body: SetEvaluationBudgetRequest, scope: OwnerScope, db: Db, clock: ClockDep
+) -> EvaluationBudgetOut:
+    """Sets the monthly Evaluation budget in US dollars, or with null removes it, which stops
+    all sampling while keeping each Agent's Live sample rate (Owners only). Raising it resumes
+    sampling at the next reply. Recorded as ``organisation.evaluation_budget_changed``."""
+    return _budget_out(
+        await budget.set_budget(db, scope, body.evaluation_budget_usd, now=clock.now())
+    )

@@ -1,6 +1,6 @@
 """The emails the Studio sends. Each template renders an ``Email`` from its variables."""
 
-from datetime import timedelta
+from datetime import date, timedelta
 from urllib.parse import urlencode
 
 from app.mail.port import Email
@@ -128,5 +128,30 @@ def token_budget_exhausted(*, to: str, name: str, agent_name: str, budget: int, 
             "To raise the budget, open the Agent's Operational Settings in the Studio:\n\n"
             f"{link}\n\n"
             "You get this email once per Agent per day.\n"
+        ),
+    )
+
+
+def models_settings_link(studio_url: str, organisation_id: str) -> str:
+    """Organisation settings, Models: where Owners set the Evaluation budget."""
+    return f"{studio_url.rstrip('/')}/organisations/{organisation_id}/settings/models"
+
+
+def evaluation_budget_spent(
+    *, to: str, name: str, budget: str, resets_on: date, link: str
+) -> Email:
+    return Email(
+        to=to,
+        subject="Your Organisation's Evaluation budget is spent",
+        text=(
+            f"Hello {name},\n\n"
+            f"Live Verdicts have spent this month's Evaluation budget of {budget}, so no more "
+            "Visitor replies are judged until it is raised or a new month starts on "
+            f"{resets_on:%-d %B %Y} (UTC). Judgements already under way still finish, so the "
+            "spend can pass the budget slightly. Visitors' replies are not affected, and "
+            "Evaluation Runs are never capped.\n\n"
+            "To raise the budget, open Organisation settings in the Studio:\n\n"
+            f"{link}\n\n"
+            "You get this email once per month.\n"
         ),
     )

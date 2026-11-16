@@ -9,12 +9,13 @@ when it starts (``EvaluationRunCase``), and each side's effective AgentConfig an
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -22,6 +23,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     false,
     text,
 )
@@ -379,3 +381,22 @@ class LiveVerdict(IdMixin, Base):
     # When the Purge cleared its reasons, with its Message's text (``app.retention``): they can
     # quote the Visitor. Its outcomes, Cost and counts stay.
     purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EvaluationSpend(IdMixin, Base):
+    """What an Organisation's Live Verdicts have spent in one calendar month (UTC), against its
+    Evaluation budget, and when its Owners were emailed that the budget was spent. A new month
+    is a new row, so the budget resets without a job (``app.evaluation.budget``)."""
+
+    __tablename__ = "evaluation_spend"
+    __table_args__ = (UniqueConstraint("organisation_id", "month"),)
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE")
+    )
+    # The first day of the month.
+    month: Mapped[date] = mapped_column(Date)
+    # US dollars, the sum of the month's Live Verdicts' frozen Costs.
+    spent_usd: Mapped[Decimal] = mapped_column(Numeric(18, 9), server_default=text("0"))
+    # Set by the judgement that took the spend to or past the budget, which emailed the Owners.
+    budget_spent_emailed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

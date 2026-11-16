@@ -4,9 +4,10 @@ chosen one in the background with the Evaluation Model.
 Choosing happens after a Visitor reply is stored and sent, so it never delays or changes it. A
 reply is a candidate unless it is a Guardrail block or the Fallback Text, and only while its
 Agent isn't archived; a draw from the one module-level random source chooses it with the
-Agent's Live sample rate. The draw is seeded from ``Settings.live_sample_seed``, which tests set, so
-a sampled subset is stable. A chosen reply gets a ``pending`` Live Verdict, committed before its
-task is sent. The Playground never calls this: only the widget's replies are sampled.
+Agent's Live sample rate, while the Organisation's Evaluation budget for the month isn't spent
+(``app.evaluation.budget``). The draw is seeded from ``Settings.live_sample_seed``, which tests
+set, so a sampled subset is stable. A chosen reply gets a ``pending`` Live Verdict, committed
+before its task is sent. The Playground never calls this: only the widget's replies are sampled.
 
 The task judges the question, the reply, its Remembered turns (as its Agent Version remembered
 them) and the Chunks the reply was given (cited and not), each in its own data block, through the
@@ -15,9 +16,10 @@ judge, asked for ``grounding`` and ``answers_question`` in one
 structured-output call at temperature 0. The system prompt and Project Instructions are never
 sent. The reply passes when both checks pass. A judge error or timeout makes the Live Verdict an
 ``error`` with its reason; there is no retry, so an outage doesn't multiply spend. The judge's
-Cost is frozen with the cost function and Price table in force when it is judged. When the reply,
-its question or a Remembered turn has been Purged before judging, the Live Verdict is ``skipped``
-and nothing is sent to the judge.
+Cost is frozen with the cost function and Price table in force when it is judged, and added to
+the Organisation's monthly spend; the judgement that spends the budget emails its Owners once.
+When the reply, its question or a Remembered turn has been Purged before judging, the Live
+Verdict is ``skipped`` and nothing is sent to the judge.
 """
 
 import functools
@@ -34,6 +36,7 @@ from app.agents.models import Agent, AgentVersion
 from app.conversations.models import Message, MessageRole
 from app.conversations.service import traced_chunks
 from app.core.clock import Clock
+from app.evaluation.budget import add_spend, email_owners, read_budget
 from app.evaluation.from_message import question_of
 from app.evaluation.judge import CitedExcerpt, JudgeError, JudgeRequest, judge
 from app.evaluation.models import LiveStatus, LiveVerdict, VerdictOutcome
@@ -72,11 +75,21 @@ async def sample_reply(
     if done.refused or done.fallback:
         return None
     async with sessionmaker() as session:
-        rate = await session.scalar(
-            select(Agent.live_sample_rate).where(Agent.id == agent_id, Agent.archived_at.is_(None))
-        )
+        found = (
+            await session.execute(
+                select(Agent.live_sample_rate, Agent.organisation_id).where(
+                    Agent.id == agent_id, Agent.archived_at.is_(None)
+                )
+            )
+        ).one_or_none()
+        if found is None or not found.live_sample_rate:
+            return None
+        # Nothing is chosen without an Evaluation budget, or once the month's is spent.
+        now = clock.now()
+        if not (await read_budget(session, found.organisation_id, now)).allows_sampling:
+            return None
         # A draw falls under the rate as often as the rate says: never at 0, always at 100.
-        if not rate or _draws.random() * 100 >= rate:
+        if _draws.random() * 100 >= found.live_sample_rate:
             return None
         message = await session.get_one(Message, message_id)
         verdict = LiveVerdict(
@@ -87,7 +100,7 @@ async def sample_reply(
             # A Visitor reply is always an Agent Version's.
             agent_version_id=cast(uuid.UUID, message.agent_version_id),
             status=LiveStatus.PENDING,
-            created_at=clock.now(),
+            created_at=now,
         )
         session.add(verdict)
         await session.commit()
@@ -214,7 +227,19 @@ async def judge_live_verdict(
             pricing, chosen.model, judging.usage, now, await price_table(session)
         )
         verdict.judged_at = now
+        # A Cost with no known price adds nothing to the month's spend.
+        spent = verdict.cost_usd is not None and await add_spend(
+            session, verdict.organisation_id, verdict.cost_usd, now
+        )
         await session.commit()
+        if spent:
+            await email_owners(
+                session,
+                verdict.organisation_id,
+                now,
+                mailer=ports.mailer,
+                studio_url=ports.studio_url,
+            )
 
 
 async def live_verdict_of(session: AsyncSession, message_id: uuid.UUID) -> LiveVerdict | None:

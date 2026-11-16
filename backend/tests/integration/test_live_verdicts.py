@@ -123,7 +123,18 @@ async def set_rate(member: SignedUpMember, agent: dict[str, Any], rate: Any) -> 
     )
 
 
+async def budgeted(owner: SignedUpMember, budget: str | None = "100") -> httpx.Response:
+    """Sets the Organisation's monthly Evaluation budget, in US dollars (Owners only)."""
+    return await owner.client.put(
+        f"/api/organisations/{owner.organisation_id}/evaluation-budget",
+        json={"evaluation_budget_usd": budget},
+    )
+
+
 async def sampling(owner: SignedUpMember, agent: dict[str, Any], rate: int) -> None:
+    """Gives the Organisation an Evaluation budget, so replies can be sampled, and sets the
+    Agent's Live sample rate."""
+    assert (await budgeted(owner)).status_code == 200
     response = await set_rate(owner, agent, rate)
     assert response.status_code == 200, response.text
 
@@ -176,6 +187,7 @@ async def test_the_live_sample_rate_is_zero_by_default_and_editors_set_it_audite
     editor = await member_factory(owner, "editor")
     agent = await live_agent(app, owner)
     path = settings_path(editor, agent["project_id"], agent["id"])
+    assert (await budgeted(owner)).status_code == 200
 
     assert (await editor.client.get(path)).json()["live_sample_rate"] == 0
     response = await set_rate(editor, agent, 25)

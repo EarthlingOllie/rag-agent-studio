@@ -39,6 +39,7 @@ from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import cast
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,6 +76,7 @@ from app.evaluation.models import (
     EvaluationRunCase,
     EvaluationRunSide,
     EvaluationVerdict,
+    LiveVerdict,
     RunKind,
     RunStatus,
     SideKind,
@@ -968,9 +970,10 @@ async def cancel_run(
 async def evaluation_cost(
     session: AsyncSession, organisation_id: uuid.UUID, start: datetime, before: datetime
 ) -> dict[uuid.UUID, Decimal]:
-    """What each Agent's Evaluation Runs cost (answers and judging) from ``start`` until
-    ``before``, by when each answer was given, at the prices frozen as each ran. Organisation
-    cost reads it; it never counts in Version KPIs or the Token Budget."""
+    """What each Agent's Evaluation Runs (answers and judging) and Live Verdicts cost from
+    ``start`` until ``before``, by when each answer was given and each Live Verdict judged, at
+    the prices frozen then. Organisation cost reads it; it never counts in Version KPIs or the
+    Token Budget."""
     spent = func.coalesce(EvaluationCaseResult.cost_usd, 0) + func.coalesce(
         EvaluationCaseResult.judge_cost_usd, 0
     )
@@ -984,7 +987,21 @@ async def evaluation_cost(
         )
         .group_by(EvaluationRun.agent_id)
     )
-    return {agent_id: Decimal(total) for agent_id, total in rows}
+    cost = {agent_id: Decimal(total) for agent_id, total in rows}
+    live = await session.execute(
+        select(LiveVerdict.agent_id, func.sum(LiveVerdict.cost_usd))
+        .where(
+            LiveVerdict.organisation_id == organisation_id,
+            LiveVerdict.cost_usd.is_not(None),
+            LiveVerdict.judged_at >= start,
+            LiveVerdict.judged_at < before,
+        )
+        .group_by(LiveVerdict.agent_id)
+    )
+    for agent_id, total in live:
+        # Only Live Verdicts with a Cost are summed.
+        cost[agent_id] = cost.get(agent_id, Decimal(0)) + cast(Decimal, total)
+    return cost
 
 
 async def list_runs(

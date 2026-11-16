@@ -752,6 +752,10 @@ async def _evaluation_repeats(owner: SignedUpMember, add_member: MemberFactory) 
     return {}, {"repeats": 5}
 
 
+async def _an_evaluation_budget(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {}, {"evaluation_budget_usd": "25"}
+
+
 ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS, EDITOR),
     ScopedRoute("POST", PROJECTS, EDITOR, _new_project_body),
@@ -808,6 +812,13 @@ ORGANISATION_SCOPED_ROUTES = [
     ),
     ScopedRoute(
         "PUT", "/api/organisations/{organisation_id}/evaluation-repeats", OWNER, _evaluation_repeats
+    ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/evaluation-budget", EDITOR),
+    ScopedRoute(
+        "PUT",
+        "/api/organisations/{organisation_id}/evaluation-budget",
+        OWNER,
+        _an_evaluation_budget,
     ),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/embedding-models", EDITOR),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/theme", EDITOR),

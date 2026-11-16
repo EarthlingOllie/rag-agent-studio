@@ -152,6 +152,8 @@ def _lifespan(
             embedders=app.state.ingestion.embedders,
             judge_timeout_s=settings.evaluation_judge_timeout_s,
             clock=lambda: app.state.clock,
+            mailer=app.state.mailer,
+            studio_url=str(settings.studio_url),
         )
         install_evaluation_ports(app.state.evaluation)
         seed_draws(settings.live_sample_seed)

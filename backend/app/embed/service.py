@@ -27,6 +27,7 @@ from app.documents.models import Document
 from app.embed.admission import Admission, Limits, Refusal, utc_date
 from app.embed.branding import override_of
 from app.embed.tokens import TokenSigner, expired, token_hash
+from app.evaluation.budget import has_budget
 from app.feedback.models import MessageFeedback
 from app.feedback.service import RatingState, feedback_on, rating_state
 from app.mail import templates
@@ -97,6 +98,10 @@ def frame_ancestors(origins: list[str]) -> str:
     return "frame-ancestors " + (" ".join(origins) if origins else "'none'")
 
 
+class EvaluationBudgetRequiredError(Exception):
+    """A Live sample rate above 0% was set while the Organisation has no Evaluation budget."""
+
+
 @dataclass(frozen=True)
 class OperationalSettings:
     allowed_origins: list[str]
@@ -162,6 +167,8 @@ async def change_operational_settings(
     if daily_token_budget is not None:
         agent.daily_token_budget = daily_token_budget
     if live_sample_rate is not None:
+        if live_sample_rate > 0 and not await has_budget(session, scope.organisation_id):
+            raise EvaluationBudgetRequiredError
         agent.live_sample_rate = live_sample_rate
     after = asdict(_settings_of(agent))
     changed = [key for key in before if before[key] != after[key]]
