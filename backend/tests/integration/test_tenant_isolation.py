@@ -565,7 +565,26 @@ async def _a_rollout_evaluation(owner: SignedUpMember, add_member: MemberFactory
     }, {"agent_ids": [params["agent_id"]]}
 
 
+async def _a_suggestion_to_start(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A Live Agent and a Default Model to propose with.
+    params, _ = await _an_evaluation_to_start(owner, add_member)
+    agent = _AGENT.format(organisation_id=owner.organisation_id, **params)
+    published = await owner.client.post(f"{agent}/versions", json={"note": "First release"})
+    assert published.status_code == 201, published.text
+    return params, {}
+
+
+async def _a_suggestion(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _a_suggestion_to_start(owner, add_member)
+    started = await owner.client.post(
+        _SUGGESTIONS.format(organisation_id=owner.organisation_id, **params), json=body
+    )
+    assert started.status_code == 202, started.text
+    return params | {"suggestion_id": started.json()["id"]}, None
+
+
 _AGENT = PROJECTS + "/{project_id}/agents/{agent_id}"
+_SUGGESTIONS = _AGENT + "/suggestions"
 _CONVERSATION = _AGENT + "/playground/conversations/{conversation_id}"
 _EVALUATION = _AGENT + "/evaluation"
 _ROLLOUT_EVALUATION = (
@@ -713,6 +732,9 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", _EVALUATION + "/publish-summary", EDITOR, _an_evaluation_run),
     ScopedRoute("POST", _ROLLOUT_EVALUATION, EDITOR, _a_rollout_evaluation),
     ScopedRoute("GET", _ROLLOUT_EVALUATION, EDITOR, _a_rollout_evaluation),
+    ScopedRoute("POST", _SUGGESTIONS, EDITOR, _a_suggestion_to_start),
+    ScopedRoute("GET", _SUGGESTIONS, EDITOR, _a_suggestion),
+    ScopedRoute("GET", _SUGGESTIONS + "/{suggestion_id}", EDITOR, _a_suggestion),
     ScopedRoute("GET", _AGENT + "/metrics", EDITOR, _a_live_agent),
     *(
         ScopedRoute(

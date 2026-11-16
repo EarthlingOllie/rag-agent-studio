@@ -163,6 +163,9 @@ class Settings(BaseSettings):
     # How long the Evaluation Model may take to judge one answer of an Evaluation Run, in
     # seconds, before that case result is an error.
     evaluation_judge_timeout_s: float = Field(default=60, gt=0)
+    # How long the Evaluation Model may take to propose a Suggestion, in seconds, before the
+    # Suggestion run fails.
+    suggestion_timeout_s: float = Field(default=120, gt=0)
     # Seeds the one random source that chooses Visitor replies for Live Verdicts by the Live
     # sample rate (``app.evaluation.live``), so tests sample a stable subset. Unset: unseeded.
     live_sample_seed: int | None = None

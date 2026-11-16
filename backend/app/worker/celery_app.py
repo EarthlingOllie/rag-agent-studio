@@ -23,6 +23,7 @@ celery_app = Celery(
         "app.re_embedding.tasks",
         "app.embed.tasks",
         "app.retention.tasks",
+        "app.suggestions.tasks",
     ],
 )
 # Schedules are in UTC: the Token Budget's day is the UTC date.

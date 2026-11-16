@@ -1,0 +1,201 @@
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+
+import { fakeAgentsApi, hrHelper, oldHelper } from "../test/agents";
+import { adaSession, fakeAuthApi } from "../test/auth";
+import { fakeEvaluationApi } from "../test/evaluation";
+import { fakeProjectsApi, hrProject } from "../test/projects";
+import { renderStudio } from "../test/render";
+import { citingSuggestion, failedReply, fakeSuggestionsApi, suggestion } from "../test/suggestions";
+
+const organisationId = adaSession.organisations[0]?.id ?? "";
+const publishedHelper: typeof hrHelper = { ...hrHelper, live_version: { id: "a1e00000-0000-4000-8000-000000000001", number: 1 } };
+const evaluationPage = (agentId: string) => `/organisations/${organisationId}/projects/${hrProject.id}/agents/${agentId}/evaluation`;
+
+function setUp(options: Parameters<typeof fakeSuggestionsApi>[0] = {}, agents = [publishedHelper]) {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  fakeAgentsApi({ agents });
+  fakeEvaluationApi();
+  return fakeSuggestionsApi(options);
+}
+
+async function openSuggestions(user = userEvent.setup()) {
+  await user.click(await screen.findByRole("radio", { name: "Suggestions" }, { timeout: 5000 }));
+  return screen.findByRole("region", { name: "Suggestions" });
+}
+
+test("the Evaluation view's Suggestions tab lists runs, and a Suggestion shows its explanation, Diff and evidence", async () => {
+  const user = userEvent.setup();
+  setUp({ suggestions: [[citingSuggestion]] });
+  renderStudio(evaluationPage(publishedHelper.id));
+
+  // The Evaluation Set and Runs come first.
+  expect(await screen.findByRole("radio", { name: "Evaluation Set and Runs" }, { timeout: 5000 })).toBeChecked();
+  const tab = await openSuggestions(user);
+
+  const runs = await within(tab).findByRole("list", { name: "Suggestion runs" });
+  const row = within(runs).getByRole("listitem");
+  expect(row).toHaveTextContent("Suggestion of 2026-11-16 09:00 UTC");
+  expect(row).toHaveTextContent("Completed");
+  expect(row).toHaveTextContent("2026-11-03 to 2026-11-16 (UTC)");
+  expect(row).toHaveTextContent("Changes suggested");
+  // The newest is shown.
+  const detail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-16 09:00 UTC" });
+  expect(within(detail).getByText("Replies made claims without citing the handbook.")).toBeInTheDocument();
+  expect(detail).toHaveTextContent("Proposed by openai:gpt-4.1-mini.");
+  const changes = within(detail).getByRole("list", { name: "Suggested changes" });
+  expect(within(changes).getByRole("heading", { level: 4, name: "System prompt" })).toBeInTheDocument();
+  const diff = within(changes).getByRole("table", { name: "Suggested change to the system prompt" });
+  expect(within(diff).getByText("Always cite the passage you used.").closest("tr")).toHaveTextContent("Added");
+  expect(within(changes).getByText("Replies failed grounding, so ask for citations.")).toBeInTheDocument();
+  // Its evidence chip opens the reply in the Agent's Conversations viewer.
+  const cited = within(changes).getByRole("list", { name: "Evidence for the system prompt change" });
+  const chip = within(cited).getByRole("link", { name: "E1 · 2026-11-14 · Live Verdict failed" });
+  expect(chip).toHaveAttribute(
+    "href",
+    `/organisations/${organisationId}/projects/${hrProject.id}/agents/${publishedHelper.id}/conversations/${failedReply.conversation_id}#message-${failedReply.message_id}`,
+  );
+  // All the evidence, purged text said so.
+  expect(detail).toHaveTextContent("2 of 3 failed replies in the range");
+  const evidence = within(detail).getByRole("list", { name: "Evidence" });
+  expect(within(evidence).getAllByRole("link").map((link) => link.textContent)).toEqual([
+    "E1 · 2026-11-14 · Live Verdict failed",
+    "E2 · 2026-11-03 · Text purged",
+  ]);
+});
+
+test("choosing another Suggestion shows it; a failed run says why and a no-change one says so", async () => {
+  const user = userEvent.setup();
+  const failed = suggestion("5a000000-0000-4000-8000-000000000002", "failed", {
+    created_at: "2026-11-15T09:00:00Z",
+    error_message: "The Evaluation Model didn't propose a Suggestion in time.",
+  });
+  const unchanged = suggestion("5a000000-0000-4000-8000-000000000003", "completed", {
+    created_at: "2026-11-14T09:00:00Z",
+    outcome: "no_change",
+    explanation: "Nothing in the configuration would help.",
+    evidence_total: 1,
+    evidence: [{ ...failedReply, live_verdict: "pass" }],
+  });
+  setUp({ suggestions: [[failed], [unchanged]] });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+
+  const failedDetail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-15 09:00 UTC" });
+  expect(within(failedDetail).getByRole("alert")).toHaveTextContent("The Evaluation Model didn't propose a Suggestion in time.");
+
+  await user.click(within(tab).getByRole("button", { name: "Suggestion of 2026-11-14 09:00 UTC" }));
+
+  const detail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-14 09:00 UTC" });
+  expect(within(tab).getByRole("button", { name: "Suggestion of 2026-11-14 09:00 UTC" })).toHaveAttribute("aria-current", "true");
+  expect(within(detail).getByText("No change suggested.")).toBeInTheDocument();
+  expect(within(detail).getByText("Nothing in the configuration would help.")).toBeInTheDocument();
+  expect(within(detail).queryByRole("list", { name: "Suggested changes" })).not.toBeInTheDocument();
+  expect(within(detail).getByRole("link", { name: "E1 · 2026-11-14 · Live Verdict passed" })).toBeInTheDocument();
+});
+
+test("an Editor suggests changes over the last 14 UTC days, and the Studio polls the run until it completes", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-16T12:00:00Z"));
+  const user = userEvent.setup();
+  const id = citingSuggestion.id;
+  const { requests } = setUp({
+    started: [suggestion(id, "queued"), suggestion(id, "proposing"), citingSuggestion],
+  });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+  expect(await within(tab).findByRole("heading", { level: 3, name: "No Suggestions yet" })).toBeInTheDocument();
+
+  await user.click(within(tab).getByRole("button", { name: "Suggest changes" }));
+  const dialog = await screen.findByRole("dialog", { name: "Suggest changes" });
+  expect(within(dialog).getByLabelText("From (UTC day)")).toHaveValue("2026-11-03");
+  expect(within(dialog).getByLabelText("To (UTC day)")).toHaveValue("2026-11-16");
+  await user.click(within(dialog).getByRole("button", { name: "Start Suggestion run" }));
+
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+  expect(requests).toEqual([{ range_start: "2026-11-03", range_end: "2026-11-16" }]);
+  const detail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-16 09:00 UTC" });
+  // While it runs, its progress shows and no second run can start.
+  expect(await within(detail).findByText("Proposing…", {}, { timeout: 5000 })).toBeInTheDocument();
+  expect(within(tab).getByRole("button", { name: "Suggesting…" })).toBeDisabled();
+  expect(await within(detail).findByText("Replies made claims without citing the handbook.", {}, { timeout: 5000 })).toBeInTheDocument();
+  vi.useRealTimers();
+});
+
+test("the run dialog takes another range, refuses a backwards one, and shows a refusal's reason", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({ startStatus: 409, startDetail: "This Agent is archived. An Owner can restore it." });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+
+  await user.click(within(tab).getByRole("button", { name: "Suggest changes" }));
+  const dialog = await screen.findByRole("dialog", { name: "Suggest changes" });
+  const from = within(dialog).getByLabelText("From (UTC day)");
+  const to = within(dialog).getByLabelText("To (UTC day)");
+  await user.clear(to);
+  await user.type(to, "2026-11-01");
+  await user.clear(from);
+  await user.type(from, "2026-11-02");
+
+  expect(within(dialog).getByRole("alert")).toHaveTextContent("The range must start on or before the day it ends.");
+  expect(within(dialog).getByRole("button", { name: "Start Suggestion run" })).toBeDisabled();
+
+  await user.clear(from);
+  await user.type(from, "2026-10-20");
+  await user.click(within(dialog).getByRole("button", { name: "Start Suggestion run" }));
+
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent("This Agent is archived. An Owner can restore it.");
+  expect(requests).toEqual([{ range_start: "2026-10-20", range_end: "2026-11-01" }]);
+
+  await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+});
+
+test("an Agent never Published can't start a run, and an archived Agent's Suggestions are read only", async () => {
+  const user = userEvent.setup();
+  setUp({ suggestions: [[citingSuggestion]] }, [hrHelper, oldHelper]);
+  const view = renderStudio(evaluationPage(hrHelper.id));
+  let tab = await openSuggestions(user);
+
+  expect(within(tab).getByRole("button", { name: "Suggest changes" })).toBeDisabled();
+  expect(tab).toHaveTextContent("Publish this Agent first: a Suggestion is made from its Live Version's replies.");
+  view.unmount();
+
+  renderStudio(evaluationPage(oldHelper.id));
+  tab = await openSuggestions(user);
+  expect(tab).toHaveTextContent("This Agent is archived: its Suggestions are read only, and it starts no Suggestion run.");
+  expect(within(tab).queryByRole("button", { name: "Suggest changes" })).not.toBeInTheDocument();
+  expect(await within(tab).findByRole("region", { name: "Suggestion of 2026-11-16 09:00 UTC" })).toBeInTheDocument();
+});
+
+test("Suggestions that can't be loaded say so", async () => {
+  const user = userEvent.setup();
+  setUp({ failList: true });
+  const view = renderStudio(evaluationPage(publishedHelper.id));
+  let tab = await openSuggestions(user);
+  expect(await within(tab).findByRole("heading", { level: 3, name: "The Suggestions could not be loaded" }, { timeout: 5000 })).toBeInTheDocument();
+  view.unmount();
+
+  setUp({ suggestions: [[citingSuggestion]], failRead: true });
+  renderStudio(evaluationPage(publishedHelper.id));
+  tab = await openSuggestions(user);
+  expect(await within(tab).findByText("The Suggestion could not be loaded. Try again shortly.", {}, { timeout: 5000 })).toBeInTheDocument();
+});
+
+test("a refusal without a reason says to try again", async () => {
+  const user = userEvent.setup();
+  setUp({ startStatus: 500 });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+
+  await user.click(within(tab).getByRole("button", { name: "Suggest changes" }));
+  const dialog = await screen.findByRole("dialog", { name: "Suggest changes" });
+  await user.click(within(dialog).getByRole("button", { name: "Start Suggestion run" }));
+
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
+});

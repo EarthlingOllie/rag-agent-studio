@@ -28,6 +28,8 @@ class EvaluationPorts:
     judge_timeout_s: float
     # The clock answers and the Run's end are timed by.
     clock: Callable[[], Clock]
+    # How long a Suggestion run's one proposing call may take (spec 16).
+    suggestion_timeout_s: float = 120
 
 
 class EvaluationPortsNotInstalledError(RuntimeError):

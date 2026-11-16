@@ -54,6 +54,7 @@ from app.projects import embedding_api, instructions_api
 from app.projects.embedding import project_embedding_references
 from app.retention import api as retention_api
 from app.seed import attack_panel, demo_pages
+from app.suggestions import api as suggestions_api
 from app.tags import api as tags_api
 from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
@@ -93,6 +94,7 @@ ROUTERS: Sequence[APIRouter] = (
     evaluation_api.router,
     evaluation_api.documents_router,
     evaluation_rollout_api.router,
+    suggestions_api.router,
     conversations_api.router,
     analytics_api.router,
     analytics_api.cost_router,
@@ -151,6 +153,7 @@ def _lifespan(
             guardrails=app.state.guardrails,
             embedders=app.state.ingestion.embedders,
             judge_timeout_s=settings.evaluation_judge_timeout_s,
+            suggestion_timeout_s=settings.suggestion_timeout_s,
             clock=lambda: app.state.clock,
         )
         install_evaluation_ports(app.state.evaluation)
