@@ -810,7 +810,7 @@ One run of an Agent's Evaluation Set comparing two sides, the first and the seco
 _Avoid_: Eval, test run, benchmark run
 
 **Run side**:
-One of an Evaluation Run's sides, the first or the second: the Draft at its Draft revision, or one of the Agent's Versions, with the Project Instructions it answers with. The Run keeps a copy of each side's effective AgentConfig and Instructions text, and of each Evaluation Case's question and expectations, as they were when it started, so editing the Draft or the Evaluation Set later never rewrites a past Run. While the Draft runs alone it is the first side.
+One of an Evaluation Run's sides, the first or the second: the Draft at its Draft revision, one of the Agent's Versions, or (only in a Suggestion's check) the Suggestion, which is the Live Version's configuration with the Suggestion's changes and is never Published or listed in Live History, with the Project Instructions it answers with. The Run keeps a copy of each side's effective AgentConfig and Instructions text, and of each Evaluation Case's question and expectations, as they were when it started, so editing the Draft or the Evaluation Set later never rewrites a past Run. While the Draft runs alone it is the first side.
 _Avoid_: Arm, variant, candidate
 
 **Verdict**:
@@ -848,3 +848,35 @@ _Avoid_: Publish gate, evaluation check
 **Expected source warning**:
 The notice before an Editor deletes a Document, or uploads a new Edition of it, that holds an Expected source: which Agents' Evaluation Sets and how many cases. It never blocks; once a new Edition is Ready, its Expected sources are checked again and any whose passage is gone become Stale expectations.
 _Avoid_: Eval dependency warning
+
+**Live sample rate**:
+The share of an Agent's Visitor replies the Evaluation Model judges, from 0% (the default) to 100%, chosen at random when each reply finishes. Replies the input Guardrail blocked and Fallback Text replies are never chosen. Part of the Operational Settings, so a change applies at once without Publishing and is audited. It can't be raised above 0% while the Organisation has no Evaluation budget.
+_Avoid_: Sampling percentage, judge rate
+
+**Live Verdict**:
+The Evaluation Model's judgement of one sampled Visitor reply: whether it is grounded (every claim supported by its Citations) and whether it answers the question, each a pass or fail with a one-sentence reason, judged on what the Agent saw (its Remembered turns, the question and the Chunks it was given) but never its system prompt. The reply passes when both pass; a reply Purged before it is judged is skipped. A reply the Evaluation Model couldn't judge has an Error instead. It belongs to its Message, so the Purge clears its reasons and keeps its pass or fail. Its Cost counts in Organisation cost's Evaluation column, never in the Token Budget or the Version KPIs.
+_Avoid_: Live judgement, online eval, score
+
+**Live score**:
+The share of an Agent Version's Live Verdicts that passed, shown as a Version KPI with its Wilson interval and sample size (Low sample under 30), in the Version comparison (higher is the Better side) and as a Time series metric. Errors are left out. Only Visitor Conversations count.
+_Avoid_: Judged pass rate, Pass rate (the Attack evaluation suite's), quality score
+
+**Live score drop alert**:
+The flag an Agent carries while its Live Version's Live score is clearly lower than the previous Live Version's. Once the Live Version has 30 Live Verdicts, each hourly check compares it with the previous Live Version's last 30 days as Live: a drop that a one-sided test finds significant at 95% and of at least 5 percentage points raises it. Raising it emails every Owner once; the Studio shows a "Live score drop" badge, the same badge mechanism as the Block rate alert. It clears when the drop is no longer clear or another Version is made Live.
+_Avoid_: Quality alarm, regression alert (a Regression is an Evaluation Case)
+
+**Evaluation budget**:
+The most an Organisation may spend in US dollars per calendar month (UTC) on Live Verdicts, set by Owners. There is none by default. Once the month's spend reaches it, sampling stops across the Organisation until the 1st of the next month and every Owner is emailed once; raising it resumes sampling at once. Visitor replies are never affected, and Evaluation Runs an Editor starts are never capped.
+_Avoid_: Eval budget, judging quota, Token Budget (the Agent's reply limit)
+
+**Suggestion**:
+A proposed change to an Agent's Draft, drawn from its Live Version's replies that failed their Live Verdict, were given a thumbs-down or are in a Conversation rated 1 or 2, and from Evaluation Cases that failed on it, for an Editor to review: system prompt wording and retrieval settings (Top-k, Minimum Score, Hybrid weighting), each retrieval change citing the Traces behind it, plus any Knowledge Base gaps it found (questions no Chunk covered, which no configuration change can fix). An Editor starts the run that makes it and applies it to the Draft whole; it never changes the Draft or Publishes on its own, and a failed check against the Evaluation Set is a warning, not a block. Its evidence points at Messages and never copies their text, so Purged evidence reads "Text purged"; the change and its explanation are kept until an Editor deletes it.
+_Avoid_: Agent (that is the assistant being changed), copilot, optimiser, auto-tune, recommendation
+
+**Suggestion run**:
+An Editor's request for a Suggestion for one Agent over a range of UTC days (the last 14 by default), after seeing how much evidence the range holds and its estimated Cost. It gathers the evidence, has the Evaluation Model propose the Suggestion and, when the Suggestion changes the configuration and the Agent has an Evaluation Set, checks it against the Live Version in an Evaluation Run. An Agent has at most one in progress, which an Editor can cancel; its Cost counts in Organisation cost, never against the Evaluation budget.
+_Avoid_: Tuning run, optimisation
+
+**Knowledge Base gap**:
+A topic a Suggestion found that failed replies asked about and no Chunk covered, listed with its evidence. No configuration change can fix it, so it is never applied; it points the Editor at the Knowledge Base.
+_Avoid_: Missing content, coverage hole

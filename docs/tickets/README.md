@@ -1,7 +1,7 @@
 # Tickets
 
 Tracer-bullet tickets split from the [slice specs](../specs/README.md). Ticket IDs are `<spec>-<NN>`, and blockers can point into other specs.
-Work the **frontier**: any ticket whose blockers are all done. `01-01` and `11-01` are the only tickets with no blockers.
+Work the **frontier**: any ticket whose blockers are all done. `01-01`, `11-01`, `15-01` and `16-01` are the only tickets with no blockers.
 
 New tickets start from [TEMPLATE.md](./TEMPLATE.md). Its standing criteria apply to every ticket: new Studio UI uses the [design system](../design/README.md) (the palette ratchet enforces it), tests sit at the highest seam with 100% coverage, and the glossary and ADRs stay current.
 
@@ -205,3 +205,31 @@ Evaluation Sets per Agent, Evaluation Runs judged by the Organisation's Evaluati
 | `14-09` | [Evaluation in the Publish dialog](./14-evaluation-loop/09-publish-dialog-evaluation.md) | 14-03, 14-04 |
 | `14-10` | [Rollout evaluation](./14-evaluation-loop/10-rollout-evaluation.md) | 14-09 |
 | `14-11` | [Demo seed, end-to-end and live suite](./14-evaluation-loop/11-demo-seed-e2e-live.md) | 14-06, 14-08, 14-09 |
+
+## 15: Live evaluation
+
+Judging a sample of Visitor replies with the Evaluation Model, the Live score, its drop alert and the Evaluation budget. 15-01 is the tracer; 15-02 to 15-05 can start once it lands.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `15-01` | [Live Verdict tracer: sample a reply and judge it](./15-live-evaluation/01-live-verdict-tracer.md) | none |
+| `15-02` | [Live Verdict context, errors and retention](./15-live-evaluation/02-live-verdict-context-errors-retention.md) | 15-01 |
+| `15-03` | [Evaluation budget](./15-live-evaluation/03-evaluation-budget.md) | 15-01 |
+| `15-04` | [Live Verdicts in the Conversations viewer](./15-live-evaluation/04-live-verdicts-conversations-viewer.md) | 15-01 |
+| `15-05` | [Live score](./15-live-evaluation/05-live-score.md) | 15-01 |
+| `15-06` | [Live score drop alert](./15-live-evaluation/06-live-score-drop-alert.md) | 15-05 |
+| `15-07` | [Demo seed, end-to-end and live suite](./15-live-evaluation/07-demo-seed-e2e-live.md) | 15-02, 15-03, 15-04, 15-05 |
+
+## 16: Suggestions
+
+Suggestion runs that read an Agent's failures and propose changes to its Draft for an Editor to apply ([ADR-0017](../adr/0017-suggestions-point-at-evidence.md)). 16-01 is a prefactor with no blockers; 16-02 is the tracer and needs only 15-01.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `16-01` | [Prefactor: shared Draft conflict prompt](./16-suggestions/01-prefactor-shared-draft-conflict.md) | none |
+| `16-02` | [Suggestion tracer: failed Live Verdicts become a system prompt Suggestion](./16-suggestions/02-suggestion-tracer.md) | 15-01 |
+| `16-03` | [All evidence, retrieval changes and Knowledge Base gaps](./16-suggestions/03-all-evidence-retrieval-gaps.md) | 16-02 |
+| `16-04` | [Suggestion run dialog, Cost and lifecycle](./16-suggestions/04-run-dialog-cost-lifecycle.md) | 16-02 |
+| `16-05` | [The check against the Evaluation Set](./16-suggestions/05-check-against-evaluation-set.md) | 16-02, 16-04 |
+| `16-06` | [Applying a Suggestion to the Draft](./16-suggestions/06-apply-to-draft.md) | 16-01, 16-02 |
+| `16-07` | [Demo seed, end-to-end and live suite](./16-suggestions/07-demo-seed-e2e-live.md) | 15-07, 16-03, 16-05, 16-06 |
