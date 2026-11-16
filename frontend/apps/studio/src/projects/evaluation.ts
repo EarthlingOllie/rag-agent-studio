@@ -172,8 +172,13 @@ export function useDeleteEvaluationCase(path: AgentPath) {
   });
 }
 
-/** The Agent's Runs, newest first, read again while one is in progress. */
+/**
+ * The Agent's Runs, newest first, read again while one is in progress. When a Run that was in
+ * progress has finished, the Evaluation Set is read again too: its cases' latest results come
+ * from that Run.
+ */
 export function useEvaluationRuns(path: AgentPath) {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: runsKey(path),
     queryFn: async (): Promise<EvaluationRun[]> => {
@@ -182,6 +187,11 @@ export function useEvaluationRuns(path: AgentPath) {
         { params: { path } },
       );
       if (!data) throw failed(response, error);
+      const before = queryClient.getQueryData<EvaluationRun[]>(runsKey(path)) ?? [];
+      const wasRunning = new Set(before.filter(inProgress).map((run) => run.id));
+      if (data.some((run) => wasRunning.has(run.id) && !inProgress(run))) {
+        void queryClient.invalidateQueries({ queryKey: casesKey(path) });
+      }
       return data;
     },
     refetchInterval: (query) =>

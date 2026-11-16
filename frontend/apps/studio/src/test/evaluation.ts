@@ -296,6 +296,8 @@ export function fakeEvaluationApi(
     runs?: RunResults[];
     /** The states a started Run goes through, one per read of its results. */
     started?: RunResults[];
+    /** Each case's latest result (by case ID) once a started Run has finished, as the API reads it then. */
+    latestAfterRun?: Record<string, NonNullable<Case["latest_result"]>>;
     startStatus?: number;
     startDetail?: string;
     /** Refuses cancelling with this status and detail. */
@@ -354,8 +356,13 @@ export function fakeEvaluationApi(
         return HttpResponse.json({ detail: "Down" }, { status: 500 });
       const other = options.otherCases?.[params.agentId as string];
       if (other) return HttpResponse.json(other);
+      const startedRun = options.started === undefined ? undefined : runs[0];
+      const finished = startedRun !== undefined && !["queued", "running"].includes(current(startedRun).run.status);
+      const latest = finished ? (options.latestAfterRun ?? {}) : {};
       return HttpResponse.json(
-        cases.filter((c) => matches(c, new URL(request.url).searchParams)),
+        cases
+          .map((c) => ({ ...c, latest_result: latest[c.id] ?? c.latest_result }))
+          .filter((c) => matches(c, new URL(request.url).searchParams)),
       );
     }),
     http.post(`${base}/cases/copy`, async ({ request }) => {

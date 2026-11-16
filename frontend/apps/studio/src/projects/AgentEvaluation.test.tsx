@@ -184,6 +184,26 @@ test("a refused delete says why and keeps the case", async () => {
   expect(await caseRows()).toEqual([[leaveCase.question, leaveCase.reference_answer]]);
 });
 
+test("when a Run finishes, the Evaluation Set shows each case's new latest result without a reload", async () => {
+  const user = userEvent.setup();
+  const runId = "r2000000-0000-4000-8000-000000000003";
+  setUp({
+    cases: [leaveCase],
+    started: [results(run(runId, "running", 0, 1), []), results(run(runId, "completed", 1, 1), [[leaveCase, passed]])],
+    latestAfterRun: { [leaveCase.id]: { run_id: runId, outcome: "pass", passed: 1, answered: 1, repeats: 1, unsteady: false } },
+  });
+  renderStudio(agentPage(hrHelper.id));
+  const table = await screen.findByRole("table", { name: "Evaluation Cases" }, { timeout: 5000 });
+  expect(within(table).getByText("Not run yet")).toBeInTheDocument();
+
+  await user.click(screen.getByRole("button", { name: "Evaluate" }));
+  await user.click(within(await screen.findByRole("dialog", { name: "Evaluate" })).getByRole("button", { name: "Start Run" }));
+  await screen.findByRole("list", { name: "Cases" }, { timeout: 8000 });
+
+  expect(await within(table).findByText("1/1", {}, { timeout: 5000 })).toBeInTheDocument();
+  expect(within(table).queryByText("Not run yet")).not.toBeInTheDocument();
+});
+
 test("Evaluate starts a Run, the Studio polls its progress, then shows each answer judged", async () => {
   const user = userEvent.setup();
   const runId = "r2000000-0000-4000-8000-000000000002";
