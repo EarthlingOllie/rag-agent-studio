@@ -513,6 +513,90 @@ async def test_a_search_beyond_the_search_limit_is_refused_and_the_reply_still_a
     assert trace["fallback"] is False
 
 
+def relentless(answer: str, settings_seen: list[Any] | None = None) -> Script:
+    """A model that calls Knowledge Search on every call, as Claude Sonnet 5.5 did live when a
+    question had no answer in the Knowledge Base, unless it is told it may not call tools
+    (``tool_choice`` 'none'), when it streams ``answer``. ``settings_seen`` collects each call's
+    ``tool_choice``."""
+
+    async def script(
+        messages: list[ModelMessage], info: AgentInfo
+    ) -> AsyncIterator[str | DeltaToolCalls]:
+        choice = (info.model_settings or {}).get("tool_choice")
+        if settings_seen is not None:
+            settings_seen.append(choice)
+        if choice == "none":
+            yield answer
+            return
+        made = _searches_made(messages)
+        args = json.dumps({"query": f"share price {made}"})
+        yield {0: DeltaToolCall(name="knowledge_search", json_args=args, tool_call_id=f"c{made}")}
+
+    return script
+
+
+async def test_once_the_search_limit_is_spent_the_model_may_no_longer_call_knowledge_search(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    seen: list[Any] = []
+    answer_with(app, relentless("I don't know.", seen))
+    project_id, agent_id = await agentic_agent(app, owner)
+    await agentic(owner, project_id, agent_id, search_limit=2)
+
+    events, trace = await asked(owner, project_id, agent_id, "What is the share price?")
+
+    # Two Searches within the limit; then the model is asked again with tools off, and answers.
+    assert seen == [None, None, "none"]
+    assert [data["order"] for event, data in events if event == "search"] == [1, 2]
+    assert "".join(data["text"] for event, data in events if event == "token") == "I don't know."
+    assert trace["search_count"] == 2
+    assert not any(search["limit_refused"] for search in trace["searches"])
+
+
+def never_answers() -> tuple[Script, list[int]]:
+    """A model that ignores ``tool_choice`` and calls Knowledge Search forever; the list counts
+    its calls."""
+    calls: list[int] = []
+
+    async def script(
+        messages: list[ModelMessage], info: AgentInfo
+    ) -> AsyncIterator[str | DeltaToolCalls]:
+        made = _searches_made(messages)
+        calls.append(made)
+        args = json.dumps({"query": f"again {made}"})
+        yield {0: DeltaToolCall(name="knowledge_search", json_args=args, tool_call_id=f"c{made}")}
+
+    return script, calls
+
+
+async def test_a_model_that_never_stops_searching_ends_the_turn_with_an_error_after_a_few_calls(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    script, calls = never_answers()
+    answer_with(app, script)
+    project_id, agent_id = await agentic_agent(app, owner)
+    await agentic(owner, project_id, agent_id, search_limit=2)
+    conversation = await start_conversation(owner, project_id, agent_id)
+
+    response = await ask(owner, project_id, agent_id, conversation["id"], "Share price?")
+
+    events = parse_sse(response.text)
+    assert [event for event, _ in events] == ["search", "search", "error"]
+    assert events[-1][1] == {
+        "code": "provider_error",
+        "message": "The model kept calling Knowledge Search instead of answering. Try again, "
+        "or lower the Agent's Search limit.",
+    }
+    # Stopped a few calls past the limit (the limit, one call told to answer, two to spare),
+    # not after the 50 requests Pydantic AI allows by default.
+    assert len(calls) == 2 + 3
+    saved = await owner.client.get(
+        f"{project_path(owner, project_id)}/agents/{agent_id}/playground/conversations/"
+        f"{conversation['id']}"
+    )
+    assert [m["role"] for m in saved.json()["messages"]] == ["user"]
+
+
 async def test_searched_and_found_nothing_gives_the_fallback_text_and_no_answer_tokens(
     app: FastAPI, owner: SignedUpMember
 ) -> None:

@@ -63,13 +63,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from pydantic import ValidationError
-from pydantic_ai import Agent, NativeOutput, Tool
+from pydantic_ai import Agent, NativeOutput, RunContext, Tool
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models import Model
 from pydantic_ai.result import AgentStream
 from pydantic_ai.settings import ModelSettings
-from pydantic_ai.usage import RunUsage
+from pydantic_ai.usage import RunUsage, UsageLimits
 
 from app.agents.config import AgentConfig, Retrieval, RetrievalMode
 from app.guardrails.canary import CanaryFilter, carries_canary, encoded_leak, new_canary
@@ -241,6 +241,8 @@ async def _stream_answer(
     tools: list[Tool[None]],
     *,
     structured: bool,
+    searched_out: Callable[[], bool] = lambda: False,
+    request_limit: int | None = None,
 ) -> AsyncGenerator[str | _Retraction]:
     """The answer's text as it arrives, over every model call of the reply (each tool call is
     run, and the model called again, until it answers). A model that supports structured
@@ -248,10 +250,25 @@ async def _stream_answer(
 
     Each response's text streams as it arrives. A response that calls a tool is not the answer:
     once it ends, its text is set aside in ``streamed.retracted`` and, if it wrote any,
-    ``RETRACTION`` is yielded before the tool runs."""
+    ``RETRACTION`` is yielded before the tool runs.
+
+    Once ``searched_out`` says the Search limit is spent, each further model call is made with
+    ``tool_choice`` 'none', so the model has to answer: a model that keeps calling Knowledge
+    Search otherwise only hears "search limit reached" back, and may keep calling it. The tool
+    stays declared, as the reply's earlier calls of it are in the history. ``request_limit``
+    bounds the reply's model calls for a model that ignores ``tool_choice``: past it, Pydantic
+    AI raises ``UsageLimitExceeded``, which ends the turn with an error."""
     output = NativeOutput(CitedAnswer) if structured else str
     agent: Agent[None, Any] = Agent(model, output_type=output, tools=tools)
-    async with agent.iter(question, message_history=messages, model_settings=settings) as run:
+
+    def step_settings(ctx: RunContext[None]) -> ModelSettings:
+        return ModelSettings(**settings, tool_choice="none") if searched_out() else settings
+
+    # Without a limit of its own, a reply keeps Pydantic AI's default one.
+    limits = UsageLimits() if request_limit is None else UsageLimits(request_limit=request_limit)
+    async with agent.iter(
+        question, message_history=messages, model_settings=step_settings, usage_limits=limits
+    ) as run:
         nodes = aiter(run)
         while True:  # a run only ends with an answer, which returns below
             node = await anext(nodes)
@@ -492,8 +509,19 @@ async def _turn(
     structured = model.profile.get("supports_json_schema_output", False)
     streamed = _Streamed()
     canary_filter = CanaryFilter(canary)
+    limit = config.retrieval.search_limit
     texts = _stream_answer(
-        model, question, messages, settings, streamed, tools, structured=structured
+        model,
+        question,
+        messages,
+        settings,
+        streamed,
+        tools,
+        structured=structured,
+        searched_out=lambda: sum(not s.limit_refused for s in searches) >= limit,
+        # The Searches, one call that may not search, and two to spare (a model may search
+        # several times in one call, or answer with nothing first).
+        request_limit=limit + 3 if agentic else None,
     )
     items = _with_searches(texts, queue) if agentic else texts
     query_leaked = False

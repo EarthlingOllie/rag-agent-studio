@@ -29,6 +29,7 @@ from tests.agents import (
     AUTOMATIC,
     StreamFunction,
     agents_path,
+    answer_with,
     create_agent,
     create_automatic_agent,
     save_draft,
@@ -38,6 +39,7 @@ from tests.conftest import MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import create_project, project_path, upload
 from tests.integration.test_agent_archive import archive, delete_permanently
 from tests.integration.test_agent_versions import published
+from tests.integration.test_agentic_retrieval import agentic, never_answers
 from tests.integration.test_evaluation_settings import set_evaluation_model, set_repeats
 from tests.integration.test_input_guardrail import ATTACK, REFUSAL
 from tests.integration.test_input_guardrail import RULE as GUARDRAIL_RULE
@@ -516,6 +518,28 @@ async def test_a_provider_error_makes_the_case_result_an_error(
     assert result["error_reason"].startswith("The provider says this key is over its rate limit")
     assert (result["answer"], result["trace"], result["passed"]) == (None, None, None)
     assert result["verdicts"] == []
+
+
+async def test_an_answer_that_never_stops_searching_is_an_error_and_the_run_still_ends(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    # Live, Claude Sonnet 5.5 kept calling Knowledge Search on a question its Knowledge Base
+    # couldn't answer; the request limit ended the reply, and the Run went on.
+    script, _ = never_answers()
+    answer_with(app, script)
+    _, project_id, agent_id = await ready_agent(app, owner)
+    await agentic(owner, project_id, agent_id, search_limit=1)
+    await add_case(owner, project_id, agent_id, "What is the share price today?")
+
+    results = await evaluated(owner, project_id, agent_id)
+
+    assert results["run"]["status"] == "failed"
+    result = only_result(results)
+    assert result["status"] == "error"
+    assert result["error_reason"] == (
+        "The model kept calling Knowledge Search instead of answering. Try again, or lower the "
+        "Agent's Search limit."
+    )
 
 
 def failing_to_build(provider: Provider, secret: str, model: str) -> Model:

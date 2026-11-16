@@ -5,7 +5,9 @@ Pydantic AI's provider models raise ``ModelAPIError``s sorted into categories (a
 authentication error, a rate limit, a model not found, …), each also a ``ModelHTTPError`` when
 it came with an HTTP status. The gateway raises its own errors when it can't build the model.
 ``provider_error`` turns any of them into one of four kinds; anything else is not a provider
-error and is left to propagate.
+error and is left to propagate. A model that would not stop calling Knowledge Search (Pydantic
+AI's ``UsageLimitExceeded``, once a reply's request limit is spent) ends the turn the same way,
+as a provider error with its own message: the turn has no answer to give.
 """
 
 import logging
@@ -21,6 +23,7 @@ from pydantic_ai.exceptions import (
     ModelRateLimitError,
     ModelUnavailableError,
     UnexpectedModelBehavior,
+    UsageLimitExceeded,
 )
 
 from app.gateway.gateway import ModelUnavailableError as ModelNotOffered
@@ -53,6 +56,11 @@ MESSAGES = {
         "The provider couldn't answer just now. Try again in a moment."
     ),
 }
+
+KEPT_SEARCHING = (
+    "The model kept calling Knowledge Search instead of answering. Try again, or lower the "
+    "Agent's Search limit."
+)
 
 _BY_STATUS = {
     401: ProviderErrorKind.INVALID_KEY,
@@ -91,6 +99,7 @@ PROVIDER_ERRORS = (
     UnexpectedModelBehavior,
     ModelNotOffered,
     UnsupportedCredentialError,
+    UsageLimitExceeded,
 )
 
 
@@ -107,5 +116,7 @@ def provider_error(error: Exception, model: str) -> ErrorEvent:
             "status_code": getattr(error, "status_code", None),
         },
     )
+    if isinstance(error, UsageLimitExceeded):
+        return ErrorEvent(kind, KEPT_SEARCHING)
     named = error.model_name if isinstance(error, ModelAPIError) else model
     return ErrorEvent(kind, MESSAGES[kind].format(model=named))

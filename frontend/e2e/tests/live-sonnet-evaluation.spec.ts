@@ -148,7 +148,9 @@ test.describe("live: Claude end to end", () => {
   test(`an Owner configures ${MODEL_NAME}, builds a Knowledge Base and an Agent, and evaluates a Draft against the Live Version`, async ({
     signedInPage: page,
   }, testInfo) => {
-    test.setTimeout(30 * 60_000);
+    // A Run of 15 cases, two sides and three repeats is 90 real answers, each judged: about
+    // 20 minutes on the compose worker.
+    test.setTimeout(75 * 60_000);
     const shot = async (name: string) => {
       await testInfo.attach(name, { body: await page.screenshot({ fullPage: true }), contentType: "image/png" });
     };
@@ -260,7 +262,7 @@ test.describe("live: Claude end to end", () => {
       await dialog.getByRole("button", { name: "Start Run" }).click();
       const runs = page.getByRole("list", { name: "Evaluation Runs" });
       await expect(runs.getByRole("listitem")).toHaveCount(1, { timeout: 15_000 });
-      await expect(runs.getByRole("listitem").first()).toContainText(/Completed|Failed|Cancelled/, { timeout: 20 * 60_000 });
+      await expect(runs.getByRole("listitem").first()).toContainText(/Completed|Failed|Cancelled/, { timeout: 60 * 60_000 });
       await expect(runs.getByRole("listitem").first()).toContainText("Completed");
 
       const agentPath = /\/organisations\/[^/]+\/projects\/[^/]+\/agents\/[^/?#]+/.exec(page.url())?.[0] ?? "";
