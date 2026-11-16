@@ -83,6 +83,7 @@ test("each metric reads in its own units, with what its sample size counts", asy
     mean_rating: [3.5, "3.5 of 5", "n (ratings)"],
     fallback_rate: [0.25, "25%", "n (replies)"],
     p95_latency_ms: [1480, "1.5 s", "n (replies)"],
+    live_score: [0.75, "75%", "n (judged replies)"],
   };
   setUp({
     respond: (query) => ({
@@ -103,6 +104,7 @@ test("each metric reads in its own units, with what its sample size counts", asy
     "Mean rating",
     "Fallback rate",
     "p95 latency",
+    "Live score",
   ]);
   const read: string[][] = [];
   for (const option of options) {
@@ -114,6 +116,8 @@ test("each metric reads in its own units, with what its sample size counts", asy
   }
   expect(read).toEqual(Object.values(values).map(([, shown, sample]) => [sample, shown]));
   // Under a second, latency reads in milliseconds.
+  await userEvent.selectOptions(within(section).getByLabelText("Metric"), "p95 latency");
+  await screen.findByRole("table", { name: "p95 latency, the numbers behind the chart" });
   expect(rows()[2]).toEqual(["2026-11-06", "320 ms", "3"]);
 });
 

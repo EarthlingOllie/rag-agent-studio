@@ -4507,6 +4507,21 @@ export interface components {
             point_start: string;
             to_version: components["schemas"]["MarkerVersionOut"];
         };
+        /** LiveScoreOut */
+        LiveScoreOut: {
+            /** High */
+            high: number | null;
+            /** Low */
+            low: number | null;
+            /** Low Confidence */
+            low_confidence: boolean;
+            /** N */
+            n: number;
+            /** Passed */
+            passed: number;
+            /** Rate */
+            rate: number | null;
+        };
         /**
          * LiveVerdictOut
          * @description The reply's Live Verdict: the Evaluation Model's judgement of a Visitor reply chosen by
@@ -5836,7 +5851,7 @@ export interface components {
          * @description What a time series measures, over each of its periods.
          * @enum {string}
          */
-        TimeSeriesMetric: "conversations" | "replies" | "cost_usd" | "mean_tokens" | "thumbs_up_rate" | "mean_rating" | "fallback_rate" | "p95_latency_ms";
+        TimeSeriesMetric: "conversations" | "replies" | "cost_usd" | "mean_tokens" | "thumbs_up_rate" | "mean_rating" | "fallback_rate" | "p95_latency_ms" | "live_score";
         /** TimeSeriesOut */
         TimeSeriesOut: {
             /**
@@ -6111,6 +6126,7 @@ export interface components {
             /** Is Live */
             is_live: boolean;
             latency: components["schemas"]["LatencyOut"];
+            live_score: components["schemas"]["LiveScoreOut"];
             /** Low Confidence */
             low_confidence: boolean;
             /** Messages */

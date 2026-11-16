@@ -35,7 +35,8 @@ from app.evaluation.service import evaluation_cost
 from app.projects.models import Project
 from app.tenancy.repository import OrganisationScope
 
-# Fewer votes, ratings or Conversations than this is a small sample: low confidence.
+# Fewer votes, ratings, judged Live Verdicts or Conversations than this is a small sample: low
+# confidence.
 LOW_CONFIDENCE_BELOW = 30
 
 
@@ -60,6 +61,16 @@ class VersionKpis:
     @property
     def thumbs_up_interval(self) -> Interval | None:
         return wilson(self.usage.thumbs_up, self.thumbs)
+
+    @property
+    def live_score(self) -> float | None:
+        """The share of the Version's judged Live Verdicts that passed."""
+        usage = self.usage
+        return usage.live_passed / usage.live_judged if usage.live_judged else None
+
+    @property
+    def live_score_interval(self) -> Interval | None:
+        return wilson(self.usage.live_passed, self.usage.live_judged)
 
     @property
     def mean_tokens(self) -> float | None:
@@ -288,6 +299,7 @@ class TimeSeriesMetric(enum.StrEnum):
     MEAN_RATING = "mean_rating"
     FALLBACK_RATE = "fallback_rate"
     P95_LATENCY_MS = "p95_latency_ms"
+    LIVE_SCORE = "live_score"
 
 
 class TimeSeriesGranularity(enum.StrEnum):
@@ -314,6 +326,7 @@ _MEASURES: dict[TimeSeriesMetric, Callable[[Usage], tuple[float | None, int]]] =
         u.latency_histogram.percentile(0.95),
         u.latency_histogram.count,
     ),
+    TimeSeriesMetric.LIVE_SCORE: lambda u: _rate(u.live_passed, u.live_judged),
 }
 
 # The first day of the period (day, ISO week or month) a day is in.

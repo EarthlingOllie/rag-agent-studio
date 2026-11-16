@@ -4908,6 +4908,65 @@
         "title": "LiveHistoryMarkerOut",
         "type": "object"
       },
+      "LiveScoreOut": {
+        "properties": {
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "low_confidence": {
+            "title": "Low Confidence",
+            "type": "boolean"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "integer"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "n",
+          "passed",
+          "rate",
+          "low",
+          "high",
+          "low_confidence"
+        ],
+        "title": "LiveScoreOut",
+        "type": "object"
+      },
       "LiveVerdictOut": {
         "description": "The reply's Live Verdict: the Evaluation Model's judgement of a Visitor reply chosen by\nthe Agent's Live sample rate.",
         "properties": {
@@ -8553,7 +8612,8 @@
           "thumbs_up_rate",
           "mean_rating",
           "fallback_rate",
-          "p95_latency_ms"
+          "p95_latency_ms",
+          "live_score"
         ],
         "title": "TimeSeriesMetric",
         "type": "string"
@@ -9463,6 +9523,9 @@
           "latency": {
             "$ref": "#/components/schemas/LatencyOut"
           },
+          "live_score": {
+            "$ref": "#/components/schemas/LiveScoreOut"
+          },
           "low_confidence": {
             "title": "Low Confidence",
             "type": "boolean"
@@ -9508,6 +9571,7 @@
           "cost",
           "thumbs_up",
           "rating",
+          "live_score",
           "fallback",
           "guardrail_blocks",
           "searches",
