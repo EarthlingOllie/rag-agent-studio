@@ -866,5 +866,5 @@ The most an Organisation may spend in US dollars per calendar month (UTC) on Liv
 _Avoid_: Eval budget, judging quota, Token Budget (the Agent's reply limit)
 
 **Suggestion**:
-A proposed change to an Agent's Draft, drawn from that Agent's replies that failed judging, were given a thumbs-down, or failed an Evaluation Run, for an Editor to review. An Editor starts the run that makes it; it never changes the Draft or Publishes on its own.
+A proposed change to an Agent's Draft, drawn from that Agent's replies that failed judging, were given a thumbs-down, or failed an Evaluation Run, for an Editor to review: system prompt wording and retrieval settings (Top-k, Minimum Score, Hybrid weighting), each retrieval change citing the Traces behind it, plus any Knowledge Base gaps it found. An Editor starts the run that makes it and applies it to the Draft whole; it never changes the Draft or Publishes on its own, and a failed check against the Evaluation Set is a warning, not a block. Its evidence points at Messages and never copies their text, so Purged evidence reads "Text purged"; the change and its explanation are kept until an Editor deletes it.
 _Avoid_: Agent (that is the assistant being changed), copilot, optimiser, auto-tune, recommendation
