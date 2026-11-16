@@ -266,7 +266,8 @@ Each Agent gets an **Evaluation Set**: questions its Editors care about, each wi
 
 ## Out of Scope
 
-- **Scoring live traffic (spec 15):** sampling Visitor replies for the Evaluation Model to judge, an alert when a newly Published Version's judged quality drops, an Evaluation budget that caps spend nobody starts by hand, and an agent that reads the judged sample replies and suggests changes to the Agent's Draft for an Editor to review.
+- **Scoring live traffic ([spec 15](./15-live-evaluation-spec.md)):** sampling Visitor replies for the Evaluation Model to judge, an alert when a newly Live Version's judged quality drops, and an Evaluation budget that caps spend nobody starts by hand.
+- **Suggestions ([spec 16](./16-suggestions-spec.md)):** reading failed replies and Evaluation Cases to propose changes to an Agent's Draft for an Editor to review.
 - Hard blocking of Publish or Bulk publish on evaluation results.
 - Cases with several turns, or with Conversation history.
 - Running a Run automatically on Draft save, on a schedule, or in CI against customers' Agents.
