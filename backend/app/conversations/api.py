@@ -356,6 +356,9 @@ class LiveVerdictOut(BaseModel):
     # What judging cost, frozen when judged; null when a price is unknown.
     cost_usd: Dollars | None
     judged_at: datetime | None
+    # When the Purge cleared its reasons with the reply's text ("Text purged"); its outcomes,
+    # Cost and counts stay. Null until then.
+    purged_at: datetime | None
 
 
 class ConversationTraceOut(TraceOut):
@@ -385,6 +388,7 @@ def _live_verdict_out(verdict: LiveVerdict | None) -> LiveVerdictOut | None:
         output_tokens=verdict.output_tokens,
         cost_usd=verdict.cost_usd,
         judged_at=verdict.judged_at,
+        purged_at=verdict.purged_at,
     )
 
 

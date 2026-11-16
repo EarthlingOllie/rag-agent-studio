@@ -340,7 +340,9 @@ class LiveVerdict(IdMixin, Base):
     """The judgement of one Visitor reply chosen by the Live sample rate (spec 15): whether it is
     grounded and answers the question, each pass or fail with a reason, and the overall pass.
     One per Agent Message. The Agent and Agent Version are copied from the Message's attribution;
-    the Evaluation Model, Cost and token usage are frozen when it is judged."""
+    the Evaluation Model, Cost and token usage are frozen when it is judged. Unlike Evaluation
+    Cases, Live Verdicts aren't an exception to retention: the Purge of its Message clears its
+    reasons."""
 
     __tablename__ = "live_verdicts"
 
@@ -374,3 +376,6 @@ class LiveVerdict(IdMixin, Base):
     # US dollars, frozen with the prices in force when judged; None when a price is unknown.
     cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
     judged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When the Purge cleared its reasons, with its Message's text (``app.retention``): they can
+    # quote the Visitor. Its outcomes, Cost and counts stay.
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

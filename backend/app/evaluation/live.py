@@ -8,16 +8,20 @@ Agent's Live sample rate. The draw is seeded from ``Settings.live_sample_seed``,
 a sampled subset is stable. A chosen reply gets a ``pending`` Live Verdict, committed before its
 task is sent. The Playground never calls this: only the widget's replies are sampled.
 
-The task judges the question, the reply and the Chunks the reply was given (cited and not, each
-in its own data block) through the Model gateway with the Evaluation Model (or the Default Model,
-as for Evaluation Runs): spec 14's judge, asked for ``grounding`` and ``answers_question`` in one
+The task judges the question, the reply, its Remembered turns (as its Agent Version remembered
+them) and the Chunks the reply was given (cited and not), each in its own data block, through the
+Model gateway with the Evaluation Model (or the Default Model, as for Evaluation Runs): spec 14's
+judge, asked for ``grounding`` and ``answers_question`` in one
 structured-output call at temperature 0. The system prompt and Project Instructions are never
 sent. The reply passes when both checks pass. A judge error or timeout makes the Live Verdict an
 ``error`` with its reason; there is no retry, so an outage doesn't multiply spend. The judge's
-Cost is frozen with the cost function and Price table in force when it is judged.
+Cost is frozen with the cost function and Price table in force when it is judged. When the reply,
+its question or a Remembered turn has been Purged before judging, the Live Verdict is ``skipped``
+and nothing is sent to the judge.
 """
 
 import functools
+import itertools
 import random
 import uuid
 from typing import cast
@@ -25,8 +29,9 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.agents.models import Agent
-from app.conversations.models import Message
+from app.agents.config import AgentConfig
+from app.agents.models import Agent, AgentVersion
+from app.conversations.models import Message, MessageRole
 from app.conversations.service import traced_chunks
 from app.core.clock import Clock
 from app.evaluation.from_message import question_of
@@ -35,8 +40,10 @@ from app.evaluation.models import LiveStatus, LiveVerdict, VerdictOutcome
 from app.evaluation.ports import EvaluationPorts
 from app.evaluation.settings import judge_model
 from app.gateway.gateway import ModelGateway
+from app.guardrails.outcomes import blocked
 from app.pricing.service import credential_pricing, price_table
 from app.pricing.table import cost
+from app.runtime.prompt import Turn
 from app.runtime.runtime import DoneEvent
 
 NO_EVALUATION_MODEL = (
@@ -87,10 +94,39 @@ async def sample_reply(
         return verdict.id
 
 
-async def _request(session: AsyncSession, reply: Message) -> JudgeRequest:
-    """What the judge is given: the question, the reply, and the Chunks the reply was given, split
-    into those it cited and the rest."""
+async def _remembered(
+    session: AsyncSession, reply: Message, question: Message
+) -> list[tuple[Message, Message]]:
+    """The reply's Remembered turns, oldest first, as its Agent Version remembered them: the
+    last of the earlier exchanges, leaving out those the input Guardrail blocked and those
+    already Purged when the reply was given (neither was sent to the model)."""
+    version = await session.get_one(AgentVersion, reply.agent_version_id)
+    count = AgentConfig.model_validate(version.config).behaviour.remembered_turns
+    earlier = await session.scalars(
+        select(Message)
+        .where(Message.conversation_id == reply.conversation_id, Message.seq < question.seq)
+        .order_by(Message.seq)
+    )
+    turns = [
+        (asked, answer)
+        for asked, answer in itertools.pairwise(earlier)
+        if (asked.role, answer.role) == (MessageRole.USER, MessageRole.ASSISTANT)
+        and not blocked(answer.guardrail_outcomes)
+        and all(m.purged_at is None or m.purged_at > reply.created_at for m in (asked, answer))
+    ]
+    return turns[-count:] if count else []
+
+
+async def _request(session: AsyncSession, reply: Message) -> JudgeRequest | None:
+    """What the judge is given: the reply's Remembered turns, the question, the reply, and the
+    Chunks the reply was given, split into those it cited and the rest. None when the reply's
+    text, its question's or a Remembered turn's has been Purged since: nothing is judged
+    without its text."""
     question = await question_of(session, reply)
+    turns = await _remembered(session, reply, question)
+    texts = [reply, question, *(m for turn in turns for m in turn)]
+    if any(m.purged_at is not None for m in texts):
+        return None
     given: dict[int, tuple[bool, CitedExcerpt]] = {}
     traced = await traced_chunks(session, reply)
     # Those left out (with no rank) weren't given to the model.
@@ -109,6 +145,7 @@ async def _request(session: AsyncSession, reply: Message) -> JudgeRequest:
         grounding=True,
         answers_question=True,
         given=[excerpt for cited, excerpt in given.values() if not cited],
+        earlier_turns=[Turn(asked.content, answer.content) for asked, answer in turns],
     )
 
 
@@ -123,11 +160,17 @@ async def judge_live_verdict(
     verdict_id: uuid.UUID,
     clock: Clock,
 ) -> None:
-    """Judges the pending Live Verdict: ``judged`` with both checks, or ``error`` with why."""
+    """Judges the pending Live Verdict: ``judged`` with both checks, ``error`` with why, or
+    ``skipped`` when the text it needs was Purged first."""
     async with sessionmaker() as session:
         verdict = await session.get_one(LiveVerdict, verdict_id)
         reply = await session.get_one(Message, verdict.message_id)
         request = await _request(session, reply)
+        if request is None:
+            # Purged before it was judged: nothing is sent to the judge.
+            verdict.status = LiveStatus.SKIPPED
+            await session.commit()
+            return
         chosen = await judge_model(session, verdict.organisation_id)
         verdict.status = LiveStatus.ERROR
         if chosen is None:
@@ -148,13 +191,21 @@ async def judge_live_verdict(
             await session.commit()
             return
         now = clock.now()
+        # The reply may have been Purged while it was judged. The Purge clears the Live Verdict
+        # in the same pass as the Message, so with the Live Verdict locked a fresh read of the
+        # Message says whether the reasons, which can quote the Visitor, may be kept.
+        await session.execute(
+            select(LiveVerdict.id).where(LiveVerdict.id == verdict.id).with_for_update()
+        )
+        purged_at = await session.scalar(select(Message.purged_at).where(Message.id == reply.id))
         grounded = judging.verdicts["grounding"]
         answers = judging.verdicts["answers_question"]
         verdict.status = LiveStatus.JUDGED
         verdict.grounded = _outcome(grounded.passed)
-        verdict.grounded_reason = grounded.reason
+        verdict.grounded_reason = None if purged_at else grounded.reason
         verdict.answers_question = _outcome(answers.passed)
-        verdict.answers_question_reason = answers.reason
+        verdict.answers_question_reason = None if purged_at else answers.reason
+        verdict.purged_at = purged_at
         verdict.passed = grounded.passed and answers.passed
         verdict.input_tokens = judging.usage.input_tokens
         verdict.output_tokens = judging.usage.output_tokens

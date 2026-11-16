@@ -10,7 +10,7 @@ eagerly after the widget reply, so a Live Verdict is final by the time the reply
 random draw is seeded by the test settings, so a sampled subset is stable from run to run.
 """
 
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from typing import Any
@@ -64,12 +64,14 @@ async def visitor(new_client: ClientFactory) -> httpx.AsyncClient:
 
 
 Judgement = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
+# A judge that awaits before it answers, as a slow one does.
+AsyncJudgement = Callable[[list[ModelMessage], AgentInfo], Awaitable[ModelResponse]]
 
 
 def scripted(
     app: FastAPI,
     stream: StreamFunction = three_tokens,
-    judgement: Judgement | None = None,
+    judgement: Judgement | AsyncJudgement | None = None,
 ) -> list[tuple[Provider, str]]:
     """Every chat model answers by streaming ``stream`` and judges with ``judgement`` (by
     default, as the fake chat model judges). Returns every chat model built."""

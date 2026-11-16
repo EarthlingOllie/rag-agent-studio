@@ -4536,6 +4536,8 @@ export interface components {
             output_tokens: number | null;
             /** Passed */
             passed: boolean | null;
+            /** Purged At */
+            purged_at: string | null;
             /**
              * Status
              * @enum {string}
