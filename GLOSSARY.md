@@ -849,6 +849,22 @@ _Avoid_: Publish gate, evaluation check
 The notice before an Editor deletes a Document, or uploads a new Edition of it, that holds an Expected source: which Agents' Evaluation Sets and how many cases. It never blocks; once a new Edition is Ready, its Expected sources are checked again and any whose passage is gone become Stale expectations.
 _Avoid_: Eval dependency warning
 
+**Live sample rate**:
+The share of an Agent's Visitor replies the Evaluation Model judges, from 0% (the default) to 100%, chosen at random when each reply finishes. Replies the input Guardrail blocked and Fallback Text replies are never chosen. Part of the Operational Settings, so a change applies at once without Publishing and is audited. It can't be raised above 0% while the Organisation has no Evaluation budget.
+_Avoid_: Sampling percentage, judge rate
+
+**Live Verdict**:
+The Evaluation Model's judgement of one sampled Visitor reply: whether it is grounded (every claim supported by its Citations) and whether it answers the question, each a pass or fail with a one-sentence reason. The reply passes when both pass. A reply the Evaluation Model couldn't judge has an Error instead. It belongs to its Message, so the Purge clears its reasons and keeps its pass or fail. Its Cost counts in Organisation cost's Evaluation column, never in the Token Budget or the Version KPIs.
+_Avoid_: Live judgement, online eval, score
+
+**Live score**:
+The share of an Agent Version's Live Verdicts that passed, shown as a Version KPI with its Wilson interval and sample size (Low sample under 30), in the Version comparison (higher is the Better side) and as a Time series metric. Errors are left out. Only Visitor Conversations count.
+_Avoid_: Judged pass rate, Pass rate (the Attack evaluation suite's), quality score
+
+**Evaluation budget**:
+The most an Organisation may spend in US dollars per calendar month (UTC) on Live Verdicts, set by Owners. There is none by default. Once the month's spend reaches it, sampling stops across the Organisation until the 1st of the next month and every Owner is emailed once; raising it resumes sampling at once. Visitor replies are never affected, and Evaluation Runs an Editor starts are never capped.
+_Avoid_: Eval budget, judging quota, Token Budget (the Agent's reply limit)
+
 **Suggestion**:
 A proposed change to an Agent's Draft, drawn from that Agent's replies that failed judging, were given a thumbs-down, or failed an Evaluation Run, for an Editor to review. An Editor starts the run that makes it; it never changes the Draft or Publishes on its own.
 _Avoid_: Agent (that is the assistant being changed), copilot, optimiser, auto-tune, recommendation
