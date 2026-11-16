@@ -251,8 +251,11 @@ test.describe("live: Claude end to end", () => {
       await page.getByRole("button", { name: "Evaluate", exact: true }).click();
       // The whole dialog: its Start Run button sits in the footer, outside the form.
       const dialog = page.getByRole("dialog", { name: "Evaluate" });
-      await expect(dialog.getByLabel("First side").locator("option:checked")).toHaveText("Version 1 (Live)");
-      await expect(dialog.getByLabel("Second side").locator("option:checked")).toHaveText("Draft");
+      // The sides are the dialog's first two selects. By label they'd collide: the second offers
+      // "None: the first side runs alone", which a "First side" label match also finds.
+      const [firstSide, secondSide] = [dialog.getByRole("combobox").nth(0), dialog.getByRole("combobox").nth(1)];
+      await expect(firstSide.locator("option:checked")).toHaveText("Version 1 (Live)");
+      await expect(secondSide.locator("option:checked")).toHaveText("Draft");
       await expect(dialog.getByRole("status", { name: "Estimated Cost" })).toContainText("$", { timeout: 15_000 });
       await dialog.getByRole("button", { name: "Start Run" }).click();
       const runs = page.getByRole("list", { name: "Evaluation Runs" });
