@@ -848,3 +848,7 @@ _Avoid_: Publish gate, evaluation check
 **Expected source warning**:
 The notice before an Editor deletes a Document, or uploads a new Edition of it, that holds an Expected source: which Agents' Evaluation Sets and how many cases. It never blocks; once a new Edition is Ready, its Expected sources are checked again and any whose passage is gone become Stale expectations.
 _Avoid_: Eval dependency warning
+
+**Suggestion**:
+A proposed change to an Agent's Draft, drawn from that Agent's replies that failed judging, were given a thumbs-down, or failed an Evaluation Run, for an Editor to review. An Editor starts the run that makes it; it never changes the Draft or Publishes on its own.
+_Avoid_: Agent (that is the assistant being changed), copilot, optimiser, auto-tune, recommendation
