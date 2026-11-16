@@ -522,6 +522,9 @@ settings_router = APIRouter(
 )
 
 Origin = Annotated[str, StringConstraints(max_length=ORIGIN_MAX * 2)]
+# The 422 error type of a Live sample rate above 0 set without an Evaluation budget.
+EVALUATION_BUDGET_REQUIRED = "evaluation_budget_required"
+
 UnavailableText = Annotated[
     str, StringConstraints(strip_whitespace=True, max_length=UNAVAILABLE_TEXT_MAX)
 ]
@@ -626,7 +629,9 @@ async def change_operational_settings(
 ) -> OperationalSettingsOut:
     """Changes the settings given. The next request uses them, without publishing, and the
     change is recorded as an Audit Event with the before and after values (a Live sample rate
-    change as ``agent.live_sample_rate_changed``)."""
+    change as ``agent.live_sample_rate_changed``). A Live sample rate above 0 is refused with
+    the typed error ``evaluation_budget_required`` while the Organisation has no Evaluation
+    budget."""
     blank_text = "unavailable_text" in body.model_fields_set and body.unavailable_text is None
     try:
         found = await service.change_operational_settings(
@@ -644,6 +649,20 @@ async def change_operational_settings(
         )
     except (ProjectNotFoundError, AgentNotFoundError):
         raise not_found() from None
+    except service.EvaluationBudgetRequiredError:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            [
+                {
+                    "loc": ["body", "live_sample_rate"],
+                    "msg": (
+                        "The Organisation has no Evaluation budget, so no reply can be judged. "
+                        "An Owner sets one in Organisation settings, Models."
+                    ),
+                    "type": EVALUATION_BUDGET_REQUIRED,
+                }
+            ],
+        ) from None
     except service.InvalidOriginError as error:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,

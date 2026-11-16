@@ -173,6 +173,7 @@ export const judgedVerdict: LiveVerdict = {
   output_tokens: 64,
   cost_usd: "0.001132",
   judged_at: "2026-11-06T10:15:09Z",
+  purged_at: null,
 };
 
 /**

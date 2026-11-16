@@ -17,7 +17,7 @@ export const notSignedIn: Schemas["ErrorResponse"] = {
 };
 
 /** Default handlers describe a healthy stack, a visitor who is not signed in, no Projects, Documents, Tags, Agents or
- * Conversations (so no Instructions rollout), no Evaluation Sets or Rollout evaluations, and the default Retention Window. */
+ * Conversations (so no Instructions rollout), no Evaluation Sets or Rollout evaluations, no Evaluation budget, and the default Retention Window. */
 export const server = setupServer(
   http.get("*/api/health", () => HttpResponse.json(healthy)),
   http.get("*/api/organisations/:organisationId/projects", () =>
@@ -69,6 +69,16 @@ export const server = setupServer(
       role: "owner",
       require_mfa: false,
       retention_days: 90,
+    }),
+  ),
+  // No Organisation has an Evaluation budget, so no Visitor reply is judged.
+  http.get("*/api/organisations/:organisationId/evaluation-budget", () =>
+    HttpResponse.json({
+      evaluation_budget_usd: null,
+      month: "2026-11-01",
+      spent_usd: "0",
+      exhausted: false,
+      resets_at: "2026-12-01T00:00:00Z",
     }),
   ),
   http.get("*/api/auth/me", () =>

@@ -10,7 +10,9 @@ prompt-injected answer can't close its block early and vote for itself.
 The model returns a pass or fail with a one-sentence reason for each Verdict asked for: the
 ``reference_answer`` (when the case has one) and ``grounding`` (unless the answer is the Fallback
 Text), and for a Live Verdict ``answers_question``, given the Chunks the reply was given but
-didn't cite as one more data block. It also returns the call's token usage, for its judging
+didn't cite as one more data block, and the reply's Remembered turns as another (so a follow-up
+is judged in context). The Agent's system prompt and Project Instructions are never part of a
+request. It also returns the call's token usage, for its judging
 Cost. ``JudgeError`` carries what went wrong when it can't judge.
 """
 
@@ -26,6 +28,7 @@ from pydantic_ai.settings import ModelSettings
 
 from app.pricing.table import TokenUsage
 from app.runtime.errors import PROVIDER_ERRORS, provider_error
+from app.runtime.prompt import Turn
 
 QUESTION_OPEN = "<<<QUESTION>>>"
 QUESTION_CLOSE = "<<<END_QUESTION>>>"
@@ -37,6 +40,8 @@ REFERENCE_OPEN = "<<<REFERENCE_ANSWER>>>"
 REFERENCE_CLOSE = "<<<END_REFERENCE_ANSWER>>>"
 GIVEN_OPEN = "<<<GIVEN_EXCERPTS>>>"
 GIVEN_CLOSE = "<<<END_GIVEN_EXCERPTS>>>"
+TURNS_OPEN = "<<<EARLIER_TURNS>>>"
+TURNS_CLOSE = "<<<END_EARLIER_TURNS>>>"
 _DELIMITERS = (
     QUESTION_OPEN,
     QUESTION_CLOSE,
@@ -48,6 +53,8 @@ _DELIMITERS = (
     REFERENCE_CLOSE,
     GIVEN_OPEN,
     GIVEN_CLOSE,
+    TURNS_OPEN,
+    TURNS_CLOSE,
 )
 # The last line of the request: which Verdicts to give.
 JUDGE_LINE = "Judge: "
@@ -56,6 +63,8 @@ JUDGE_PROMPT = f"""\
 You judge one answer that a customer-facing assistant gave from an organisation's knowledge base.
 
 The request holds labelled data blocks:
+- {TURNS_OPEN} … {TURNS_CLOSE}, when given: the earlier questions and answers of the \
+conversation that the assistant remembered, oldest first; context for the question, not to judge.
 - {QUESTION_OPEN} … {QUESTION_CLOSE}: the question the assistant was asked.
 - {ANSWER_OPEN} … {ANSWER_CLOSE}: the assistant's answer.
 - {CITED_OPEN} … {CITED_CLOSE}: the knowledge base excerpts the answer cited, each labelled \
@@ -118,6 +127,9 @@ class JudgeRequest:
     answers_question: bool = False
     # The Chunks the answer was given but didn't cite (a Live Verdict's); empty for a Run's.
     given: Sequence[CitedExcerpt] = ()
+    # A Live Verdict's: the reply's Remembered turns, oldest first, so a follow-up is judged in
+    # context; empty for a Run's.
+    earlier_turns: Sequence[Turn] = ()
 
     @property
     def asked(self) -> list[Judged]:
@@ -167,7 +179,12 @@ def _excerpts(excerpts: Sequence[CitedExcerpt]) -> str:
 def judge_message(request: JudgeRequest) -> str:
     """The user message the judge model is given: the data blocks, then the line naming the
     Verdicts to give."""
-    blocks = [
+    turns = "\n\n".join(
+        f"Question: {_escape(turn.question)}\nAnswer: {_escape(turn.answer)}"
+        for turn in request.earlier_turns
+    )
+    blocks = [f"{TURNS_OPEN}\n{turns}\n{TURNS_CLOSE}"] if request.earlier_turns else []
+    blocks += [
         _block(QUESTION_OPEN, QUESTION_CLOSE, request.question),
         _block(ANSWER_OPEN, ANSWER_CLOSE, request.answer),
         f"{CITED_OPEN}\n{_excerpts(request.cited)}\n{CITED_CLOSE}",

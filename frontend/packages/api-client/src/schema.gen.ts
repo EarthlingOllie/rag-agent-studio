@@ -683,6 +683,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/evaluation-budget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Evaluation Budget
+         * @description The Evaluation budget (null while there is none) and this month's spend against it, for
+         *     the meter. Open to every Member.
+         */
+        get: operations["getEvaluationBudget"];
+        /**
+         * Set Evaluation Budget
+         * @description Sets the monthly Evaluation budget in US dollars, or with null removes it, which stops
+         *     all sampling while keeping each Agent's Live sample rate (Owners only). Raising it resumes
+         *     sampling at the next reply. Recorded as ``organisation.evaluation_budget_changed``.
+         */
+        put: operations["setEvaluationBudget"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/evaluation-model": {
         parameters: {
             query?: never;
@@ -1494,7 +1521,9 @@ export interface paths {
          * Change Operational Settings
          * @description Changes the settings given. The next request uses them, without publishing, and the
          *     change is recorded as an Audit Event with the before and after values (a Live sample rate
-         *     change as ``agent.live_sample_rate_changed``).
+         *     change as ``agent.live_sample_rate_changed``). A Live sample rate above 0 is refused with
+         *     the typed error ``evaluation_budget_required`` while the Organisation has no Evaluation
+         *     budget.
          */
         patch: operations["changeOperationalSettings"];
         trace?: never;
@@ -3952,6 +3981,25 @@ export interface components {
             /** Total Usd */
             total_usd: string | null;
         };
+        /** EvaluationBudgetOut */
+        EvaluationBudgetOut: {
+            /** Evaluation Budget Usd */
+            evaluation_budget_usd: string | null;
+            /** Exhausted */
+            exhausted: boolean;
+            /**
+             * Month
+             * Format: date
+             */
+            month: string;
+            /**
+             * Resets At
+             * Format: date-time
+             */
+            resets_at: string;
+            /** Spent Usd */
+            spent_usd: string;
+        };
         /** EvaluationModelOut */
         EvaluationModelOut: {
             /**
@@ -4536,6 +4584,8 @@ export interface components {
             output_tokens: number | null;
             /** Passed */
             passed: boolean | null;
+            /** Purged At */
+            purged_at: string | null;
             /**
              * Status
              * @enum {string}
@@ -5542,6 +5592,14 @@ export interface components {
             credential_id?: string | null;
             /** Model Id */
             model_id: string;
+        };
+        /**
+         * SetEvaluationBudgetRequest
+         * @description US dollars and cents above zero, or null for no budget (which stops all sampling).
+         */
+        SetEvaluationBudgetRequest: {
+            /** Evaluation Budget Usd */
+            evaluation_budget_usd: number | string | null;
         };
         /**
          * SetEvaluationModelRequest
@@ -7977,6 +8035,97 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    getEvaluationBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationBudgetOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    setEvaluationBudget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetEvaluationBudgetRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationBudgetOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not dollars and cents above zero */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

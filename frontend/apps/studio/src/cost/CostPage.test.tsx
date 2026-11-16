@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import { adaSession, fakeAuthApi, type Session } from "../test/auth";
 import { fakeCostApi } from "../test/cost";
+import { fakeEvaluationBudgetApi } from "../test/models";
 import { fakeProjectsApi } from "../test/projects";
 import { openSection, sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
@@ -156,4 +157,27 @@ test("Owners find the cost page in the navigation; Editors neither see it nor ca
   expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Cost")).toHaveAttribute("aria-current", "page");
   expect(screen.queryByRole("table")).not.toBeInTheDocument();
   expect(queries).toEqual([]);
+});
+
+test("the Cost page shows this month's Evaluation budget meter above its table", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeCostApi();
+  fakeEvaluationBudgetApi({ budget: "40.00", spent: "35" });
+  renderStudio(costPage);
+
+  const budget = await screen.findByRole("region", { name: "Evaluation budget" });
+  const meter = await within(budget).findByRole("meter", { name: "Evaluation budget spent this month" });
+  expect(meter).toHaveAttribute("aria-valuetext", "$35.00 of $40.00");
+  const table = await screen.findByRole("table", { name: "Cost by Project" });
+  // The meter comes first.
+  expect(meter.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
+
+test("without an Evaluation budget, the Cost page says nothing is judged", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeCostApi();
+  renderStudio(costPage);
+
+  const budget = await screen.findByRole("region", { name: "Evaluation budget" });
+  expect(await within(budget).findByText("No Evaluation budget is set, so no Visitor replies are judged.")).toBeInTheDocument();
 });

@@ -59,3 +59,39 @@ export function useSetEvaluationRepeats(organisationId: string) {
     },
   });
 }
+
+export type EvaluationBudget = Schemas["EvaluationBudgetOut"];
+
+const budgetKey = (organisationId: string) => ["evaluation-budget", organisationId] as const;
+
+/** The monthly Evaluation budget (null while there is none, and then no reply is sampled) and this month's spend. */
+export function useEvaluationBudget(organisationId: string) {
+  return useQuery({
+    queryKey: budgetKey(organisationId),
+    queryFn: async (): Promise<EvaluationBudget> => {
+      const { data, error, response } = await api.GET("/api/organisations/{organisation_id}/evaluation-budget", {
+        params: { path: { organisation_id: organisationId } },
+      });
+      if (!data) throw failed(response, error);
+      return data;
+    },
+  });
+}
+
+/** Sets the Evaluation budget in US dollars, or with null removes it (Owners only). */
+export function useSetEvaluationBudget(organisationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (budget: string | null): Promise<EvaluationBudget> => {
+      const { data, error, response } = await api.PUT("/api/organisations/{organisation_id}/evaluation-budget", {
+        params: { path: { organisation_id: organisationId } },
+        body: { evaluation_budget_usd: budget },
+      });
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: (saved) => {
+      queryClient.setQueryData(budgetKey(organisationId), saved);
+    },
+  });
+}

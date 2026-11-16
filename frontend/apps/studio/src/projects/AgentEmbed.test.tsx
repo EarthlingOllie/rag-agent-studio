@@ -4,6 +4,7 @@ import { http, HttpResponse } from "msw";
 
 import { DEFAULT_UNAVAILABLE_TEXT, fakeAgentsApi, hrHelper, oldHelper } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
+import { fakeEvaluationBudgetApi } from "../test/models";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
@@ -500,13 +501,17 @@ test("while the Operational Settings load, the Token Budget cannot be saved over
 test("an Editor sets the Live sample rate, which says the Evaluation Model judges the replies", async () => {
   const user = userEvent.setup();
   const { requests } = setUp();
+  fakeEvaluationBudgetApi({ budget: "50.00" });
   renderStudio(agentPage(liveHelper.id));
   const embed = await embedSection();
   const card = within(embed).getByRole("region", { name: "Live sample rate" });
   const field = within(card).getByLabelText("Visitor replies judged (%)");
   expect(await within(card).findByDisplayValue("0")).toBe(field);
+  await waitFor(() => {
+    expect(field).toBeEnabled();
+  });
   expect(field).toHaveAccessibleDescription(
-    "The share of Visitor replies chosen at random and judged in the background by the Evaluation Model, as a Live Verdict in each reply's Trace. Each judgement is a call to the Evaluation Model. 0% judges none; the Playground is never judged.",
+    "The share of Visitor replies chosen at random and judged in the background by the Evaluation Model, as a Live Verdict in each reply's Trace. Judged by the Evaluation Model; costs count against the Evaluation budget. 0% judges none; the Playground is never judged.",
   );
 
   await user.clear(field);
@@ -545,13 +550,45 @@ test("a refused Live sample rate is explained", async () => {
       ),
     ),
   );
+  fakeEvaluationBudgetApi({ budget: "50.00" });
   renderStudio(agentPage(liveHelper.id));
   const embed = await embedSection();
   const field = await within(embed).findByDisplayValue("0");
+  await waitFor(() => {
+    expect(field).toBeEnabled();
+  });
 
   await user.clear(field);
   await user.type(field, "50");
   await user.click(within(embed).getByRole("button", { name: "Save Live sample rate" }));
 
   expect(await within(embed).findByRole("alert")).toHaveTextContent("Input should be a valid integer");
+});
+
+test("without an Evaluation budget the Live sample rate is disabled, with a link to Organisation settings", async () => {
+  setUp();
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const card = within(embed).getByRole("region", { name: "Live sample rate" });
+
+  expect(
+    await within(card).findByText(/The Organisation has no Evaluation budget, so no reply can be judged\. An Owner sets one in/),
+  ).toBeInTheDocument();
+  expect(within(card).getByRole("link", { name: "Organisation settings" })).toHaveAttribute(
+    "href",
+    `/organisations/${organisationId}/settings/models`,
+  );
+  expect(within(card).getByLabelText("Visitor replies judged (%)")).toBeDisabled();
+  expect(within(card).getByRole("button", { name: "Save Live sample rate" })).toBeDisabled();
+});
+
+test("an Evaluation budget that can't be loaded keeps the Live sample rate disabled and says so", async () => {
+  setUp();
+  server.use(http.get("*/api/organisations/:organisationId/evaluation-budget", () => HttpResponse.json({}, { status: 500 })));
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const card = within(embed).getByRole("region", { name: "Live sample rate" });
+
+  expect(await within(card).findByText("The Evaluation budget could not be loaded. Try again shortly.")).toBeInTheDocument();
+  expect(within(card).getByLabelText("Visitor replies judged (%)")).toBeDisabled();
 });
