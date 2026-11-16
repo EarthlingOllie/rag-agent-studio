@@ -60,6 +60,8 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("INJECTION_CLASSIFIER", "fake")
     monkeypatch.setenv("INPUT_CLASSIFIER", "fake")
     monkeypatch.setenv("MODEL_GATEWAY", "fake")
+    # The Live sample rate's draws are seeded, so a sampled subset is the same every run.
+    monkeypatch.setenv("LIVE_SAMPLE_SEED", "15")
 
 
 @pytest.fixture(scope="session")

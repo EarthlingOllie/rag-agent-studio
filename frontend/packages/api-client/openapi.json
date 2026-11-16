@@ -1935,6 +1935,232 @@
         "title": "ConversationTokenOut",
         "type": "object"
       },
+      "ConversationTraceOut": {
+        "properties": {
+          "agent_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Id"
+          },
+          "agent_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Number"
+          },
+          "automatic_fallback": {
+            "title": "Automatic Fallback",
+            "type": "boolean"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/TracedChunkOut"
+            },
+            "title": "Chunks",
+            "type": "array"
+          },
+          "config_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Source"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "fallback": {
+            "title": "Fallback",
+            "type": "boolean"
+          },
+          "first_token_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Token Ms"
+          },
+          "guardrail_outcomes": {
+            "items": {
+              "$ref": "#/components/schemas/GuardrailOutcomeOut"
+            },
+            "title": "Guardrail Outcomes",
+            "type": "array"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "instructions_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "draft",
+                  "version"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Source"
+          },
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          },
+          "instructions_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Number"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "live_verdict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveVerdictOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "message_id": {
+            "format": "uuid",
+            "title": "Message Id",
+            "type": "string"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "model_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Provider"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "search_count": {
+            "title": "Search Count",
+            "type": "integer"
+          },
+          "searches": {
+            "items": {
+              "$ref": "#/components/schemas/SearchOut"
+            },
+            "title": "Searches",
+            "type": "array"
+          }
+        },
+        "required": [
+          "message_id",
+          "config_source",
+          "agent_version_number",
+          "instructions_source",
+          "instructions_version_id",
+          "instructions_version_number",
+          "agent_version_id",
+          "model_provider",
+          "model_name",
+          "input_tokens",
+          "output_tokens",
+          "cost_usd",
+          "first_token_ms",
+          "latency_ms",
+          "fallback",
+          "chunks",
+          "search_count",
+          "searches",
+          "automatic_fallback",
+          "guardrail_outcomes",
+          "live_verdict"
+        ],
+        "title": "ConversationTraceOut",
+        "type": "object"
+      },
       "CopyIn": {
         "properties": {
           "agent_id": {
@@ -4555,6 +4781,35 @@
         "title": "LauncherType",
         "type": "string"
       },
+      "LiveCheckOut": {
+        "properties": {
+          "outcome": {
+            "enum": [
+              "pass",
+              "fail"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "outcome",
+          "reason"
+        ],
+        "title": "LiveCheckOut",
+        "type": "object"
+      },
       "LiveHistoryEntryOut": {
         "properties": {
           "action": {
@@ -4651,6 +4906,151 @@
           "to_version"
         ],
         "title": "LiveHistoryMarkerOut",
+        "type": "object"
+      },
+      "LiveVerdictOut": {
+        "description": "The reply's Live Verdict: the Evaluation Model's judgement of a Visitor reply chosen by\nthe Agent's Live sample rate.",
+        "properties": {
+          "agent_version_id": {
+            "format": "uuid",
+            "title": "Agent Version Id",
+            "type": "string"
+          },
+          "answers_question": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveCheckOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "error_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Reason"
+          },
+          "grounded": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/LiveCheckOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "judge_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Model"
+          },
+          "judge_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judge Provider"
+          },
+          "judged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judged At"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "passed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Passed"
+          },
+          "status": {
+            "enum": [
+              "pending",
+              "judged",
+              "error",
+              "skipped"
+            ],
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "grounded",
+          "answers_question",
+          "passed",
+          "error_reason",
+          "agent_version_id",
+          "judge_provider",
+          "judge_model",
+          "input_tokens",
+          "output_tokens",
+          "cost_usd",
+          "judged_at"
+        ],
+        "title": "LiveVerdictOut",
         "type": "object"
       },
       "LiveVersionOut": {
@@ -5398,6 +5798,19 @@
             ],
             "title": "Ip Messages Per Minute"
           },
+          "live_sample_rate": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Sample Rate"
+          },
           "unavailable_text": {
             "anyOf": [
               {
@@ -5435,6 +5848,10 @@
             "title": "Ip Messages Per Minute",
             "type": "integer"
           },
+          "live_sample_rate": {
+            "title": "Live Sample Rate",
+            "type": "integer"
+          },
           "unavailable_text": {
             "title": "Unavailable Text",
             "type": "string"
@@ -5445,7 +5862,8 @@
           "unavailable_text",
           "conversation_messages_per_minute",
           "ip_messages_per_minute",
-          "daily_token_budget"
+          "daily_token_budget",
+          "live_sample_rate"
         ],
         "title": "OperationalSettingsOut",
         "type": "object"
@@ -15927,7 +16345,7 @@
         ]
       },
       "patch": {
-        "description": "Changes the settings given. The next request uses them, without publishing, and the\nchange is recorded as an Audit Event with the before and after values.",
+        "description": "Changes the settings given. The next request uses them, without publishing, and the\nchange is recorded as an Audit Event with the before and after values (a Live sample rate\nchange as ``agent.live_sample_rate_changed``).",
         "operationId": "changeOperationalSettings",
         "parameters": [
           {
@@ -17989,7 +18407,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/conversations/{conversation_id}/messages/{message_id}/trace": {
       "get": {
-        "description": "The Trace of one of the Agent's answers in the Conversation.",
+        "description": "The Trace of one of the Agent's answers in the Conversation, with its Live Verdict.",
         "operationId": "getConversationTrace",
         "parameters": [
           {
@@ -18038,7 +18456,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TraceOut"
+                  "$ref": "#/components/schemas/ConversationTraceOut"
                 }
               }
             },
@@ -21791,7 +22209,7 @@
     },
     "/api/widget/agents/{public_id}/messages": {
       "post": {
-        "description": "Asks the Agent's Live Version a question in the token's Conversation. The answer is\nrecorded against the Version that was Live when it was generated, and the tokens it used\ncount against the Agent's daily Token Budget. Messages over the Agent's rate limits, per\nConversation and per IP address, or once the day's budget is spent, get its unavailable\ntext; the first refusal or reply that finds the budget spent raises the Agent's alert and\nemails its Owners, once per day.",
+        "description": "Asks the Agent's Live Version a question in the token's Conversation. The answer is\nrecorded against the Version that was Live when it was generated, and the tokens it used\ncount against the Agent's daily Token Budget. Messages over the Agent's rate limits, per\nConversation and per IP address, or once the day's budget is spent, get its unavailable\ntext; the first refusal or reply that finds the budget spent raises the Agent's alert and\nemails its Owners, once per day. Once a reply is sent, it may be chosen by the Agent's Live\nsample rate for a Live Verdict, judged in the background without delaying the reply.",
         "operationId": "sendWidgetMessage",
         "parameters": [
           {

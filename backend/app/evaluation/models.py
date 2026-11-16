@@ -1,9 +1,9 @@
-"""Evaluation Cases, Evaluation Runs, their sides, case results and Verdicts.
+"""Evaluation Cases, Evaluation Runs, their sides, case results and Verdicts, and Live Verdicts.
 
 Everything here belongs to one Agent and goes with it on Permanent deletion (``ON DELETE
-CASCADE``). Nothing references a Conversation or a Message, and the Purge never touches these
-tables (ADR-0016). A Run copies each case's question and expectations when it starts
-(``EvaluationRunCase``), and each side's effective AgentConfig and Instructions
+CASCADE``). Apart from Live Verdicts, nothing references a Conversation or a Message, and the
+Purge never touches these tables (ADR-0016). A Run copies each case's question and expectations
+when it starts (``EvaluationRunCase``), and each side's effective AgentConfig and Instructions
 (``EvaluationRunSide``), so editing the set or the Draft later never rewrites a past Run.
 """
 
@@ -29,6 +29,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.agents.models import Agent, AgentVersion
+from app.conversations.models import Message
 from app.core.db import Base, IdMixin
 from app.credentials.models import ProviderCredential
 from app.documents.models import NAME_MAX, Document
@@ -323,3 +324,53 @@ class EvaluationVerdict(IdMixin, Base):
     position: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     outcome: Mapped[str] = mapped_column(String(10))
     reason: Mapped[str | None] = mapped_column(Text)
+
+
+class LiveStatus(enum.StrEnum):
+    # Chosen; its judging task hasn't finished.
+    PENDING = "pending"
+    JUDGED = "judged"
+    # The Evaluation Model failed or timed out; left out of the Live score.
+    ERROR = "error"
+    # Its text was Purged before it was judged.
+    SKIPPED = "skipped"
+
+
+class LiveVerdict(IdMixin, Base):
+    """The judgement of one Visitor reply chosen by the Live sample rate (spec 15): whether it is
+    grounded and answers the question, each pass or fail with a reason, and the overall pass.
+    One per Agent Message. The Agent and Agent Version are copied from the Message's attribution;
+    the Evaluation Model, Cost and token usage are frozen when it is judged."""
+
+    __tablename__ = "live_verdicts"
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
+    )
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Message.id, ondelete="CASCADE"), unique=True
+    )
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Agent.id, ondelete="CASCADE"), index=True
+    )
+    agent_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(AgentVersion.id, ondelete="CASCADE"), index=True
+    )
+    # A ``LiveStatus``.
+    status: Mapped[str] = mapped_column(String(20), default=LiveStatus.PENDING)
+    # Each check's ``VerdictOutcome`` (pass or fail) and reason; None until judged.
+    grounded: Mapped[str | None] = mapped_column(String(10))
+    grounded_reason: Mapped[str | None] = mapped_column(Text)
+    answers_question: Mapped[str | None] = mapped_column(String(10))
+    answers_question_reason: Mapped[str | None] = mapped_column(Text)
+    # Both checks passed; None until judged.
+    passed: Mapped[bool | None] = mapped_column(Boolean)
+    error_reason: Mapped[str | None] = mapped_column(Text)
+    # The Evaluation Model that judged it (or the Default Model, when none is chosen).
+    judge_provider: Mapped[str | None] = mapped_column(String(50))
+    judge_model: Mapped[str | None] = mapped_column(String(200))
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    # US dollars, frozen with the prices in force when judged; None when a price is unknown.
+    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
+    judged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

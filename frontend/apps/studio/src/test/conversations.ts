@@ -7,7 +7,8 @@ import { server } from "./server";
 type Summary = Schemas["ConversationSummaryOut"];
 type Detail = Schemas["ConversationDetailOut"];
 type Message = Schemas["ConversationMessageOut"];
-type Trace = Schemas["TraceOut"];
+type Trace = Schemas["ConversationTraceOut"];
+type LiveVerdict = Schemas["LiveVerdictOut"];
 
 export const VISITOR_CONVERSATION_ID = "c7000000-0000-4000-8000-000000000001";
 export const PLAYGROUND_CONVERSATION_ID = "c7000000-0000-4000-8000-000000000002";
@@ -155,6 +156,23 @@ export const visitorTrace: Trace = {
   instructions_source: null,
   instructions_version_id: null,
   instructions_version_number: null,
+  live_verdict: null,
+};
+
+/** A Live Verdict of the Visitor's first reply, judged: grounded, but it misses the question. */
+export const judgedVerdict: LiveVerdict = {
+  status: "judged",
+  grounded: { outcome: "pass", reason: "Every claim is in the cited leave policy." },
+  answers_question: { outcome: "fail", reason: "It gives the leave allowance, not how to book it." },
+  passed: false,
+  error_reason: null,
+  agent_version_id: agentVersion(1).id,
+  judge_provider: "anthropic",
+  judge_model: "claude-haiku-4-5",
+  input_tokens: 812,
+  output_tokens: 64,
+  cost_usd: "0.001132",
+  judged_at: "2026-11-06T10:15:09Z",
 };
 
 /**
@@ -179,7 +197,10 @@ export function fakeConversationsApi(
   let conversations = options.conversations ?? [playgroundConversation, visitorConversation];
   let details = options.details ?? [visitorDetail, playgroundDetail];
   const deletions: string[] = [];
-  const traces = options.traces ?? [visitorTrace, { ...hrTrace, message_id: PLAYGROUND_REPLY_ID, agent_version_number: null }];
+  const traces = options.traces ?? [
+    visitorTrace,
+    { ...hrTrace, message_id: PLAYGROUND_REPLY_ID, agent_version_number: null, live_verdict: null },
+  ];
   const queries: URLSearchParams[] = [];
   const traceReads: string[] = [];
   const notFound = () => HttpResponse.json({ detail: "Not found" }, { status: 404 });

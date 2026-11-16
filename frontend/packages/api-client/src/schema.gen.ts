@@ -1493,7 +1493,8 @@ export interface paths {
         /**
          * Change Operational Settings
          * @description Changes the settings given. The next request uses them, without publishing, and the
-         *     change is recorded as an Audit Event with the before and after values.
+         *     change is recorded as an Audit Event with the before and after values (a Live sample rate
+         *     change as ``agent.live_sample_rate_changed``).
          */
         patch: operations["changeOperationalSettings"];
         trace?: never;
@@ -1865,7 +1866,7 @@ export interface paths {
         };
         /**
          * Get Trace
-         * @description The Trace of one of the Agent's answers in the Conversation.
+         * @description The Trace of one of the Agent's answers in the Conversation, with its Live Verdict.
          */
         get: operations["getConversationTrace"];
         put?: never;
@@ -2690,7 +2691,8 @@ export interface paths {
          *     count against the Agent's daily Token Budget. Messages over the Agent's rate limits, per
          *     Conversation and per IP address, or once the day's budget is spent, get its unavailable
          *     text; the first refusal or reply that finds the budget spent raises the Agent's alert and
-         *     emails its Owners, once per day.
+         *     emails its Owners, once per day. Once a reply is sent, it may be chosen by the Agent's Live
+         *     sample rate for a Live Verdict, judged in the background without delaying the reply.
          */
         post: operations["sendWidgetMessage"];
         delete?: never;
@@ -3416,6 +3418,53 @@ export interface components {
         ConversationTokenOut: {
             /** Conversation Token */
             conversation_token: string;
+        };
+        /** ConversationTraceOut */
+        ConversationTraceOut: {
+            /** Agent Version Id */
+            agent_version_id: string | null;
+            /** Agent Version Number */
+            agent_version_number: number | null;
+            /** Automatic Fallback */
+            automatic_fallback: boolean;
+            /** Chunks */
+            chunks: components["schemas"]["TracedChunkOut"][];
+            /** Config Source */
+            config_source: string | null;
+            /** Cost Usd */
+            cost_usd: string | null;
+            /** Fallback */
+            fallback: boolean;
+            /** First Token Ms */
+            first_token_ms: number | null;
+            /** Guardrail Outcomes */
+            guardrail_outcomes: components["schemas"]["GuardrailOutcomeOut"][];
+            /** Input Tokens */
+            input_tokens: number | null;
+            /** Instructions Source */
+            instructions_source: ("draft" | "version") | null;
+            /** Instructions Version Id */
+            instructions_version_id: string | null;
+            /** Instructions Version Number */
+            instructions_version_number: number | null;
+            /** Latency Ms */
+            latency_ms: number | null;
+            live_verdict: components["schemas"]["LiveVerdictOut"] | null;
+            /**
+             * Message Id
+             * Format: uuid
+             */
+            message_id: string;
+            /** Model Name */
+            model_name: string | null;
+            /** Model Provider */
+            model_provider: string | null;
+            /** Output Tokens */
+            output_tokens: number | null;
+            /** Search Count */
+            search_count: number;
+            /** Searches */
+            searches: components["schemas"]["SearchOut"][];
         };
         /** CopyIn */
         CopyIn: {
@@ -4408,6 +4457,16 @@ export interface components {
          * @enum {string}
          */
         LauncherType: "bubble" | "inline";
+        /** LiveCheckOut */
+        LiveCheckOut: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "pass" | "fail";
+            /** Reason */
+            reason: string | null;
+        };
         /** LiveHistoryEntryOut */
         LiveHistoryEntryOut: {
             /** Action */
@@ -4447,6 +4506,41 @@ export interface components {
              */
             point_start: string;
             to_version: components["schemas"]["MarkerVersionOut"];
+        };
+        /**
+         * LiveVerdictOut
+         * @description The reply's Live Verdict: the Evaluation Model's judgement of a Visitor reply chosen by
+         *     the Agent's Live sample rate.
+         */
+        LiveVerdictOut: {
+            /**
+             * Agent Version Id
+             * Format: uuid
+             */
+            agent_version_id: string;
+            answers_question: components["schemas"]["LiveCheckOut"] | null;
+            /** Cost Usd */
+            cost_usd: string | null;
+            /** Error Reason */
+            error_reason: string | null;
+            grounded: components["schemas"]["LiveCheckOut"] | null;
+            /** Input Tokens */
+            input_tokens: number | null;
+            /** Judge Model */
+            judge_model: string | null;
+            /** Judge Provider */
+            judge_provider: string | null;
+            /** Judged At */
+            judged_at: string | null;
+            /** Output Tokens */
+            output_tokens: number | null;
+            /** Passed */
+            passed: boolean | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "judged" | "error" | "skipped";
         };
         /** LiveVersionOut */
         LiveVersionOut: {
@@ -4703,6 +4797,8 @@ export interface components {
             daily_token_budget?: number | null;
             /** Ip Messages Per Minute */
             ip_messages_per_minute?: number | null;
+            /** Live Sample Rate */
+            live_sample_rate?: number | null;
             /** Unavailable Text */
             unavailable_text?: string | null;
         };
@@ -4716,6 +4812,8 @@ export interface components {
             daily_token_budget: number;
             /** Ip Messages Per Minute */
             ip_messages_per_minute: number;
+            /** Live Sample Rate */
+            live_sample_rate: number;
             /** Unavailable Text */
             unavailable_text: string;
         };
@@ -11411,7 +11509,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["TraceOut"];
+                    "application/json": components["schemas"]["ConversationTraceOut"];
                 };
             };
             /** @description Not found */

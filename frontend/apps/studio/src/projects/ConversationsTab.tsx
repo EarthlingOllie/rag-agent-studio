@@ -19,6 +19,7 @@ import {
   useDeleteConversation,
 } from "./conversations";
 import { AddToEvaluationSet } from "./EvaluationCaseEditor";
+import { LiveVerdictSection } from "./LiveVerdict";
 import { useOrganisationRole } from "./ProjectsPage";
 import { TraceContent, TraceFold } from "./Trace";
 
@@ -643,15 +644,21 @@ function MessageItem({
         <MessageText message={message} deletedAt={deletedAt} />
         <FeedbackNote message={message} visitor={asker === "Visitor"} />
         <TraceFold summary={usage(message)}>
-          <ConversationTrace path={{ ...path, message_id: message.id }} />
+          <ConversationTrace path={{ ...path, message_id: message.id }} visitor={asker === "Visitor"} />
         </TraceFold>
       </div>
     </li>
   );
 }
 
-function ConversationTrace({ path }: { path: ConversationPath & { message_id: string } }) {
-  return <TraceContent trace={useConversationTrace(path)} />;
+/** A reply's Trace; a Visitor reply's ends with its Live Verdict (Playground replies are never judged). */
+function ConversationTrace({ path, visitor }: { path: ConversationPath & { message_id: string }; visitor: boolean }) {
+  return (
+    <TraceContent
+      trace={useConversationTrace(path)}
+      after={visitor ? (trace) => <LiveVerdictSection verdict={trace.live_verdict} /> : undefined}
+    />
+  );
 }
 
 /**

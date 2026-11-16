@@ -524,6 +524,7 @@ export function fakeAgentsApi(
     conversation_messages_per_minute: 10,
     ip_messages_per_minute: 30,
     daily_token_budget: 1_000_000,
+    live_sample_rate: 0,
   };
   server.use(
     http.get(
@@ -578,6 +579,7 @@ export function fakeAgentsApi(
             body.conversation_messages_per_minute ?? settings.conversation_messages_per_minute,
           ip_messages_per_minute: body.ip_messages_per_minute ?? settings.ip_messages_per_minute,
           daily_token_budget: body.daily_token_budget ?? settings.daily_token_budget,
+          live_sample_rate: body.live_sample_rate ?? settings.live_sample_rate,
         };
         return HttpResponse.json(settings);
       },

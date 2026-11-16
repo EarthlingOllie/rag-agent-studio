@@ -34,6 +34,8 @@ IP_RATE_MAX = 10000
 # The Token Budget: tokens an Agent's Visitor replies may use in one UTC day.
 TOKEN_BUDGET_DEFAULT = 1_000_000
 TOKEN_BUDGET_MAX = 1_000_000_000
+# The Live sample rate: the whole percentage of Visitor replies judged (spec 15).
+LIVE_SAMPLE_RATE_MAX = 100
 
 
 def new_public_id() -> str:
@@ -79,6 +81,9 @@ class Agent(IdMixin, Base):
     daily_token_budget: Mapped[int] = mapped_column(
         Integer, server_default=text(str(TOKEN_BUDGET_DEFAULT))
     )
+    # The Live sample rate: the chance, in whole percent, that a Visitor reply is chosen for a
+    # Live Verdict (``app.evaluation.live``). 0, the default, judges nothing.
+    live_sample_rate: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     # The budget alert flag: when the day's Token Budget ran out, shown as the Studio's alert
     # badge. Beat clears it at midnight UTC; None when there is no alert.
     budget_exhausted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -223,11 +223,11 @@ The chat model an Organisation's Agents use unless an Agent overrides it: one ch
 _Avoid_: Global model, org model
 
 **Evaluation Model**:
-The chat model that judges every Evaluation Run in an Organisation: one chat-capable Provider Credential and one of its chat models, chosen by an Owner, or the Default Model while none is chosen. It is a Credential reference. One per Organisation, so scores stay comparable across Agents and over time; changing it is an Audit Event.
+The chat model that judges every Evaluation Run and Live Verdict in an Organisation: one chat-capable Provider Credential and one of its chat models, chosen by an Owner, or the Default Model while none is chosen. It is a Credential reference. One per Organisation, so scores stay comparable across Agents and over time; changing it is an Audit Event.
 _Avoid_: Judge, grader model, eval model
 
 **Demo model**:
-The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk (unless its system prompt says "Don't quote", as HR helper v2's does: then it gives the Chunk's first sentence, uncited), and every answer starts "Demo model (canned answer, not AI)". Asked to judge an Evaluation Run's answer, it judges by rule, as the fake Evaluation Model does. It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
+The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk (unless its system prompt says "Don't quote", as HR helper v2's does: then it gives the Chunk's first sentence, uncited), and every answer starts "Demo model (canned answer, not AI)". Asked to judge an Evaluation Run's answer or a Live Verdict, it judges by rule, as the fake Evaluation Model does: answering the question passes when the reply shares a key phrase with the question (a phrase in double quotes, or else a word of five letters or more). It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
 _Avoid_: Fake model (that is the test double), mock, stub model
 
 **Naive demo model**:
@@ -600,7 +600,7 @@ What a Visitor sees in place of the chat when the Agent is archived, in an archi
 _Avoid_: Error page, 404
 
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits and Token Budget. Allowed Origins, the Unavailable text, the rate limits and the Token Budget are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`) holding the before and after values of the settings it changed.
+An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits, Token Budget and Live sample rate. Allowed Origins, the Unavailable text, the rate limits, the Token Budget and the Live sample rate are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`, or `agent.live_sample_rate_changed` for the Live sample rate) holding the before and after values of the settings it changed.
 
 **Unavailable text**:
 What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit or because the day's Token Budget is spent). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."

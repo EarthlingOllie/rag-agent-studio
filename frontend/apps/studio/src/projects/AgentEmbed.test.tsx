@@ -494,3 +494,64 @@ test("while the Operational Settings load, the Token Budget cannot be saved over
   expect(within(embed).getByRole("button", { name: "Save Token Budget" })).toBeDisabled();
   expect(within(embed).queryByRole("meter")).not.toBeInTheDocument();
 });
+
+// The Live sample rate
+
+test("an Editor sets the Live sample rate, which says the Evaluation Model judges the replies", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp();
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const card = within(embed).getByRole("region", { name: "Live sample rate" });
+  const field = within(card).getByLabelText("Visitor replies judged (%)");
+  expect(await within(card).findByDisplayValue("0")).toBe(field);
+  expect(field).toHaveAccessibleDescription(
+    "The share of Visitor replies chosen at random and judged in the background by the Evaluation Model, as a Live Verdict in each reply's Trace. Each judgement is a call to the Evaluation Model. 0% judges none; the Playground is never judged.",
+  );
+
+  await user.clear(field);
+  await user.type(field, "25");
+  await user.click(within(card).getByRole("button", { name: "Save Live sample rate" }));
+
+  expect(await within(card).findByText("Saved. It applies to the next Visitor reply.")).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "operational-settings")).toEqual([
+    { route: "operational-settings", body: { live_sample_rate: 25 } },
+  ]);
+  expect(field).toHaveValue(25);
+});
+
+test("the Live sample rate waits for the saved settings", async () => {
+  setUp();
+  server.use(http.get(settingsPath, () => new Promise<Response>(() => undefined)));
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  expect(within(embed).getByLabelText("Visitor replies judged (%)")).toBeDisabled();
+  expect(within(embed).getByRole("button", { name: "Save Live sample rate" })).toBeDisabled();
+});
+
+test("a refused Live sample rate is explained", async () => {
+  const user = userEvent.setup();
+  setUp();
+  server.use(
+    http.patch(settingsPath, () =>
+      HttpResponse.json(
+        {
+          detail: [
+            { loc: ["body", "live_sample_rate"], msg: "Input should be a valid integer", type: "int_type" },
+          ],
+        },
+        { status: 422 },
+      ),
+    ),
+  );
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const field = await within(embed).findByDisplayValue("0");
+
+  await user.clear(field);
+  await user.type(field, "50");
+  await user.click(within(embed).getByRole("button", { name: "Save Live sample rate" }));
+
+  expect(await within(embed).findByRole("alert")).toHaveTextContent("Input should be a valid integer");
+});

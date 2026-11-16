@@ -10,6 +10,7 @@ import {
   VISITOR_CONVERSATION_ID,
   VISITOR_REPLY_ID,
   fakeConversationsApi,
+  judgedVerdict,
   playgroundConversation,
   playgroundDetail,
   visitorConversation,
@@ -238,6 +239,116 @@ test("a Trace that can't be loaded says so", async () => {
   const trace = await openTrace(items[1] as HTMLElement);
 
   expect(await within(trace).findByRole("alert")).toHaveTextContent("The Trace could not be loaded.");
+});
+
+// Live Verdicts in the Trace
+
+/** The Live Verdict section of the Visitor's first reply's Trace, once it is open. */
+async function liveVerdictOf(verdict: (typeof visitorTrace)["live_verdict"]) {
+  setUp({ traces: [{ ...visitorTrace, live_verdict: verdict }] });
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+  const items = within(await screen.findByRole("list", { name: "Messages" })).getAllByRole("listitem");
+  const trace = await openTrace(items[1] as HTMLElement);
+  return within(trace).findByRole("region", { name: "Live Verdict" });
+}
+
+test("a judged reply's Trace shows its Live Verdict: both checks with their reasons", async () => {
+  const section = await liveVerdictOf(judgedVerdict);
+
+  // Overall it fails, as one of its checks does.
+  expect(within(section).getAllByText("Fail", { selector: "span" })).toHaveLength(2);
+  const checks = within(section).getByRole("list", { name: "Live Verdict checks" });
+  expect(
+    within(checks)
+      .getAllByRole("listitem")
+      .map((item) => item.textContent),
+  ).toEqual([
+    "GroundedPassEvery claim is in the cited leave policy.",
+    "Answers the questionFailIt gives the leave allowance, not how to book it.",
+  ]);
+  expect(section).toHaveTextContent("Judged by anthropic · claude-haiku-4-5 for $0.0011 on 2026-11-06 10:15 UTC.");
+});
+
+test("a reply that passed both checks passes its Live Verdict", async () => {
+  const passing = {
+    ...judgedVerdict,
+    passed: true,
+    answers_question: { outcome: "pass" as const, reason: "It says how much." },
+    // The Evaluation Model has no known price.
+    cost_usd: null,
+  };
+
+  const section = await liveVerdictOf(passing);
+
+  expect(within(section).getAllByText("Pass", { selector: "span" })).toHaveLength(3);
+  expect(section).toHaveTextContent("Judged by anthropic · claude-haiku-4-5 for an unknown cost on 2026-11-06 10:15 UTC.");
+});
+
+test("a reply that wasn't sampled is Not judged in its Trace", async () => {
+  const section = await liveVerdictOf(null);
+
+  expect(section).toHaveTextContent("Not judged: the Live sample rate didn't choose this reply.");
+});
+
+test("a reply still being judged is pending in its Trace", async () => {
+  const pending = {
+    ...judgedVerdict,
+    status: "pending" as const,
+    grounded: null,
+    answers_question: null,
+    passed: null,
+    judge_provider: null,
+    judge_model: null,
+    input_tokens: null,
+    output_tokens: null,
+    cost_usd: null,
+    judged_at: null,
+  };
+
+  const section = await liveVerdictOf(pending);
+
+  expect(section).toHaveTextContent("Pending: the Evaluation Model is judging this reply.");
+});
+
+test("a reply the Evaluation Model couldn't judge shows the error, left out of the Live score", async () => {
+  const failed = {
+    ...judgedVerdict,
+    status: "error" as const,
+    grounded: null,
+    answers_question: null,
+    passed: null,
+    error_reason: "The Evaluation Model didn't answer in time.",
+    input_tokens: null,
+    output_tokens: null,
+    cost_usd: null,
+    judged_at: null,
+  };
+
+  const section = await liveVerdictOf(failed);
+
+  expect(within(section).getByText("Error", { selector: "span" })).toBeInTheDocument();
+  expect(section).toHaveTextContent(
+    "The Evaluation Model couldn't judge this reply, so it is left out of the Live score: The Evaluation Model didn't answer in time.",
+  );
+});
+
+test("a reply skipped before it was judged says so", async () => {
+  const skipped = { ...judgedVerdict, status: "skipped" as const, grounded: null, answers_question: null, passed: null };
+
+  const section = await liveVerdictOf(skipped);
+
+  expect(section).toHaveTextContent("Skipped: the reply's text was purged before it was judged.");
+});
+
+test("a Playground reply's Trace has no Live Verdict section", async () => {
+  setUp();
+  renderStudio(`${conversationsTab}/${PLAYGROUND_CONVERSATION_ID}`);
+  const items = within(await screen.findByRole("list", { name: "Messages" })).getAllByRole("listitem");
+
+  const trace = await openTrace(items[1] as HTMLElement);
+
+  await within(trace).findByText("Answered by");
+  expect(within(trace).queryByRole("region", { name: "Live Verdict" })).not.toBeInTheDocument();
 });
 
 test("a Conversation that doesn't exist says so", async () => {

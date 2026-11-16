@@ -40,6 +40,7 @@ from app.embed.tokens import TokenSigner
 from app.evaluation import api as evaluation_api
 from app.evaluation import rollout_api as evaluation_rollout_api
 from app.evaluation import settings_api as evaluation_settings_api
+from app.evaluation.live import seed_draws
 from app.evaluation.ports import EvaluationPorts, install_evaluation_ports
 from app.evaluation.settings import evaluation_model_references
 from app.feedback import api as feedback_api
@@ -153,6 +154,7 @@ def _lifespan(
             clock=lambda: app.state.clock,
         )
         install_evaluation_ports(app.state.evaluation)
+        seed_draws(settings.live_sample_seed)
         if settings.object_store_create_bucket:
             await app.state.ingestion.object_store.prepare()
         logger.info("API started", extra={"environment": settings.environment})

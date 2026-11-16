@@ -2,8 +2,10 @@ import type { Schemas } from "@studio/api-client";
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api";
-import type { Trace } from "./agents";
 import { ProjectRequestError } from "./projects";
+
+/** A Conversation reply's Trace, with its Live Verdict. */
+export type ConversationTrace = Schemas["ConversationTraceOut"];
 
 export type ConversationPage = Schemas["ConversationPageOut"];
 export type ConversationSummary = ConversationPage["items"][number];
@@ -131,7 +133,7 @@ export function useConversation(path: ConversationPath) {
 export function useConversationTrace(path: ConversationPath & { message_id: string }) {
   return useQuery({
     queryKey: ["conversation-trace", path.organisation_id, path.message_id],
-    queryFn: async (): Promise<Trace> => {
+    queryFn: async (): Promise<ConversationTrace> => {
       const { data, response } = await api.GET(
         "/api/organisations/{organisation_id}/projects/{project_id}/conversations/{conversation_id}/messages/{message_id}/trace",
         { params: { path } },
