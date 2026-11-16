@@ -16,6 +16,7 @@ from app.auth.api import Db
 from app.conversations import service
 from app.core.clock import Clock, get_clock
 from app.evaluation.live import live_verdict_of
+from app.evaluation.live_reads import LiveVerdictFilter
 from app.evaluation.models import LiveVerdict
 from app.feedback.models import MessageFeedback
 from app.playground.api import (
@@ -61,6 +62,8 @@ class ConversationSummaryOut(BaseModel):
     # How many of its replies have a Guardrail outcome (blocked, flagged, logged, replaced or
     # allowed).
     guardrail_events: int
+    # How many of its replies failed their Live Verdict.
+    failed_live_verdicts: int
 
 
 class ConversationPageOut(BaseModel):
@@ -117,6 +120,16 @@ async def list_conversations(
             )
         ),
     ] = None,
+    live_verdict: Annotated[
+        LiveVerdictFilter | None,
+        Query(
+            description=(
+                "Only those with a reply whose Live Verdict passed (`passed`), failed (`failed`) "
+                "or couldn't be judged (`error`), or with a reply that wasn't chosen to be judged "
+                "(`not_judged`)"
+            )
+        ),
+    ] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 25,
 ) -> ConversationPageOut:
@@ -130,6 +143,7 @@ async def list_conversations(
         feedback=feedback,
         rating=rating,
         guardrail=guardrail,
+        live_verdict=live_verdict,
     )
     try:
         result = await service.list_conversations(
@@ -154,6 +168,7 @@ async def list_conversations(
                 rating=row.rating,
                 deleted_at=row.conversation.deleted_at,
                 guardrail_events=row.guardrail_events,
+                failed_live_verdicts=row.failed_live_verdicts,
             )
             for row in result.rows
         ],

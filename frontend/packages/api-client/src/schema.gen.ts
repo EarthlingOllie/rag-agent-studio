@@ -3387,6 +3387,8 @@ export interface components {
             created_at: string;
             /** Deleted At */
             deleted_at: string | null;
+            /** Failed Live Verdicts */
+            failed_live_verdicts: number;
             /** Guardrail Events */
             guardrail_events: number;
             /**
@@ -4507,6 +4509,14 @@ export interface components {
             point_start: string;
             to_version: components["schemas"]["MarkerVersionOut"];
         };
+        /**
+         * LiveVerdictFilter
+         * @description Which Conversations to keep by their replies' Live Verdicts: with a reply that passed,
+         *     failed, or couldn't be judged (an error), or with a reply that wasn't chosen to be judged.
+         *     A reply still pending, or skipped because its text was Purged first, is none of these.
+         * @enum {string}
+         */
+        LiveVerdictFilter: "passed" | "failed" | "error" | "not_judged";
         /**
          * LiveVerdictOut
          * @description The reply's Live Verdict: the Evaluation Model's judgement of a Visitor reply chosen by
@@ -11366,6 +11376,8 @@ export interface operations {
                 rating?: components["schemas"]["RatingFilter"] | null;
                 /** @description Only those with a reply whose Guardrail outcome took this action (`blocked`, `flagged`, `logged`, `replaced` or `allowed`), with any Guardrail outcome (`any`), or with none (`none`) */
                 guardrail?: components["schemas"]["GuardrailFilter"] | null;
+                /** @description Only those with a reply whose Live Verdict passed (`passed`), failed (`failed`) or couldn't be judged (`error`), or with a reply that wasn't chosen to be judged (`not_judged`) */
+                live_verdict?: components["schemas"]["LiveVerdictFilter"] | null;
                 page?: number;
                 page_size?: number;
             };

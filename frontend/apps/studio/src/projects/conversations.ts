@@ -20,7 +20,8 @@ export const PAGE_SIZE = 25;
  * Conversations to show (Visitors' or the Playground's; both when left out), their Message
  * Feedback (a reply with a thumbs up or down, any feedback, or none), their Conversation Rating
  * (one score, rated, or not rated), their Guardrail outcomes (a reply whose Guardrail took one
- * action, any Guardrail outcome, or none) and the page.
+ * action, any Guardrail outcome, or none), their replies' Live Verdicts (a reply that passed, failed, couldn't be
+ * judged, or wasn't chosen to be judged) and the page.
  */
 export interface ConversationFilters {
   agent?: string;
@@ -31,6 +32,7 @@ export interface ConversationFilters {
   feedback?: FeedbackFilter;
   rating?: RatingFilter;
   guardrail?: GuardrailFilter;
+  live?: LiveVerdictFilter;
   page?: number;
 }
 
@@ -44,6 +46,9 @@ const GUARDRAIL_FILTERS: readonly unknown[] = [
   "any",
   "none",
 ] satisfies GuardrailFilter[];
+
+export type LiveVerdictFilter = Schemas["LiveVerdictFilter"];
+const LIVE_VERDICT_FILTERS: readonly unknown[] = ["passed", "failed", "error", "not_judged"] satisfies LiveVerdictFilter[];
 
 export type FeedbackFilter = "up" | "down" | "any" | "none";
 const FEEDBACK_FILTERS: readonly unknown[] = ["up", "down", "any", "none"] satisfies FeedbackFilter[];
@@ -66,6 +71,7 @@ export function conversationFilters(search: Record<string, unknown>): Conversati
   const rating = typeof search.rating === "string" && /^[1-5]$/.test(search.rating) ? Number(search.rating) : search.rating;
   if (RATING_FILTERS.includes(rating)) filters.rating = rating as RatingFilter;
   if (GUARDRAIL_FILTERS.includes(search.guardrail)) filters.guardrail = search.guardrail as GuardrailFilter;
+  if (LIVE_VERDICT_FILTERS.includes(search.live)) filters.live = search.live as LiveVerdictFilter;
   const page = Number(search.page);
   if (Number.isInteger(page) && page > 1) filters.page = page;
   return filters;
@@ -89,6 +95,7 @@ function listQuery(filters: ConversationFilters) {
     ...(filters.feedback && { feedback: filters.feedback }),
     ...(filters.rating && { rating: String(filters.rating) as Schemas["RatingFilter"] }),
     ...(filters.guardrail && { guardrail: filters.guardrail }),
+    ...(filters.live && { live_verdict: filters.live }),
   };
 }
 
