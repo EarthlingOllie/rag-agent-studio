@@ -810,7 +810,7 @@ One run of an Agent's Evaluation Set comparing two sides, the first and the seco
 _Avoid_: Eval, test run, benchmark run
 
 **Run side**:
-One of an Evaluation Run's sides, the first or the second: the Draft at its Draft revision, or one of the Agent's Versions, with the Project Instructions it answers with. The Run keeps a copy of each side's effective AgentConfig and Instructions text, and of each Evaluation Case's question and expectations, as they were when it started, so editing the Draft or the Evaluation Set later never rewrites a past Run. While the Draft runs alone it is the first side.
+One of an Evaluation Run's sides, the first or the second: the Draft at its Draft revision, one of the Agent's Versions, or (only in a Suggestion's check) the Suggestion, which is the Live Version's configuration with the Suggestion's changes and is never Published or listed in Live History, with the Project Instructions it answers with. The Run keeps a copy of each side's effective AgentConfig and Instructions text, and of each Evaluation Case's question and expectations, as they were when it started, so editing the Draft or the Evaluation Set later never rewrites a past Run. While the Draft runs alone it is the first side.
 _Avoid_: Arm, variant, candidate
 
 **Verdict**:
