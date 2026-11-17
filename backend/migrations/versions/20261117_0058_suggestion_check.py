@@ -1,8 +1,8 @@
 """Suggestions (spec 16): a Suggestion's check, the Evaluation Run it started, and what the check
 cost.
 
-Revision ID: 0057_suggestion_check
-Revises: 0056_suggestion_applied
+Revision ID: 0058_suggestion_check
+Revises: 0057_suggestion_applied
 Create Date: 2026-11-17
 """
 
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0057_suggestion_check"
-down_revision: str | None = "0056_suggestion_applied"
+revision: str = "0058_suggestion_check"
+down_revision: str | None = "0057_suggestion_applied"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
