@@ -32,6 +32,7 @@ from app.evaluation import service as evaluation_service
 from app.suggestions import service
 from app.suggestions.fake_proposer import CITE_LINE
 from tests.conftest import ClientFactory, SignedUpMember
+from tests.fakes.clock import ControllableClock
 from tests.integration.test_evaluation import add_case, evaluation_path
 from tests.integration.test_evaluation_publish import summary
 from tests.integration.test_evaluation_settings import set_repeats
@@ -64,13 +65,17 @@ async def visitor(new_client: ClientFactory) -> httpx.AsyncClient:
 def answering(
     *, with_line: str, without_line: str
 ) -> tuple[Callable[[list[ModelMessage], AgentInfo], AsyncIterator[str]], list[str]]:
-    """A stream answering ``with_line`` when the system prompt it was given holds the fake
-    proposer's citation line, else ``without_line``; Visitor replies (asked before any
-    Suggestion) are always uncited. Returns it with every system prompt text it was given."""
+    """A stream answering an Evaluation Case ``with_line`` when the system prompt it was given
+    holds the fake proposer's citation line, else ``without_line``; Visitor replies are always
+    uncited. Returns it with every text it was given answering a case."""
     seen: list[str] = []
 
     async def stream(messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
         given = everything(messages)
+        if "Leave question" not in given:
+            # A Visitor's question.
+            yield UNCITED
+            return
         seen.append(given)
         yield with_line if CITE_LINE in given else without_line
 
@@ -186,7 +191,7 @@ async def test_regressions_show_with_their_reasons_and_a_failed_check_still_appl
             await owner.client.get(
                 evaluation_path(owner, agent["project_id"], agent["id"], "cases")
             )
-        ).json()["cases"]
+        ).json()
     ]
 
     suggestion = await started(owner, agent)
@@ -349,12 +354,13 @@ async def test_the_general_run_api_cannot_create_a_suggestion_side(
 
 
 async def test_checking_cost_is_counted_in_organisation_costs_evaluation_column(
-    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
 ) -> None:
     agent, _ = await visitor_replies_then(
         app, owner, visitor, with_line=CITED, without_line=UNCITED
     )
-    (line,) = (await org_cost(owner, start=NOV_5, end=NOV_5, group_by="agent"))["rows"]
+    before = await org_cost(owner, start=NOV_5, end=NOV_5, group_by="agent")
+    (line,) = before["rows"]
 
     suggestion = await started(owner, agent)
 
@@ -388,9 +394,8 @@ async def test_cancelling_the_suggestion_while_it_checks_cancels_its_run(
         async def meanwhile(session: Any) -> None:
             (listed,) = await service.list_suggestions(session, scope, project_id, agent_id)
             seen["status"] = listed.suggestion.status
-            read = await service.get_suggestion(
-                session, scope, project_id, agent_id, listed.suggestion.id
-            )
+            suggestion_id = listed.suggestion.id
+            read = await service.get_suggestion(session, scope, project_id, agent_id, suggestion_id)
             seen["check"] = None if read.check is None else read.check.state
             # Evaluate is refused while the check runs.
             try:
@@ -401,7 +406,7 @@ async def test_cancelling_the_suggestion_while_it_checks_cancels_its_run(
                 seen["evaluate"] = "refused"
             await session.rollback()
             await service.cancel_suggestion(
-                session, scope, project_id, agent_id, listed.suggestion.id, now=clock.now()
+                session, scope, project_id, agent_id, suggestion_id, now=clock.now()
             )
 
         await in_new_session(meanwhile)

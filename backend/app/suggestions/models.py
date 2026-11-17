@@ -22,7 +22,7 @@ from app.agents.models import Agent, AgentVersion
 from app.conversations.models import Message
 from app.core.db import Base, IdMixin
 from app.credentials.models import ProviderCredential
-from app.evaluation.models import EvaluationRunCase
+from app.evaluation.models import EvaluationRun, EvaluationRunCase
 from app.tenancy.models import Member, Organisation
 
 
@@ -127,6 +127,13 @@ class Suggestion(IdMixin, Base):
     # its Evaluation column; the Evaluation budget never does.
     proposing_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
     proposed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Its check against the Evaluation Set (``app.evaluation.suggestion_check``): None when it
+    # wasn't checked (no configuration change, or no Evaluation Set), and what the check spent,
+    # frozen once it stopped. Organisation cost counts the check with the Agent's Runs.
+    check_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(EvaluationRun.id, ondelete="SET NULL"), index=True
+    )
+    checking_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # Who applied it to the Draft, and when; None until it is applied (and ``applied_by`` once
     # that Member is gone).

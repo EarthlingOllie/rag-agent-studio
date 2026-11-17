@@ -43,7 +43,14 @@ from app.agents.api import (
 from app.agents.service import AgentArchivedError, AgentNotFoundError, StaleDraftError
 from app.agents.validation import InvalidDraftError
 from app.auth.api import Db, ErrorResponse
-from app.evaluation.api import ClockDep, RunConflict, RunConflictOut, run_conflict
+from app.evaluation.api import (
+    ClockDep,
+    RunConflict,
+    RunConflictOut,
+    SummaryRegressionOut,
+    _reasons,
+    run_conflict,
+)
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
 from app.suggestions import applying, service
 from app.suggestions.applying import ChangeState
@@ -139,6 +146,30 @@ class SuggestionCostOut(BaseModel):
     # What proposing actually cost, frozen when it was spent; null until then, or when the
     # Evaluation Model's price is unknown.
     proposing_usd: Decimal | None
+    # What the check actually cost, answering and judging, frozen once it stopped; null without
+    # a check, or until it stops.
+    checking_usd: Decimal | None
+
+
+class SuggestionCheckSummaryOut(BaseModel):
+    """The check of a Suggestion's configuration change against the Live Version on the
+    Evaluation Set."""
+
+    # ``not_checked``: the Agent had no Evaluation Set. Else the check's Evaluation Run is
+    # ``running``, ``clear``, found ``regressions`` (a warning: the Suggestion still applies),
+    # ``failed`` (every answer errored) or was ``cancelled``.
+    state: Literal["not_checked", "running", "clear", "regressions", "failed", "cancelled"]
+    # The check's Evaluation Run, which Run detail opens; null when not checked.
+    evaluation_run_id: uuid.UUID | None
+    # The Live Version's and the Suggestion's Evaluation scores; null while either has none.
+    live_score: float | None
+    suggestion_score: float | None
+
+
+class SuggestionCheckOut(SuggestionCheckSummaryOut):
+    # Each case that passed on the Live Version and fails with the Suggestion, in set order,
+    # with the reasons of the Suggestion's failing Verdicts.
+    regressions: list[SummaryRegressionOut]
 
 
 class SuggestionApplierOut(BaseModel):
@@ -170,6 +201,9 @@ class SuggestionSummaryOut(BaseModel):
     # Member is gone).
     applied_by: SuggestionApplierOut | None
     applied_at: datetime | None
+    # Its check; null while nothing was proposed yet, and for a Suggestion with no configuration
+    # change (``gaps_only`` or ``no_change``), which is never checked.
+    check: SuggestionCheckSummaryOut | None
 
 
 class SuggestedChangeOut(BaseModel):
@@ -219,6 +253,8 @@ class KnowledgeBaseGapOut(BaseModel):
 
 
 class SuggestionOut(SuggestionSummaryOut):
+    # Its check, with the Regressions it found.
+    check: SuggestionCheckOut | None
     # The run's overall explanation; null until it completes.
     explanation: str | None
     # The Evaluation Model (or Default Model) that proposed it.
@@ -259,8 +295,41 @@ class SuggestionEstimateOut(BaseModel):
     total_usd: Decimal | None
 
 
+def _check_summary(check: service.SuggestionCheck) -> dict[str, Any]:
+    result = check.result
+    return {
+        "state": check.state,
+        "evaluation_run_id": None if result is None else result.run_id,
+        "live_score": None if result is None else result.live_score,
+        "suggestion_score": None if result is None else result.suggestion_score,
+    }
+
+
+def _check(check: service.SuggestionCheck | None) -> SuggestionCheckOut | None:
+    if check is None:
+        return None
+    result = check.result
+    return SuggestionCheckOut(
+        **_check_summary(check),
+        regressions=[]
+        if result is None
+        else [
+            SummaryRegressionOut(
+                case_id=case.case.case_id,
+                question=case.case.question,
+                reasons=_reasons(case, result.suggestion_side_id),
+            )
+            for case in result.regressions
+        ],
+    )
+
+
 def _summary(
-    suggestion: Suggestion, base_version_number: int, stale: bool, applied_by: Member | None
+    suggestion: Suggestion,
+    base_version_number: int,
+    stale: bool,
+    applied_by: Member | None,
+    check: service.SuggestionCheck | None,
 ) -> SuggestionSummaryOut:
     return SuggestionSummaryOut(
         id=suggestion.id,
@@ -276,6 +345,7 @@ def _summary(
             estimated_proposing_usd=suggestion.estimated_proposing_cost_usd,
             estimated_checking_usd=suggestion.estimated_checking_cost_usd,
             proposing_usd=suggestion.proposing_cost_usd,
+            checking_usd=suggestion.checking_cost_usd,
         ),
         created_at=suggestion.created_at,
         finished_at=suggestion.finished_at,
@@ -284,6 +354,9 @@ def _summary(
         if applied_by is None
         else SuggestionApplierOut(id=applied_by.id, name=applied_by.name),
         applied_at=suggestion.applied_at,
+        check=None
+        if check is None
+        else SuggestionCheckSummaryOut.model_validate(_check_summary(check)),
     )
 
 
@@ -319,8 +392,10 @@ def _evidence(each: service.EvidenceRead) -> EvidenceOut:
 def _out(read: service.SuggestionRead) -> SuggestionOut:
     suggestion = read.suggestion
     evidence_ids = {each.evidence.position: each.evidence.id for each in read.evidence}
+    summary = _summary(suggestion, read.base_version_number, read.stale, read.applied_by, None)
     return SuggestionOut(
-        **_summary(suggestion, read.base_version_number, read.stale, read.applied_by).model_dump(),
+        **summary.model_dump(exclude={"check"}),
+        check=_check(read.check),
         explanation=suggestion.explanation,
         model_provider=suggestion.model_provider,
         model_name=suggestion.model_name,
