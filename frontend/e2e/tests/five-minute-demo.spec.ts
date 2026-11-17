@@ -37,6 +37,16 @@ async function thumbsUp(page: Page, version: string): Promise<number> {
   return Number(/(\d+)%/.exec(await card.innerText())?.[1]);
 }
 
+/** The Live score a Version's KPI card shows, as a whole percentage. */
+async function liveScore(page: Page, version: string): Promise<number> {
+  await page.getByRole("combobox", { name: /^Version/ }).selectOption({ label: version });
+  const card = page
+    .getByRole("list", { name: `Key numbers for ${version.replace(/ \(Live\)$/, "")}` })
+    .getByRole("listitem", { name: "Live score" });
+  await expect(card).toContainText(/n = \d+ judged repl/, { timeout: 15_000 });
+  return Number(/(\d+)%/.exec(await card.innerText())?.[1]);
+}
+
 test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
   test.setTimeout(300_000);
 
@@ -133,6 +143,8 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     const v3 = await thumbsUp(page, "v3 (Live)");
     expect(v2).toBeLessThan(v1);
     expect(v1).toBeLessThan(v3);
+    // The Live score agrees: v2's uncited replies failed grounding when the Evaluation Model judged them.
+    expect(await liveScore(page, "v2")).toBeLessThan(await liveScore(page, "v1"));
     const v3Volume = page.getByRole("list", { name: "Key numbers for v3" }).getByRole("listitem", { name: "Volume" });
     await expect(v3Volume.getByText("Low sample")).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);

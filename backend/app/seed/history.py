@@ -33,7 +33,7 @@ from app.credentials.models import ProviderCredential
 from app.documents.models import Document, DocumentStatus
 from app.feedback.models import ConversationRating, ConversationRatingChange, MessageFeedback
 from app.projects.models import Project
-from app.seed import content, evaluation
+from app.seed import content, evaluation, live_evaluation
 from app.seed.client import SeedApi, SeedError, new_client
 from app.tags.models import Tag
 from app.tenancy.models import Organisation
@@ -327,13 +327,16 @@ async def generate(
             history,
             {content.SHOP_AGENT: 1},
         )
+        live_evaluation.seed_sampling(history.random_seed)
         for day in range(content.HISTORY_DAYS, 0, -1):
             on = today - timedelta(days=day)
             clock.travel_to(_at(on, RELEASE_TIME))
             await story.release(day)
             for at, name in story.visits(on):
                 clock.travel_to(at)
-                await story.visit(name)
+                # The replies the Live sample rate chooses are judged as they are given.
+                with live_evaluation.judged_in_process():
+                    await story.visit(name)
     for day in range(content.HISTORY_DAYS, 0, -1):
         # Just after midnight, as Beat's hourly run would: it finalises the day before.
         await roll_up(
