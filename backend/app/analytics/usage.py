@@ -8,7 +8,8 @@ number belongs to a day by a time that doesn't move once it exists:
   was made;
 - Message Feedback: when the reply it is on was made;
 - a Conversation: when this Version first replied in it (so it counts once per Version);
-- a Conversation Rating: when the Conversation's first reply was made.
+- a Conversation Rating: when the Conversation's first reply was made;
+- a judged Live Verdict: when the reply it judges was made (not when it was judged).
 """
 
 import uuid
@@ -24,6 +25,7 @@ from sqlalchemy.orm import InstrumentedAttribute
 from app.analytics.models import UsageDaily, UsageRollupState
 from app.analytics.stats import Histogram
 from app.conversations.models import Conversation, Message, MessageRole
+from app.evaluation.models import LiveStatus, LiveVerdict
 from app.feedback.models import ConversationRating, MessageFeedback, Thumb
 from app.guardrails.outcomes import blocked
 
@@ -48,6 +50,8 @@ class Usage:
     fallback_count: int = 0
     guardrail_blocks: int = 0
     searches: int = 0
+    live_judged: int = 0
+    live_passed: int = 0
     first_token_histogram: Histogram = field(default_factory=Histogram)
     latency_histogram: Histogram = field(default_factory=Histogram)
 
@@ -65,6 +69,8 @@ class Usage:
         self.fallback_count += other.fallback_count
         self.guardrail_blocks += other.guardrail_blocks
         self.searches += other.searches
+        self.live_judged += other.live_judged
+        self.live_passed += other.live_passed
         self.first_token_histogram = self.first_token_histogram.merged(other.first_token_histogram)
         self.latency_histogram = self.latency_histogram.merged(other.latency_histogram)
 
@@ -84,6 +90,8 @@ class Usage:
             fallback_count=row.fallback_count,
             guardrail_blocks=row.guardrail_blocks,
             searches=row.searches,
+            live_judged=row.live_judged,
+            live_passed=row.live_passed,
             first_token_histogram=Histogram.from_stored(row.first_token_histogram),
             latency_histogram=Histogram.from_stored(row.latency_histogram),
         )
@@ -109,6 +117,8 @@ class Usage:
             fallback_count=self.fallback_count,
             guardrail_blocks=self.guardrail_blocks,
             searches=self.searches,
+            live_judged=self.live_judged,
+            live_passed=self.live_passed,
             first_token_histogram=self.first_token_histogram.stored(),
             latency_histogram=self.latency_histogram.stored(),
         )
@@ -262,6 +272,24 @@ async def usage_on(session: AsyncSession, day: date, only: Only) -> dict[uuid.UU
             usage.thumbs_up += count
         else:
             usage.thumbs_down += count
+
+    verdicts = await session.execute(
+        select(
+            Message.organisation_id,
+            Conversation.agent_id,
+            LiveVerdict.agent_version_id,
+            func.count(),
+            func.count().filter(LiveVerdict.passed.is_(True)),
+        )
+        .join(Message, Message.id == LiveVerdict.message_id)
+        .join(Conversation, Conversation.id == Message.conversation_id)
+        .where(*_visitor_replies(day, only), LiveVerdict.status == LiveStatus.JUDGED)
+        .group_by(Message.organisation_id, Conversation.agent_id, LiveVerdict.agent_version_id)
+    )
+    for organisation_id, agent_id, version_id, judged, passed in verdicts:
+        usage = at(organisation_id, agent_id, version_id)
+        usage.live_judged += judged
+        usage.live_passed += passed
 
     first = _first_replies(day, only, per_version=False).subquery()
     ratings = await session.execute(

@@ -21,6 +21,7 @@ export function versionKpis(number: number, overrides: Partial<VersionKpis> = {}
     cost: { total_usd: "0.000000000", per_conversation_usd: null },
     thumbs_up: { up: 0, down: 0, n: 0, rate: null, low: null, high: null, low_confidence: true },
     rating: { n: 0, mean: null, low_confidence: true },
+    live_score: { n: 0, passed: 0, rate: null, low: null, high: null, low_confidence: true },
     fallback: { count: 0, rate: null },
     guardrail_blocks: { count: 0, rate: null },
     searches: { total: 0, mean_per_reply: null },
@@ -29,7 +30,7 @@ export function versionKpis(number: number, overrides: Partial<VersionKpis> = {}
   };
 }
 
-/** v2, Live and Agentic, with a small sample: three Conversations, two thumbs up out of three votes. */
+/** v2, Live and Agentic, with a small sample: three Conversations, two thumbs up out of three votes, three of four judged replies passed. */
 export const smallSample = versionKpis(2, {
   is_live: true,
   retrieval_mode: "agentic",
@@ -39,6 +40,7 @@ export const smallSample = versionKpis(2, {
   cost: { total_usd: "0.003600000", per_conversation_usd: "0.001200000" },
   thumbs_up: { up: 2, down: 1, n: 3, rate: 2 / 3, low: 0.2076596, high: 0.9385081, low_confidence: true },
   rating: { n: 2, mean: 3.5, low_confidence: true },
+  live_score: { n: 4, passed: 3, rate: 0.75, low: 0.3006418, high: 0.9544127, low_confidence: true },
   fallback: { count: 1, rate: 0.25 },
   guardrail_blocks: { count: 2, rate: 0.5 },
   searches: { total: 6, mean_per_reply: 1.5 },
@@ -54,6 +56,7 @@ export const largeSample = versionKpis(1, {
   cost: { total_usd: "150.000000000", per_conversation_usd: "1.250000000" },
   thumbs_up: { up: 24, down: 6, n: 30, rate: 0.8, low: 0.626943, high: 0.9049489, low_confidence: false },
   rating: { n: 40, mean: 4.25, low_confidence: false },
+  live_score: { n: 30, passed: 21, rate: 0.7, low: 0.5212421, high: 0.8333525, low_confidence: false },
   fallback: { count: 0, rate: 0 },
   guardrail_blocks: { count: 3, rate: 0.0075 },
   searches: { total: 0, mean_per_reply: 0 },
@@ -110,6 +113,7 @@ export const v1AgainstV2Metrics: MetricRow[] = [
   row("votes", "Votes", "count", 30, 3, null, true),
   row("rating_mean", "Mean rating", "rating", 4.25, 3.5, "a", true),
   row("ratings", "Ratings", "count", 40, 2, null, true),
+  row("live_score", "Live score", "rate", 0.7, 0.75, "b", true),
   row("fallback_rate", "Fallback rate", "rate", 0, 0.25, "a"),
   row("searches_per_reply", "Mean searches per reply", "searches", 0, 1.5, null, true),
   row("first_token_p95_ms", "p95 time to first token (ms)", "ms", 950, 320.4, "b"),

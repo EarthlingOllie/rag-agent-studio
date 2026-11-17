@@ -47,6 +47,7 @@ METRICS = [
     "mean_rating",
     "fallback_rate",
     "p95_latency_ms",
+    "live_score",
 ]
 
 
@@ -201,6 +202,7 @@ async def test_every_metric_matches_the_version_kpis_of_the_same_day(
         "mean_rating": (pytest.approx(kpis["rating"]["mean"]), kpis["rating"]["n"]),
         "fallback_rate": (pytest.approx(kpis["fallback"]["rate"]), kpis["messages"]),
         "p95_latency_ms": (pytest.approx(kpis["latency"]["total_p95_ms"]), kpis["latency"]["n"]),
+        "live_score": (kpis["live_score"]["rate"], kpis["live_score"]["n"]),
     }
     assert (kpis["conversations"], kpis["messages"], kpis["rating"]["n"]) == (2, 3, 2)
     assert float(kpis["cost"]["total_usd"]) > 0

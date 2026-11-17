@@ -57,7 +57,7 @@ function KpiCard({
 }
 
 function Kpis({ kpis }: { kpis: VersionKpis }) {
-  const { tokens, cost, thumbs_up: thumbs, rating, fallback, guardrail_blocks: blocks, searches, latency } = kpis;
+  const { tokens, cost, thumbs_up: thumbs, rating, live_score: live, fallback, guardrail_blocks: blocks, searches, latency } = kpis;
   return (
     <ul aria-label={`Key numbers for v${String(kpis.number)}`} className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
       <KpiCard
@@ -97,6 +97,17 @@ function Kpis({ kpis }: { kpis: VersionKpis }) {
         value={rating.mean === null ? "No ratings yet" : `${rating.mean.toFixed(1)} of 5`}
         details={<p>{`n = ${plural(rating.n, "rating")}`}</p>}
         lowSample={rating.low_confidence && "Fewer than 30 ratings"}
+      />
+      <KpiCard
+        title="Live score"
+        value={live.rate === null ? "No judged replies yet" : percent(live.rate)}
+        details={
+          <>
+            {live.low !== null && live.high !== null && <p>{`95% interval ${percent(live.low)} to ${percent(live.high)}`}</p>}
+            <p>{`n = ${plural(live.n, "judged reply", "judged replies")} (${String(live.passed)} passed)`}</p>
+          </>
+        }
+        lowSample={live.low_confidence && "Fewer than 30 judged Live Verdicts"}
       />
       <KpiCard
         title="Fallback rate"

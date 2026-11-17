@@ -64,6 +64,19 @@ class ThumbsUpOut(BaseModel):
     low_confidence: bool
 
 
+class LiveScoreOut(BaseModel):
+    # The sample size: the Version's judged Live Verdicts (errors and skipped ones are left out),
+    # and those of them that passed.
+    n: int
+    passed: int
+    # The share that passed, and its Wilson 95% interval; null without a judged Live Verdict.
+    rate: float | None
+    low: float | None
+    high: float | None
+    # Fewer than 30 judged Live Verdicts: Low sample.
+    low_confidence: bool
+
+
 class RatingOut(BaseModel):
     # Conversations rated; the mean of their current Conversation Ratings (1 to 5).
     n: int
@@ -115,6 +128,7 @@ class VersionKpisOut(BaseModel):
     cost: CostOut
     thumbs_up: ThumbsUpOut
     rating: RatingOut
+    live_score: LiveScoreOut
     fallback: FallbackOut
     guardrail_blocks: GuardrailBlocksOut
     searches: SearchesOut
@@ -132,6 +146,7 @@ class VersionMetricsOut(BaseModel):
 def _out(kpis: service.VersionKpis) -> VersionKpisOut:
     usage = kpis.usage
     interval = kpis.thumbs_up_interval
+    live = kpis.live_score_interval
     return VersionKpisOut(
         version_id=kpis.version.id,
         number=kpis.version.number,
@@ -159,6 +174,14 @@ def _out(kpis: service.VersionKpis) -> VersionKpisOut:
             n=usage.rating_count,
             mean=kpis.mean_rating,
             low_confidence=service.low_confidence(usage.rating_count),
+        ),
+        live_score=LiveScoreOut(
+            n=usage.live_judged,
+            passed=usage.live_passed,
+            rate=kpis.live_score,
+            low=None if live is None else live.low,
+            high=None if live is None else live.high,
+            low_confidence=service.low_confidence(usage.live_judged),
         ),
         fallback=FallbackOut(count=usage.fallback_count, rate=kpis.fallback_rate),
         guardrail_blocks=GuardrailBlocksOut(count=usage.guardrail_blocks, rate=kpis.block_rate),
@@ -304,7 +327,8 @@ class TimeSeriesPointOut(BaseModel):
     end: date
     # The metric over the period; null when it has no sample (no votes for a rate, say).
     value: float | None
-    # The sample size: Conversations, replies, votes or ratings, as the metric counts them.
+    # The sample size: Conversations, replies, votes, ratings or judged Live Verdicts, as the
+    # metric counts them.
     n: int
 
 
@@ -419,9 +443,10 @@ class MetricRowOut(BaseModel):
     difference: float | None
     # The two values differ (one side having a value and the other none counts).
     changed: bool
-    # The Version this metric favours (a higher thumbs-up rate or rating; fewer tokens, lower
-    # cost per Conversation, fallback rate and latency); null when it favours neither or they
-    # are level. Volumes, totals, interval bounds and mean searches per reply favour neither.
+    # The Version this metric favours (a higher thumbs-up rate, rating or Live score; fewer
+    # tokens, lower cost per Conversation, fallback rate and latency); null when it favours
+    # neither or they are level. Volumes, totals, interval bounds and mean searches per reply
+    # favour neither.
     better: comparison.Side | None
     # Either Version's sample for this metric is small (fewer than 30).
     low_confidence: bool

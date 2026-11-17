@@ -122,6 +122,7 @@ async def test_two_versions_are_compared_side_by_side_with_each_difference(
         "votes",
         "rating_mean",
         "ratings",
+        "live_score",
         "fallback_rate",
         "guardrail_block_rate",
         "searches_per_reply",

@@ -4955,6 +4955,65 @@
         "title": "LiveHistoryMarkerOut",
         "type": "object"
       },
+      "LiveScoreOut": {
+        "properties": {
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "low_confidence": {
+            "title": "Low Confidence",
+            "type": "boolean"
+          },
+          "n": {
+            "title": "N",
+            "type": "integer"
+          },
+          "passed": {
+            "title": "Passed",
+            "type": "integer"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          }
+        },
+        "required": [
+          "n",
+          "passed",
+          "rate",
+          "low",
+          "high",
+          "low_confidence"
+        ],
+        "title": "LiveScoreOut",
+        "type": "object"
+      },
       "LiveVerdictFilter": {
         "description": "Which Conversations to keep by their replies' Live Verdicts: with a reply that passed,\nfailed, or couldn't be judged (an error), or with a reply that wasn't chosen to be judged.\nA reply still pending, or skipped because its text was Purged first, is none of these.",
         "enum": [
@@ -8650,7 +8709,8 @@
           "thumbs_up_rate",
           "mean_rating",
           "fallback_rate",
-          "p95_latency_ms"
+          "p95_latency_ms",
+          "live_score"
         ],
         "title": "TimeSeriesMetric",
         "type": "string"
@@ -9560,6 +9620,9 @@
           "latency": {
             "$ref": "#/components/schemas/LatencyOut"
           },
+          "live_score": {
+            "$ref": "#/components/schemas/LiveScoreOut"
+          },
           "low_confidence": {
             "title": "Low Confidence",
             "type": "boolean"
@@ -9605,6 +9668,7 @@
           "cost",
           "thumbs_up",
           "rating",
+          "live_score",
           "fallback",
           "guardrail_blocks",
           "searches",

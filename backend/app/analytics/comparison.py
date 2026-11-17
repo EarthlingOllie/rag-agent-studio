@@ -1,10 +1,11 @@
 """Version comparison: two Agent Versions' KPIs side by side, metric by metric, with each
 metric's difference (b minus a) and which side it favours, and the comparison as CSV.
 
-Whether a metric is better higher or lower is fixed per metric: a higher thumbs-up rate or mean
-rating is better; fewer tokens per reply, a cheaper Conversation, a lower fallback rate, a lower
-Guardrail block rate and lower latency are better; volumes, totals and interval bounds favour
-neither side, nor do mean searches per reply: more searching costs more but may answer better."""
+Whether a metric is better higher or lower is fixed per metric: a higher thumbs-up rate, mean
+rating or Live score is better; fewer tokens per reply, a cheaper Conversation, a lower fallback
+rate, a lower Guardrail block rate and lower latency are better; volumes, totals and interval
+bounds favour neither side, nor do mean searches per reply: more searching costs more but may
+answer better."""
 
 import csv
 import io
@@ -54,6 +55,10 @@ def _few_ratings(kpis: VersionKpis) -> bool:
     return low_confidence(kpis.usage.rating_count)
 
 
+def _few_live_verdicts(kpis: VersionKpis) -> bool:
+    return low_confidence(kpis.usage.live_judged)
+
+
 METRICS = [
     Metric("conversations", "Conversations", "count", None, lambda k: k.usage.conversations,
            _few_conversations),
@@ -74,6 +79,8 @@ METRICS = [
     Metric("rating_mean", "Mean rating", "rating", "higher", lambda k: k.mean_rating,
            _few_ratings),
     Metric("ratings", "Ratings", "count", None, lambda k: k.usage.rating_count, _few_ratings),
+    Metric("live_score", "Live score", "rate", "higher", lambda k: k.live_score,
+           _few_live_verdicts),
     Metric("fallback_rate", "Fallback rate", "rate", "lower", lambda k: k.fallback_rate),
     Metric("guardrail_block_rate", "Guardrail block rate", "rate", "lower",
            lambda k: k.block_rate),
