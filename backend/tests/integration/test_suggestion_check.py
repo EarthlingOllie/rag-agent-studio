@@ -431,6 +431,44 @@ async def test_cancelling_the_suggestion_while_it_checks_cancels_its_run(
     assert response.status_code == 202, response.text
 
 
+async def test_cancelling_once_the_check_has_finished_keeps_its_run(
+    app: FastAPI,
+    owner: SignedUpMember,
+    visitor: httpx.AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    agent, _ = await visitor_replies_then(
+        app, owner, visitor, with_line=CITED, without_line=UNCITED
+    )
+    scope = scope_of(owner)
+    project_id, agent_id = uuid.UUID(agent["project_id"]), uuid.UUID(agent["id"])
+    real = service.run_evaluation
+
+    async def editor_cancels_after(
+        sessionmaker: Any, ports: Any, gateway: Any, run_id: uuid.UUID, clock: Any
+    ) -> None:
+        await real(sessionmaker, ports, gateway, run_id, clock)
+
+        async def cancel_it(session: Any) -> None:
+            ((found, *_),) = await service.list_suggestions(session, scope, project_id, agent_id)
+            await service.cancel_suggestion(
+                session, scope, project_id, agent_id, found.id, now=clock.now()
+            )
+
+        await in_new_session(cancel_it)
+
+    monkeypatch.setattr(service, "run_evaluation", editor_cancels_after)
+
+    suggestion = await started(owner, agent)
+
+    # The Suggestion is cancelled, but the check had already finished: it stays completed.
+    assert suggestion["status"] == "cancelled"
+    assert suggestion["check"]["state"] == "clear"
+    (run,) = await runs(owner, agent)
+    assert run["status"] == "completed"
+    assert Decimal(suggestion["cost"]["checking_usd"]) == Decimal(run["cost"]["total_usd"])
+
+
 async def test_the_live_versions_base_prompt_is_what_the_first_side_answers_with(
     app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient
 ) -> None:

@@ -98,15 +98,21 @@ async def stop_check(session: AsyncSession, run_id: uuid.UUID, now: datetime) ->
         run.finished_at = now
 
 
-async def check_cost(session: AsyncSession, run_id: uuid.UUID) -> Decimal:
-    """What the check has spent, answering and judging, at the prices frozen as each ran."""
-    spent = func.coalesce(EvaluationCaseResult.cost_usd, 0) + func.coalesce(
-        EvaluationCaseResult.judge_cost_usd, 0
-    )
-    total = await session.scalar(
-        select(func.sum(spent)).where(EvaluationCaseResult.run_id == run_id)
-    )
-    return Decimal(total or 0)
+async def check_cost(session: AsyncSession, run_id: uuid.UUID) -> Decimal | None:
+    """What the check has spent, answering and judging, at the prices frozen as each ran: nothing
+    before its first answer, and None when it answered but no price was known."""
+    answered, answers, judging = (
+        await session.execute(
+            select(
+                func.count(EvaluationCaseResult.id),
+                func.sum(EvaluationCaseResult.cost_usd),
+                func.sum(EvaluationCaseResult.judge_cost_usd),
+            ).where(EvaluationCaseResult.run_id == run_id)
+        )
+    ).one()
+    if answered and answers is None and judging is None:
+        return None
+    return Decimal(answers or 0) + Decimal(judging or 0)
 
 
 _STATES = {
