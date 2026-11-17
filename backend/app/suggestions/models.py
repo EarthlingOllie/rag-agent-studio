@@ -21,6 +21,7 @@ from app.agents.models import Agent, AgentVersion
 from app.conversations.models import Message
 from app.core.db import Base, IdMixin
 from app.credentials.models import ProviderCredential
+from app.evaluation.models import EvaluationRunCase
 from app.tenancy.models import Member, Organisation
 
 
@@ -55,6 +56,18 @@ class SuggestionOutcome(enum.StrEnum):
 class EvidenceKind(enum.StrEnum):
     # A Visitor reply of the Live Version that failed its Live Verdict.
     LIVE_VERDICT = "live_verdict"
+    # A Visitor reply of the Live Version with a thumbs-down.
+    THUMBS_DOWN = "thumbs_down"
+    # A Visitor reply of the Live Version in a Conversation whose current Conversation Rating is
+    # 1 or 2.
+    LOW_RATING = "low_rating"
+    # An Evaluation Case that failed on the Live Version in the latest finished Evaluation Run
+    # with a side running it.
+    EVALUATION_CASE = "evaluation_case"
+
+
+# The order a reply's kinds are listed in.
+REPLY_KINDS = (EvidenceKind.LIVE_VERDICT, EvidenceKind.THUMBS_DOWN, EvidenceKind.LOW_RATING)
 
 
 class Suggestion(IdMixin, Base):
@@ -118,8 +131,10 @@ class SuggestedChange(IdMixin, Base):
 
 
 class SuggestionEvidence(IdMixin, Base):
-    """One piece of evidence the Suggestion was made from: its kind and the Message it points at,
-    never the Message's text (ADR-0017)."""
+    """One piece of evidence the Suggestion was made from: a Visitor reply, by the Message it
+    points at and never the Message's text (ADR-0017), or an Evaluation Case's result, by the
+    case as the Run copied it. A reply that qualifies several ways is one piece with each of its
+    kinds."""
 
     __tablename__ = "suggestion_evidence"
 
@@ -131,8 +146,34 @@ class SuggestionEvidence(IdMixin, Base):
     )
     # Its label in the proposing call is ``E<position>``.
     position: Mapped[int] = mapped_column(Integer)
-    # An ``EvidenceKind``.
+    # Its first ``EvidenceKind``, and every one it qualifies as, in ``REPLY_KINDS`` order.
     kind: Mapped[str] = mapped_column(String(30))
-    message_id: Mapped[uuid.UUID] = mapped_column(
+    kinds: Mapped[list[str]] = mapped_column(JSONB)
+    # The reply; None for an Evaluation Case.
+    message_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(Message.id, ondelete="CASCADE"), index=True
     )
+    # The Evaluation Case as its Run copied it; None for a reply. Its ``case_id`` is None once
+    # the case is deleted, and the evidence reads "Case deleted".
+    run_case_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(EvaluationRunCase.id, ondelete="CASCADE"), index=True
+    )
+
+
+class KnowledgeBaseGap(IdMixin, Base):
+    """A topic the Suggestion run found that failed replies asked about and no Chunk covered, in
+    the run's own words, with the evidence behind it. Never a change: nothing applies it."""
+
+    __tablename__ = "suggestion_gaps"
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
+    )
+    suggestion_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Suggestion.id, ondelete="CASCADE"), index=True
+    )
+    position: Mapped[int] = mapped_column(Integer)
+    topic: Mapped[str] = mapped_column(String(200))
+    explanation: Mapped[str] = mapped_column(Text)
+    # The positions of the evidence it cites.
+    evidence: Mapped[list[int]] = mapped_column(JSONB)

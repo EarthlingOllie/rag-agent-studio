@@ -3,22 +3,31 @@ the Evaluation Model propose the Suggestion, and reading an Agent's Suggestions.
 
 Starting a run reads the Agent's Live Version as its base, copying its AgentConfig, and the
 Evaluation Model (or else the Default Model) as it is now; it is refused for an archived Agent,
-one never Published, or an Organisation with neither model. The job then gathers the base
-Version's Visitor replies in the range of UTC days whose Live Verdict failed, Purged ones left
-out, the most recent ``EVIDENCE_MAX`` of them, and makes one proposing call
-(``app.suggestions.proposer``). With no evidence it proposes nothing and asks no model. A model
-error, a timeout or invalid output makes the run ``failed`` with why.
+one never Published, or an Organisation with neither model. The job then gathers the evidence:
+the base Version's Visitor replies in the range of UTC days that failed their Live Verdict, have
+a thumbs-down or are in a Conversation whose current Conversation Rating is 1 or 2 (each reply
+once, with all its reasons; Purged ones left out), and the Evaluation Cases that failed on a side
+running the base Version in the latest finished Evaluation Run with such a side. The most recent
+``EVIDENCE_MAX`` pieces are used and the count before the cap is stored. Each reply goes to the
+model with its Remembered turns, its Live Verdict reasons or Feedback, and a compact Trace; each
+case with its question, expectations, Verdicts' reasons and Trace. One proposing call
+(``app.suggestions.proposer``) then gives the changes and Knowledge Base gaps; with no evidence
+it proposes nothing and asks no model. A model error, a timeout or invalid output makes the run
+``failed`` with why. The outcome is ``changes``, else ``gaps_only`` when it found only gaps, else
+``no_change``.
 
-Evidence points at its Message and never copies its text (ADR-0017); reading a Suggestion
-resolves each piece to its reply's date, Conversation and Live Verdict outcome, or to "Text
-purged" once the Purge has cleared it.
+Evidence points at its Message, or at the Evaluation Case as its Run copied it, and never copies
+text (ADR-0017); reading a Suggestion resolves each piece to its date, kinds and Live Verdict
+outcome and to where it opens, saying "Text purged" once the Purge has cleared a reply and "Case
+deleted" once a case is gone.
 """
 
 import functools
 import uuid
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -26,25 +35,36 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.agents.models import AgentVersion
 from app.agents.service import active_agent, get_agent
 from app.conversations.models import Message
-from app.conversations.service import traced_chunks
+from app.conversations.service import TracedChunk, searches_of, traced_chunks
 from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
+from app.evaluation.failed_cases import FailedCase, failed_cases, run_cases_of
 from app.evaluation.from_message import question_of
+from app.evaluation.live import remembered_turns
 from app.evaluation.live_reads import failed_replies, live_verdicts_of
-from app.evaluation.models import LiveVerdict
+from app.evaluation.models import (
+    EvaluationRun,
+    EvaluationRunCase,
+    LiveStatus,
+    LiveVerdict,
+    VerdictKind,
+)
 from app.evaluation.ports import EvaluationPorts
 from app.evaluation.settings import judge_model
+from app.feedback.service import low_rated_replies, thumbs_down_replies
 from app.gateway.gateway import ModelGateway
 from app.projects.service import active_project
+from app.retrieval.service import ExcludedReason
 from app.suggestions.models import (
     EvidenceKind,
+    KnowledgeBaseGap,
     SuggestedChange,
     Suggestion,
     SuggestionEvidence,
     SuggestionOutcome,
     SuggestionStatus,
 )
-from app.suggestions.proposer import EvidenceItem, ProposeError, propose
+from app.suggestions.proposer import Block, EvidenceItem, ProposeError, propose
 from app.tenancy.repository import OrganisationScope
 
 # The most evidence one run reads: the most recent pieces.
@@ -118,30 +138,175 @@ def _outcome(verdict: LiveVerdict) -> str:
     return "pass" if verdict.passed else "fail"
 
 
-async def _evidence_item(
-    session: AsyncSession, label: str, reply: Message, verdict: LiveVerdict
-) -> EvidenceItem:
+# What the model is told each kind of evidence is.
+KIND_LINES = {
+    EvidenceKind.LIVE_VERDICT: "Kind: failed Live Verdict",
+    EvidenceKind.THUMBS_DOWN: "Kind: thumbs-down",
+    EvidenceKind.LOW_RATING: "Kind: in a Conversation rated {score} of 5",
+    EvidenceKind.EVALUATION_CASE: "Kind: failed Evaluation Case",
+}
+VERDICT_NAMES = {
+    VerdictKind.EXPECTED_SOURCE: "Expected source",
+    VerdictKind.FALLBACK: "Expect Fallback Text",
+    VerdictKind.REFERENCE_ANSWER: "Reference answer",
+    VerdictKind.GROUNDING: "Grounding",
+}
+PURGED_TEXT = "[Text purged]"
+BELOW_MIN_SCORE: ExcludedReason = "below_min_score"
+
+
+@dataclass
+class _Piece:
+    """One piece of evidence while it is gathered: a reply with every reason it qualifies, or
+    a failed Evaluation Case."""
+
+    at: datetime
+    # Orders pieces given at the same time: the later reply, or the earlier case, first.
+    order: int
+    kinds: list[EvidenceKind] = field(default_factory=list)
+    reply: Message | None = None
+    verdict: LiveVerdict | None = None
+    comment: str | None = None
+    rating: int | None = None
+    case: FailedCase | None = None
+
+
+@dataclass(frozen=True)
+class _TracedChunk:
+    rank: int | None
+    cited: bool
+    excluded_reason: str | None
+    relevance: float
+    document_name: str | None
+    text: str | None
+
+
+def _chunk_line(chunk: _TracedChunk) -> str:
+    if chunk.rank is None:
+        state = f"excluded ({chunk.excluded_reason})"
+    else:
+        state = f"[C{chunk.rank}] {'cited' if chunk.cited else 'not cited'}"
+    excerpt = " ".join((chunk.text or "").split())[:CHUNK_EXCERPT_MAX]
+    name = chunk.document_name or "Deleted Document"
+    return f"{state}, relevance {chunk.relevance:.2f}, {name}: {excerpt}"
+
+
+def _trace_lines(
+    chunks: list[_TracedChunk], searches: list[tuple[str, list[_TracedChunk]]]
+) -> tuple[list[str], list[str]]:
+    """The run's own lines about a Trace (how many Chunks were cited, and the closest excluded
+    below the Minimum Score), and the Trace's lines: its Chunks, then each Search with its."""
+    lines = [_chunk_line(chunk) for chunk in chunks]
+    for order, (query, found) in enumerate(searches, start=1):
+        lines.append(f"Search {order}: {' '.join(query.split())}")
+        lines.extend(_chunk_line(chunk) for chunk in found)
+    every = chunks + [chunk for _, found in searches for chunk in found]
+    header = [f"Chunks cited: {sum(chunk.cited for chunk in every)}"]
+    below = [c.relevance for c in every if c.excluded_reason == BELOW_MIN_SCORE]
+    if below:
+        header.append(f"Closest Chunk below the Minimum Score: relevance {max(below):.2f}")
+    return header, lines
+
+
+def _traced(chunk: TracedChunk) -> _TracedChunk:
+    retrieval = chunk.retrieval
+    return _TracedChunk(
+        retrieval.rank,
+        retrieval.cited,
+        retrieval.excluded_reason,
+        retrieval.relevance,
+        chunk.document_name,
+        chunk.text,
+    )
+
+
+def _text(message: Message) -> str:
+    return PURGED_TEXT if message.purged_at is not None else message.content
+
+
+async def _reply_item(session: AsyncSession, label: str, piece: _Piece) -> EvidenceItem:
+    reply = cast(Message, piece.reply)
     question = await question_of(session, reply)
-    trace: list[str] = []
-    for chunk in await traced_chunks(session, reply):
-        retrieval = chunk.retrieval
-        if retrieval.rank is None:
-            state = f"excluded ({retrieval.excluded_reason})"
-        else:
-            state = f"[C{retrieval.rank}] {'cited' if retrieval.cited else 'not cited'}"
-        excerpt = " ".join((chunk.text or "").split())[:CHUNK_EXCERPT_MAX]
-        name = chunk.document_name or "Deleted Document"
-        trace.append(f"{state}, relevance {retrieval.relevance:.2f}, {name}: {excerpt}")
-    return EvidenceItem(
-        label=label,
-        reasons=[
-            "Kind: failed Live Verdict",
+    turns = await remembered_turns(session, reply, question)
+    traced = await traced_chunks(session, reply)
+    searches = [
+        (search.query, [_traced(c) for c in traced if c.retrieval.search_id == search.id])
+        for search in await searches_of(session, reply)
+    ]
+    header, trace = _trace_lines(
+        [_traced(c) for c in traced if c.retrieval.search_id is None], searches
+    )
+    reasons = [KIND_LINES[kind].format(score=piece.rating) for kind in piece.kinds]
+    verdict = piece.verdict
+    if verdict is not None and verdict.status == LiveStatus.JUDGED:
+        reasons += [
             f"Grounding: {verdict.grounded}. {verdict.grounded_reason}",
             f"Answers the question: {verdict.answers_question}. {verdict.answers_question_reason}",
+        ]
+    blocks = []
+    if turns:
+        remembered = [
+            f"Visitor: {_text(asked)}\nAssistant: {_text(answer)}" for asked, answer in turns
+        ]
+        blocks.append(Block("REMEMBERED_TURNS", "\n".join(remembered)))
+    blocks += [Block("VISITOR_QUESTION", _text(question)), Block("REPLY", reply.content)]
+    if piece.comment:
+        blocks.append(Block("VISITOR_COMMENT", piece.comment))
+    blocks.append(Block("TRACE", "\n".join(trace)))
+    return EvidenceItem(label=label, reasons=reasons + header, blocks=blocks)
+
+
+def _expectations(run_case: EvaluationRunCase) -> str:
+    lines = []
+    if run_case.reference_answer:
+        lines.append(f"Reference answer: {run_case.reference_answer}")
+    if run_case.expect_fallback:
+        lines.append("Expects the Fallback Text.")
+    for source in run_case.expected_sources:
+        lines.append(f"Expected source, {source['document_name']}: {source['passage']}")
+    return "\n".join(lines)
+
+
+def _json_chunk(chunk: dict[str, Any]) -> _TracedChunk:
+    return _TracedChunk(
+        chunk["rank"],
+        chunk["cited"],
+        chunk["excluded_reason"],
+        chunk["relevance"],
+        chunk["document_name"],
+        chunk["text"],
+    )
+
+
+def _case_item(label: str, case: FailedCase) -> EvidenceItem:
+    # The first repeat that failed: the one the model is shown.
+    shown = next(repeat for repeat in case.repeats if repeat.answered and not repeat.passed)
+    trace = shown.result.trace or {}
+    header, lines = _trace_lines(
+        [_json_chunk(c) for c in trace.get("chunks", [])],
+        [
+            (search["query"], [_json_chunk(c) for c in search["chunks"]])
+            for search in trace.get("searches", [])
         ],
-        question=question.content,
-        reply=reply.content,
-        trace=trace,
+    )
+    reasons = [
+        KIND_LINES[EvidenceKind.EVALUATION_CASE],
+        f"Repeats passed: {case.result.passed} of {case.result.answered} answered",
+        *(
+            f"{VERDICT_NAMES[VerdictKind(v.kind)]}: {v.outcome}. {v.reason or ''}".rstrip()
+            for v in shown.verdicts
+        ),
+        *header,
+    ]
+    return EvidenceItem(
+        label=label,
+        reasons=reasons,
+        blocks=[
+            Block("CASE_QUESTION", case.run_case.question),
+            Block("EXPECTATIONS", _expectations(case.run_case)),
+            Block("REPLY", shown.result.answer or ""),
+            Block("TRACE", "\n".join(lines)),
+        ],
     )
 
 
@@ -158,32 +323,72 @@ async def _set_status(
         await session.commit()
 
 
+async def _pieces(session: AsyncSession, suggestion: Suggestion) -> list[_Piece]:
+    """Every piece of evidence in the Suggestion's range, the most recent first: the base
+    Version's Visitor replies that failed their Live Verdict, have a thumbs-down or are in a
+    Conversation rated 1 or 2, each once with all its reasons, and the Evaluation Cases that
+    failed on it in the latest finished Run with a side running it."""
+    start = day_start(suggestion.range_start)
+    end = day_start(suggestion.range_end + timedelta(days=1))
+    version_id = suggestion.base_version_id
+    replies: dict[uuid.UUID, _Piece] = {}
+
+    def piece(reply: Message, kind: EvidenceKind) -> _Piece:
+        found = replies.setdefault(reply.id, _Piece(reply.created_at, reply.seq, reply=reply))
+        found.kinds.append(kind)
+        return found
+
+    for reply, verdict in (await failed_replies(session, version_id, start, end)).replies:
+        piece(reply, EvidenceKind.LIVE_VERDICT).verdict = verdict
+    for reply, comment in await thumbs_down_replies(session, version_id, start, end):
+        piece(reply, EvidenceKind.THUMBS_DOWN).comment = comment
+    for reply, score in await low_rated_replies(session, version_id, start, end):
+        piece(reply, EvidenceKind.LOW_RATING).rating = score
+    verdicts = await live_verdicts_of(
+        session, [p.reply.id for p in replies.values() if p.verdict is None and p.reply]
+    )
+    for each in replies.values():
+        if each.verdict is None and each.reply is not None:
+            each.verdict = verdicts.get(each.reply.id)
+    cases = [
+        _Piece(
+            cast(datetime, case.run.finished_at),
+            -case.run_case.position,
+            [EvidenceKind.EVALUATION_CASE],
+            case=case,
+        )
+        for case in await failed_cases(session, suggestion.agent_id, version_id)
+    ]
+    return sorted([*replies.values(), *cases], key=lambda p: (p.at, p.order), reverse=True)
+
+
 async def _gather(
     sessionmaker: async_sessionmaker[AsyncSession], suggestion_id: uuid.UUID
 ) -> list[EvidenceItem]:
     """Stores the run's evidence and returns it as the model is given it."""
     async with sessionmaker() as session:
         suggestion = await session.get_one(Suggestion, suggestion_id)
-        found = await failed_replies(
-            session,
-            suggestion.base_version_id,
-            day_start(suggestion.range_start),
-            day_start(suggestion.range_end + timedelta(days=1)),
-            limit=EVIDENCE_MAX,
-        )
-        suggestion.evidence_total = found.total
+        pieces = await _pieces(session, suggestion)
+        suggestion.evidence_total = len(pieces)
         items: list[EvidenceItem] = []
-        for position, (reply, verdict) in enumerate(found.replies, start=1):
+        for position, piece in enumerate(pieces[:EVIDENCE_MAX], start=1):
             session.add(
                 SuggestionEvidence(
                     organisation_id=suggestion.organisation_id,
                     suggestion_id=suggestion.id,
                     position=position,
-                    kind=EvidenceKind.LIVE_VERDICT,
-                    message_id=reply.id,
+                    kind=piece.kinds[0],
+                    kinds=list(piece.kinds),
+                    message_id=None if piece.reply is None else piece.reply.id,
+                    run_case_id=None if piece.case is None else piece.case.run_case.id,
                 )
             )
-            items.append(await _evidence_item(session, _label(position), reply, verdict))
+            label = _label(position)
+            items.append(
+                _case_item(label, piece.case)
+                if piece.case is not None
+                else await _reply_item(session, label, piece)
+            )
         await session.commit()
         return items
 
@@ -196,6 +401,7 @@ async def _finish(
     error: str | None = None,
     explanation: str | None = None,
     changes: Sequence[SuggestedChange] = (),
+    gaps: Sequence[KnowledgeBaseGap] = (),
 ) -> None:
     async with sessionmaker() as session:
         suggestion = await session.get_one(Suggestion, suggestion_id)
@@ -207,9 +413,14 @@ async def _finish(
             suggestion.status = SuggestionStatus.COMPLETED
             suggestion.explanation = explanation
             suggestion.outcome = (
-                SuggestionOutcome.CHANGES if changes else SuggestionOutcome.NO_CHANGE
+                SuggestionOutcome.CHANGES
+                if changes
+                else SuggestionOutcome.GAPS_ONLY
+                if gaps
+                else SuggestionOutcome.NO_CHANGE
             )
             session.add_all(changes)
+            session.add_all(gaps)
         await session.commit()
 
 
@@ -263,12 +474,24 @@ async def run_suggestion(
         )
         for position, change in enumerate(proposing.changes, start=1)
     ]
+    gaps = [
+        KnowledgeBaseGap(
+            organisation_id=suggestion.organisation_id,
+            suggestion_id=suggestion_id,
+            position=position,
+            topic=gap.topic,
+            explanation=gap.explanation,
+            evidence=[positions[label] for label in gap.evidence],
+        )
+        for position, gap in enumerate(proposing.gaps, start=1)
+    ]
     await _finish(
         sessionmaker,
         suggestion_id,
         clock.now(),
         explanation=proposing.explanation,
         changes=changes,
+        gaps=gaps,
     )
 
 
@@ -278,13 +501,28 @@ async def run_suggestion(
 @dataclass(frozen=True)
 class EvidenceRead:
     evidence: SuggestionEvidence
-    message: Message
+    # The reply, for a reply.
+    message: Message | None
     # The reply's Live Verdict outcome, ``pass`` or ``fail``; None when it has none.
     live_verdict: str | None
+    # The case as its Run copied it, and the Run, for an Evaluation Case.
+    run_case: EvaluationRunCase | None = None
+    run: EvaluationRun | None = None
 
     @property
     def text_purged(self) -> bool:
-        return self.message.purged_at is not None
+        return self.message is not None and self.message.purged_at is not None
+
+    @property
+    def case_deleted(self) -> bool:
+        return self.run_case is not None and self.run_case.case_id is None
+
+    @property
+    def occurred_at(self) -> datetime:
+        """When the reply was given, or the Run that failed the case finished."""
+        if self.message is not None:
+            return self.message.created_at
+        return cast(datetime, cast(EvaluationRun, self.run).finished_at)
 
 
 @dataclass(frozen=True)
@@ -293,6 +531,7 @@ class SuggestionRead:
     base_version_number: int
     changes: list[SuggestedChange]
     evidence: list[EvidenceRead]
+    gaps: list[KnowledgeBaseGap] = field(default_factory=list)
 
 
 async def list_suggestions(
@@ -340,7 +579,14 @@ async def get_suggestion(
             .order_by(SuggestionEvidence.position)
         )
     )
-    message_ids = [each.message_id for each in evidence]
+    gaps = list(
+        await session.scalars(
+            select(KnowledgeBaseGap)
+            .where(KnowledgeBaseGap.suggestion_id == suggestion.id)
+            .order_by(KnowledgeBaseGap.position)
+        )
+    )
+    message_ids = [each.message_id for each in evidence if each.message_id is not None]
     messages = {
         message.id: message
         for message in await session.scalars(select(Message).where(Message.id.in_(message_ids)))
@@ -348,13 +594,19 @@ async def get_suggestion(
     outcomes = {
         message_id: _outcome(verdict)
         for message_id, verdict in (await live_verdicts_of(session, message_ids)).items()
+        if verdict.status == LiveStatus.JUDGED
     }
+    cases = await run_cases_of(
+        session, [each.run_case_id for each in evidence if each.run_case_id is not None]
+    )
+
+    def read(each: SuggestionEvidence) -> EvidenceRead:
+        if each.run_case_id is not None:
+            run_case, run = cases[each.run_case_id]
+            return EvidenceRead(each, None, None, run_case, run)
+        message_id = cast(uuid.UUID, each.message_id)
+        return EvidenceRead(each, messages[message_id], outcomes.get(message_id))
+
     return SuggestionRead(
-        suggestion,
-        version.number,
-        changes,
-        [
-            EvidenceRead(each, messages[each.message_id], outcomes.get(each.message_id))
-            for each in evidence
-        ],
+        suggestion, version.number, changes, [read(each) for each in evidence], gaps
     )

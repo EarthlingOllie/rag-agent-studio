@@ -35,7 +35,7 @@ from app.credentials.registry import Provider
 from app.evaluation.fake_judge import fake_judgement, is_judging
 from app.gateway.fakes import FakeModelAdapters
 from app.suggestions import service
-from app.suggestions.fake_proposer import CITE_LINE, fake_proposal
+from app.suggestions.fake_proposer import CITE_LINE, GAP_TOPIC, fake_proposal
 from tests.agents import AUTOMATIC, StreamFunction, agents_path, create_automatic_agent, save_draft
 from tests.conftest import ClientFactory, MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import create_project, upload
@@ -213,6 +213,12 @@ async def test_failed_live_verdicts_become_a_system_prompt_suggestion_with_its_e
         "Fake proposer: replies failed grounding, so ask for citations."
     )
     assert change["evidence_ids"] == [e["id"] for e in evidence]
+    assert all(e["kinds"] == ["live_verdict"] for e in evidence)
+    # Neither reply cited a Chunk: each is a Knowledge Base gap, which is never a change.
+    assert [(g["topic"], g["evidence_ids"]) for g in suggestion["gaps"]] == [
+        (GAP_TOPIC, [evidence[0]["id"]]),
+        (GAP_TOPIC, [evidence[1]["id"]]),
+    ]
     # Every Member reads it, and it is listed.
     read = await owner.client.get(suggestions_path(owner, agent, suggestion["id"]))
     assert read.status_code == 200, read.text
@@ -439,7 +445,12 @@ async def test_only_valid_changes_citing_given_evidence_are_kept(
             [
                 # A setting a Suggestion may not change.
                 {"path": "behaviour.fallback_text", "value": "Ask HR.", "explanation": "x"},
-                {"path": "retrieval.top_k", "value": 8, "explanation": "x", "evidence": ["E1"]},
+                {
+                    "path": "retrieval.mode",
+                    "value": "agentic",
+                    "explanation": "x",
+                    "evidence": ["E1"],
+                },
                 {"path": "nonsense", "value": 1, "explanation": "x"},
                 # Not valid as a Draft would save it.
                 {

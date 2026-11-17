@@ -8,14 +8,16 @@ neither an Evaluation Model nor a Default Model. The run is returned ``queued`` 
 run eagerly, already finished) and the Studio polls it until it is ``completed`` or ``failed``.
 An archived Agent's Suggestions can still be read.
 
-Reading a Suggestion resolves each piece of evidence to its reply's date, kind and Live Verdict
-outcome, and to the Conversation and Message the Conversations viewer opens it at; it never
-holds the reply's text (ADR-0017), and says ``text_purged`` once the Purge has cleared it.
+Reading a Suggestion resolves each piece of evidence to its date and kinds: a reply to its Live
+Verdict outcome and the Conversation and Message the Conversations viewer opens it at, never
+its text (ADR-0017), saying ``text_purged`` once the Purge has cleared it; an Evaluation Case to
+the Run and copied case Run detail opens its result at, saying ``case_deleted`` once the case is
+deleted. It also holds the Knowledge Base gaps the run found.
 """
 
 import uuid
 from datetime import date, datetime, timedelta
-from typing import Any, Literal, Self
+from typing import Any, Literal, Self, cast
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, model_validator
@@ -119,15 +121,34 @@ class EvidenceOut(BaseModel):
     id: uuid.UUID
     # Its id in the run, such as E1.
     label: str
+    # Its first kind, and every kind it qualifies as: a reply can be a failed Live Verdict, have a
+    # thumbs-down and be in a Conversation rated 1 or 2 at once.
     kind: EvidenceKind
-    # Where the Conversations viewer opens the reply.
-    conversation_id: uuid.UUID
-    message_id: uuid.UUID
-    replied_at: datetime
+    kinds: list[EvidenceKind]
+    # When the reply was given, or the Run that failed the Evaluation Case finished.
+    occurred_at: datetime
+    # A reply: where the Conversations viewer opens it. Null for an Evaluation Case.
+    conversation_id: uuid.UUID | None
+    message_id: uuid.UUID | None
     # The reply's Live Verdict outcome; null when it has none.
     live_verdict: Literal["pass", "fail"] | None
     # The Purge has cleared the reply's text.
     text_purged: bool
+    # An Evaluation Case: the Run and the case as it copied it, where Run detail opens its
+    # result. Null for a reply.
+    evaluation_run_id: uuid.UUID | None
+    run_case_id: uuid.UUID | None
+    # The Evaluation Case has since been deleted: it reads "Case deleted".
+    case_deleted: bool
+
+
+class KnowledgeBaseGapOut(BaseModel):
+    id: uuid.UUID
+    # A short topic and why, in the run's own words.
+    topic: str
+    explanation: str
+    # The evidence it cites.
+    evidence_ids: list[uuid.UUID]
 
 
 class SuggestionOut(SuggestionSummaryOut):
@@ -137,6 +158,8 @@ class SuggestionOut(SuggestionSummaryOut):
     model_provider: str
     model_name: str
     changes: list[SuggestedChangeOut]
+    # Topics no Chunk covered; never a change.
+    gaps: list[KnowledgeBaseGapOut]
     evidence: list[EvidenceOut]
 
 
@@ -167,6 +190,24 @@ def _change(change: SuggestedChange, evidence_ids: dict[int, uuid.UUID]) -> Sugg
     )
 
 
+def _evidence(each: service.EvidenceRead) -> EvidenceOut:
+    message, run_case = each.message, each.run_case
+    return EvidenceOut(
+        id=each.evidence.id,
+        label=f"E{each.evidence.position}",
+        kind=EvidenceKind(each.evidence.kind),
+        kinds=[EvidenceKind(kind) for kind in each.evidence.kinds],
+        occurred_at=each.occurred_at,
+        conversation_id=None if message is None else message.conversation_id,
+        message_id=None if message is None else message.id,
+        live_verdict=cast(Literal["pass", "fail"] | None, each.live_verdict),
+        text_purged=each.text_purged,
+        evaluation_run_id=None if run_case is None else run_case.run_id,
+        run_case_id=None if run_case is None else run_case.id,
+        case_deleted=each.case_deleted,
+    )
+
+
 def _out(read: service.SuggestionRead) -> SuggestionOut:
     suggestion = read.suggestion
     evidence_ids = {each.evidence.position: each.evidence.id for each in read.evidence}
@@ -176,19 +217,16 @@ def _out(read: service.SuggestionRead) -> SuggestionOut:
         model_provider=suggestion.model_provider,
         model_name=suggestion.model_name,
         changes=[_change(change, evidence_ids) for change in read.changes],
-        evidence=[
-            EvidenceOut(
-                id=each.evidence.id,
-                label=f"E{each.evidence.position}",
-                kind=EvidenceKind(each.evidence.kind),
-                conversation_id=each.message.conversation_id,
-                message_id=each.message.id,
-                replied_at=each.message.created_at,
-                live_verdict=each.live_verdict,
-                text_purged=each.text_purged,
+        gaps=[
+            KnowledgeBaseGapOut(
+                id=gap.id,
+                topic=gap.topic,
+                explanation=gap.explanation,
+                evidence_ids=[evidence_ids[position] for position in gap.evidence],
             )
-            for each in read.evidence
+            for gap in read.gaps
         ],
+        evidence=[_evidence(each) for each in read.evidence],
     )
 
 

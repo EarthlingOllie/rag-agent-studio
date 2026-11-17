@@ -4074,34 +4074,36 @@ export interface components {
          * EvidenceKind
          * @enum {string}
          */
-        EvidenceKind: "live_verdict";
+        EvidenceKind: "live_verdict" | "thumbs_down" | "low_rating" | "evaluation_case";
         /** EvidenceOut */
         EvidenceOut: {
-            /**
-             * Conversation Id
-             * Format: uuid
-             */
-            conversation_id: string;
+            /** Case Deleted */
+            case_deleted: boolean;
+            /** Conversation Id */
+            conversation_id: string | null;
+            /** Evaluation Run Id */
+            evaluation_run_id: string | null;
             /**
              * Id
              * Format: uuid
              */
             id: string;
             kind: components["schemas"]["EvidenceKind"];
+            /** Kinds */
+            kinds: components["schemas"]["EvidenceKind"][];
             /** Label */
             label: string;
             /** Live Verdict */
             live_verdict: ("pass" | "fail") | null;
+            /** Message Id */
+            message_id: string | null;
             /**
-             * Message Id
-             * Format: uuid
-             */
-            message_id: string;
-            /**
-             * Replied At
+             * Occurred At
              * Format: date-time
              */
-            replied_at: string;
+            occurred_at: string;
+            /** Run Case Id */
+            run_case_id: string | null;
             /** Text Purged */
             text_purged: boolean;
         };
@@ -4546,6 +4548,20 @@ export interface components {
             link: string;
         };
         JsonValue: unknown;
+        /** KnowledgeBaseGapOut */
+        KnowledgeBaseGapOut: {
+            /** Evidence Ids */
+            evidence_ids: string[];
+            /** Explanation */
+            explanation: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Topic */
+            topic: string;
+        };
         /** LatencyOut */
         LatencyOut: {
             /** First Token P95 Ms */
@@ -5511,6 +5527,11 @@ export interface components {
             expect_fallback: boolean;
             /** Expected Sources */
             expected_sources: components["schemas"]["RunExpectedSourceOut"][];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /** Question */
             question: string;
             /** Reference Answer */
@@ -5872,6 +5893,8 @@ export interface components {
             explanation: string | null;
             /** Finished At */
             finished_at: string | null;
+            /** Gaps */
+            gaps: components["schemas"]["KnowledgeBaseGapOut"][];
             /**
              * Id
              * Format: uuid

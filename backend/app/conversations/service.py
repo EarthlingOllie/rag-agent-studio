@@ -18,7 +18,7 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent, AgentVersion
-from app.conversations.models import Conversation, Message, MessageRetrieval, MessageRole
+from app.conversations.models import Conversation, Message, MessageRetrieval, MessageRole, Search
 from app.documents.models import Chunk, Document
 from app.evaluation.live_reads import LiveVerdictFilter, failed_live_verdicts, with_live_verdict
 from app.feedback.models import (
@@ -387,6 +387,15 @@ async def traced_chunks(session: AsyncSession, message: Message) -> list[TracedC
         .order_by(MessageRetrieval.position)
     )
     return [TracedChunk(row, name or row.document_name, text) for row, name, text in rows]
+
+
+async def searches_of(session: AsyncSession, message: Message) -> list[Search]:
+    """The answer's Knowledge Searches, in order."""
+    return list(
+        await session.scalars(
+            select(Search).where(Search.message_id == message.id).order_by(Search.order)
+        )
+    )
 
 
 def answer_in(messages: list[Message], message_id: uuid.UUID) -> Message:

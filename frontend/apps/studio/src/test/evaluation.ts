@@ -156,6 +156,9 @@ export const repeat = (result: CaseResult, number: number): CaseResult => ({
   repeat: number,
 });
 
+/** The ID of a case as a Run copied it. */
+export const runCaseId = (evaluationCase: Case) => `9c${evaluationCase.id.slice(2)}`;
+
 /**
  * A Run's results: each case as copied, with its answers (one, or one per repeat) and, unless
  * given, its result on the first side as one answer gives it.
@@ -181,6 +184,7 @@ export function results(
             ? caseSide("pass", 1, 1)
             : caseSide("fail", 0, 1);
       return {
+        id: runCaseId(evaluationCase),
         case_id: evaluationCase.id,
         question: evaluationCase.question,
         reference_answer: evaluationCase.reference_answer,

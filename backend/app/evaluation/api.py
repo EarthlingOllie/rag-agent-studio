@@ -412,6 +412,8 @@ class RunExpectedSourceOut(BaseModel):
 
 
 class RunCaseOut(BaseModel):
+    # The case as the Run copied it: where a Suggestion's evidence opens its result.
+    id: uuid.UUID
     # The case it was copied from; null once that case is deleted.
     case_id: uuid.UUID | None
     # The question and expectations as the Run copied them when it started.
@@ -907,6 +909,7 @@ async def get_run_results(
         run=_run_out(detail),
         cases=[
             RunCaseOut(
+                id=case.case.id,
                 case_id=case.case.case_id,
                 question=case.case.question,
                 reference_answer=case.case.reference_answer,

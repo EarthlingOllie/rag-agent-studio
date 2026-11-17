@@ -107,7 +107,7 @@ async def sample_reply(
         return verdict.id
 
 
-async def _remembered(
+async def remembered_turns(
     session: AsyncSession, reply: Message, question: Message
 ) -> list[tuple[Message, Message]]:
     """The reply's Remembered turns, oldest first, as its Agent Version remembered them: the
@@ -136,7 +136,7 @@ async def _request(session: AsyncSession, reply: Message) -> JudgeRequest | None
     text, its question's or a Remembered turn's has been Purged since: nothing is judged
     without its text."""
     question = await question_of(session, reply)
-    turns = await _remembered(session, reply, question)
+    turns = await remembered_turns(session, reply, question)
     texts = [reply, question, *(m for turn in turns for m in turn)]
     if any(m.purged_at is not None for m in texts):
         return None
