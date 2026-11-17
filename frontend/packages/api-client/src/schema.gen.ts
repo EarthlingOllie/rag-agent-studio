@@ -6057,6 +6057,40 @@ export interface components {
             detail: string;
             latest?: components["schemas"]["AgentOut"] | null;
         };
+        /** SuggestionCheckOut */
+        SuggestionCheckOut: {
+            /** Evaluation Run Id */
+            evaluation_run_id: string | null;
+            /** Live Score */
+            live_score: number | null;
+            /** Regressions */
+            regressions: components["schemas"]["SummaryRegressionOut"][];
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "not_checked" | "running" | "clear" | "regressions" | "failed" | "cancelled";
+            /** Suggestion Score */
+            suggestion_score: number | null;
+        };
+        /**
+         * SuggestionCheckSummaryOut
+         * @description The check of a Suggestion's configuration change against the Live Version on the
+         *     Evaluation Set.
+         */
+        SuggestionCheckSummaryOut: {
+            /** Evaluation Run Id */
+            evaluation_run_id: string | null;
+            /** Live Score */
+            live_score: number | null;
+            /**
+             * State
+             * @enum {string}
+             */
+            state: "not_checked" | "running" | "clear" | "regressions" | "failed" | "cancelled";
+            /** Suggestion Score */
+            suggestion_score: number | null;
+        };
         /** SuggestionClashOut */
         SuggestionClashOut: {
             /** Base Value */
@@ -6070,6 +6104,8 @@ export interface components {
         };
         /** SuggestionCostOut */
         SuggestionCostOut: {
+            /** Checking Usd */
+            checking_usd: string | null;
             /** Estimated Checking Usd */
             estimated_checking_usd: string | null;
             /** Estimated Proposing Usd */
@@ -6142,6 +6178,7 @@ export interface components {
             base_version_number: number;
             /** Changes */
             changes: components["schemas"]["SuggestedChangeOut"][];
+            check: components["schemas"]["SuggestionCheckOut"] | null;
             cost: components["schemas"]["SuggestionCostOut"];
             /**
              * Created At
@@ -6213,6 +6250,7 @@ export interface components {
             base_version_id: string;
             /** Base Version Number */
             base_version_number: number;
+            check: components["schemas"]["SuggestionCheckSummaryOut"] | null;
             cost: components["schemas"]["SuggestionCostOut"];
             /**
              * Created At
