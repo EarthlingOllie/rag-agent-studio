@@ -143,6 +143,10 @@
             "title": "Id",
             "type": "string"
           },
+          "live_score_drop_alert": {
+            "title": "Live Score Drop Alert",
+            "type": "boolean"
+          },
           "live_version": {
             "anyOf": [
               {
@@ -180,7 +184,8 @@
           "live_version",
           "has_unpublished_changes",
           "budget_exhausted",
-          "block_rate_alert"
+          "block_rate_alert",
+          "live_score_drop_alert"
         ],
         "title": "AgentOut",
         "type": "object"

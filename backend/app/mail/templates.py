@@ -116,6 +116,62 @@ def block_rate_spike(
     )
 
 
+def _project_link(studio_url: str, organisation_id: str, project_id: str) -> str:
+    return f"{studio_url.rstrip('/')}/organisations/{organisation_id}/projects/{project_id}"
+
+
+def version_comparison_link(
+    studio_url: str, organisation_id: str, project_id: str, agent_id: str, a: str, b: str
+) -> str:
+    """Analytics for the Agent, comparing Version ``a`` with Version ``b``."""
+    query = urlencode({"agent": agent_id, "a": a, "b": b})
+    return f"{_project_link(studio_url, organisation_id, project_id)}/analytics?{query}"
+
+
+def failed_live_verdicts_link(
+    studio_url: str, organisation_id: str, project_id: str, agent_id: str
+) -> str:
+    """The Conversations viewer, filtered to the Agent's replies that failed their Live
+    Verdict."""
+    query = urlencode({"agent": agent_id, "live": "failed"})
+    return f"{_project_link(studio_url, organisation_id, project_id)}/conversations?{query}"
+
+
+def live_score_drop(
+    *,
+    to: str,
+    name: str,
+    agent_name: str,
+    version: int,
+    score: str,
+    passed: int,
+    judged: int,
+    previous_version: int,
+    previous_score: str,
+    previous_passed: int,
+    previous_judged: int,
+    comparison_link: str,
+    failed_link: str,
+) -> Email:
+    return Email(
+        to=to,
+        subject=f"{agent_name}'s Live score dropped",
+        text=(
+            f"Hello {name},\n\n"
+            f"The Agent {agent_name} is answering worse since v{version} was made Live. "
+            f"v{version}'s Live score is {score} ({passed} of {judged} judged replies); "
+            f"v{previous_version}'s was {previous_score} ({previous_passed} of "
+            f"{previous_judged}) over its last 30 days as Live.\n\n"
+            "Compare the two Versions in the Studio:\n\n"
+            f"{comparison_link}\n\n"
+            "Read the replies that failed their Live Verdict:\n\n"
+            f"{failed_link}\n\n"
+            'The Agent shows a "Live score drop" badge until the drop is no longer clear or '
+            "another Version is made Live. You get this email once per drop.\n"
+        ),
+    )
+
+
 def token_budget_exhausted(*, to: str, name: str, agent_name: str, budget: int, link: str) -> Email:
     return Email(
         to=to,

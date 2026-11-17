@@ -91,6 +91,15 @@ class Agent(IdMixin, Base):
     # spiking, shown as the Studio's alert badge. The first run that finds no spike clears it;
     # None when there is no alert.
     block_rate_alert_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The Live score drop alert flag: when the hourly check found the Live Version's Live score
+    # clearly lower than the previous Live Version's (``app.analytics.alerts``), shown as the
+    # Studio's alert badge, and the Live Version it was raised against. A run that no longer
+    # finds the drop clears both, and so does any change of the Live Version; None when there
+    # is no alert.
+    live_score_drop_alert_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    live_score_drop_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("agent_versions.id", name="fk_agents_live_score_drop_version", use_alter=True)
+    )
     # The Theme override, set by Owners and not versioned: colour tokens replacing the
     # Organisation Theme's ({token: {"light", "dark"}}, only those overridden) and an avatar
     # image (stored as the Theme's images are), or None.

@@ -2861,6 +2861,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Live Score Drop Alert */
+            live_score_drop_alert: boolean;
             live_version: components["schemas"]["LiveVersionOut"] | null;
             /** Name */
             name: string;

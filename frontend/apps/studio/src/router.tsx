@@ -25,6 +25,7 @@ import {
 } from "./settings/OrganisationSettings";
 import { AgentEmbedView, AgentEvaluationView, AgentPage, AgentPlaygroundView, AgentVersionsView } from "./projects/AgentPage";
 import { AgentsTab } from "./projects/AgentsTab";
+import { analyticsSearch } from "./projects/analytics";
 import { AnalyticsTab } from "./projects/AnalyticsTab";
 import { ProjectLayout } from "./projects/ProjectPage";
 import {
@@ -164,12 +165,12 @@ const conversationRoute = createRoute({
   path: "/$conversationId",
   component: ConversationPage,
 });
-// Analytics is filtered to one Agent, as `?agent=` (each Agent's views link to it).
+// Analytics is filtered to one Agent, as `?agent=` (each Agent's views link to it), and may
+// choose the two Versions compared, as `?a=` and `?b=` (the Live score drop email links to it).
 const analyticsTabRoute = createRoute({
   getParentRoute: () => projectRoute,
   path: "/analytics",
-  validateSearch: (search: Record<string, unknown>): { agent?: string } =>
-    typeof search.agent === "string" && search.agent !== "" ? { agent: search.agent } : {},
+  validateSearch: analyticsSearch,
   component: AnalyticsTab,
 });
 const projectSettingsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/settings", component: ProjectSettingsTab });

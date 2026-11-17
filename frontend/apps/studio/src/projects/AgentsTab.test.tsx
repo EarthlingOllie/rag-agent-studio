@@ -324,3 +324,28 @@ test("an Agent whose Guardrail block rate spiked is badged in the list, and stil
   expect(await screen.findByRole("heading", { level: 1, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
   expect(screen.getByText("Block rate spike")).toBeInTheDocument();
 });
+
+test("an Agent whose Live score dropped is badged in the list, and still on its page", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const dropped = { ...hrHelper, live_score_drop_alert: true };
+  const other = { ...hrHelper, id: "a9e00000-0000-4000-8000-000000000002", name: "Benefits FAQ" };
+  fakeAgentsApi({ agents: [dropped, other] });
+  renderStudio(agentsTab(hrProject.id));
+
+  const table = await agentsTable();
+  const [first, second] = within(table).getAllByRole("row").slice(1) as [HTMLElement, HTMLElement];
+  expect(within(first).getByText("Live score drop")).toHaveAttribute(
+    "title",
+    "Live score drop: the Live Version's Live score is clearly lower than the previous Live Version's. Compare the two Versions in Analytics.",
+  );
+  expect(within(second).queryByText("Live score drop")).not.toBeInTheDocument();
+
+  await userEvent.click(within(table).getByRole("link", { name: "HR helper" }));
+
+  expect(await screen.findByRole("heading", { level: 1, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.getByText("Live score drop")).toHaveAttribute(
+    "title",
+    "The Live Version's Live score is clearly lower than the previous Live Version's. Compare the two Versions in Analytics.",
+  );
+});

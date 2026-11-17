@@ -298,6 +298,28 @@ test("the comparison is exported as CSV for the chosen Versions and days", async
   );
 });
 
+test("a link can choose the two Versions compared, as the Live score drop email's does", async () => {
+  const v3 = versionKpis(3, { conversations: 5, messages: 5 });
+  setUp({ versions: { [hrHelper.id]: [largeSample, smallSample, v3] } });
+  fakeComparisonApi();
+  renderStudio(`${analyticsTab}?agent=${hrHelper.id}&a=${largeSample.version_id}&b=${smallSample.version_id}`);
+
+  expect(await screen.findByRole("table", { name: "v1 compared with v2" })).toBeInTheDocument();
+  expect(screen.getByLabelText("First Version")).toHaveDisplayValue("v1");
+  expect(screen.getByLabelText("Second Version")).toHaveDisplayValue("v2 (Live)");
+});
+
+test("a link naming Versions the Agent doesn't have compares the default two", async () => {
+  const v3 = versionKpis(3, { conversations: 5, messages: 5 });
+  setUp({ versions: { [hrHelper.id]: [largeSample, { ...smallSample, is_live: false }, v3] } });
+  fakeComparisonApi();
+  renderStudio(`${analyticsTab}?agent=${hrHelper.id}&a=gone&b=${largeSample.version_id}`);
+
+  await screen.findByRole("list", { name: "Key numbers for v3" });
+  expect(screen.getByLabelText("First Version")).toHaveDisplayValue("v2");
+  expect(screen.getByLabelText("Second Version")).toHaveDisplayValue("v1");
+});
+
 test("the chosen date range applies to the comparison", async () => {
   setUp();
   const { queries } = fakeComparisonApi();

@@ -48,6 +48,12 @@ export function LiveStatus({ agent }: { agent: Agent }) {
           Block rate spike
         </span>
       )}
+      {agent.live_score_drop_alert && (
+        <Badge
+          kind="liveScoreDrop"
+          title="The Live Version's Live score is clearly lower than the previous Live Version's. Compare the two Versions in Analytics."
+        />
+      )}
     </span>
   );
 }

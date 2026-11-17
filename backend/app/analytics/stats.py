@@ -8,6 +8,8 @@ from dataclasses import dataclass, field
 
 # The two-sided 95% normal quantile.
 Z_95 = 1.959963984540054
+# The one-sided 95% normal quantile.
+Z_95_ONE_SIDED = 1.6448536269514722
 
 # Bucket 0 holds values below 1; bucket i (1 to LAST_BUCKET - 1) holds [GROWTH^(i-1), GROWTH^i);
 # LAST_BUCKET holds everything from GROWTH^(LAST_BUCKET-1) up (about 1.2 billion). With 10%
@@ -33,6 +35,25 @@ def wilson(successes: int, n: int, z: float = Z_95) -> Interval | None:
     centre = (p + z2 / (2 * n)) / denominator
     half = z * math.sqrt(p * (1 - p) / n + z2 / (4 * n * n)) / denominator
     return Interval(low=max(0.0, centre - half), high=min(1.0, centre + half))
+
+
+def clearly_lower(
+    before_passed: int, before_n: int, after_passed: int, after_n: int, *, min_drop: float
+) -> bool:
+    """Whether the rate ``after_passed / after_n`` is lower than ``before_passed / before_n``
+    by at least ``min_drop`` and by a one-sided pooled two-proportion z-test at 95%. Both
+    samples must be non-empty."""
+    before = before_passed / before_n
+    after = after_passed / after_n
+    pooled = (before_passed + after_passed) / (before_n + after_n)
+    variance = pooled * (1 - pooled) * (1 / before_n + 1 / after_n)
+    # No variance: every reply passed, or every one failed, on both sides; no drop.
+    if variance == 0:
+        return False
+    # A hair of tolerance, so a drop of exactly ``min_drop`` isn't lost to rounding.
+    return before - after >= min_drop - 1e-9 and (before - after) / math.sqrt(variance) > (
+        Z_95_ONE_SIDED
+    )
 
 
 # The buckets' lower edges, from bucket 1 up: GROWTH^0, GROWTH^1, … GROWTH^(LAST_BUCKET-1).

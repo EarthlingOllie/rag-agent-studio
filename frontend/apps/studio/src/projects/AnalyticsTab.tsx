@@ -156,12 +156,15 @@ function AgentMetrics({
   projectId,
   agentId,
   agentFilter,
+  compared,
 }: {
   organisationId: string;
   projectId: string;
   agentId: string;
   /** The Agent filter, first in the toolbar. */
   agentFilter: ReactNode;
+  /** The two Versions the URL chose to compare, if it chose. */
+  compared: { a?: string | undefined; b?: string | undefined };
 }) {
   const [range, setRange] = useState<MetricsRange>({});
   const [chosen, setChosen] = useState<string>();
@@ -195,7 +198,14 @@ function AgentMetrics({
           {`${metrics.data.start} to ${metrics.data.end} (UTC days), including today so far. Visitor Conversations only: the Playground is left out.`}
         </p>
         <Kpis kpis={shown} />
-        <VersionComparison organisationId={organisationId} projectId={projectId} agentId={agentId} versions={versions} range={range} />
+        <VersionComparison
+          organisationId={organisationId}
+          projectId={projectId}
+          agentId={agentId}
+          versions={versions}
+          range={range}
+          initial={compared}
+        />
         <TimeSeriesChart organisationId={organisationId} projectId={projectId} agentId={agentId} range={range} />
       </>
     );
@@ -242,12 +252,13 @@ const ANALYTICS = "/organisations/$organisationId/projects/$projectId/analytics"
 /**
  * The Analytics section: an Agent Version's KPI cards, with intervals, sample sizes and small
  * samples marked, the Agent's time series and two Versions compared. The Agent is in the URL
- * (`?agent=`), so each Agent's views can link here filtered to it.
+ * (`?agent=`), so each Agent's views can link here filtered to it, and so may the two Versions
+ * compared (`?a=` and `?b=`), so the Live score drop email can link to its comparison.
  */
 export function AnalyticsTab() {
   const { organisationId } = useOrganisationRole();
   const { projectId } = useParams({ from: ROUTE });
-  const { agent: agentId } = useSearch({ from: ROUTE });
+  const { agent: agentId, a, b } = useSearch({ from: ROUTE });
   const navigate = useNavigate({ from: ANALYTICS });
   const agents = useAgents(organisationId, projectId);
   const shownAgent = agents.data?.find((agent) => agent.id === agentId) ?? agents.data?.[0];
@@ -292,6 +303,7 @@ export function AnalyticsTab() {
         projectId={projectId}
         agentId={shownAgent.id}
         agentFilter={agentFilter}
+        compared={{ a, b }}
       />
     );
   }

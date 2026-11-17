@@ -1,6 +1,6 @@
 """The usage rollup Beat task: hourly, it recomputes the current UTC day's ``usage_daily``
 rollups, finalises the days before it, and checks each Agent's block rate for a spike
-(``app.analytics.rollup``)."""
+and its Live score for a drop (``app.analytics.rollup``)."""
 
 import asyncio
 from datetime import datetime
