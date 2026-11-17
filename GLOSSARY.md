@@ -869,6 +869,14 @@ _Avoid_: Quality alarm, regression alert (a Regression is an Evaluation Case)
 The most an Organisation may spend in US dollars per calendar month (UTC) on Live Verdicts, set by Owners. There is none by default. Once the month's spend reaches it, sampling stops across the Organisation until the 1st of the next month and every Owner is emailed once; raising it resumes sampling at once. Visitor replies are never affected, and Evaluation Runs an Editor starts are never capped.
 _Avoid_: Eval budget, judging quota, Token Budget (the Agent's reply limit)
 
+**Verdict review**:
+An Editor's agree or disagree on a judged Verdict or Live Verdict: whether they think the Evaluation Model got that pass or fail right. It is the only reference the Evaluation Model is measured against; Message Feedback is not one.
+_Avoid_: Label, annotation, human eval, thumbs (that is Message Feedback)
+
+**Evaluation Model agreement**:
+How often the Evaluation Model's judgements match Editors' Verdict reviews: the measure of how far its Verdicts and Live Verdicts can be trusted.
+_Avoid_: Judge calibration, judge accuracy, calibration (the Evaluation Model gives pass or fail, not probabilities)
+
 **Suggestion**:
 A proposed change to an Agent's Draft, drawn from its Live Version's replies that failed their Live Verdict, were given a thumbs-down or are in a Conversation rated 1 or 2, and from Evaluation Cases that failed on it, for an Editor to review: system prompt wording and retrieval settings (Top-k, Minimum Score, Hybrid weighting), each retrieval change citing the Traces behind it, plus any Knowledge Base gaps it found (questions no Chunk covered, which no configuration change can fix). An Editor starts the run that makes it and applies it to the Draft whole; it never changes the Draft or Publishes on its own, and a failed check against the Evaluation Set is a warning, not a block. Its evidence points at Messages and never copies their text, so Purged evidence reads "Text purged"; the change and its explanation are kept until an Editor deletes it.
 _Avoid_: Agent (that is the assistant being changed), copilot, optimiser, auto-tune, recommendation
