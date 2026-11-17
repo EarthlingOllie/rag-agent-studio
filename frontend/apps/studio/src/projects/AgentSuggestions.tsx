@@ -6,14 +6,21 @@ import { Diff, Dialog, EmptyState, Notice, PageHeader, Skeleton, Status, button,
 import { formatTime } from "../settings/AuditPage";
 import type { Agent } from "./agents";
 import { evaluationFailure } from "./evaluation";
+import { dollars } from "./format";
 import {
   defaultRange,
+  type EvidenceCount,
   type Suggestion,
+  type SuggestionEstimate,
   type SuggestionEvidence,
+  type SuggestionRange,
   type SuggestionSummary,
   suggestionInProgress,
+  useCancelSuggestionRun,
   useStartSuggestionRun,
   useSuggestion,
+  useSuggestionEstimate,
+  useSuggestionEvidence,
   useSuggestions,
 } from "./suggestions";
 
@@ -46,6 +53,26 @@ const SETTINGS: Record<string, string> = {
 const settingName = (path: string) => SETTINGS[path] as string;
 const day = (iso: string) => iso.slice(0, 10);
 const rangeText = (suggestion: SuggestionSummary) => `${suggestion.range_start} to ${suggestion.range_end} (UTC)`;
+
+/** The most evidence a run reads: the most recent pieces. */
+const EVIDENCE_MAX = 50;
+
+const count = (n: number, one: string, many: string) => `${String(n)} ${n === 1 ? one : many}`;
+
+/** What a finished run spent proposing, for the list. */
+function spentText(suggestion: SuggestionSummary): string | null {
+  if (suggestionInProgress(suggestion)) return null;
+  const spent = suggestion.cost.proposing_usd;
+  return spent === null ? "Cost unknown" : `Cost ${dollars(spent)}`;
+}
+
+/** A Suggestion's Cost: what proposing spent against its estimate, and the check's estimate. */
+function costText(suggestion: SuggestionSummary): string {
+  const { proposing_usd: spent, estimated_proposing_usd: proposing, estimated_checking_usd: checking } = suggestion.cost;
+  const estimate = proposing === null ? "no estimate" : `estimated ${dollars(proposing)}`;
+  const check = checking === null ? "Not checked." : `Checking estimated at ${dollars(checking)}.`;
+  return `Proposing cost ${spent === null ? "unknown" : dollars(spent)} (${estimate}). ${check}`;
+}
 
 function SuggestionStatus({ suggestion }: { suggestion: SuggestionSummary }) {
   const status = STATUS[suggestion.status];
@@ -83,6 +110,7 @@ function SuggestionList({
           <span className="text-ink-2">{rangeText(suggestion)}</span>
           <span className="text-ink-2">From Version {suggestion.base_version_number}</span>
           {suggestion.outcome !== null && <span className="font-medium text-ink-2">{OUTCOMES[suggestion.outcome]}</span>}
+          {spentText(suggestion) !== null && <span className="font-mono text-xs text-muted">{spentText(suggestion)}</span>}
         </li>
       ))}
     </ul>
@@ -198,6 +226,7 @@ function GapList({ suggestion, path }: { suggestion: Suggestion; path: AgentPath
 /** A Suggestion: its explanation, each change as a Diff with its evidence, its Knowledge Base gaps, and all its evidence. Polled while in progress. */
 function SuggestionDetail({ path, suggestionId }: { path: AgentPath; suggestionId: string }) {
   const read = useSuggestion(path, suggestionId);
+  const cancel = useCancelSuggestionRun(path);
   const headingId = useId();
   if (read.isPending) return <Skeleton label="Loading the Suggestion" />;
   if (read.isError) return <Notice tone="error">The Suggestion could not be loaded. Try again shortly.</Notice>;
@@ -213,11 +242,26 @@ function SuggestionDetail({ path, suggestionId }: { path: AgentPath; suggestionI
       <p className={text.muted}>
         {`From Version ${String(suggestion.base_version_number)}'s replies, ${rangeText(suggestion)}. Proposed by ${suggestion.model_provider}:${suggestion.model_name}.`}
       </p>
+      <p className="font-mono text-xs text-muted">{costText(suggestion)}</p>
       {suggestionInProgress(suggestion) && (
-        <p role="status" className="text-sm text-ink-2">
-          {`${STATUS[suggestion.status].label}…`}
-        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <p role="status" className="text-sm text-ink-2">
+            {`${STATUS[suggestion.status].label}…`}
+          </p>
+          <button
+            type="button"
+            className={button.secondary}
+            disabled={cancel.isPending}
+            onClick={() => {
+              cancel.mutate(suggestion.id);
+            }}
+          >
+            Cancel run
+          </button>
+        </div>
       )}
+      {cancel.isError && <Notice tone="error">{evaluationFailure(cancel.error)}</Notice>}
+      {suggestion.status === "cancelled" && <Notice tone="info">This run was cancelled. It stopped before its next phase and keeps what it spent.</Notice>}
       {suggestion.status === "failed" && <Notice tone="error">{suggestion.error_message}</Notice>}
       {suggestion.explanation !== null && <p className="text-[15px] text-ink">{suggestion.explanation}</p>}
       {suggestion.outcome === "no_change" && <p className="text-sm font-medium text-ink-2">No change suggested.</p>}
@@ -243,12 +287,74 @@ function SuggestionDetail({ path, suggestionId }: { path: AgentPath; suggestionI
   );
 }
 
-/** The Suggestion run dialog: the range of UTC days to read, the last 14 by default. */
+/** How much evidence the dialog's range holds, by kind, with a warning when it is too little to be more than noise. */
+function EvidenceInRange({ path, range }: { path: AgentPath; range: SuggestionRange | null }) {
+  const counted = useSuggestionEvidence(path, range);
+  let figure: string;
+  let found: EvidenceCount | undefined;
+  if (range === null) {
+    figure = "Choose a range to count its evidence.";
+  } else if (counted.isError) {
+    figure = `The evidence could not be counted. ${evaluationFailure(counted.error) as string}`;
+  } else if (counted.data === undefined) {
+    figure = "Counting the evidence…";
+  } else {
+    found = counted.data;
+    const kinds = [
+      count(found.live_verdict, "failed Live Verdict", "failed Live Verdicts"),
+      `${String(found.thumbs_down)} thumbs-down`,
+      `${String(found.low_rating)} rated 1 or 2`,
+      count(found.evaluation_case, "failed Evaluation Case", "failed Evaluation Cases"),
+    ].join(", ");
+    const capped = found.total > EVIDENCE_MAX ? `. A run reads the ${String(EVIDENCE_MAX)} most recent.` : "";
+    figure = `${count(found.total, "piece", "pieces")} of evidence: ${kinds}${capped}`;
+  }
+  return (
+    <div className="flex flex-col gap-2">
+      <p className={field.label}>Evidence</p>
+      <p role="status" aria-label="Evidence in the range" className="text-sm text-ink">
+        {figure}
+      </p>
+      {found?.likely_noise && <Notice tone="warning">Fewer than 10 pieces of evidence: the Suggestion is likely to be noise. You can still start it.</Notice>}
+    </div>
+  );
+}
+
+function estimateText(estimate: SuggestionEstimate): string {
+  const { total_usd: total, proposing_usd: proposing, checking_usd: checking } = estimate;
+  if (total === null || proposing === null) return "The Cost can't be estimated: a model this run uses has no price set.";
+  if (checking === null) return `About ${dollars(total)}: proposing ${dollars(proposing)}. Not checked: this Agent has no Evaluation Set.`;
+  return `About ${dollars(total)}: proposing ${dollars(proposing)}, checking against the Evaluation Set ${dollars(checking)}`;
+}
+
+/** The estimated Cost of a Suggestion run of the dialog's range, proposing and checking. */
+function SuggestionEstimatedCost({ path, range }: { path: AgentPath; range: SuggestionRange | null }) {
+  const estimate = useSuggestionEstimate(path, range);
+  let figure: string;
+  if (range === null) figure = "Choose a range to see the estimated Cost.";
+  else if (estimate.isError) figure = `The Cost could not be estimated. ${evaluationFailure(estimate.error) as string}`;
+  else if (estimate.data === undefined) figure = "Estimating the Cost…";
+  else figure = estimateText(estimate.data);
+  return (
+    <div>
+      <p className={field.label}>Estimated Cost</p>
+      <p role="status" aria-label="Estimated Cost" className="mt-1 text-sm text-ink">
+        {figure}
+      </p>
+      <p className={field.hint}>
+        Proposing is priced at the Evaluation Model&apos;s prices for each piece of evidence it reads and for its answer; checking, at the Evaluation Run estimate for the Live Version and the Suggestion. The run records what it actually costs. The Evaluation budget never applies.
+      </p>
+    </div>
+  );
+}
+
+/** The Suggestion run dialog: the range of UTC days to read (the last 14 by default), its evidence by kind and the estimated Cost. */
 function SuggestDialog({ path, onStarted, onClose }: { path: AgentPath; onStarted: (suggestionId: string) => void; onClose: () => void }) {
   const formId = useId();
   const start = useStartSuggestionRun(path);
   const [range, setRange] = useState(() => defaultRange(new Date()));
   const backwards = range.range_start > range.range_end;
+  const counted = range.range_start !== "" && range.range_end !== "" && !backwards ? range : null;
 
   function submit(event: SubmitEvent) {
     event.preventDefault();
@@ -303,6 +409,8 @@ function SuggestDialog({ path, onStarted, onClose }: { path: AgentPath; onStarte
             }}
           />
         </label>
+        <EvidenceInRange path={path} range={counted} />
+        <SuggestionEstimatedCost path={path} range={counted} />
       </form>
     </Dialog>
   );

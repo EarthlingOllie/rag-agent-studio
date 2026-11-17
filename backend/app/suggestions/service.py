@@ -27,17 +27,21 @@ import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
+from decimal import Decimal
 from typing import Any, cast
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.models import AgentVersion
-from app.agents.service import active_agent, get_agent
+from app.agents.resolution import NoDefaultModelError, ProviderCredentialGoneError
+from app.agents.service import AgentWithDraft, active_agent, get_agent
 from app.conversations.models import Message
 from app.conversations.service import TracedChunk, searches_of, traced_chunks
 from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
+from app.default_model.service import CurrentDefault
+from app.evaluation.estimate import NANO
 from app.evaluation.failed_cases import FailedCase, failed_cases, run_cases_of
 from app.evaluation.from_message import question_of
 from app.evaluation.live import remembered_turns
@@ -47,15 +51,20 @@ from app.evaluation.models import (
     EvaluationRunCase,
     LiveStatus,
     LiveVerdict,
+    SideKind,
     VerdictKind,
 )
 from app.evaluation.ports import EvaluationPorts
+from app.evaluation.service import EmptySetError, SideChoice, plan_run, run_in_progress
 from app.evaluation.settings import judge_model
 from app.feedback.service import low_rated_replies, thumbs_down_replies
 from app.gateway.gateway import ModelGateway
+from app.pricing.service import credential_pricing, price_table
+from app.pricing.table import TokenUsage, cost
 from app.projects.service import active_project
 from app.retrieval.service import ExcludedReason
 from app.suggestions.models import (
+    IN_PROGRESS,
     EvidenceKind,
     KnowledgeBaseGap,
     SuggestedChange,
@@ -65,12 +74,19 @@ from app.suggestions.models import (
     SuggestionStatus,
 )
 from app.suggestions.proposer import Block, EvidenceItem, ProposeError, propose
+from app.suggestions.reads import suggestion_in_progress
 from app.tenancy.repository import OrganisationScope
 
 # The most evidence one run reads: the most recent pieces.
 EVIDENCE_MAX = 50
 # How much of a Chunk's text the model is given in a Trace line.
 CHUNK_EXCERPT_MAX = 300
+# Below this much evidence the run dialog warns that a Suggestion is likely to be noise.
+FEW_EVIDENCE = 10
+# The tokens proposing is estimated to use: a fixed allowance in per piece of evidence (its
+# question, reply, reasons and compact Trace), and a fixed allowance out for the Suggestion.
+EVIDENCE_ALLOWANCE = TokenUsage(input_tokens=1_500, output_tokens=0)
+PROPOSING_OUTPUT_ALLOWANCE = TokenUsage(input_tokens=0, output_tokens=1_000)
 
 NO_EVIDENCE = "There was no evidence in the range, so nothing was proposed."
 CREDENTIAL_GONE = (
@@ -90,8 +106,187 @@ class SuggestionNotFoundError(Exception):
     """No Suggestion of the Agent with that ID."""
 
 
+class SuggestionInProgressError(Exception):
+    """The Agent already has a Suggestion run in progress."""
+
+
+class EvaluationRunInProgressError(Exception):
+    """The Agent has an Evaluation Run in progress: it runs one Run of either kind at a time."""
+
+
+class SuggestionFinishedError(Exception):
+    """Only a Suggestion run in progress can be cancelled."""
+
+
 def day_start(day: date) -> datetime:
     return datetime.combine(day, time.min, tzinfo=UTC)
+
+
+@dataclass(frozen=True)
+class EvidenceCount:
+    """How much evidence a range holds, before the cap: every piece once, and how many qualify
+    as each kind (a reply can qualify as several)."""
+
+    total: int
+    by_kind: dict[EvidenceKind, int]
+
+    @property
+    def likely_noise(self) -> bool:
+        """Too little evidence for a Suggestion to be more than noise; a warning, never a
+        block."""
+        return self.total < FEW_EVIDENCE
+
+
+@dataclass(frozen=True)
+class SuggestionEstimate:
+    """A Suggestion run's estimated Cost before it starts, in US dollars."""
+
+    evidence: EvidenceCount
+    # How many pieces the run would read: at most ``EVIDENCE_MAX``.
+    evidence_used: int
+    # None when the Evaluation Model's price is unknown.
+    proposing_usd: Decimal | None
+    has_evaluation_set: bool
+    # The check, which runs only with an Evaluation Set (and a configuration change); None
+    # without a set, or when a price it needs is unknown.
+    checking_usd: Decimal | None
+
+    @property
+    def total_usd(self) -> Decimal | None:
+        if self.proposing_usd is None or (self.has_evaluation_set and self.checking_usd is None):
+            return None
+        return self.proposing_usd + (self.checking_usd or Decimal(0))
+
+
+@dataclass(frozen=True)
+class _Plan:
+    agent: AgentWithDraft
+    version: AgentVersion
+    model: CurrentDefault
+    estimate: SuggestionEstimate
+
+
+async def _checking_usd(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    version_id: uuid.UUID,
+    now: datetime,
+) -> tuple[bool, Decimal | None]:
+    """Whether the Agent has an Evaluation Set, and what checking a Suggestion against it would
+    cost: spec 14's estimate for two sides, the Live Version and the Suggestion, which answers
+    with the Live Version's model, so it is priced as the Live Version is."""
+    try:
+        plan = await plan_run(
+            session,
+            scope,
+            project_id,
+            agent_id,
+            sides=[SideChoice(SideKind.VERSION, version_id)],
+            instructions_version_id=None,
+            instructions_draft=False,
+            starting=False,
+            now=now,
+        )
+    except EmptySetError:
+        return False, None
+    except (NoDefaultModelError, ProviderCredentialGoneError):
+        # The Live Version's model can't be resolved: the check can't be priced.
+        return True, None
+    one_side = plan.estimate.total_usd
+    return True, None if one_side is None else one_side * 2
+
+
+async def _proposing_usd(
+    session: AsyncSession, model: CurrentDefault, pieces: int, now: datetime
+) -> Decimal | None:
+    if pieces == 0:
+        # With no evidence no model is asked.
+        return Decimal(0)
+    usage = TokenUsage(
+        input_tokens=pieces * EVIDENCE_ALLOWANCE.input_tokens,
+        output_tokens=PROPOSING_OUTPUT_ALLOWANCE.output_tokens,
+    )
+    spent = cost(
+        await credential_pricing(session, model.credential),
+        model.model,
+        usage,
+        now,
+        await price_table(session),
+    )
+    return None if spent is None else spent.quantize(NANO)
+
+
+async def _plan(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    *,
+    range_start: date,
+    range_end: date,
+    now: datetime,
+    starting: bool,
+) -> _Plan:
+    """What a Suggestion run of the range would read and cost, refused as ``start_suggestion``
+    says. When ``starting``, the Agent's row is locked and a run of either kind in progress is
+    refused."""
+    await active_project(session, scope, project_id)
+    found = await active_agent(session, scope, project_id, agent_id, lock=starting)
+    if found.live_version is None:
+        raise NeverPublishedError
+    if starting and await suggestion_in_progress(session, found.agent.id):
+        raise SuggestionInProgressError
+    if starting and await run_in_progress(session, found.agent.id):
+        raise EvaluationRunInProgressError
+    chosen = await judge_model(session, scope.organisation_id)
+    if chosen is None:
+        raise NoEvaluationModelError
+    version = await session.get_one(AgentVersion, found.live_version.id)
+    pieces = await _pieces(session, found.agent.id, version.id, range_start, range_end)
+    counted = EvidenceCount(
+        len(pieces),
+        {kind: sum(kind in piece.kinds for piece in pieces) for kind in EvidenceKind},
+    )
+    used = min(counted.total, EVIDENCE_MAX)
+    has_set, checking = await _checking_usd(
+        session, scope, project_id, found.agent.id, version.id, now
+    )
+    return _Plan(
+        found,
+        version,
+        chosen,
+        SuggestionEstimate(
+            counted, used, await _proposing_usd(session, chosen, used, now), has_set, checking
+        ),
+    )
+
+
+async def estimate_suggestion(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    *,
+    range_start: date,
+    range_end: date,
+    now: datetime,
+) -> SuggestionEstimate:
+    """How much evidence a Suggestion run of the range would read, by kind, and its estimated
+    Cost, for the run dialog. Refused as starting would be, except while a run is in
+    progress."""
+    plan = await _plan(
+        session,
+        scope,
+        project_id,
+        agent_id,
+        range_start=range_start,
+        range_end=range_end,
+        now=now,
+        starting=False,
+    )
+    return plan.estimate
 
 
 async def start_suggestion(
@@ -104,34 +299,71 @@ async def start_suggestion(
     range_end: date,
     now: datetime,
 ) -> uuid.UUID:
-    """Saves a queued Suggestion run of the Agent's Live Version over the range of UTC days and
-    returns its ID, for the caller to send its task with once committed."""
-    await active_project(session, scope, project_id)
-    found = await active_agent(session, scope, project_id, agent_id, lock=True)
-    if found.live_version is None:
-        raise NeverPublishedError
-    chosen = await judge_model(session, scope.organisation_id)
-    if chosen is None:
-        raise NoEvaluationModelError
-    version = await session.get_one(AgentVersion, found.live_version.id)
+    """Saves a queued Suggestion run of the Agent's Live Version over the range of UTC days,
+    with its estimated Cost, and returns its ID, for the caller to send its task with once
+    committed.
+
+    Refused for an archived Agent or Project, one never Published (``NeverPublishedError``), an
+    Organisation with neither an Evaluation Model nor a Default Model
+    (``NoEvaluationModelError``), and while the Agent has a Suggestion run
+    (``SuggestionInProgressError``) or an Evaluation Run (``EvaluationRunInProgressError``) in
+    progress, checked together under the Agent's row lock."""
+    plan = await _plan(
+        session,
+        scope,
+        project_id,
+        agent_id,
+        range_start=range_start,
+        range_end=range_end,
+        now=now,
+        starting=True,
+    )
     suggestion = Suggestion(
         organisation_id=scope.organisation_id,
-        agent_id=found.agent.id,
+        agent_id=plan.agent.agent.id,
         status=SuggestionStatus.QUEUED,
         started_by=scope.member_id,
         range_start=range_start,
         range_end=range_end,
-        base_version_id=version.id,
-        base_config=version.config,
-        model_credential_id=chosen.credential.id,
-        model_provider=chosen.credential.provider,
-        model_name=chosen.model,
+        base_version_id=plan.version.id,
+        base_config=plan.version.config,
+        model_credential_id=plan.model.credential.id,
+        model_provider=plan.model.credential.provider,
+        model_name=plan.model.model,
         evidence_total=0,
+        estimated_proposing_cost_usd=plan.estimate.proposing_usd,
+        estimated_checking_cost_usd=plan.estimate.checking_usd,
         created_at=now,
     )
     session.add(suggestion)
     await session.commit()
     return suggestion.id
+
+
+async def cancel_suggestion(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    suggestion_id: uuid.UUID,
+    *,
+    now: datetime,
+) -> None:
+    """Cancels a Suggestion run in progress (``SuggestionFinishedError`` otherwise), also for an
+    archived Agent. Its job stops before its next phase; what it spent so far is kept."""
+    found = await get_agent(session, scope, project_id, agent_id)
+    suggestion = await session.scalar(
+        select(Suggestion)
+        .where(Suggestion.id == suggestion_id, Suggestion.agent_id == found.agent.id)
+        .with_for_update()
+    )
+    if suggestion is None:
+        raise SuggestionNotFoundError
+    if suggestion.status not in IN_PROGRESS:
+        raise SuggestionFinishedError
+    suggestion.status = SuggestionStatus.CANCELLED
+    suggestion.finished_at = now
+    await session.commit()
 
 
 def _outcome(verdict: LiveVerdict) -> str:
@@ -316,21 +548,32 @@ def _label(position: int) -> str:
 
 async def _set_status(
     sessionmaker: async_sessionmaker[AsyncSession], suggestion_id: uuid.UUID, status: str
-) -> None:
+) -> bool:
+    """Moves the run on to its next phase, unless it has been cancelled; whether it moved."""
     async with sessionmaker() as session:
-        suggestion = await session.get_one(Suggestion, suggestion_id)
-        suggestion.status = status
+        moved = await session.scalar(
+            update(Suggestion)
+            .where(Suggestion.id == suggestion_id, Suggestion.status.in_(IN_PROGRESS))
+            .values(status=status)
+            .returning(Suggestion.id)
+        )
         await session.commit()
+        return moved is not None
 
 
-async def _pieces(session: AsyncSession, suggestion: Suggestion) -> list[_Piece]:
-    """Every piece of evidence in the Suggestion's range, the most recent first: the base
-    Version's Visitor replies that failed their Live Verdict, have a thumbs-down or are in a
-    Conversation rated 1 or 2, each once with all its reasons, and the Evaluation Cases that
-    failed on it in the latest finished Run with a side running it."""
-    start = day_start(suggestion.range_start)
-    end = day_start(suggestion.range_end + timedelta(days=1))
-    version_id = suggestion.base_version_id
+async def _pieces(
+    session: AsyncSession,
+    agent_id: uuid.UUID,
+    version_id: uuid.UUID,
+    range_start: date,
+    range_end: date,
+) -> list[_Piece]:
+    """Every piece of evidence in the range of UTC days, the most recent first: the Version's
+    Visitor replies that failed their Live Verdict, have a thumbs-down or are in a Conversation
+    rated 1 or 2, each once with all its reasons, and the Evaluation Cases that failed on it in
+    the latest finished Run with a side running it."""
+    start = day_start(range_start)
+    end = day_start(range_end + timedelta(days=1))
     replies: dict[uuid.UUID, _Piece] = {}
 
     def piece(reply: Message, kind: EvidenceKind) -> _Piece:
@@ -357,7 +600,7 @@ async def _pieces(session: AsyncSession, suggestion: Suggestion) -> list[_Piece]
             [EvidenceKind.EVALUATION_CASE],
             case=case,
         )
-        for case in await failed_cases(session, suggestion.agent_id, version_id)
+        for case in await failed_cases(session, agent_id, version_id)
     ]
     return sorted([*replies.values(), *cases], key=lambda p: (p.at, p.order), reverse=True)
 
@@ -368,7 +611,13 @@ async def _gather(
     """Stores the run's evidence and returns it as the model is given it."""
     async with sessionmaker() as session:
         suggestion = await session.get_one(Suggestion, suggestion_id)
-        pieces = await _pieces(session, suggestion)
+        pieces = await _pieces(
+            session,
+            suggestion.agent_id,
+            suggestion.base_version_id,
+            suggestion.range_start,
+            suggestion.range_end,
+        )
         suggestion.evidence_total = len(pieces)
         items: list[EvidenceItem] = []
         for position, piece in enumerate(pieces[:EVIDENCE_MAX], start=1):
@@ -404,7 +653,10 @@ async def _finish(
     gaps: Sequence[KnowledgeBaseGap] = (),
 ) -> None:
     async with sessionmaker() as session:
-        suggestion = await session.get_one(Suggestion, suggestion_id)
+        suggestion = await session.get_one(Suggestion, suggestion_id, with_for_update=True)
+        if suggestion.status not in IN_PROGRESS:
+            # Cancelled meanwhile: what it found is not kept.
+            return
         suggestion.finished_at = now
         if error is not None:
             suggestion.status = SuggestionStatus.FAILED
@@ -424,6 +676,28 @@ async def _finish(
         await session.commit()
 
 
+async def _spent(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    suggestion_id: uuid.UUID,
+    credential: ProviderCredential,
+    usage: TokenUsage,
+    now: datetime,
+) -> None:
+    """Freezes what the proposing call cost at the prices in force now, even for a run cancelled
+    while it was made."""
+    async with sessionmaker() as session:
+        suggestion = await session.get_one(Suggestion, suggestion_id)
+        suggestion.proposing_cost_usd = cost(
+            await credential_pricing(session, credential),
+            suggestion.model_name,
+            usage,
+            now,
+            await price_table(session),
+        )
+        suggestion.proposed_at = now
+        await session.commit()
+
+
 async def run_suggestion(
     sessionmaker: async_sessionmaker[AsyncSession],
     ports: EvaluationPorts,
@@ -431,13 +705,16 @@ async def run_suggestion(
     suggestion_id: uuid.UUID,
     clock: Clock,
 ) -> None:
-    """Gathers the queued Suggestion run's evidence and proposes its Suggestion."""
-    await _set_status(sessionmaker, suggestion_id, SuggestionStatus.GATHERING)
+    """Gathers the queued Suggestion run's evidence and proposes its Suggestion. A run cancelled
+    meanwhile stops before its next phase, keeping what it spent."""
+    if not await _set_status(sessionmaker, suggestion_id, SuggestionStatus.GATHERING):
+        return
     evidence = await _gather(sessionmaker, suggestion_id)
     if not evidence:
         await _finish(sessionmaker, suggestion_id, clock.now(), explanation=NO_EVIDENCE)
         return
-    await _set_status(sessionmaker, suggestion_id, SuggestionStatus.PROPOSING)
+    if not await _set_status(sessionmaker, suggestion_id, SuggestionStatus.PROPOSING):
+        return
     async with sessionmaker() as session:
         suggestion = await session.get_one(Suggestion, suggestion_id)
         credential_id = suggestion.model_credential_id
@@ -460,6 +737,7 @@ async def run_suggestion(
     except ProposeError as error:
         await _finish(sessionmaker, suggestion_id, clock.now(), error=error.message)
         return
+    await _spent(sessionmaker, suggestion_id, credential, proposing.usage, clock.now())
     positions = {item.label: int(item.label[1:]) for item in evidence}
     changes = [
         SuggestedChange(

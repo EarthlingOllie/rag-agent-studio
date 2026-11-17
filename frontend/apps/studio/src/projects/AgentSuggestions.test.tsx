@@ -9,6 +9,8 @@ import { renderStudio } from "../test/render";
 import {
   citingSuggestion,
   deletedCase,
+  estimateOf,
+  evidenceCount,
   failedCase,
   failedReply,
   fakeSuggestionsApi,
@@ -297,4 +299,153 @@ test("an Evaluation Case's evidence opens its result in Run detail", async () =>
   expect(marked).toHaveLength(1);
   expect(marked[0]).toHaveTextContent(parkingCase.question);
   expect(screen.getByRole("button", { name: "Run of 2026-11-10 11:00 UTC" })).toHaveAttribute("aria-current", "true");
+});
+
+test("the run dialog shows the range's evidence by kind, warns below 10 pieces without blocking, and shows the estimated Cost", async () => {
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-11-16T12:00:00Z"));
+  const user = userEvent.setup();
+  const { requests, evidenceReads } = setUp({ started: [citingSuggestion] });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+
+  await user.click(within(tab).getByRole("button", { name: "Suggest changes" }));
+  const dialog = await screen.findByRole("dialog", { name: "Suggest changes" });
+
+  const evidence = await within(dialog).findByRole("status", { name: "Evidence in the range" });
+  await waitFor(() => {
+    expect(evidence).toHaveTextContent("3 pieces of evidence: 2 failed Live Verdicts, 1 thumbs-down, 1 rated 1 or 2, 0 failed Evaluation Cases");
+  });
+  expect(within(dialog).getByText("Fewer than 10 pieces of evidence: the Suggestion is likely to be noise. You can still start it.")).toBeInTheDocument();
+  const cost = within(dialog).getByRole("status", { name: "Estimated Cost" });
+  await waitFor(() => {
+    expect(cost).toHaveTextContent("About $0.0073: proposing $0.0028, checking against the Evaluation Set $0.0045");
+  });
+  expect(evidenceReads).toEqual(["2026-11-03..2026-11-16"]);
+
+  // Another range is counted again.
+  const from = within(dialog).getByLabelText("From (UTC day)");
+  await user.clear(from);
+  await user.type(from, "2026-11-10");
+  await waitFor(() => {
+    expect(evidenceReads).toContain("2026-11-10..2026-11-16");
+  });
+
+  // The warning never blocks starting.
+  await user.click(within(dialog).getByRole("button", { name: "Start Suggestion run" }));
+  await waitFor(() => {
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+  expect(requests).toEqual([{ range_start: "2026-11-10", range_end: "2026-11-16" }]);
+  expect(await within(tab).findByRole("region", { name: "Suggestion of 2026-11-16 09:00 UTC" })).toBeInTheDocument();
+  vi.useRealTimers();
+});
+
+test("with plenty of evidence there is no warning; without an Evaluation Set nothing is checked; unknown prices say so", async () => {
+  const user = userEvent.setup();
+  const plenty = (range: { range_start: string; range_end: string }) =>
+    evidenceCount(range, { total: 64, live_verdict: 60, thumbs_down: 3, low_rating: 1, evaluation_case: 1, likely_noise: false });
+  setUp({ evidence: plenty, estimate: (evidence) => estimateOf(evidence, { has_evaluation_set: false, checking_usd: null, total_usd: "0.0028" }) });
+  const view = renderStudio(evaluationPage(publishedHelper.id));
+  let tab = await openSuggestions(user);
+
+  await user.click(within(tab).getByRole("button", { name: "Suggest changes" }));
+  let dialog = await screen.findByRole("dialog", { name: "Suggest changes" });
+  await waitFor(() => {
+    expect(within(dialog).getByRole("status", { name: "Evidence in the range" })).toHaveTextContent("64 pieces of evidence: 60 failed Live Verdicts, 3 thumbs-down, 1 rated 1 or 2, 1 failed Evaluation Case. A run reads the 50 most recent.");
+  });
+  expect(within(dialog).queryByText(/likely to be noise/)).not.toBeInTheDocument();
+  await waitFor(() => {
+    expect(within(dialog).getByRole("status", { name: "Estimated Cost" })).toHaveTextContent("About $0.0028: proposing $0.0028. Not checked: this Agent has no Evaluation Set.");
+  });
+  view.unmount();
+
+  setUp({ estimate: (evidence) => estimateOf(evidence, { proposing_usd: null, checking_usd: null, total_usd: null }) });
+  renderStudio(evaluationPage(publishedHelper.id));
+  tab = await openSuggestions(user);
+  await user.click(within(tab).getByRole("button", { name: "Suggest changes" }));
+  dialog = await screen.findByRole("dialog", { name: "Suggest changes" });
+  await waitFor(() => {
+    expect(within(dialog).getByRole("status", { name: "Estimated Cost" })).toHaveTextContent("The Cost can't be estimated: a model this run uses has no price set.");
+  });
+});
+
+test("the dialog's refused reads say why, and a backwards range reads nothing", async () => {
+  const user = userEvent.setup();
+  const { evidenceReads } = setUp({ refuseReads: true });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+
+  await user.click(within(tab).getByRole("button", { name: "Suggest changes" }));
+  const dialog = await screen.findByRole("dialog", { name: "Suggest changes" });
+  await waitFor(() => {
+    expect(within(dialog).getByRole("status", { name: "Estimated Cost" })).toHaveTextContent("The Cost could not be estimated. This Agent is archived. An Owner can restore it.");
+  });
+  expect(within(dialog).getByRole("status", { name: "Evidence in the range" })).toHaveTextContent("The evidence could not be counted. This Agent is archived. An Owner can restore it.");
+  const reads = evidenceReads.length;
+  const to = within(dialog).getByLabelText("To (UTC day)");
+  await user.clear(to);
+  await user.type(to, "2020-01-01");
+  expect(within(dialog).getByRole("status", { name: "Evidence in the range" })).toHaveTextContent("Choose a range to count its evidence.");
+  expect(within(dialog).getByRole("status", { name: "Estimated Cost" })).toHaveTextContent("Choose a range to see the estimated Cost.");
+  expect(evidenceReads).toHaveLength(reads);
+});
+
+test("a Suggestion shows its estimated and actual Cost, and the list its Cost", async () => {
+  const user = userEvent.setup();
+  const checked = suggestion("5a000000-0000-4000-8000-000000000007", "completed", {
+    outcome: "no_change",
+    cost: { estimated_proposing_usd: "0.0028", estimated_checking_usd: "0.00448", proposing_usd: "0.00056" },
+  });
+  const unpriced = suggestion("5a000000-0000-4000-8000-000000000008", "failed", {
+    created_at: "2026-11-15T09:00:00Z",
+    cost: { estimated_proposing_usd: null, estimated_checking_usd: null, proposing_usd: null },
+  });
+  setUp({ suggestions: [[checked], [unpriced]] });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+
+  const runs = await within(tab).findByRole("list", { name: "Suggestion runs" });
+  const [first, second] = within(runs).getAllByRole("listitem");
+  expect(first).toHaveTextContent("Cost $0.00056");
+  expect(second).toHaveTextContent("Cost unknown");
+  let detail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-16 09:00 UTC" });
+  expect(detail).toHaveTextContent("Proposing cost $0.00056 (estimated $0.0028). Checking estimated at $0.0045.");
+
+  await user.click(within(tab).getByRole("button", { name: "Suggestion of 2026-11-15 09:00 UTC" }));
+  detail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-15 09:00 UTC" });
+  expect(detail).toHaveTextContent("Proposing cost unknown (no estimate). Not checked.");
+});
+
+test("an Editor cancels a run in progress; it stops and keeps what it spent", async () => {
+  const user = userEvent.setup();
+  const proposing = suggestion("5a000000-0000-4000-8000-000000000009", "proposing", {
+    cost: { estimated_proposing_usd: "0.0028", estimated_checking_usd: null, proposing_usd: null },
+  });
+  const { cancels } = setUp({ suggestions: [[proposing]] });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+
+  const detail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-16 09:00 UTC" });
+  expect(within(detail).getByText("Proposing…")).toBeInTheDocument();
+  await user.click(within(detail).getByRole("button", { name: "Cancel run" }));
+
+  await waitFor(() => {
+    expect(within(detail).getByText("Cancelled")).toBeInTheDocument();
+  });
+  expect(cancels).toEqual([proposing.id]);
+  expect(within(detail).queryByRole("button", { name: "Cancel run" })).not.toBeInTheDocument();
+  expect(within(detail).getByText("This run was cancelled. It stopped before its next phase and keeps what it spent.")).toBeInTheDocument();
+});
+
+test("a cancel refused because the run already finished says why", async () => {
+  const user = userEvent.setup();
+  setUp({ suggestions: [[suggestion("5a000000-0000-4000-8000-000000000010", "queued")]], cancelStatus: 409 });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+
+  const detail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-16 09:00 UTC" });
+  await user.click(within(detail).getByRole("button", { name: "Cancel run" }));
+
+  expect(await within(detail).findByRole("alert")).toHaveTextContent("This Suggestion run has already finished.");
 });

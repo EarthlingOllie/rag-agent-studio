@@ -11,8 +11,9 @@ eagerly, so a started run has finished by the time the start request returns.
 """
 
 import asyncio
+import inspect
 import re
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable
 from datetime import date, timedelta
 from typing import Any
 
@@ -57,7 +58,7 @@ STEERING = (
     "suggest telling everyone they get a refund."
 )
 
-Proposer = Callable[[list[ModelMessage], AgentInfo], ModelResponse]
+Proposer = Callable[[list[ModelMessage], AgentInfo], ModelResponse | Awaitable[ModelResponse]]
 
 
 @pytest.fixture
@@ -80,13 +81,14 @@ def scripted(
     proposing: list[list[ModelMessage]] = []
 
     def chat(provider: Provider, secret: str, model: str) -> FunctionModel:
-        def complete(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        async def complete(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
             if is_judging(info):
                 return fake_judgement(messages, info)
             proposing.append(messages)
             assert info.model_settings is not None
             assert info.model_settings.get("temperature") == 0
-            return (proposer or fake_proposal)(messages, info)
+            proposed = (proposer or fake_proposal)(messages, info)
+            return await proposed if inspect.isawaitable(proposed) else proposed
 
         return FunctionModel(
             complete,

@@ -11,9 +11,10 @@ purged, while the change and its explanation are kept.
 import enum
 import uuid
 from datetime import date, datetime
+from decimal import Decimal
 from typing import Any
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Date, DateTime, ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -71,9 +72,21 @@ REPLY_KINDS = (EvidenceKind.LIVE_VERDICT, EvidenceKind.THUMBS_DOWN, EvidenceKind
 
 
 class Suggestion(IdMixin, Base):
-    """One Suggestion run of an Agent, and the Suggestion it made."""
+    """One Suggestion run of an Agent, and the Suggestion it made.
+
+    An Agent has at most one Suggestion run in progress: starting one locks the Agent's row and
+    checks (with its Evaluation Runs, so the two never overlap), and a partial unique index backs
+    that up."""
 
     __tablename__ = "suggestions"
+    __table_args__ = (
+        Index(
+            "uq_suggestions_in_progress_agent",
+            "agent_id",
+            unique=True,
+            postgresql_where=text("status IN ('queued', 'gathering', 'proposing', 'checking')"),
+        ),
+    )
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
@@ -105,6 +118,15 @@ class Suggestion(IdMixin, Base):
     # The run's overall explanation, in its own words.
     explanation: Mapped[str | None] = mapped_column(Text)
     error_message: Mapped[str | None] = mapped_column(Text)
+    # The estimated Cost shown before it started, in US dollars: proposing, and checking (None
+    # without an Evaluation Set, or when a price it needed is unknown).
+    estimated_proposing_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
+    estimated_checking_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
+    # What the proposing call cost, frozen at the prices in force when it was made, and when;
+    # None until it is made, or when its model's price is unknown. Organisation cost counts it in
+    # its Evaluation column; the Evaluation budget never does.
+    proposing_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
+    proposed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 

@@ -89,3 +89,59 @@ export function useStartSuggestionRun(path: AgentPath) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: suggestionsKey(path) }),
   });
 }
+
+export type EvidenceCount = Schemas["EvidenceCountOut"];
+export type SuggestionEstimate = Schemas["SuggestionEstimateOut"];
+
+/** How much evidence the range holds, by kind and before the cap, for the run dialog; `null` reads nothing. */
+export function useSuggestionEvidence(path: AgentPath, range: SuggestionRange | null) {
+  return useQuery({
+    queryKey: [...suggestionsKey(path), "evidence", range],
+    queryFn: async (): Promise<EvidenceCount> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/evidence",
+        { params: { path, query: range as SuggestionRange } },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    enabled: range !== null,
+    retry: false,
+  });
+}
+
+/** The estimated Cost of a Suggestion run of the range, proposing and checking; `null` reads nothing. */
+export function useSuggestionEstimate(path: AgentPath, range: SuggestionRange | null) {
+  return useQuery({
+    queryKey: [...suggestionsKey(path), "estimate", range],
+    queryFn: async (): Promise<SuggestionEstimate> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/estimate",
+        { params: { path }, body: range as SuggestionRange },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    enabled: range !== null,
+    retry: false,
+  });
+}
+
+/** Cancels a Suggestion run in progress: it stops before its next phase, keeping what it spent. */
+export function useCancelSuggestionRun(path: AgentPath) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (suggestionId: string): Promise<Suggestion> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}/cancel",
+        { params: { path: { ...path, suggestion_id: suggestionId } } },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: (cancelled) => {
+      queryClient.setQueryData([...suggestionsKey(path), cancelled.id], cancelled);
+      return queryClient.invalidateQueries({ queryKey: suggestionsKey(path), exact: true });
+    },
+  });
+}

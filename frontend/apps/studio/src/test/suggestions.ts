@@ -5,6 +5,8 @@ import { server } from "./server";
 
 type Suggestion = Schemas["SuggestionOut"];
 type Evidence = Schemas["EvidenceOut"];
+type EvidenceCount = Schemas["EvidenceCountOut"];
+type Estimate = Schemas["SuggestionEstimateOut"];
 
 export const failedReply: Evidence = {
   id: "5e000000-0000-4000-8000-000000000001",
@@ -85,6 +87,11 @@ export function suggestion(id: string, status: Suggestion["status"], overrides: 
     explanation: null,
     model_provider: "openai",
     model_name: "gpt-4.1-mini",
+    cost: {
+      estimated_proposing_usd: "0.0028",
+      estimated_checking_usd: null,
+      proposing_usd: finished ? "0.00056" : null,
+    },
     changes: [],
     gaps: [],
     evidence: [],
@@ -148,10 +155,38 @@ const SUMMARY_FIELDS = [
   "error_message",
   "created_at",
   "finished_at",
+  "cost",
 ] as const;
 
 const summary = (found: Suggestion): Schemas["SuggestionSummaryOut"] =>
   Object.fromEntries(SUMMARY_FIELDS.map((key) => [key, found[key]])) as Schemas["SuggestionSummaryOut"];
+
+/** What a range holds, by kind: by default 3 pieces, too few to be more than noise. */
+export function evidenceCount(range: { range_start: string; range_end: string }, overrides: Partial<EvidenceCount> = {}): EvidenceCount {
+  return {
+    ...range,
+    total: 3,
+    live_verdict: 2,
+    thumbs_down: 1,
+    low_rating: 1,
+    evaluation_case: 0,
+    likely_noise: true,
+    ...overrides,
+  };
+}
+
+/** A run's estimate: 3 pieces, checked against an Evaluation Set. */
+export function estimateOf(evidence: EvidenceCount, overrides: Partial<Estimate> = {}): Estimate {
+  return {
+    evidence,
+    evidence_used: Math.min(evidence.total, 50),
+    proposing_usd: "0.0028",
+    has_evaluation_set: true,
+    checking_usd: "0.00448",
+    total_usd: "0.00728",
+    ...overrides,
+  };
+}
 
 /**
  * The Suggestions API: each Suggestion's states, one per read (the last repeats). Starting returns
@@ -165,9 +200,19 @@ export function fakeSuggestionsApi(
     startDetail?: string;
     failList?: boolean;
     failRead?: boolean;
+    /** The evidence a range holds; by default `evidenceCount`'s. */
+    evidence?: (range: { range_start: string; range_end: string }) => EvidenceCount;
+    /** The estimate for that evidence; by default `estimateOf`'s. */
+    estimate?: (evidence: EvidenceCount) => Estimate;
+    /** The dialog's reads are refused, as for an archived Agent. */
+    refuseReads?: boolean;
+    cancelStatus?: number;
   } = {},
 ) {
   const requests: unknown[] = [];
+  const evidenceReads: string[] = [];
+  const cancels: string[] = [];
+  const countOf = options.evidence ?? ((range) => evidenceCount(range));
   const entries = (options.suggestions ?? []).map((states) => ({ states, read: 0 }));
   const current = (entry: { states: Suggestion[]; read: number }) =>
     entry.states[Math.min(entry.read, entry.states.length - 1)] as Suggestion;
@@ -177,6 +222,30 @@ export function fakeSuggestionsApi(
     http.get(base, () => {
       if (options.failList) return HttpResponse.json({ detail: "Down" }, { status: 500 });
       return HttpResponse.json(entries.map((entry) => summary(current(entry))));
+    }),
+    http.get(`${base}/evidence`, ({ request }) => {
+      const query = new URL(request.url).searchParams;
+      const range = { range_start: query.get("range_start") ?? "", range_end: query.get("range_end") ?? "" };
+      evidenceReads.push(`${range.range_start}..${range.range_end}`);
+      if (options.refuseReads) return HttpResponse.json({ detail: "This Agent is archived. An Owner can restore it." }, { status: 409 });
+      return HttpResponse.json(countOf(range));
+    }),
+    http.post(`${base}/estimate`, async ({ request }) => {
+      if (options.refuseReads) return HttpResponse.json({ detail: "This Agent is archived. An Owner can restore it." }, { status: 409 });
+      const range = (await request.json()) as { range_start: string; range_end: string };
+      const counted = countOf(range);
+      return HttpResponse.json((options.estimate ?? ((evidence) => estimateOf(evidence)))(counted));
+    }),
+    http.post(`${base}/:suggestionId/cancel`, ({ params }) => {
+      cancels.push(params.suggestionId as string);
+      if (options.cancelStatus) {
+        return HttpResponse.json({ detail: "This Suggestion run has already finished." }, { status: options.cancelStatus });
+      }
+      const entry = entries.find((each) => current(each).id === params.suggestionId) as { states: Suggestion[]; read: number };
+      const cancelled: Suggestion = { ...current(entry), status: "cancelled", finished_at: "2026-11-16T09:00:30Z" };
+      entry.states = [cancelled];
+      entry.read = 0;
+      return HttpResponse.json(cancelled);
     }),
     http.get(`${base}/:suggestionId`, ({ params }) => {
       const entry = entries.find((each) => current(each).id === params.suggestionId);
@@ -195,5 +264,5 @@ export function fakeSuggestionsApi(
       return HttpResponse.json(states[0], { status: 202 });
     }),
   );
-  return { requests };
+  return { requests, evidenceReads, cancels };
 }

@@ -433,7 +433,10 @@ async def test_an_agent_has_one_run_in_progress_and_a_queued_run_can_be_cancelle
 
     again = await start(owner, project_id, agent_id)
 
-    assert (again.status_code, again.json()) == (409, {"detail": evaluation_api.RUN_IN_PROGRESS})
+    assert (again.status_code, again.json()) == (
+        409,
+        {"detail": evaluation_api.RUN_IN_PROGRESS, "conflict": "evaluation_run_in_progress"},
+    )
     cancelled = await cancel(owner, project_id, agent_id, queued.json()["id"])
     assert cancelled.status_code == 200, cancelled.text
     assert cancelled.json()["status"] == "cancelled"
