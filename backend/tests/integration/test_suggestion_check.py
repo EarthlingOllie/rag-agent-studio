@@ -29,6 +29,7 @@ from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo
 
 from app.evaluation import service as evaluation_service
+from app.evaluation.job import run_evaluation
 from app.suggestions import service
 from app.suggestions.fake_proposer import CITE_LINE
 from tests.conftest import ClientFactory, SignedUpMember
@@ -386,7 +387,7 @@ async def test_cancelling_the_suggestion_while_it_checks_cancels_its_run(
     scope = scope_of(owner)
     project_id, agent_id = uuid.UUID(agent["project_id"]), uuid.UUID(agent["id"])
     seen: dict[str, Any] = {}
-    real = service.run_evaluation
+    real = run_evaluation
 
     async def editor_cancels_first(
         sessionmaker: Any, ports: Any, gateway: Any, run_id: uuid.UUID, clock: Any
@@ -412,7 +413,7 @@ async def test_cancelling_the_suggestion_while_it_checks_cancels_its_run(
         await in_new_session(meanwhile)
         await real(sessionmaker, ports, gateway, run_id, clock)
 
-    monkeypatch.setattr(service, "run_evaluation", editor_cancels_first)
+    monkeypatch.setattr("app.suggestions.service.run_evaluation", editor_cancels_first)
 
     suggestion = await started(owner, agent)
 
@@ -442,7 +443,7 @@ async def test_cancelling_once_the_check_has_finished_keeps_its_run(
     )
     scope = scope_of(owner)
     project_id, agent_id = uuid.UUID(agent["project_id"]), uuid.UUID(agent["id"])
-    real = service.run_evaluation
+    real = run_evaluation
 
     async def editor_cancels_after(
         sessionmaker: Any, ports: Any, gateway: Any, run_id: uuid.UUID, clock: Any
@@ -457,7 +458,7 @@ async def test_cancelling_once_the_check_has_finished_keeps_its_run(
 
         await in_new_session(cancel_it)
 
-    monkeypatch.setattr(service, "run_evaluation", editor_cancels_after)
+    monkeypatch.setattr("app.suggestions.service.run_evaluation", editor_cancels_after)
 
     suggestion = await started(owner, agent)
 
