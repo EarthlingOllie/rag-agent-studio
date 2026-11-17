@@ -1843,6 +1843,10 @@
             ],
             "title": "Deleted At"
           },
+          "failed_live_verdicts": {
+            "title": "Failed Live Verdicts",
+            "type": "integer"
+          },
           "guardrail_events": {
             "title": "Guardrail Events",
             "type": "integer"
@@ -1917,7 +1921,8 @@
           "thumbs_down",
           "rating",
           "deleted_at",
-          "guardrail_events"
+          "guardrail_events",
+          "failed_live_verdicts"
         ],
         "title": "ConversationSummaryOut",
         "type": "object"
@@ -4949,6 +4954,17 @@
         ],
         "title": "LiveHistoryMarkerOut",
         "type": "object"
+      },
+      "LiveVerdictFilter": {
+        "description": "Which Conversations to keep by their replies' Live Verdicts: with a reply that passed,\nfailed, or couldn't be judged (an error), or with a reply that wasn't chosen to be judged.\nA reply still pending, or skipped because its text was Purged first, is none of these.",
+        "enum": [
+          "passed",
+          "failed",
+          "error",
+          "not_judged"
+        ],
+        "title": "LiveVerdictFilter",
+        "type": "string"
       },
       "LiveVerdictOut": {
         "description": "The reply's Live Verdict: the Evaluation Model's judgement of a Visitor reply chosen by\nthe Agent's Live sample rate.",
@@ -18402,6 +18418,24 @@
               ],
               "description": "Only those with a reply whose Guardrail outcome took this action (`blocked`, `flagged`, `logged`, `replaced` or `allowed`), with any Guardrail outcome (`any`), or with none (`none`)",
               "title": "Guardrail"
+            }
+          },
+          {
+            "description": "Only those with a reply whose Live Verdict passed (`passed`), failed (`failed`) or couldn't be judged (`error`), or with a reply that wasn't chosen to be judged (`not_judged`)",
+            "in": "query",
+            "name": "live_verdict",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/LiveVerdictFilter"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only those with a reply whose Live Verdict passed (`passed`), failed (`failed`) or couldn't be judged (`error`), or with a reply that wasn't chosen to be judged (`not_judged`)",
+              "title": "Live Verdict"
             }
           },
           {

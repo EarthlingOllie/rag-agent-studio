@@ -73,6 +73,12 @@ function guardrailText({ guardrail_events: events }: ConversationSummary): strin
   return `${String(events)} ${events === 1 ? "event" : "events"}`;
 }
 
+/** How many of a Conversation's replies failed their Live Verdict, such as "2 failed", or "None". */
+function FailedLiveVerdicts({ conversation: { failed_live_verdicts: failed } }: { conversation: ConversationSummary }) {
+  if (failed === 0) return <>None</>;
+  return <span className="font-medium text-danger">{`${String(failed)} failed`}</span>;
+}
+
 const versionsText = (conversation: ConversationSummary) =>
   conversation.version_numbers.length === 0 ? "Draft" : conversation.version_numbers.map((n) => `v${String(n)}`).join(", ");
 
@@ -313,6 +319,20 @@ function Filters({
           set({ guardrail });
         }}
       />
+      <Choice
+        label="Live Verdict"
+        value={filters.live ?? ""}
+        options={[
+          ["", "Any or none"],
+          ["failed", "Failed"],
+          ["passed", "Passed"],
+          ["error", "Error"],
+          ["not_judged", "Not judged"],
+        ]}
+        onChange={(live) => {
+          set({ live });
+        }}
+      />
     </fieldset>
   );
 }
@@ -395,6 +415,9 @@ function Results({ data, filters }: { data: ConversationPageData; filters: Conve
             </Fact>
             <Fact name="Guardrail" label>
               {guardrailText(conversation)}
+            </Fact>
+            <Fact name="Failed Live Verdicts" label>
+              <FailedLiveVerdicts conversation={conversation} />
             </Fact>
           </dl>
         </li>
