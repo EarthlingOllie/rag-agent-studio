@@ -880,3 +880,11 @@ _Avoid_: Tuning run, optimisation
 **Knowledge Base gap**:
 A topic a Suggestion found that failed replies asked about and no Chunk covered, listed with its evidence. No configuration change can fix it, so it is never applied; it points the Editor at the Knowledge Base.
 _Avoid_: Missing content, coverage hole
+
+**Suggestion clash**:
+A setting a Suggestion changes that the Draft has also changed some other way since the Live Version the Suggestion was made from: neither the base value nor the suggested one. Applying a Suggestion with any clash is refused whole, listing each clashing setting with its base, Draft and suggested values, and nothing is written; the Editor resolves it in the Draft. A setting the Draft already has at the suggested value is not a clash and is left as it is.
+_Avoid_: Merge conflict (two edits are never merged), stale Draft (a colleague saved the Draft after it was opened)
+
+**Stale Suggestion**:
+A Suggestion whose base Version is no longer Live, because a later Publish or revert replaced it. It still reads and can still be applied, saying that its check was against the old Live Version.
+_Avoid_: Expired Suggestion, outdated

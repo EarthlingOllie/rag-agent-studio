@@ -2,6 +2,7 @@ import type { Schemas } from "@studio/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api";
+import { type Agent, StaleDraftError, useStoreAgent } from "./agents";
 import { ProjectRequestError } from "./projects";
 
 export type Suggestion = Schemas["SuggestionOut"];
@@ -87,5 +88,140 @@ export function useStartSuggestionRun(path: AgentPath) {
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: suggestionsKey(path) }),
+  });
+}
+
+export type EvidenceCount = Schemas["EvidenceCountOut"];
+export type SuggestionEstimate = Schemas["SuggestionEstimateOut"];
+
+/** How much evidence the range holds, by kind and before the cap, for the run dialog; `null` reads nothing. */
+export function useSuggestionEvidence(path: AgentPath, range: SuggestionRange | null) {
+  return useQuery({
+    queryKey: [...suggestionsKey(path), "evidence", range],
+    queryFn: async (): Promise<EvidenceCount> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/evidence",
+        { params: { path, query: range as SuggestionRange } },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    enabled: range !== null,
+    retry: false,
+  });
+}
+
+/** The estimated Cost of a Suggestion run of the range, proposing and checking; `null` reads nothing. */
+export function useSuggestionEstimate(path: AgentPath, range: SuggestionRange | null) {
+  return useQuery({
+    queryKey: [...suggestionsKey(path), "estimate", range],
+    queryFn: async (): Promise<SuggestionEstimate> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/estimate",
+        { params: { path }, body: range as SuggestionRange },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    enabled: range !== null,
+    retry: false,
+  });
+}
+
+/** Cancels a Suggestion run in progress: it stops before its next phase, keeping what it spent. */
+export function useCancelSuggestionRun(path: AgentPath) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (suggestionId: string): Promise<Suggestion> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}/cancel",
+        { params: { path: { ...path, suggestion_id: suggestionId } } },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: (cancelled) => {
+      queryClient.setQueryData([...suggestionsKey(path), cancelled.id], cancelled);
+      return queryClient.invalidateQueries({ queryKey: suggestionsKey(path), exact: true });
+    },
+  });
+}
+
+export type SuggestionDiff = Schemas["SuggestionDiffOut"];
+export type SuggestionClash = Schemas["SuggestionClashOut"];
+export type AppliedSuggestion = Schemas["AppliedSuggestionOut"];
+
+/** Applying was refused because the Draft has changed settings the Suggestion changes: each clash, with its three values. */
+export class SuggestionClashError extends Error {
+  constructor(
+    readonly detail: string,
+    readonly clashes: SuggestionClash[],
+  ) {
+    super(detail);
+    this.name = "SuggestionClashError";
+  }
+}
+
+/** The Suggestion's changes against the current Draft, each clean, already applied or a clash; `enabled` false reads nothing. */
+export function useSuggestionDiff(path: AgentPath, suggestionId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: [...suggestionsKey(path), suggestionId, "diff"],
+    queryFn: async (): Promise<SuggestionDiff> => {
+      const { data, error, response } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}/diff",
+        { params: { path: { ...path, suggestion_id: suggestionId } } },
+      );
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    enabled,
+    retry: false,
+  });
+}
+
+/**
+ * Applies the whole Suggestion to the Draft on the revision it was reviewed on. Refused with a
+ * `StaleDraftError` when someone has saved the Draft since, and with a `SuggestionClashError`
+ * when the Draft has changed a setting the Suggestion changes. Never Publishes.
+ */
+export function useApplySuggestion(path: AgentPath, suggestionId: string) {
+  const queryClient = useQueryClient();
+  const store = useStoreAgent(path.organisation_id, path.project_id);
+  return useMutation({
+    mutationFn: async (baseRevision: number): Promise<AppliedSuggestion> => {
+      const { data, error, response } = await api.POST(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}/apply",
+        { params: { path: { ...path, suggestion_id: suggestionId } }, body: { base_revision: baseRevision } },
+      );
+      const conflict = error as Schemas["SuggestionApplyConflictOut"] | undefined;
+      if (conflict?.conflict === "stale_draft") throw new StaleDraftError(conflict.latest as Agent);
+      if (conflict?.conflict === "suggestion_clash") throw new SuggestionClashError(conflict.detail, conflict.clashes);
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: async (applied) => {
+      queryClient.setQueryData([...suggestionsKey(path), applied.suggestion.id], applied.suggestion);
+      await store(applied.agent);
+      await queryClient.invalidateQueries({ queryKey: suggestionsKey(path) });
+      await queryClient.invalidateQueries({ queryKey: ["evaluation", path.organisation_id, path.project_id, path.agent_id] });
+    },
+  });
+}
+
+/** Deletes a finished Suggestion. */
+export function useDeleteSuggestion(path: AgentPath) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (suggestionId: string): Promise<void> => {
+      const { error, response } = await api.DELETE(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}",
+        { params: { path: { ...path, suggestion_id: suggestionId } } },
+      );
+      if (!response.ok) throw failed(response, error);
+    },
+    onSuccess: (_, suggestionId) => {
+      queryClient.removeQueries({ queryKey: [...suggestionsKey(path), suggestionId] });
+      return queryClient.invalidateQueries({ queryKey: suggestionsKey(path), exact: true });
+    },
   });
 }

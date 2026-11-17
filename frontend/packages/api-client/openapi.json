@@ -268,6 +268,55 @@
         "title": "AgentVersionsOut",
         "type": "object"
       },
+      "AppliedSuggestionOut": {
+        "properties": {
+          "agent": {
+            "$ref": "#/components/schemas/AgentOut"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paths",
+            "type": "array"
+          },
+          "stale_notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale Notice"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/SuggestionOut"
+          }
+        },
+        "required": [
+          "agent",
+          "suggestion",
+          "paths",
+          "stale_notice"
+        ],
+        "title": "AppliedSuggestionOut",
+        "type": "object"
+      },
+      "ApplySuggestionIn": {
+        "properties": {
+          "base_revision": {
+            "title": "Base Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "base_revision"
+        ],
+        "title": "ApplySuggestionIn",
+        "type": "object"
+      },
       "AuditActorOut": {
         "properties": {
           "email": {
@@ -1084,6 +1133,15 @@
         ],
         "title": "ChangeRoleRequest",
         "type": "object"
+      },
+      "ChangeState": {
+        "enum": [
+          "clean",
+          "applied",
+          "clash"
+        ],
+        "title": "ChangeState",
+        "type": "string"
       },
       "CheckFailedResponse": {
         "properties": {
@@ -3574,6 +3632,56 @@
           "repeats"
         ],
         "title": "EvaluationSettingsOut",
+        "type": "object"
+      },
+      "EvidenceCountOut": {
+        "properties": {
+          "evaluation_case": {
+            "title": "Evaluation Case",
+            "type": "integer"
+          },
+          "likely_noise": {
+            "title": "Likely Noise",
+            "type": "boolean"
+          },
+          "live_verdict": {
+            "title": "Live Verdict",
+            "type": "integer"
+          },
+          "low_rating": {
+            "title": "Low Rating",
+            "type": "integer"
+          },
+          "range_end": {
+            "format": "date",
+            "title": "Range End",
+            "type": "string"
+          },
+          "range_start": {
+            "format": "date",
+            "title": "Range Start",
+            "type": "string"
+          },
+          "thumbs_down": {
+            "title": "Thumbs Down",
+            "type": "integer"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "range_start",
+          "range_end",
+          "total",
+          "live_verdict",
+          "thumbs_down",
+          "low_rating",
+          "evaluation_case",
+          "likely_noise"
+        ],
+        "title": "EvidenceCountOut",
         "type": "object"
       },
       "EvidenceKind": {
@@ -7600,6 +7708,38 @@
         "title": "RunCaseOut",
         "type": "object"
       },
+      "RunConflict": {
+        "description": "What an Agent already has in progress when a Run of either kind is refused: an Agent runs\none Evaluation Run or Suggestion run at a time.",
+        "enum": [
+          "evaluation_run_in_progress",
+          "suggestion_run_in_progress"
+        ],
+        "title": "RunConflict",
+        "type": "string"
+      },
+      "RunConflictOut": {
+        "properties": {
+          "conflict": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RunConflict"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "RunConflictOut",
+        "type": "object"
+      },
       "RunCostOut": {
         "properties": {
           "answers_usd": {
@@ -8498,8 +8638,377 @@
         "title": "SuggestedChangeOut",
         "type": "object"
       },
+      "SuggestionApplierOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "SuggestionApplierOut",
+        "type": "object"
+      },
+      "SuggestionApplyConflictOut": {
+        "properties": {
+          "clashes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SuggestionClashOut"
+            },
+            "title": "Clashes",
+            "type": "array"
+          },
+          "conflict": {
+            "anyOf": [
+              {
+                "enum": [
+                  "stale_draft",
+                  "suggestion_clash"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflict"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "SuggestionApplyConflictOut",
+        "type": "object"
+      },
+      "SuggestionClashOut": {
+        "properties": {
+          "base_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Base Value"
+          },
+          "draft_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Draft Value"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "suggested_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Suggested Value"
+          }
+        },
+        "required": [
+          "path",
+          "base_value",
+          "draft_value",
+          "suggested_value"
+        ],
+        "title": "SuggestionClashOut",
+        "type": "object"
+      },
+      "SuggestionCostOut": {
+        "properties": {
+          "estimated_checking_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Checking Usd"
+          },
+          "estimated_proposing_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Proposing Usd"
+          },
+          "proposing_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposing Usd"
+          }
+        },
+        "required": [
+          "estimated_proposing_usd",
+          "estimated_checking_usd",
+          "proposing_usd"
+        ],
+        "title": "SuggestionCostOut",
+        "type": "object"
+      },
+      "SuggestionDiffChangeOut": {
+        "properties": {
+          "base_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Base Value"
+          },
+          "draft_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Draft Value"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ChangeState"
+          },
+          "suggested_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Suggested Value"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "base_value",
+          "draft_value",
+          "suggested_value",
+          "state",
+          "explanation"
+        ],
+        "title": "SuggestionDiffChangeOut",
+        "type": "object"
+      },
+      "SuggestionDiffOut": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionDiffChangeOut"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "clashes": {
+            "title": "Clashes",
+            "type": "integer"
+          },
+          "draft_revision": {
+            "title": "Draft Revision",
+            "type": "integer"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "stale_notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale Notice"
+          },
+          "suggestion_id": {
+            "format": "uuid",
+            "title": "Suggestion Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "suggestion_id",
+          "draft_revision",
+          "stale",
+          "stale_notice",
+          "changes",
+          "clashes"
+        ],
+        "title": "SuggestionDiffOut",
+        "type": "object"
+      },
+      "SuggestionEstimateOut": {
+        "properties": {
+          "checking_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checking Usd"
+          },
+          "evidence": {
+            "$ref": "#/components/schemas/EvidenceCountOut"
+          },
+          "evidence_used": {
+            "title": "Evidence Used",
+            "type": "integer"
+          },
+          "has_evaluation_set": {
+            "title": "Has Evaluation Set",
+            "type": "boolean"
+          },
+          "proposing_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Proposing Usd"
+          },
+          "total_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Usd"
+          }
+        },
+        "required": [
+          "evidence",
+          "evidence_used",
+          "proposing_usd",
+          "has_evaluation_set",
+          "checking_usd",
+          "total_usd"
+        ],
+        "title": "SuggestionEstimateOut",
+        "type": "object"
+      },
       "SuggestionOut": {
         "properties": {
+          "applied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "applied_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionApplierOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "base_version_id": {
             "format": "uuid",
             "title": "Base Version Id",
@@ -8515,6 +9024,9 @@
             },
             "title": "Changes",
             "type": "array"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/SuggestionCostOut"
           },
           "created_at": {
             "format": "date-time",
@@ -8606,6 +9118,10 @@
             "title": "Range Start",
             "type": "string"
           },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
           "status": {
             "$ref": "#/components/schemas/SuggestionStatus"
           }
@@ -8620,8 +9136,12 @@
           "outcome",
           "evidence_total",
           "error_message",
+          "cost",
           "created_at",
           "finished_at",
+          "stale",
+          "applied_by",
+          "applied_at",
           "explanation",
           "model_provider",
           "model_name",
@@ -8686,6 +9206,28 @@
       },
       "SuggestionSummaryOut": {
         "properties": {
+          "applied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "applied_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionApplierOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "base_version_id": {
             "format": "uuid",
             "title": "Base Version Id",
@@ -8694,6 +9236,9 @@
           "base_version_number": {
             "title": "Base Version Number",
             "type": "integer"
+          },
+          "cost": {
+            "$ref": "#/components/schemas/SuggestionCostOut"
           },
           "created_at": {
             "format": "date-time",
@@ -8752,6 +9297,10 @@
             "title": "Range Start",
             "type": "string"
           },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
           "status": {
             "$ref": "#/components/schemas/SuggestionStatus"
           }
@@ -8766,8 +9315,12 @@
           "outcome",
           "evidence_total",
           "error_message",
+          "cost",
           "created_at",
-          "finished_at"
+          "finished_at",
+          "stale",
+          "applied_by",
+          "applied_at"
         ],
         "title": "SuggestionSummaryOut",
         "type": "object"
@@ -16560,11 +17113,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/RunConflictOut"
                 }
               }
             },
-            "description": "The Project or Agent is archived, it already has a Run in progress, the Evaluation Set is empty, there is no Default Model, or a side names a Provider Credential that no longer exists."
+            "description": "The Project or Agent is archived, it already has an Evaluation Run or Suggestion run in progress (with its typed conflict), the Evaluation Set is empty, there is no Default Model, or a side names a Provider Credential that no longer exists."
           },
           "422": {
             "content": {
@@ -17828,7 +18381,7 @@
         ]
       },
       "post": {
-        "description": "Starts a Suggestion run of the Agent's Live Version over the range. Poll the Suggestion\nuntil it is no longer in progress.",
+        "description": "Starts a Suggestion run of the Agent's Live Version over the range, storing its estimated\nCost. Poll the Suggestion until it is no longer in progress.",
         "operationId": "startSuggestionRun",
         "parameters": [
           {
@@ -17897,11 +18450,11 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/RunConflictOut"
                 }
               }
             },
-            "description": "The Project or Agent is archived, the Agent has never been Published, or the Organisation has neither an Evaluation Model nor a Default Model."
+            "description": "The Project or Agent is archived, the Agent has never been Published, or the Organisation has neither an Evaluation Model nor a Default Model. Or, with its typed conflict, the Agent already has a Suggestion run or an Evaluation Run in progress."
           },
           "422": {
             "description": "The range starts after the day it ends."
@@ -17913,7 +18466,290 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/estimate": {
+      "post": {
+        "description": "The evidence a Suggestion run of the range would read and its estimated Cost, proposing\nand checking, shown before starting it. Nothing is started; refused as starting would be,\nexcept while a run is in progress.",
+        "operationId": "estimateSuggestionRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SuggestionRunIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionEstimateOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Project or Agent is archived, the Agent has never been Published, or the Organisation has neither an Evaluation Model nor a Default Model."
+          },
+          "422": {
+            "description": "The range starts after the day it ends."
+          }
+        },
+        "summary": "Estimate Suggestion Run",
+        "tags": [
+          "suggestions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/evidence": {
+      "get": {
+        "description": "How much evidence a Suggestion run of the range would find, by kind and before the cap,\nfor the run dialog: by default the last 14 UTC days. Refused as starting would be, except\nwhile a run is in progress.",
+        "operationId": "countSuggestionEvidence",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range_start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Range Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "range_end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Range End"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvidenceCountOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Project or Agent is archived, the Agent has never been Published, or the Organisation has neither an Evaluation Model nor a Default Model."
+          },
+          "422": {
+            "description": "The range starts after the day it ends."
+          }
+        },
+        "summary": "Count Suggestion Evidence",
+        "tags": [
+          "suggestions"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}": {
+      "delete": {
+        "description": "Deletes a finished Suggestion with its changes, gaps and evidence links.",
+        "operationId": "deleteSuggestion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Suggestion run is in progress. Cancel it before deleting it. Or: the Project or Agent is archived."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Suggestion",
+        "tags": [
+          "suggestions"
+        ]
+      },
       "get": {
         "description": "The Suggestion with its changes and its evidence resolved.",
         "operationId": "getSuggestion",
@@ -17992,6 +18828,281 @@
           }
         },
         "summary": "Get Suggestion",
+        "tags": [
+          "suggestions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}/apply": {
+      "post": {
+        "description": "Applies the whole Suggestion to the Draft in one save on the revision reviewed. Any\nclash refuses it with every clashing path, and a Draft changed since is refused with the\nlatest Draft; nothing is written then. Never Publishes.",
+        "operationId": "applySuggestion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplySuggestionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppliedSuggestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionApplyConflictOut"
+                }
+              }
+            },
+            "description": "Your Draft has also changed settings this Suggestion changes. Resolve each clash in the Draft, then apply it again. Or: Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Suggestion has no configuration change to apply. Or: the Project or Agent is archived."
+          },
+          "422": {
+            "description": "The merged Draft is not valid, as a Draft save would find it."
+          }
+        },
+        "summary": "Apply Suggestion",
+        "tags": [
+          "suggestions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}/cancel": {
+      "post": {
+        "description": "Cancels a Suggestion run in progress, also an archived Agent's: it stops before its next\nphase and keeps what it spent.",
+        "operationId": "cancelSuggestionRun",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Suggestion run has already finished."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Suggestion Run",
+        "tags": [
+          "suggestions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}/diff": {
+      "get": {
+        "description": "The Suggestion's changes against the Agent's current Draft, each ``clean``, ``applied``\nor a ``clash``, for review before applying it.",
+        "operationId": "getSuggestionDiff",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionDiffOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Suggestion Diff",
         "tags": [
           "suggestions"
         ]

@@ -1669,10 +1669,54 @@ export interface paths {
         put?: never;
         /**
          * Start Suggestion Run
-         * @description Starts a Suggestion run of the Agent's Live Version over the range. Poll the Suggestion
-         *     until it is no longer in progress.
+         * @description Starts a Suggestion run of the Agent's Live Version over the range, storing its estimated
+         *     Cost. Poll the Suggestion until it is no longer in progress.
          */
         post: operations["startSuggestionRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/estimate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Estimate Suggestion Run
+         * @description The evidence a Suggestion run of the range would read and its estimated Cost, proposing
+         *     and checking, shown before starting it. Nothing is started; refused as starting would be,
+         *     except while a run is in progress.
+         */
+        post: operations["estimateSuggestionRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Count Suggestion Evidence
+         * @description How much evidence a Suggestion run of the range would find, by kind and before the cap,
+         *     for the run dialog: by default the last 14 UTC days. Refused as starting would be, except
+         *     while a run is in progress.
+         */
+        get: operations["countSuggestionEvidence"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1691,6 +1735,74 @@ export interface paths {
          * @description The Suggestion with its changes and its evidence resolved.
          */
         get: operations["getSuggestion"];
+        put?: never;
+        post?: never;
+        /**
+         * Delete Suggestion
+         * @description Deletes a finished Suggestion with its changes, gaps and evidence links.
+         */
+        delete: operations["deleteSuggestion"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Apply Suggestion
+         * @description Applies the whole Suggestion to the Draft in one save on the revision reviewed. Any
+         *     clash refuses it with every clashing path, and a Draft changed since is refused with the
+         *     latest Draft; nothing is written then. Never Publishes.
+         */
+        post: operations["applySuggestion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Suggestion Run
+         * @description Cancels a Suggestion run in progress, also an archived Agent's: it stops before its next
+         *     phase and keeps what it spent.
+         */
+        post: operations["cancelSuggestionRun"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Suggestion Diff
+         * @description The Suggestion's changes against the Agent's current Draft, each ``clean``, ``applied``
+         *     or a ``clash``, for review before applying it.
+         */
+        get: operations["getSuggestionDiff"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2901,6 +3013,20 @@ export interface components {
             /** Versions */
             versions: components["schemas"]["AgentVersionOut"][];
         };
+        /** AppliedSuggestionOut */
+        AppliedSuggestionOut: {
+            agent: components["schemas"]["AgentOut"];
+            /** Paths */
+            paths: string[];
+            /** Stale Notice */
+            stale_notice: string | null;
+            suggestion: components["schemas"]["SuggestionOut"];
+        };
+        /** ApplySuggestionIn */
+        ApplySuggestionIn: {
+            /** Base Revision */
+            base_revision: number;
+        };
         /** AuditActorOut */
         AuditActorOut: {
             /** Email */
@@ -3204,6 +3330,11 @@ export interface components {
         ChangeRoleRequest: {
             role: components["schemas"]["Role"];
         };
+        /**
+         * ChangeState
+         * @enum {string}
+         */
+        ChangeState: "clean" | "applied" | "clash";
         /** CheckFailedResponse */
         CheckFailedResponse: {
             /** Detail */
@@ -4069,6 +4200,31 @@ export interface components {
             evaluation_model: components["schemas"]["EvaluationModelOut"] | null;
             /** Repeats */
             repeats: number;
+        };
+        /** EvidenceCountOut */
+        EvidenceCountOut: {
+            /** Evaluation Case */
+            evaluation_case: number;
+            /** Likely Noise */
+            likely_noise: boolean;
+            /** Live Verdict */
+            live_verdict: number;
+            /** Low Rating */
+            low_rating: number;
+            /**
+             * Range End
+             * Format: date
+             */
+            range_end: string;
+            /**
+             * Range Start
+             * Format: date
+             */
+            range_start: string;
+            /** Thumbs Down */
+            thumbs_down: number;
+            /** Total */
+            total: number;
         };
         /**
          * EvidenceKind
@@ -5545,6 +5701,19 @@ export interface components {
             /** Unsteady */
             unsteady: boolean;
         };
+        /**
+         * RunConflict
+         * @description What an Agent already has in progress when a Run of either kind is refused: an Agent runs
+         *     one Evaluation Run or Suggestion run at a time.
+         * @enum {string}
+         */
+        RunConflict: "evaluation_run_in_progress" | "suggestion_run_in_progress";
+        /** RunConflictOut */
+        RunConflictOut: {
+            conflict?: components["schemas"]["RunConflict"] | null;
+            /** Detail */
+            detail: string;
+        };
         /** RunCostOut */
         RunCostOut: {
             /** Answers Usd */
@@ -5867,8 +6036,105 @@ export interface components {
             /** Suggested Value */
             suggested_value: string | number;
         };
+        /** SuggestionApplierOut */
+        SuggestionApplierOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /** SuggestionApplyConflictOut */
+        SuggestionApplyConflictOut: {
+            /**
+             * Clashes
+             * @default []
+             */
+            clashes: components["schemas"]["SuggestionClashOut"][];
+            /** Conflict */
+            conflict?: ("stale_draft" | "suggestion_clash") | null;
+            /** Detail */
+            detail: string;
+            latest?: components["schemas"]["AgentOut"] | null;
+        };
+        /** SuggestionClashOut */
+        SuggestionClashOut: {
+            /** Base Value */
+            base_value: string | number;
+            /** Draft Value */
+            draft_value: string | number;
+            /** Path */
+            path: string;
+            /** Suggested Value */
+            suggested_value: string | number;
+        };
+        /** SuggestionCostOut */
+        SuggestionCostOut: {
+            /** Estimated Checking Usd */
+            estimated_checking_usd: string | null;
+            /** Estimated Proposing Usd */
+            estimated_proposing_usd: string | null;
+            /** Proposing Usd */
+            proposing_usd: string | null;
+        };
+        /** SuggestionDiffChangeOut */
+        SuggestionDiffChangeOut: {
+            /** Base Value */
+            base_value: string | number;
+            /** Draft Value */
+            draft_value: string | number;
+            /** Explanation */
+            explanation: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Path */
+            path: string;
+            state: components["schemas"]["ChangeState"];
+            /** Suggested Value */
+            suggested_value: string | number;
+        };
+        /** SuggestionDiffOut */
+        SuggestionDiffOut: {
+            /** Changes */
+            changes: components["schemas"]["SuggestionDiffChangeOut"][];
+            /** Clashes */
+            clashes: number;
+            /** Draft Revision */
+            draft_revision: number;
+            /** Stale */
+            stale: boolean;
+            /** Stale Notice */
+            stale_notice: string | null;
+            /**
+             * Suggestion Id
+             * Format: uuid
+             */
+            suggestion_id: string;
+        };
+        /** SuggestionEstimateOut */
+        SuggestionEstimateOut: {
+            /** Checking Usd */
+            checking_usd: string | null;
+            evidence: components["schemas"]["EvidenceCountOut"];
+            /** Evidence Used */
+            evidence_used: number;
+            /** Has Evaluation Set */
+            has_evaluation_set: boolean;
+            /** Proposing Usd */
+            proposing_usd: string | null;
+            /** Total Usd */
+            total_usd: string | null;
+        };
         /** SuggestionOut */
         SuggestionOut: {
+            /** Applied At */
+            applied_at: string | null;
+            applied_by: components["schemas"]["SuggestionApplierOut"] | null;
             /**
              * Base Version Id
              * Format: uuid
@@ -5878,6 +6144,7 @@ export interface components {
             base_version_number: number;
             /** Changes */
             changes: components["schemas"]["SuggestedChangeOut"][];
+            cost: components["schemas"]["SuggestionCostOut"];
             /**
              * Created At
              * Format: date-time
@@ -5915,6 +6182,8 @@ export interface components {
              * Format: date
              */
             range_start: string;
+            /** Stale */
+            stale: boolean;
             status: components["schemas"]["SuggestionStatus"];
         };
         /**
@@ -5936,6 +6205,9 @@ export interface components {
         SuggestionStatus: "queued" | "gathering" | "proposing" | "checking" | "completed" | "failed" | "cancelled";
         /** SuggestionSummaryOut */
         SuggestionSummaryOut: {
+            /** Applied At */
+            applied_at: string | null;
+            applied_by: components["schemas"]["SuggestionApplierOut"] | null;
             /**
              * Base Version Id
              * Format: uuid
@@ -5943,6 +6215,7 @@ export interface components {
             base_version_id: string;
             /** Base Version Number */
             base_version_number: number;
+            cost: components["schemas"]["SuggestionCostOut"];
             /**
              * Created At
              * Format: date-time
@@ -5970,6 +6243,8 @@ export interface components {
              * Format: date
              */
             range_start: string;
+            /** Stale */
+            stale: boolean;
             status: components["schemas"]["SuggestionStatus"];
         };
         /** SummaryRegressionOut */
@@ -10496,13 +10771,13 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description The Project or Agent is archived, it already has a Run in progress, the Evaluation Set is empty, there is no Default Model, or a side names a Provider Credential that no longer exists. */
+            /** @description The Project or Agent is archived, it already has an Evaluation Run or Suggestion run in progress (with its typed conflict), the Evaluation Set is empty, there is no Default Model, or a side names a Provider Credential that no longer exists. */
             409: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
+                    "application/json": components["schemas"]["RunConflictOut"];
                 };
             };
             /** @description A side isn't the Draft or one of the Agent's Versions, the two sides are the same, or the chosen Instructions Version isn't the Project's. */
@@ -11213,6 +11488,111 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
+            /** @description The Project or Agent is archived, the Agent has never been Published, or the Organisation has neither an Evaluation Model nor a Default Model. Or, with its typed conflict, the Agent already has a Suggestion run or an Evaluation Run in progress. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunConflictOut"];
+                };
+            };
+            /** @description The range starts after the day it ends. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    estimateSuggestionRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SuggestionRunIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionEstimateOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Project or Agent is archived, the Agent has never been Published, or the Organisation has neither an Evaluation Model nor a Default Model. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The range starts after the day it ends. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    countSuggestionEvidence: {
+        parameters: {
+            query?: {
+                range_start?: string | null;
+                range_end?: string | null;
+            };
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceCountOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
             /** @description The Project or Agent is archived, the Agent has never been Published, or the Organisation has neither an Evaluation Model nor a Default Model. */
             409: {
                 headers: {
@@ -11252,6 +11632,205 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SuggestionOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    deleteSuggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                suggestion_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Suggestion run is in progress. Cancel it before deleting it. Or: the Project or Agent is archived. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    applySuggestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                suggestion_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApplySuggestionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AppliedSuggestionOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Your Draft has also changed settings this Suggestion changes. Resolve each clash in the Draft, then apply it again. Or: Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Suggestion has no configuration change to apply. Or: the Project or Agent is archived. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionApplyConflictOut"];
+                };
+            };
+            /** @description The merged Draft is not valid, as a Draft save would find it. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    cancelSuggestionRun: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                suggestion_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This Suggestion run has already finished. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getSuggestionDiff: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                suggestion_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SuggestionDiffOut"];
                 };
             };
             /** @description Not found */

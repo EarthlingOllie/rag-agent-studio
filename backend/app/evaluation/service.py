@@ -86,6 +86,7 @@ from app.evaluation.settings import judge_model
 from app.projects.instructions import project_version
 from app.projects.models import InstructionsVersion, Project
 from app.projects.service import active_project
+from app.suggestions.reads import suggestion_in_progress
 from app.tenancy.models import Organisation
 from app.tenancy.repository import OrganisationScope
 
@@ -154,6 +155,11 @@ class SameSidesError(Exception):
 
 class RunInProgressError(Exception):
     """The Agent already has a queued or running Run."""
+
+
+class SuggestionInProgressError(RunInProgressError):
+    """The Agent has a Suggestion run in progress (spec 16): the Agent runs one at a time,
+    Evaluation Run or Suggestion run."""
 
 
 class RunFinishedError(Exception):
@@ -709,7 +715,8 @@ async def _draft_instructions(
     return current, False, current.markdown
 
 
-async def _in_progress(session: AsyncSession, agent_id: uuid.UUID) -> bool:
+async def run_in_progress(session: AsyncSession, agent_id: uuid.UUID) -> bool:
+    """Whether the Agent has a queued or running Run."""
     found = await session.scalar(
         select(EvaluationRun.id).where(
             EvaluationRun.agent_id == agent_id, EvaluationRun.status.in_(IN_PROGRESS)
@@ -744,12 +751,15 @@ async def plan_run(
     rollout: InstructionsVersion | None = None,
 ) -> Plan:
     """Resolves a Run's sides, judge and repeats, refusing as ``start_run`` says. When
-    ``starting``, the Agent's row is locked and a Run in progress is refused. With ``rollout``,
-    the sides are the Live Version against its rollout side answering with those Instructions."""
+    ``starting``, the Agent's row is locked and a Run or Suggestion run in progress is refused.
+    With ``rollout``, the sides are the Live Version against its rollout side answering with
+    those Instructions."""
     project = await active_project(session, scope, project_id)
     found = await active_agent(session, scope, project_id, agent_id, lock=starting)
-    if starting and await _in_progress(session, found.agent.id):
+    if starting and await run_in_progress(session, found.agent.id):
         raise RunInProgressError
+    if starting and await suggestion_in_progress(session, found.agent.id):
+        raise SuggestionInProgressError
     cases = await _cases(session, found.agent.id)
     if not cases:
         raise EmptySetError

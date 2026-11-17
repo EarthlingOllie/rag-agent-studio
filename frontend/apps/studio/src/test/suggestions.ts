@@ -1,10 +1,46 @@
 import type { Schemas } from "@studio/api-client";
 import { http, HttpResponse } from "msw";
 
+import { hrHelper } from "./agents";
+import { adaSession } from "./auth";
 import { server } from "./server";
 
 type Suggestion = Schemas["SuggestionOut"];
 type Evidence = Schemas["EvidenceOut"];
+type EvidenceCount = Schemas["EvidenceCountOut"];
+type Estimate = Schemas["SuggestionEstimateOut"];
+type Diff = Schemas["SuggestionDiffOut"];
+type Applied = Schemas["AppliedSuggestionOut"];
+
+export const STALE_NOTICE = "This Suggestion was made from v1, which is no longer Live: its check was against the old Live Version.";
+
+/** The Agent a successful apply returns: the HR helper with the suggested system prompt. */
+const appliedAgent = {
+  ...hrHelper,
+  live_version: { id: "a1e00000-0000-4000-8000-000000000001", number: 1 },
+  has_unpublished_changes: true,
+};
+
+/** The Suggestion against a Draft that hasn't touched any setting it changes, on revision 3. */
+export function cleanDiff(found: Suggestion, overrides: Partial<Diff> = {}): Diff {
+  return {
+    suggestion_id: found.id,
+    draft_revision: 3,
+    stale: found.stale,
+    stale_notice: found.stale ? STALE_NOTICE : null,
+    changes: found.changes.map((change) => ({
+      id: change.id,
+      path: change.path,
+      base_value: change.base_value,
+      draft_value: change.base_value,
+      suggested_value: change.suggested_value,
+      state: "clean",
+      explanation: change.explanation,
+    })),
+    clashes: 0,
+    ...overrides,
+  };
+}
 
 export const failedReply: Evidence = {
   id: "5e000000-0000-4000-8000-000000000001",
@@ -85,9 +121,17 @@ export function suggestion(id: string, status: Suggestion["status"], overrides: 
     explanation: null,
     model_provider: "openai",
     model_name: "gpt-4.1-mini",
+    cost: {
+      estimated_proposing_usd: "0.0028",
+      estimated_checking_usd: null,
+      proposing_usd: finished ? "0.00056" : null,
+    },
     changes: [],
     gaps: [],
     evidence: [],
+    stale: false,
+    applied_by: null,
+    applied_at: null,
     ...overrides,
   };
 }
@@ -148,10 +192,41 @@ const SUMMARY_FIELDS = [
   "error_message",
   "created_at",
   "finished_at",
+  "cost",
+  "stale",
+  "applied_by",
+  "applied_at",
 ] as const;
 
 const summary = (found: Suggestion): Schemas["SuggestionSummaryOut"] =>
   Object.fromEntries(SUMMARY_FIELDS.map((key) => [key, found[key]])) as Schemas["SuggestionSummaryOut"];
+
+/** What a range holds, by kind: by default 3 pieces, too few to be more than noise. */
+export function evidenceCount(range: { range_start: string; range_end: string }, overrides: Partial<EvidenceCount> = {}): EvidenceCount {
+  return {
+    ...range,
+    total: 3,
+    live_verdict: 2,
+    thumbs_down: 1,
+    low_rating: 1,
+    evaluation_case: 0,
+    likely_noise: true,
+    ...overrides,
+  };
+}
+
+/** A run's estimate: 3 pieces, checked against an Evaluation Set. */
+export function estimateOf(evidence: EvidenceCount, overrides: Partial<Estimate> = {}): Estimate {
+  return {
+    evidence,
+    evidence_used: Math.min(evidence.total, 50),
+    proposing_usd: "0.0028",
+    has_evaluation_set: true,
+    checking_usd: "0.00448",
+    total_usd: "0.00728",
+    ...overrides,
+  };
+}
 
 /**
  * The Suggestions API: each Suggestion's states, one per read (the last repeats). Starting returns
@@ -165,9 +240,27 @@ export function fakeSuggestionsApi(
     startDetail?: string;
     failList?: boolean;
     failRead?: boolean;
+    /** The evidence a range holds; by default `evidenceCount`'s. */
+    evidence?: (range: { range_start: string; range_end: string }) => EvidenceCount;
+    /** The estimate for that evidence; by default `estimateOf`'s. */
+    estimate?: (evidence: EvidenceCount) => Estimate;
+    /** The dialog's reads are refused, as for an archived Agent. */
+    refuseReads?: boolean;
+    cancelStatus?: number;
+    /** Each Diff read of a Suggestion against the Draft, in turn (the last repeats); by default every change clean on revision 3. */
+    diffs?: Diff[];
+    /** Answers each apply instead of accepting it on any revision. */
+    apply?: (baseRevision: number) => Response | undefined;
+    deleteStatus?: number;
   } = {},
 ) {
   const requests: unknown[] = [];
+  const applies: number[] = [];
+  const deletes: string[] = [];
+  let diffRead = 0;
+  const evidenceReads: string[] = [];
+  const cancels: string[] = [];
+  const countOf = options.evidence ?? ((range) => evidenceCount(range));
   const entries = (options.suggestions ?? []).map((states) => ({ states, read: 0 }));
   const current = (entry: { states: Suggestion[]; read: number }) =>
     entry.states[Math.min(entry.read, entry.states.length - 1)] as Suggestion;
@@ -177,6 +270,67 @@ export function fakeSuggestionsApi(
     http.get(base, () => {
       if (options.failList) return HttpResponse.json({ detail: "Down" }, { status: 500 });
       return HttpResponse.json(entries.map((entry) => summary(current(entry))));
+    }),
+    http.get(`${base}/evidence`, ({ request }) => {
+      const query = new URL(request.url).searchParams;
+      const range = { range_start: query.get("range_start") ?? "", range_end: query.get("range_end") ?? "" };
+      evidenceReads.push(`${range.range_start}..${range.range_end}`);
+      if (options.refuseReads) return HttpResponse.json({ detail: "This Agent is archived. An Owner can restore it." }, { status: 409 });
+      return HttpResponse.json(countOf(range));
+    }),
+    http.post(`${base}/estimate`, async ({ request }) => {
+      if (options.refuseReads) return HttpResponse.json({ detail: "This Agent is archived. An Owner can restore it." }, { status: 409 });
+      const range = (await request.json()) as { range_start: string; range_end: string };
+      const counted = countOf(range);
+      return HttpResponse.json((options.estimate ?? ((evidence) => estimateOf(evidence)))(counted));
+    }),
+    http.post(`${base}/:suggestionId/cancel`, ({ params }) => {
+      cancels.push(params.suggestionId as string);
+      if (options.cancelStatus) {
+        return HttpResponse.json({ detail: "This Suggestion run has already finished." }, { status: options.cancelStatus });
+      }
+      const entry = entries.find((each) => current(each).id === params.suggestionId) as { states: Suggestion[]; read: number };
+      const cancelled: Suggestion = { ...current(entry), status: "cancelled", finished_at: "2026-11-16T09:00:30Z" };
+      entry.states = [cancelled];
+      entry.read = 0;
+      return HttpResponse.json(cancelled);
+    }),
+    http.get(`${base}/:suggestionId/diff`, ({ params }) => {
+      const found = current(entries.find((each) => current(each).id === params.suggestionId) as { states: Suggestion[]; read: number });
+      const diffs = options.diffs ?? [cleanDiff(found)];
+      const diff = diffs[Math.min(diffRead, diffs.length - 1)] as Diff;
+      diffRead += 1;
+      return HttpResponse.json(diff);
+    }),
+    http.post(`${base}/:suggestionId/apply`, async ({ params, request }) => {
+      const { base_revision: baseRevision } = (await request.json()) as { base_revision: number };
+      applies.push(baseRevision);
+      const answered = options.apply?.(baseRevision);
+      if (answered) return answered;
+      const entry = entries.find((each) => current(each).id === params.suggestionId) as { states: Suggestion[]; read: number };
+      const applied: Suggestion = {
+        ...current(entry),
+        applied_at: "2026-11-16T10:00:00Z",
+        applied_by: { id: adaSession.member.id, name: adaSession.member.name },
+      };
+      entry.states = [applied];
+      entry.read = 0;
+      const body: Applied = {
+        agent: { ...appliedAgent, draft_revision: baseRevision + 1 },
+        suggestion: applied,
+        paths: applied.changes.map((change) => change.path),
+        stale_notice: applied.stale ? STALE_NOTICE : null,
+      };
+      return HttpResponse.json(body);
+    }),
+    http.delete(`${base}/:suggestionId`, ({ params }) => {
+      deletes.push(params.suggestionId as string);
+      if (options.deleteStatus) {
+        return HttpResponse.json({ detail: "This Agent is archived. An Owner can restore it." }, { status: options.deleteStatus });
+      }
+      const index = entries.findIndex((each) => current(each).id === params.suggestionId);
+      entries.splice(index, 1);
+      return new HttpResponse(null, { status: 204 });
     }),
     http.get(`${base}/:suggestionId`, ({ params }) => {
       const entry = entries.find((each) => current(each).id === params.suggestionId);
@@ -195,5 +349,5 @@ export function fakeSuggestionsApi(
       return HttpResponse.json(states[0], { status: 202 });
     }),
   );
-  return { requests };
+  return { requests, evidenceReads, cancels, applies, deletes };
 }

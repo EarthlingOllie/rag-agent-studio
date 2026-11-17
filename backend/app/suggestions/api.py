@@ -1,12 +1,16 @@
-"""Suggestion routes, under an Agent: start a Suggestion run, list the Agent's Suggestions, and read
-one with its changes and evidence. Every Member (Editors and Owners) may use them; another
-Organisation's Agents are not found.
+"""Suggestion routes, under an Agent: the run dialog's evidence count and estimate, start and
+cancel a Suggestion run, list the Agent's Suggestions, and read one with its changes and
+evidence. Every Member (Editors and Owners) may use them; another Organisation's Agents are not
+found.
 
 Starting reads the Agent's Live Version over a range of UTC days, the last 14 by default, and is
 refused for an archived Agent or Project, an Agent never Published, or an Organisation with
-neither an Evaluation Model nor a Default Model. The run is returned ``queued`` (or, when tasks
-run eagerly, already finished) and the Studio polls it until it is ``completed`` or ``failed``.
-An archived Agent's Suggestions can still be read.
+neither an Evaluation Model nor a Default Model; and, with a typed conflict, while the Agent has
+a Suggestion run or an Evaluation Run in progress. The dialog's reads are refused alike, except
+while a run is in progress. The run is returned ``queued`` (or, when tasks run eagerly, already
+finished) with its estimated Cost, and the Studio polls it through ``gathering``, ``proposing``
+and ``checking`` until it is ``completed``, ``failed`` or ``cancelled``. An archived Agent's
+Suggestions can still be read, and a run in progress cancelled.
 
 Reading a Suggestion resolves each piece of evidence to its date and kinds: a reply to its Live
 Verdict outcome and the Conversation and Message the Conversations viewer opens it at, never
@@ -16,18 +20,33 @@ deleted. It also holds the Knowledge Base gaps the run found.
 """
 
 import uuid
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import date, datetime, timedelta
-from typing import Any, Literal, Self, cast
+from decimal import Decimal
+from typing import Annotated, Any, Literal, Self, cast
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, model_validator
 
-from app.agents.api import NOT_FOUND_RESPONSE, agent_archived, archived, not_found
-from app.agents.service import AgentArchivedError, AgentNotFoundError
+from app.agents.api import (
+    NOT_FOUND_RESPONSE,
+    STALE_DRAFT,
+    AgentOut,
+    agent_archived,
+    agent_out,
+    archived,
+    not_found,
+)
+from app.agents.service import AgentArchivedError, AgentNotFoundError, StaleDraftError
+from app.agents.validation import InvalidDraftError
 from app.auth.api import Db, ErrorResponse
-from app.evaluation.api import ClockDep
+from app.evaluation.api import ClockDep, RunConflict, RunConflictOut, run_conflict
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
-from app.suggestions import service
+from app.suggestions import applying, service
+from app.suggestions.applying import ChangeState
 from app.suggestions.models import (
     EvidenceKind,
     SuggestedChange,
@@ -37,6 +56,7 @@ from app.suggestions.models import (
 )
 from app.suggestions.tasks import enqueue_suggestion
 from app.tenancy.api import ORGANISATION_PREFIX
+from app.tenancy.models import Member
 from app.tenancy.policy import Scope
 
 router = APIRouter(
@@ -55,17 +75,41 @@ NO_EVALUATION_MODEL = (
     "one in Settings, Models."
 )
 RANGE_BACKWARDS = "The range must start on or before the day it ends."
+SUGGESTION_IN_PROGRESS = (
+    "This Agent already has a Suggestion run in progress. Wait for it to finish, or cancel it."
+)
+EVALUATION_RUN_IN_PROGRESS = (
+    "This Agent has an Evaluation Run in progress. Wait for it to finish, or cancel it, then "
+    "suggest changes."
+)
+SUGGESTION_FINISHED = "This Suggestion run has already finished."
 
+_REFUSED = (
+    "The Project or Agent is archived, the Agent has never been Published, or the Organisation "
+    "has neither an Evaluation Model nor a Default Model."
+)
+_RANGE_RESPONSE: dict[int | str, dict[str, Any]] = {
+    422: {"description": "The range starts after the day it ends."}
+}
 _START_RESPONSES: dict[int | str, dict[str, Any]] = {
     **NOT_FOUND_RESPONSE,
     409: {
-        "model": ErrorResponse,
+        "model": RunConflictOut,
         "description": (
-            "The Project or Agent is archived, the Agent has never been Published, or the "
-            "Organisation has neither an Evaluation Model nor a Default Model."
+            f"{_REFUSED} Or, with its typed conflict, the Agent already has a Suggestion run or "
+            "an Evaluation Run in progress."
         ),
     },
-    422: {"description": "The range starts after the day it ends."},
+    **_RANGE_RESPONSE,
+}
+_READ_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **NOT_FOUND_RESPONSE,
+    409: {"model": ErrorResponse, "description": _REFUSED},
+    **_RANGE_RESPONSE,
+}
+_CANCEL_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **NOT_FOUND_RESPONSE,
+    409: {"model": ErrorResponse, "description": SUGGESTION_FINISHED},
 }
 
 SettingValue = str | int | float
@@ -87,6 +131,21 @@ class SuggestionRunIn(BaseModel):
         return self
 
 
+class SuggestionCostOut(BaseModel):
+    # In US dollars. The estimate shown before it started: proposing, and checking (null without
+    # an Evaluation Set, or when a price it needed is unknown).
+    estimated_proposing_usd: Decimal | None
+    estimated_checking_usd: Decimal | None
+    # What proposing actually cost, frozen when it was spent; null until then, or when the
+    # Evaluation Model's price is unknown.
+    proposing_usd: Decimal | None
+
+
+class SuggestionApplierOut(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
 class SuggestionSummaryOut(BaseModel):
     id: uuid.UUID
     status: SuggestionStatus
@@ -101,8 +160,16 @@ class SuggestionSummaryOut(BaseModel):
     # How much evidence the range held (at most 50 pieces are used).
     evidence_total: int
     error_message: str | None
+    cost: SuggestionCostOut
     created_at: datetime
     finished_at: datetime | None
+    # The Live Version it was made from is no longer Live: its check was against the old Live.
+    # It can still be applied.
+    stale: bool
+    # Who applied it to the Draft, and when; null until applied (``applied_by`` also once that
+    # Member is gone).
+    applied_by: SuggestionApplierOut | None
+    applied_at: datetime | None
 
 
 class SuggestedChangeOut(BaseModel):
@@ -163,7 +230,38 @@ class SuggestionOut(SuggestionSummaryOut):
     evidence: list[EvidenceOut]
 
 
-def _summary(suggestion: Suggestion, base_version_number: int) -> SuggestionSummaryOut:
+class EvidenceCountOut(BaseModel):
+    # The UTC days counted, both included.
+    range_start: date
+    range_end: date
+    # Every piece of evidence the range holds, before the cap of 50 a run reads.
+    total: int
+    # How many pieces qualify as each kind; a reply can qualify as several.
+    live_verdict: int
+    thumbs_down: int
+    low_rating: int
+    evaluation_case: int
+    # Fewer than 10 pieces: a Suggestion is likely to be noise. A warning; starting is allowed.
+    likely_noise: bool
+
+
+class SuggestionEstimateOut(BaseModel):
+    evidence: EvidenceCountOut
+    # How many pieces a run would read: the most recent, at most 50.
+    evidence_used: int
+    # In US dollars; null when a price it needs is unknown. Proposing is priced at the
+    # Evaluation Model's prices for a fixed allowance per piece of evidence and for its output.
+    proposing_usd: Decimal | None
+    # Whether the Agent has an Evaluation Set, so a Suggestion with a configuration change is
+    # checked against it: two sides, the Live Version and the Suggestion. Null without one.
+    has_evaluation_set: bool
+    checking_usd: Decimal | None
+    total_usd: Decimal | None
+
+
+def _summary(
+    suggestion: Suggestion, base_version_number: int, stale: bool, applied_by: Member | None
+) -> SuggestionSummaryOut:
     return SuggestionSummaryOut(
         id=suggestion.id,
         status=SuggestionStatus(suggestion.status),
@@ -174,8 +272,18 @@ def _summary(suggestion: Suggestion, base_version_number: int) -> SuggestionSumm
         outcome=None if suggestion.outcome is None else SuggestionOutcome(suggestion.outcome),
         evidence_total=suggestion.evidence_total,
         error_message=suggestion.error_message,
+        cost=SuggestionCostOut(
+            estimated_proposing_usd=suggestion.estimated_proposing_cost_usd,
+            estimated_checking_usd=suggestion.estimated_checking_cost_usd,
+            proposing_usd=suggestion.proposing_cost_usd,
+        ),
         created_at=suggestion.created_at,
         finished_at=suggestion.finished_at,
+        stale=stale,
+        applied_by=None
+        if applied_by is None
+        else SuggestionApplierOut(id=applied_by.id, name=applied_by.name),
+        applied_at=suggestion.applied_at,
     )
 
 
@@ -212,7 +320,7 @@ def _out(read: service.SuggestionRead) -> SuggestionOut:
     suggestion = read.suggestion
     evidence_ids = {each.evidence.position: each.evidence.id for each in read.evidence}
     return SuggestionOut(
-        **_summary(suggestion, read.base_version_number).model_dump(),
+        **_summary(suggestion, read.base_version_number, read.stale, read.applied_by).model_dump(),
         explanation=suggestion.explanation,
         model_provider=suggestion.model_provider,
         model_name=suggestion.model_name,
@@ -230,41 +338,11 @@ def _out(read: service.SuggestionRead) -> SuggestionOut:
     )
 
 
-async def _read(
-    db: Db, scope: Scope, project_id: uuid.UUID, agent_id: uuid.UUID, suggestion_id: uuid.UUID
-) -> SuggestionOut:
+@contextmanager
+def _refused() -> Iterator[None]:
+    """Turns what refuses starting a run, or the dialog's reads, into its HTTP error."""
     try:
-        read = await service.get_suggestion(db, scope, project_id, agent_id, suggestion_id)
-    except (ProjectNotFoundError, AgentNotFoundError, service.SuggestionNotFoundError):
-        raise not_found() from None
-    return _out(read)
-
-
-@router.post(
-    "",
-    status_code=status.HTTP_202_ACCEPTED,
-    operation_id="startSuggestionRun",
-    responses=_START_RESPONSES,
-)
-async def start_suggestion_run(
-    project_id: uuid.UUID,
-    agent_id: uuid.UUID,
-    body: SuggestionRunIn,
-    scope: Scope,
-    db: Db,
-    clock: ClockDep,
-) -> SuggestionOut:
-    """Starts a Suggestion run of the Agent's Live Version over the range. Poll the Suggestion
-    until it is no longer in progress."""
-    now = clock.now()
-    range_end = body.range_end or now.date()
-    range_start = body.range_start or range_end - timedelta(days=DEFAULT_RANGE_DAYS - 1)
-    if range_start > range_end:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, RANGE_BACKWARDS)
-    try:
-        suggestion_id = await service.start_suggestion(
-            db, scope, project_id, agent_id, range_start=range_start, range_end=range_end, now=now
-        )
+        yield
     except (ProjectNotFoundError, AgentNotFoundError):
         raise not_found() from None
     except ProjectArchivedError:
@@ -275,9 +353,152 @@ async def start_suggestion_run(
         raise HTTPException(status.HTTP_409_CONFLICT, NEVER_PUBLISHED) from None
     except service.NoEvaluationModelError:
         raise HTTPException(status.HTTP_409_CONFLICT, NO_EVALUATION_MODEL) from None
+
+
+def _range(
+    clock: ClockDep, range_start: date | None = None, range_end: date | None = None
+) -> tuple[date, date]:
+    """The range asked for: by default the last 14 UTC days, today included."""
+    end = range_end or clock.now().date()
+    start = range_start or end - timedelta(days=DEFAULT_RANGE_DAYS - 1)
+    if start > end:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, RANGE_BACKWARDS)
+    return start, end
+
+
+def _body_range(body: SuggestionRunIn, clock: ClockDep) -> tuple[date, date]:
+    return _range(clock, body.range_start, body.range_end)
+
+
+Range = Annotated[tuple[date, date], Depends(_range)]
+BodyRange = Annotated[tuple[date, date], Depends(_body_range)]
+
+
+def _count(start: date, end: date, counted: service.EvidenceCount) -> EvidenceCountOut:
+    by_kind = counted.by_kind
+    return EvidenceCountOut(
+        range_start=start,
+        range_end=end,
+        total=counted.total,
+        live_verdict=by_kind[EvidenceKind.LIVE_VERDICT],
+        thumbs_down=by_kind[EvidenceKind.THUMBS_DOWN],
+        low_rating=by_kind[EvidenceKind.LOW_RATING],
+        evaluation_case=by_kind[EvidenceKind.EVALUATION_CASE],
+        likely_noise=counted.likely_noise,
+    )
+
+
+async def _read(
+    db: Db, scope: Scope, project_id: uuid.UUID, agent_id: uuid.UUID, suggestion_id: uuid.UUID
+) -> SuggestionOut:
+    try:
+        read = await service.get_suggestion(db, scope, project_id, agent_id, suggestion_id)
+    except (ProjectNotFoundError, AgentNotFoundError, service.SuggestionNotFoundError):
+        raise not_found() from None
+    return _out(read)
+
+
+@router.get("/evidence", operation_id="countSuggestionEvidence", responses=_READ_RESPONSES)
+async def count_suggestion_evidence(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+    days: Range,
+) -> EvidenceCountOut:
+    """How much evidence a Suggestion run of the range would find, by kind and before the cap,
+    for the run dialog: by default the last 14 UTC days. Refused as starting would be, except
+    while a run is in progress."""
+    start, end = days
+    with _refused():
+        found = await service.estimate_suggestion(
+            db, scope, project_id, agent_id, range_start=start, range_end=end, now=clock.now()
+        )
+    return _count(start, end, found.evidence)
+
+
+@router.post("/estimate", operation_id="estimateSuggestionRun", responses=_READ_RESPONSES)
+async def estimate_suggestion_run(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+    days: BodyRange,
+) -> SuggestionEstimateOut:
+    """The evidence a Suggestion run of the range would read and its estimated Cost, proposing
+    and checking, shown before starting it. Nothing is started; refused as starting would be,
+    except while a run is in progress."""
+    start, end = days
+    with _refused():
+        found = await service.estimate_suggestion(
+            db, scope, project_id, agent_id, range_start=start, range_end=end, now=clock.now()
+        )
+    return SuggestionEstimateOut(
+        evidence=_count(start, end, found.evidence),
+        evidence_used=found.evidence_used,
+        proposing_usd=found.proposing_usd,
+        has_evaluation_set=found.has_evaluation_set,
+        checking_usd=found.checking_usd,
+        total_usd=found.total_usd,
+    )
+
+
+@router.post(
+    "",
+    status_code=status.HTTP_202_ACCEPTED,
+    operation_id="startSuggestionRun",
+    response_model=SuggestionOut,
+    responses=_START_RESPONSES,
+)
+async def start_suggestion_run(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+    days: BodyRange,
+) -> SuggestionOut | JSONResponse:
+    """Starts a Suggestion run of the Agent's Live Version over the range, storing its estimated
+    Cost. Poll the Suggestion until it is no longer in progress."""
+    start, end = days
+    try:
+        with _refused():
+            suggestion_id = await service.start_suggestion(
+                db, scope, project_id, agent_id, range_start=start, range_end=end, now=clock.now()
+            )
+    except service.SuggestionInProgressError:
+        return run_conflict(RunConflict.SUGGESTION_RUN_IN_PROGRESS, SUGGESTION_IN_PROGRESS)
+    except service.EvaluationRunInProgressError:
+        return run_conflict(RunConflict.EVALUATION_RUN_IN_PROGRESS, EVALUATION_RUN_IN_PROGRESS)
     await enqueue_suggestion(suggestion_id)
     # When tasks run eagerly the run has moved on in other sessions: read it afresh.
     db.expire_all()
+    return await _read(db, scope, project_id, agent_id, suggestion_id)
+
+
+@router.post(
+    "/{suggestion_id}/cancel", operation_id="cancelSuggestionRun", responses=_CANCEL_RESPONSES
+)
+async def cancel_suggestion_run(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    suggestion_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+) -> SuggestionOut:
+    """Cancels a Suggestion run in progress, also an archived Agent's: it stops before its next
+    phase and keeps what it spent."""
+    try:
+        await service.cancel_suggestion(
+            db, scope, project_id, agent_id, suggestion_id, now=clock.now()
+        )
+    except (ProjectNotFoundError, AgentNotFoundError, service.SuggestionNotFoundError):
+        raise not_found() from None
+    except service.SuggestionFinishedError:
+        raise HTTPException(status.HTTP_409_CONFLICT, SUGGESTION_FINISHED) from None
     return await _read(db, scope, project_id, agent_id, suggestion_id)
 
 
@@ -290,7 +511,7 @@ async def list_suggestions(
         found = await service.list_suggestions(db, scope, project_id, agent_id)
     except (ProjectNotFoundError, AgentNotFoundError):
         raise not_found() from None
-    return [_summary(suggestion, number) for suggestion, number in found]
+    return [_summary(*listed) for listed in found]
 
 
 @router.get("/{suggestion_id}", operation_id="getSuggestion", responses=NOT_FOUND_RESPONSE)
@@ -303,3 +524,241 @@ async def get_suggestion(
 ) -> SuggestionOut:
     """The Suggestion with its changes and its evidence resolved."""
     return await _read(db, scope, project_id, agent_id, suggestion_id)
+
+
+# Applying to the Draft, and deleting
+
+
+class SuggestionDiffChangeOut(BaseModel):
+    id: uuid.UUID
+    path: str
+    # The setting's value in the Live Version the Suggestion was made from, in the Draft now,
+    # and as suggested.
+    base_value: SettingValue
+    draft_value: SettingValue
+    suggested_value: SettingValue
+    # ``clean``: the Draft still has the base value and takes the suggested one. ``applied``:
+    # the Draft already has the suggested value. ``clash``: the Draft has changed it some other
+    # way, so applying is refused until the Editor resolves it.
+    state: ChangeState
+    explanation: str
+
+
+class SuggestionDiffOut(BaseModel):
+    suggestion_id: uuid.UUID
+    # The Draft revision this Diff was read on: send it as ``base_revision`` to apply.
+    draft_revision: int
+    # The Live Version it was made from is no longer Live, and the notice saying so.
+    stale: bool
+    stale_notice: str | None
+    changes: list[SuggestionDiffChangeOut]
+    # How many changes clash with the Draft.
+    clashes: int
+
+
+class ApplySuggestionIn(BaseModel):
+    # The Draft revision the Diff was reviewed on.
+    base_revision: int
+
+
+class AppliedSuggestionOut(BaseModel):
+    # The Agent with its new Draft; nothing is Published.
+    agent: AgentOut
+    suggestion: SuggestionOut
+    # The setting paths written; a setting the Draft already had at the suggested value isn't.
+    paths: list[str]
+    # Set when the Suggestion was made from a Version no longer Live.
+    stale_notice: str | None
+
+
+class SuggestionClashOut(BaseModel):
+    path: str
+    base_value: SettingValue
+    draft_value: SettingValue
+    suggested_value: SettingValue
+
+
+class SuggestionApplyConflictOut(BaseModel):
+    detail: str
+    # ``stale_draft``: the Draft has moved on from the revision reviewed; ``latest`` holds it, as
+    # when saving the Draft. ``suggestion_clash``: the Draft has changed settings the Suggestion
+    # changes; ``clashes`` lists each. Null when the Agent or Project is archived or there is
+    # nothing to apply.
+    conflict: Literal["stale_draft", "suggestion_clash"] | None = None
+    latest: AgentOut | None = None
+    clashes: list[SuggestionClashOut] = []
+
+
+SUGGESTION_CLASH = (
+    "Your Draft has also changed settings this Suggestion changes. Resolve each clash in the "
+    "Draft, then apply it again."
+)
+NOTHING_TO_APPLY = "This Suggestion has no configuration change to apply."
+SUGGESTION_RUNNING = "This Suggestion run is in progress. Cancel it before deleting it."
+_APPLY_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **NOT_FOUND_RESPONSE,
+    409: {
+        "model": SuggestionApplyConflictOut,
+        "description": (
+            f"{SUGGESTION_CLASH} Or: {STALE_DRAFT} Or: {NOTHING_TO_APPLY} Or: the Project or "
+            "Agent is archived."
+        ),
+    },
+    422: {"description": "The merged Draft is not valid, as a Draft save would find it."},
+}
+_DELETE_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **NOT_FOUND_RESPONSE,
+    409: {
+        "model": ErrorResponse,
+        "description": f"{SUGGESTION_RUNNING} Or: the Project or Agent is archived.",
+    },
+}
+
+
+def stale_notice(stale: bool, base_version_number: int) -> str | None:
+    if not stale:
+        return None
+    return (
+        f"This Suggestion was made from v{base_version_number}, which is no longer Live: its "
+        "check was against the old Live Version."
+    )
+
+
+@contextmanager
+def _changing() -> Iterator[None]:
+    """Turns what refuses applying or deleting a Suggestion into its HTTP error."""
+    try:
+        yield
+    except (ProjectNotFoundError, AgentNotFoundError, service.SuggestionNotFoundError):
+        raise not_found() from None
+    except ProjectArchivedError:
+        raise archived() from None
+    except AgentArchivedError:
+        raise agent_archived() from None
+
+
+@router.get("/{suggestion_id}/diff", operation_id="getSuggestionDiff", responses=NOT_FOUND_RESPONSE)
+async def get_suggestion_diff(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    suggestion_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+) -> SuggestionDiffOut:
+    """The Suggestion's changes against the Agent's current Draft, each ``clean``, ``applied``
+    or a ``clash``, for review before applying it."""
+    try:
+        found = await applying.diff_suggestion(db, scope, project_id, agent_id, suggestion_id)
+    except (ProjectNotFoundError, AgentNotFoundError, service.SuggestionNotFoundError):
+        raise not_found() from None
+    return SuggestionDiffOut(
+        suggestion_id=found.suggestion.id,
+        draft_revision=found.draft_revision,
+        stale=found.stale,
+        stale_notice=stale_notice(found.stale, found.base_version_number),
+        changes=[
+            SuggestionDiffChangeOut(
+                id=row.change.id,
+                path=row.change.path,
+                base_value=row.change.base_value,
+                draft_value=row.draft_value,
+                suggested_value=row.change.suggested_value,
+                state=row.state,
+                explanation=row.change.explanation,
+            )
+            for row in found.rows
+        ],
+        clashes=sum(row.state == ChangeState.CLASH for row in found.rows),
+    )
+
+
+def _conflict(conflict: SuggestionApplyConflictOut) -> JSONResponse:
+    return JSONResponse(conflict.model_dump(mode="json"), status.HTTP_409_CONFLICT)
+
+
+@router.post(
+    "/{suggestion_id}/apply",
+    operation_id="applySuggestion",
+    response_model=AppliedSuggestionOut,
+    responses=_APPLY_RESPONSES,
+)
+async def apply_suggestion(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    suggestion_id: uuid.UUID,
+    body: ApplySuggestionIn,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+) -> AppliedSuggestionOut | JSONResponse:
+    """Applies the whole Suggestion to the Draft in one save on the revision reviewed. Any
+    clash refuses it with every clashing path, and a Draft changed since is refused with the
+    latest Draft; nothing is written then. Never Publishes."""
+    try:
+        with _changing():
+            applied = await applying.apply_suggestion(
+                db,
+                scope,
+                project_id,
+                agent_id,
+                suggestion_id,
+                base_revision=body.base_revision,
+                now=clock.now(),
+            )
+    except applying.NothingToApplyError:
+        raise HTTPException(status.HTTP_409_CONFLICT, NOTHING_TO_APPLY) from None
+    except StaleDraftError as error:
+        return _conflict(
+            SuggestionApplyConflictOut(
+                detail=STALE_DRAFT, conflict="stale_draft", latest=agent_out(error.latest)
+            )
+        )
+    except applying.SuggestionClashError as error:
+        return _conflict(
+            SuggestionApplyConflictOut(
+                detail=SUGGESTION_CLASH,
+                conflict="suggestion_clash",
+                clashes=[
+                    SuggestionClashOut(
+                        path=row.change.path,
+                        base_value=row.change.base_value,
+                        draft_value=row.draft_value,
+                        suggested_value=row.change.suggested_value,
+                    )
+                    for row in error.clashes
+                ],
+            )
+        )
+    except InvalidDraftError as error:
+        raise RequestValidationError([p.as_error() for p in error.problems]) from None
+    return AppliedSuggestionOut(
+        agent=agent_out(applied.agent),
+        suggestion=await _read(db, scope, project_id, agent_id, suggestion_id),
+        paths=applied.paths,
+        stale_notice=stale_notice(applied.stale, applied.base_version_number),
+    )
+
+
+@router.delete(
+    "/{suggestion_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    operation_id="deleteSuggestion",
+    responses=_DELETE_RESPONSES,
+)
+async def delete_suggestion(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    suggestion_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+) -> Response:
+    """Deletes a finished Suggestion with its changes, gaps and evidence links."""
+    try:
+        with _changing():
+            await applying.delete_suggestion(
+                db, scope, project_id, agent_id, suggestion_id, now=clock.now()
+            )
+    except applying.SuggestionRunningError:
+        raise HTTPException(status.HTTP_409_CONFLICT, SUGGESTION_RUNNING) from None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

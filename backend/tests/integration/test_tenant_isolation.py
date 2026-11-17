@@ -26,11 +26,16 @@ import httpx
 import pytest
 from fastapi.dependencies.models import Dependant
 from fastapi.routing import APIRoute
+from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
+from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from app.core.db import Base
 from app.evaluation import api as evaluation_api
 from app.guardrails.fake import FakeRule
 from app.main import ROUTERS, create_app
+from app.suggestions import api as suggestions_api
+from app.suggestions import service as suggestions_service
+from app.suggestions.proposer import propose
 from app.tenancy.models import PLATFORM_TABLES, Role
 from app.tenancy.policy import RequireRole
 from tests import documents, theme_images
@@ -583,6 +588,54 @@ async def _a_suggestion(owner: SignedUpMember, add_member: MemberFactory) -> Pre
     return params | {"suggestion_id": started.json()["id"]}, None
 
 
+async def _a_queued_suggestion(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _a_suggestion_to_start(owner, add_member)
+    # Its task isn't sent, so it stays queued and can be cancelled.
+    with patch.object(suggestions_api, "enqueue_suggestion", AsyncMock()):
+        started = await owner.client.post(
+            _SUGGESTIONS.format(organisation_id=owner.organisation_id, **params), json=body
+        )
+    assert started.json()["status"] == "queued", started.text
+    return params | {"suggestion_id": started.json()["id"]}, None
+
+
+async def _a_suggestion_to_apply(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    """A Suggestion with a system prompt change, made from the Evaluation Case that failed on
+    the Live Version, and the Draft revision to apply it on."""
+    params, body = await _a_suggestion_to_start(owner, add_member)
+    agent = _AGENT.format(organisation_id=owner.organisation_id, **params)
+    run = await owner.client.post(f"{agent}/evaluation/runs")
+    assert run.status_code == 202, run.text
+
+    def change(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        output = {
+            "changes": [
+                {
+                    "path": "behaviour.system_prompt",
+                    "value": "Cite the handbook.",
+                    "explanation": "The case failed.",
+                    "evidence": ["E1"],
+                }
+            ],
+            "overall_explanation": "Scripted.",
+        }
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, output)])
+
+    async def scripted(build: Any, *args: Any, **kwargs: Any) -> Any:
+        model = FunctionModel(change, profile={"supports_json_schema_output": False})
+        return await propose(lambda: model, *args, **kwargs)
+
+    with patch.object(suggestions_service, "propose", scripted):
+        started = await owner.client.post(
+            _SUGGESTIONS.format(organisation_id=owner.organisation_id, **params), json=body
+        )
+    assert started.json()["outcome"] == "changes", started.text
+    found = await owner.client.get(agent)
+    return params | {"suggestion_id": started.json()["id"]}, {
+        "base_revision": found.json()["draft_revision"]
+    }
+
+
 _AGENT = PROJECTS + "/{project_id}/agents/{agent_id}"
 _SUGGESTIONS = _AGENT + "/suggestions"
 _CONVERSATION = _AGENT + "/playground/conversations/{conversation_id}"
@@ -735,6 +788,12 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("POST", _SUGGESTIONS, EDITOR, _a_suggestion_to_start),
     ScopedRoute("GET", _SUGGESTIONS, EDITOR, _a_suggestion),
     ScopedRoute("GET", _SUGGESTIONS + "/{suggestion_id}", EDITOR, _a_suggestion),
+    ScopedRoute("GET", _SUGGESTIONS + "/evidence", EDITOR, _a_suggestion_to_start),
+    ScopedRoute("POST", _SUGGESTIONS + "/estimate", EDITOR, _a_suggestion_to_start),
+    ScopedRoute("POST", _SUGGESTIONS + "/{suggestion_id}/cancel", EDITOR, _a_queued_suggestion),
+    ScopedRoute("GET", _SUGGESTIONS + "/{suggestion_id}/diff", EDITOR, _a_suggestion),
+    ScopedRoute("POST", _SUGGESTIONS + "/{suggestion_id}/apply", EDITOR, _a_suggestion_to_apply),
+    ScopedRoute("DELETE", _SUGGESTIONS + "/{suggestion_id}", EDITOR, _a_suggestion),
     ScopedRoute("GET", _AGENT + "/metrics", EDITOR, _a_live_agent),
     *(
         ScopedRoute(

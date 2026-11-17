@@ -33,6 +33,7 @@ from app.conversations.models import Conversation, Message, MessageRole
 from app.documents.models import Document
 from app.evaluation.service import evaluation_cost
 from app.projects.models import Project
+from app.suggestions.reads import proposing_cost
 from app.tenancy.repository import OrganisationScope
 
 # Fewer votes, ratings, judged Live Verdicts or Conversations than this is a small sample: low
@@ -245,12 +246,18 @@ async def org_cost(
     """What the Organisation spent over the UTC days ``start`` to ``end`` inclusive (``today``
     is the current UTC day), one line per Project or per Agent that replied in the period,
     most expensive first. Archived Projects and Agents are included: they spent it. An Agent
-    that only ran Evaluation Runs in the period has a line too."""
+    that only ran Evaluation Runs or Suggestion runs in the period has a line too. The
+    Evaluation column holds Evaluation Runs, Live Verdicts and Suggestion runs' proposing."""
     visitor = await _visitor_cost(session, scope.organisation_id, start, end, today)
     playground = await _playground_cost(session, scope.organisation_id, start, end)
     first, _ = day_bounds(start)
     _, after = day_bounds(end)
     evaluation = await evaluation_cost(session, scope.organisation_id, first, after)
+    # Suggestion runs' proposing counts as evaluation too (spec 16).
+    for agent_id, spent in (
+        await proposing_cost(session, scope.organisation_id, first, after)
+    ).items():
+        evaluation[agent_id] = evaluation.get(agent_id, Decimal(0)) + spent
     agents = await session.execute(
         select(Agent.id, Agent.name, Project.id, Project.name)
         .join(Project, Project.id == Agent.project_id)
