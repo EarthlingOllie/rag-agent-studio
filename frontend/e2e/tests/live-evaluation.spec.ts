@@ -8,7 +8,7 @@ import { openSection } from "../fixtures/navigation";
 // demo model: v2's cite nothing, so they failed grounding. The demo model judges by rule: grounding
 // passes when the reply cites a Chunk, answering the question when it shares a long word with it.
 const OWNER = { email: "owner@northwind.example", password: "northwind-owner-demo" };
-const SEEDED_RATE = 60;
+const SEEDED_RATE = 90;
 const BOOT = /<script id="widget-boot" type="application\/json">(.*?)<\/script>/;
 
 test.describe("Live evaluation", () => {

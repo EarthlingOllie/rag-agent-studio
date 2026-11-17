@@ -320,8 +320,16 @@ HISTORY = History()
 # replies are judged by the Demo model as the history plays, so v2's uncited replies fail
 # grounding and its Live score falls below v1's. The Demo model costs nothing, so the budget is
 # never spent.
+# The rate is high so that v2's Live score is clearly lower after every seeding, not only a lucky
+# one: v2 passes nothing, so the top of its interval falls only with more Live Verdicts, while
+# v1's score is modest and not quite fixed. The Demo model's judge passes few of v1's answers
+# (only those sharing a long word with the question), and which Chunk a question retrieves first
+# can hang on a tie in the hybrid ranking, broken by the Chunks' random IDs, so v1 passes about
+# 15% or about 25% of its replies from one seeding to the next. At 60% v2's interval reached above
+# v1's in the lower case; at 90% it stays well below in both, while v3 keeps too few Live Verdicts
+# to compare and v2's Suggestion still reaches purged evidence within its cap.
 EVALUATION_BUDGET_USD = Decimal("20.00")
-LIVE_SAMPLE_RATES = {HR_AGENT: 60}
+LIVE_SAMPLE_RATES = {HR_AGENT: 90}
 
 # Suggestions (spec 16): the demo Organisation keeps Message text for two weeks (its Retention
 # Window), so the Purge the history ends with clears the oldest replies v2's Suggestion points at,

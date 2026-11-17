@@ -390,7 +390,7 @@ async def test_the_organisation_has_an_evaluation_budget_and_the_hr_helper_a_liv
         )
         rates[agent["name"]] = settings["live_sample_rate"]
     assert rates == {
-        "HR helper": 60,
+        "HR helper": 90,
         "Product FAQ": 0,
         "Low-budget helper": 0,
         "Guardrail demo": 0,
