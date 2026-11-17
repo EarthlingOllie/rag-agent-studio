@@ -7,6 +7,8 @@ import { failedResult, fakeEvaluationApi, leaveCase, parkingCase, passed, result
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
 import {
+  CHECK_RUN_ID,
+  checkedSuggestion,
   citingSuggestion,
   deletedCase,
   estimateOf,
@@ -77,6 +79,81 @@ test("the Evaluation view's Suggestions tab lists runs, and a Suggestion shows i
     "E1 · 2026-11-14 · Live Verdict failed",
     "E2 · 2026-11-03 · Text purged · Live Verdict failed",
   ]);
+});
+
+test("a checked Suggestion shows both Evaluation scores and each Regression with its reasons, a warning that still lets it apply", async () => {
+  const user = userEvent.setup();
+  setUp({ suggestions: [[checkedSuggestion]] });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+
+  const runs = await within(tab).findByRole("list", { name: "Suggestion runs" });
+  expect(within(runs).getByRole("listitem")).toHaveTextContent("Check found Regressions");
+  const detail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-16 09:00 UTC" });
+  // Checking's actual Cost shows with proposing's.
+  expect(detail).toHaveTextContent("Proposing cost $0.00056 (estimated $0.0028). Checking cost $0.0042 (estimated $0.0045).");
+  const check = within(detail).getByRole("region", { name: "Check against the Evaluation Set" });
+  expect(check).toHaveTextContent("Version 1: 100% · Suggestion: 50%");
+  expect(within(check).getByRole("status")).toHaveTextContent(
+    "The check found 1 Regression: a case that passed on the Live Version fails with the Suggestion. This is a warning; you can still apply it.",
+  );
+  const regressions = within(check).getByRole("list", { name: "Regressions" });
+  expect(regressions).toHaveTextContent("How much leave do I get?");
+  expect(regressions).toHaveTextContent("Grounding: The answer cites no passage.");
+  expect(within(check).getByRole("link", { name: "Open the check in Run detail" })).toHaveAttribute(
+    "href",
+    `${evaluationPage(publishedHelper.id)}?run=${CHECK_RUN_ID}`,
+  );
+  // A failed check never blocks applying.
+  expect(within(detail).getByRole("button", { name: "Apply to Draft" })).toBeEnabled();
+});
+
+test("a Suggestion's check reads as not checked, running, clear, failed or cancelled", async () => {
+  const user = userEvent.setup();
+  const states = [
+    {
+      check: { state: "not_checked", evaluation_run_id: null, live_score: null, suggestion_score: null },
+      row: "Not checked",
+      says: "Not checked: this Agent had no Evaluation Set, so nothing verified this Suggestion.",
+    },
+    {
+      check: { state: "running", evaluation_run_id: CHECK_RUN_ID, live_score: null, suggestion_score: null },
+      row: "Checking",
+      says: "Checking against the Evaluation Set…",
+    },
+    {
+      check: { state: "clear", evaluation_run_id: CHECK_RUN_ID, live_score: 0.5, suggestion_score: 1 },
+      row: "Check clear",
+      says: "Version 1: 50% · Suggestion: 100%. No Regressions.",
+    },
+    {
+      check: { state: "failed", evaluation_run_id: CHECK_RUN_ID, live_score: null, suggestion_score: null },
+      row: "Check failed",
+      says: "The check failed: every answer errored. This is a warning; you can still apply it.",
+    },
+    {
+      check: { state: "cancelled", evaluation_run_id: CHECK_RUN_ID, live_score: null, suggestion_score: null },
+      row: "Check cancelled",
+      says: "The check was cancelled before it finished.",
+    },
+  ] as const;
+  const found = states.map((each, index) => ({
+    ...citingSuggestion,
+    id: `5a000000-0000-4000-8000-00000000010${String(index)}`,
+    created_at: `2026-11-1${String(index)}T09:00:00Z`,
+    check: { ...each.check, regressions: [] },
+  }));
+  setUp({ suggestions: found.map((each) => [each]) });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+  const runs = await within(tab).findByRole("list", { name: "Suggestion runs" });
+
+  for (const [index, each] of states.entries()) {
+    expect(within(runs).getAllByRole("listitem")[index]).toHaveTextContent(each.row);
+    await user.click(within(tab).getByRole("button", { name: `Suggestion of 2026-11-1${String(index)} 09:00 UTC` }));
+    const detail = await within(tab).findByRole("region", { name: `Suggestion of 2026-11-1${String(index)} 09:00 UTC` });
+    expect(within(detail).getByRole("region", { name: "Check against the Evaluation Set" })).toHaveTextContent(each.says);
+  }
 });
 
 test("a retrieval change and a Knowledge Base gap show with every kind of evidence, cases opening in Run detail", async () => {
@@ -395,11 +472,11 @@ test("a Suggestion shows its estimated and actual Cost, and the list its Cost", 
   const user = userEvent.setup();
   const checked = suggestion("5a000000-0000-4000-8000-000000000007", "completed", {
     outcome: "no_change",
-    cost: { estimated_proposing_usd: "0.0028", estimated_checking_usd: "0.00448", proposing_usd: "0.00056" },
+    cost: { estimated_proposing_usd: "0.0028", estimated_checking_usd: "0.00448", proposing_usd: "0.00056", checking_usd: null },
   });
   const unpriced = suggestion("5a000000-0000-4000-8000-000000000008", "failed", {
     created_at: "2026-11-15T09:00:00Z",
-    cost: { estimated_proposing_usd: null, estimated_checking_usd: null, proposing_usd: null },
+    cost: { estimated_proposing_usd: null, estimated_checking_usd: null, proposing_usd: null, checking_usd: null },
   });
   setUp({ suggestions: [[checked], [unpriced]] });
   renderStudio(evaluationPage(publishedHelper.id));
@@ -420,7 +497,7 @@ test("a Suggestion shows its estimated and actual Cost, and the list its Cost", 
 test("an Editor cancels a run in progress; it stops and keeps what it spent", async () => {
   const user = userEvent.setup();
   const proposing = suggestion("5a000000-0000-4000-8000-000000000009", "proposing", {
-    cost: { estimated_proposing_usd: "0.0028", estimated_checking_usd: null, proposing_usd: null },
+    cost: { estimated_proposing_usd: "0.0028", estimated_checking_usd: null, proposing_usd: null, checking_usd: null },
   });
   const { cancels } = setUp({ suggestions: [[proposing]] });
   renderStudio(evaluationPage(publishedHelper.id));

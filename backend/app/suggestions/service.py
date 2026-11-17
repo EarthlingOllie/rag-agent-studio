@@ -33,9 +33,10 @@ from typing import Any, NamedTuple, cast
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.agents.models import AgentVersion
+from app.agents.config import AgentConfig
+from app.agents.models import Agent, AgentVersion
 from app.agents.resolution import NoDefaultModelError, ProviderCredentialGoneError
-from app.agents.service import AgentWithDraft, active_agent, get_agent
+from app.agents.service import AgentArchivedError, AgentWithDraft, active_agent, get_agent
 from app.conversations.models import Message
 from app.conversations.service import TracedChunk, searches_of, traced_chunks
 from app.core.clock import Clock
@@ -44,6 +45,7 @@ from app.default_model.service import CurrentDefault
 from app.evaluation.estimate import NANO
 from app.evaluation.failed_cases import FailedCase, failed_cases, run_cases_of
 from app.evaluation.from_message import question_of
+from app.evaluation.job import run_evaluation
 from app.evaluation.live import remembered_turns
 from app.evaluation.live_reads import failed_replies, live_verdicts_of
 from app.evaluation.models import (
@@ -57,11 +59,18 @@ from app.evaluation.models import (
 from app.evaluation.ports import EvaluationPorts
 from app.evaluation.service import EmptySetError, SideChoice, plan_run, run_in_progress
 from app.evaluation.settings import judge_model
+from app.evaluation.suggestion_check import (
+    CheckResult,
+    check_cost,
+    read_check,
+    start_check,
+    stop_check,
+)
 from app.feedback.service import low_rated_replies, thumbs_down_replies
 from app.gateway.gateway import ModelGateway
 from app.pricing.service import credential_pricing, price_table
 from app.pricing.table import TokenUsage, cost
-from app.projects.service import active_project
+from app.projects.service import ProjectArchivedError, active_project
 from app.retrieval.service import ExcludedReason
 from app.suggestions.models import (
     IN_PROGRESS,
@@ -73,9 +82,9 @@ from app.suggestions.models import (
     SuggestionOutcome,
     SuggestionStatus,
 )
-from app.suggestions.proposer import Block, EvidenceItem, ProposeError, propose
+from app.suggestions.proposer import Block, EvidenceItem, ProposeError, propose, with_setting
 from app.suggestions.reads import suggestion_in_progress
-from app.tenancy.models import Member
+from app.tenancy.models import Member, Role
 from app.tenancy.repository import OrganisationScope
 
 # The most evidence one run reads: the most recent pieces.
@@ -351,7 +360,8 @@ async def cancel_suggestion(
     now: datetime,
 ) -> None:
     """Cancels a Suggestion run in progress (``SuggestionFinishedError`` otherwise), also for an
-    archived Agent. Its job stops before its next phase; what it spent so far is kept."""
+    archived Agent, and its check with it. Its job stops before its next phase, and the check
+    before its next answer; what they spent so far is kept."""
     found = await get_agent(session, scope, project_id, agent_id)
     suggestion = await session.scalar(
         select(Suggestion)
@@ -364,6 +374,9 @@ async def cancel_suggestion(
         raise SuggestionFinishedError
     suggestion.status = SuggestionStatus.CANCELLED
     suggestion.finished_at = now
+    if suggestion.check_run_id is not None:
+        # Cancelling the Suggestion cancels its check.
+        await stop_check(session, suggestion.check_run_id, now)
     await session.commit()
 
 
@@ -650,13 +663,12 @@ async def _finish(
     *,
     error: str | None = None,
     explanation: str | None = None,
-    changes: Sequence[SuggestedChange] = (),
-    gaps: Sequence[KnowledgeBaseGap] = (),
 ) -> None:
+    """Ends the run ``failed`` with ``error``, or else ``completed`` with nothing proposed."""
     async with sessionmaker() as session:
         suggestion = await session.get_one(Suggestion, suggestion_id, with_for_update=True)
         if suggestion.status not in IN_PROGRESS:
-            # Cancelled meanwhile: what it found is not kept.
+            # Cancelled meanwhile.
             return
         suggestion.finished_at = now
         if error is not None:
@@ -665,15 +677,104 @@ async def _finish(
         else:
             suggestion.status = SuggestionStatus.COMPLETED
             suggestion.explanation = explanation
-            suggestion.outcome = (
-                SuggestionOutcome.CHANGES
-                if changes
-                else SuggestionOutcome.GAPS_ONLY
-                if gaps
-                else SuggestionOutcome.NO_CHANGE
-            )
-            session.add_all(changes)
-            session.add_all(gaps)
+            suggestion.outcome = SuggestionOutcome.NO_CHANGE
+        await session.commit()
+
+
+# The Live Version's check can't start: it is then "Not checked". An empty Evaluation Set is the
+# usual reason; the others are an Agent or Project archived, or its model gone, since starting.
+_UNCHECKABLE = (
+    EmptySetError,
+    NoDefaultModelError,
+    ProviderCredentialGoneError,
+    AgentArchivedError,
+    ProjectArchivedError,
+)
+# The check's reads take an Organisation scope; when the Member who started the run has since
+# gone, this stands in for them. Nothing is written as them: the check's ``started_by`` is
+# copied from the Suggestion.
+_GONE_MEMBER = uuid.UUID(int=0)
+
+
+async def _start_check(
+    session: AsyncSession, suggestion: Suggestion, changes: Sequence[SuggestedChange], now: datetime
+) -> uuid.UUID | None:
+    """Adds the check of the Suggestion's changes against its base Version on the Evaluation
+    Set; None when it can't be checked (above all, without an Evaluation Set)."""
+    agent = await session.get_one(Agent, suggestion.agent_id)
+    config = suggestion.base_config
+    for change in changes:
+        config = with_setting(config, change.path, change.suggested_value)
+    scope = OrganisationScope(
+        suggestion.organisation_id, suggestion.started_by or _GONE_MEMBER, Role.EDITOR
+    )
+    try:
+        run = await start_check(
+            session,
+            scope,
+            agent.project_id,
+            agent.id,
+            version_id=suggestion.base_version_id,
+            config=AgentConfig.model_validate(config),
+            started_by=suggestion.started_by,
+            now=now,
+        )
+    except _UNCHECKABLE:
+        return None
+    return run.id
+
+
+async def _proposed(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    suggestion_id: uuid.UUID,
+    now: datetime,
+    *,
+    explanation: str,
+    changes: Sequence[SuggestedChange],
+    gaps: Sequence[KnowledgeBaseGap],
+) -> uuid.UUID | None:
+    """Keeps what was proposed. A configuration change is then checked when it can be: the run
+    is ``checking`` and the check's ID is returned for the caller to run. Otherwise the run is
+    ``completed``. A run cancelled meanwhile keeps nothing."""
+    async with sessionmaker() as session:
+        suggestion = await session.get_one(Suggestion, suggestion_id, with_for_update=True)
+        if suggestion.status not in IN_PROGRESS:
+            return None
+        suggestion.explanation = explanation
+        suggestion.outcome = (
+            SuggestionOutcome.CHANGES
+            if changes
+            else SuggestionOutcome.GAPS_ONLY
+            if gaps
+            else SuggestionOutcome.NO_CHANGE
+        )
+        session.add_all(changes)
+        session.add_all(gaps)
+        check_run_id = await _start_check(session, suggestion, changes, now) if changes else None
+        if check_run_id is None:
+            suggestion.status = SuggestionStatus.COMPLETED
+            suggestion.finished_at = now
+        else:
+            suggestion.status = SuggestionStatus.CHECKING
+            suggestion.check_run_id = check_run_id
+        await session.commit()
+        return check_run_id
+
+
+async def _checked(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    suggestion_id: uuid.UUID,
+    check_run_id: uuid.UUID,
+    now: datetime,
+) -> None:
+    """Freezes what the check spent, also for a run cancelled while it checked, and completes
+    the run: a check that failed or found Regressions is a warning, never a failed run."""
+    async with sessionmaker() as session:
+        suggestion = await session.get_one(Suggestion, suggestion_id, with_for_update=True)
+        suggestion.checking_cost_usd = await check_cost(session, check_run_id)
+        if suggestion.status == SuggestionStatus.CHECKING:
+            suggestion.status = SuggestionStatus.COMPLETED
+            suggestion.finished_at = now
         await session.commit()
 
 
@@ -706,7 +807,8 @@ async def run_suggestion(
     suggestion_id: uuid.UUID,
     clock: Clock,
 ) -> None:
-    """Gathers the queued Suggestion run's evidence and proposes its Suggestion. A run cancelled
+    """Gathers the queued Suggestion run's evidence and proposes its Suggestion, then checks a
+    configuration change against the Evaluation Set when the Agent has one. A run cancelled
     meanwhile stops before its next phase, keeping what it spent."""
     if not await _set_status(sessionmaker, suggestion_id, SuggestionStatus.GATHERING):
         return
@@ -764,7 +866,7 @@ async def run_suggestion(
         )
         for position, gap in enumerate(proposing.gaps, start=1)
     ]
-    await _finish(
+    check_run_id = await _proposed(
         sessionmaker,
         suggestion_id,
         clock.now(),
@@ -772,6 +874,10 @@ async def run_suggestion(
         changes=changes,
         gaps=gaps,
     )
+    if check_run_id is None:
+        return
+    await run_evaluation(sessionmaker, ports, gateway, check_run_id, clock)
+    await _checked(sessionmaker, suggestion_id, check_run_id, clock.now())
 
 
 # Reading
@@ -804,6 +910,19 @@ class EvidenceRead:
         return cast(datetime, cast(EvaluationRun, self.run).finished_at)
 
 
+# A completed Suggestion with a configuration change that had no check: the Agent had no
+# Evaluation Set.
+NOT_CHECKED = "not_checked"
+
+
+@dataclass(frozen=True)
+class SuggestionCheck:
+    # ``not_checked``, else the check's ``CheckState``.
+    state: str
+    # The check; None when not checked.
+    result: CheckResult | None
+
+
 @dataclass(frozen=True)
 class SuggestionRead:
     suggestion: Suggestion
@@ -815,6 +934,8 @@ class SuggestionRead:
     stale: bool = False
     # Who applied it to the Draft; None until applied, or once that Member is gone.
     applied_by: Member | None = None
+    # Its check; None for a run with no configuration change (yet).
+    check: SuggestionCheck | None = None
 
 
 class SuggestionListed(NamedTuple):
@@ -822,13 +943,32 @@ class SuggestionListed(NamedTuple):
     base_version_number: int
     stale: bool
     applied_by: Member | None
+    check: SuggestionCheck | None
+
+
+async def _check_of(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    suggestion: Suggestion,
+) -> SuggestionCheck | None:
+    if suggestion.check_run_id is not None:
+        result = await read_check(session, scope, project_id, agent_id, suggestion.check_run_id)
+        return SuggestionCheck(result.state, result)
+    if (
+        suggestion.status == SuggestionStatus.COMPLETED
+        and suggestion.outcome == SuggestionOutcome.CHANGES
+    ):
+        return SuggestionCheck(NOT_CHECKED, None)
+    return None
 
 
 async def list_suggestions(
     session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, agent_id: uuid.UUID
 ) -> list[SuggestionListed]:
     """The Agent's Suggestions, newest first, each with its base Version's number, whether it
-    is stale and who applied it."""
+    is stale, who applied it and its check."""
     found = await get_agent(session, scope, project_id, agent_id)
     rows = await session.execute(
         select(Suggestion, AgentVersion.number, Member)
@@ -839,7 +979,13 @@ async def list_suggestions(
     )
     live = found.agent.live_version_id
     return [
-        SuggestionListed(suggestion, number, suggestion.base_version_id != live, applied_by)
+        SuggestionListed(
+            suggestion,
+            number,
+            suggestion.base_version_id != live,
+            applied_by,
+            await _check_of(session, scope, project_id, agent_id, suggestion),
+        )
         for suggestion, number, applied_by in rows.all()
     ]
 
@@ -914,4 +1060,5 @@ async def get_suggestion(
         gaps,
         stale=suggestion.base_version_id != found.agent.live_version_id,
         applied_by=applied_by,
+        check=await _check_of(session, scope, project_id, agent_id, suggestion),
     )

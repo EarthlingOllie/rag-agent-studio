@@ -286,6 +286,8 @@ async def test_with_unknown_prices_the_estimate_and_the_spend_are_unknown(
         "estimated_proposing_usd": None,
         "estimated_checking_usd": None,
         "proposing_usd": None,
+        # The check ran, but no price it needed was known.
+        "checking_usd": None,
     }
 
 
@@ -488,6 +490,35 @@ async def test_a_run_cancelled_while_proposing_stops_and_keeps_what_it_spent(
     assert len(suggestion["evidence"]) == 1
     (line,) = (await org_cost(owner, start=NOV_5, end=NOV_5, group_by="agent"))["rows"]
     assert Decimal(line["evaluation_usd"]) >= Decimal("0.00056")
+
+
+async def test_a_run_cancelled_while_proposing_stays_cancelled_when_the_call_then_fails(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+) -> None:
+    agent: dict[str, Any] = {}
+
+    async def cancelling(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        async def cancel_it(session: Any) -> None:
+            scope = scope_of(owner)
+            project_id, agent_id = uuid.UUID(agent["project_id"]), uuid.UUID(agent["id"])
+            ((found, *_),) = await service.list_suggestions(session, scope, project_id, agent_id)
+            await service.cancel_suggestion(
+                session, scope, project_id, agent_id, found.id, now=clock.now()
+            )
+
+        # The invalid output is retried: only the first call cancels.
+        if not agent.get("cancelled"):
+            agent["cancelled"] = True
+            await in_new_session(cancel_it)
+        return ModelResponse(parts=[ToolCallPart(info.output_tools[0].name, {"nonsense": 1})])
+
+    scripted(app, proposer=cancelling)
+    agent.update(await live_agent(app, owner))
+    await replied(visitor, agent)
+
+    suggestion = await started(owner, agent)
+
+    assert (suggestion["status"], suggestion["error_message"]) == ("cancelled", None)
 
 
 async def test_a_run_cancelled_while_gathering_never_proposes(

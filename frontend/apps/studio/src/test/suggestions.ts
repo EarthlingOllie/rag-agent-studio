@@ -125,6 +125,7 @@ export function suggestion(id: string, status: Suggestion["status"], overrides: 
       estimated_proposing_usd: "0.0028",
       estimated_checking_usd: null,
       proposing_usd: finished ? "0.00056" : null,
+      checking_usd: null,
     },
     changes: [],
     gaps: [],
@@ -132,6 +133,7 @@ export function suggestion(id: string, status: Suggestion["status"], overrides: 
     stale: false,
     applied_by: null,
     applied_at: null,
+    check: null,
     ...overrides,
   };
 }
@@ -153,6 +155,29 @@ export const citingSuggestion = suggestion("5a000000-0000-4000-8000-000000000001
   ],
   evidence: [failedReply, purgedReply],
 });
+
+/** The check Run of a checked Suggestion. */
+export const CHECK_RUN_ID = "e1000000-0000-4000-8000-0000000000c1";
+
+/** The citing Suggestion, checked against the Evaluation Set: one Regression, a warning. */
+export const checkedSuggestion: Suggestion = {
+  ...citingSuggestion,
+  id: "5a000000-0000-4000-8000-000000000006",
+  cost: { estimated_proposing_usd: "0.0028", estimated_checking_usd: "0.00448", proposing_usd: "0.00056", checking_usd: "0.0042" },
+  check: {
+    state: "regressions",
+    evaluation_run_id: CHECK_RUN_ID,
+    live_score: 1,
+    suggestion_score: 0.5,
+    regressions: [
+      {
+        case_id: "ca000000-0000-4000-8000-000000000001",
+        question: "How much leave do I get?",
+        reasons: [{ kind: "grounding", reason: "The answer cites no passage." }],
+      },
+    ],
+  },
+};
 
 /** A finished Suggestion from every kind of evidence: a retrieval change and a Knowledge Base gap. */
 export const retrievalSuggestion = suggestion("5a000000-0000-4000-8000-000000000004", "completed", {
@@ -198,8 +223,13 @@ const SUMMARY_FIELDS = [
   "applied_at",
 ] as const;
 
-const summary = (found: Suggestion): Schemas["SuggestionSummaryOut"] =>
-  Object.fromEntries(SUMMARY_FIELDS.map((key) => [key, found[key]])) as Schemas["SuggestionSummaryOut"];
+/** A Suggestion as the list has it: its check without the Regressions. */
+function summary(found: Suggestion): Schemas["SuggestionSummaryOut"] {
+  const listed = Object.fromEntries(SUMMARY_FIELDS.map((key) => [key, found[key]])) as Schemas["SuggestionSummaryOut"];
+  if (found.check === null) return { ...listed, check: null };
+  const { state, evaluation_run_id, live_score, suggestion_score } = found.check;
+  return { ...listed, check: { state, evaluation_run_id, live_score, suggestion_score } };
+}
 
 /** What a range holds, by kind: by default 3 pieces, too few to be more than noise. */
 export function evidenceCount(range: { range_start: string; range_end: string }, overrides: Partial<EvidenceCount> = {}): EvidenceCount {

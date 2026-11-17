@@ -8,6 +8,7 @@ import { type Agent, StaleDraftError } from "./agents";
 import { DraftConflict } from "./DraftConflict";
 import { evaluationFailure } from "./evaluation";
 import { dollars } from "./format";
+import { RegressionList } from "./PublishEvaluation";
 import {
   defaultRange,
   type EvidenceCount,
@@ -73,13 +74,35 @@ function spentText(suggestion: SuggestionSummary): string | null {
   return spent === null ? "Cost unknown" : `Cost ${dollars(spent)}`;
 }
 
-/** A Suggestion's Cost: what proposing spent against its estimate, and the check's estimate. */
-function costText(suggestion: SuggestionSummary): string {
-  const { proposing_usd: spent, estimated_proposing_usd: proposing, estimated_checking_usd: checking } = suggestion.cost;
-  const estimate = proposing === null ? "no estimate" : `estimated ${dollars(proposing)}`;
-  const check = checking === null ? "Not checked." : `Checking estimated at ${dollars(checking)}.`;
-  return `Proposing cost ${spent === null ? "unknown" : dollars(spent)} (${estimate}). ${check}`;
+const estimateWords = (estimate: string | null) => (estimate === null ? "no estimate" : `estimated ${dollars(estimate)}`);
+
+/** What checking cost against its estimate, once the check stopped; until then, its estimate. */
+function checkingText(suggestion: SuggestionSummary): string {
+  const { checking_usd: spent, estimated_checking_usd: estimate } = suggestion.cost;
+  if (suggestion.check?.state === "not_checked") return "Not checked.";
+  if (suggestion.check !== null && suggestion.check.state !== "running") {
+    return `Checking cost ${spent === null ? "unknown" : dollars(spent)} (${estimateWords(estimate)}).`;
+  }
+  return estimate === null ? "Not checked." : `Checking estimated at ${dollars(estimate)}.`;
 }
+
+/** A Suggestion's Cost: what proposing spent against its estimate, and checking. */
+function costText(suggestion: SuggestionSummary): string {
+  const { proposing_usd: spent, estimated_proposing_usd: proposing } = suggestion.cost;
+  return `Proposing cost ${spent === null ? "unknown" : dollars(spent)} (${estimateWords(proposing)}). ${checkingText(suggestion)}`;
+}
+
+/** The check's result, in a word or two, for the list. */
+const CHECK_STATES = {
+  not_checked: "Not checked",
+  running: "Checking",
+  clear: "Check clear",
+  regressions: "Check found Regressions",
+  failed: "Check failed",
+  cancelled: "Check cancelled",
+} as const;
+
+const warns = (state: keyof typeof CHECK_STATES) => state === "regressions" || state === "failed";
 
 /** Who applied the Suggestion to the Draft, and when; null until it is applied. */
 function appliedText(suggestion: SuggestionSummary): string | null {
@@ -128,6 +151,7 @@ function SuggestionList({
           <span className="text-ink-2">{rangeText(suggestion)}</span>
           <span className="text-ink-2">From Version {suggestion.base_version_number}</span>
           {suggestion.outcome !== null && <span className="font-medium text-ink-2">{OUTCOMES[suggestion.outcome]}</span>}
+          {suggestion.check !== null && <span className={warns(suggestion.check.state) ? "text-flag" : "text-ink-2"}>{CHECK_STATES[suggestion.check.state]}</span>}
           {spentText(suggestion) !== null && <span className="font-mono text-xs text-muted">{spentText(suggestion)}</span>}
           {suggestion.stale && <span className="text-xs font-medium text-flag">Stale</span>}
           {appliedText(suggestion) !== null && <span className="text-xs font-medium text-accent-ink">{appliedText(suggestion)}</span>}
@@ -138,6 +162,56 @@ function SuggestionList({
 }
 
 const CHIP = "inline-flex items-center rounded-full border border-line bg-surface px-2.5 py-0.5 text-xs text-ink-2 hover:text-accent";
+
+const scorePercent = (score: number | null) => (score === null ? "no score" : `${String(Math.round(score * 100))}%`);
+
+/**
+ * The check of the Suggestion against the Live Version on the Evaluation Set: both Evaluation scores
+ * and each Regression with its Verdicts' reasons, or "Not checked". A failed check is only a warning.
+ */
+function CheckSection({ path, suggestion }: { path: AgentPath; suggestion: Suggestion }) {
+  const headingId = useId();
+  const check = suggestion.check;
+  if (check === null) return null;
+  const scores = `Version ${String(suggestion.base_version_number)}: ${scorePercent(check.live_score)} · Suggestion: ${scorePercent(check.suggestion_score)}`;
+  const regressions = check.regressions.length;
+  const failing = regressions === 1 ? "a case that passed on the Live Version fails" : "cases that passed on the Live Version fail";
+  return (
+    <section aria-labelledby={headingId} className={`${surface.card} flex flex-col gap-3 p-5`}>
+      <h4 id={headingId} className="font-medium text-ink">
+        Check against the Evaluation Set
+      </h4>
+      {check.state === "not_checked" && <p className="text-sm text-ink-2">Not checked: this Agent had no Evaluation Set, so nothing verified this Suggestion.</p>}
+      {check.state === "running" && (
+        <p role="status" className="text-sm text-ink-2">
+          Checking against the Evaluation Set…
+        </p>
+      )}
+      {check.state === "clear" && <p className="text-sm text-ink-2">{`${scores}. No Regressions.`}</p>}
+      {check.state === "regressions" && (
+        <>
+          <p className="text-sm text-ink-2">{`${scores}.`}</p>
+          <Notice tone="warning">
+            {`The check found ${count(regressions, "Regression", "Regressions")}: ${failing} with the Suggestion. This is a warning; you can still apply it.`}
+          </Notice>
+          <RegressionList regressions={check.regressions} />
+        </>
+      )}
+      {check.state === "failed" && <Notice tone="warning">The check failed: every answer errored. This is a warning; you can still apply it.</Notice>}
+      {check.state === "cancelled" && <p className="text-sm text-ink-2">The check was cancelled before it finished.</p>}
+      {check.evaluation_run_id !== null && (
+        <Link
+          to="/organisations/$organisationId/projects/$projectId/agents/$agentId/evaluation"
+          params={{ organisationId: path.organisation_id, projectId: path.project_id, agentId: path.agent_id }}
+          search={{ run: check.evaluation_run_id }}
+          className={`${button.quiet} self-start`}
+        >
+          Open the check in Run detail
+        </Link>
+      )}
+    </section>
+  );
+}
 
 /** What a piece of evidence is, in words: purged text, its Live Verdict and each reason it counts; or its Evaluation Case. */
 function evidenceWords(evidence: SuggestionEvidence): string[] {
@@ -506,6 +580,7 @@ function SuggestionDetail({
           ))}
         </ul>
       )}
+      <CheckSection path={path} suggestion={suggestion} />
       {suggestion.gaps.length > 0 && <GapList suggestion={suggestion} path={path} />}
       {suggestion.evidence.length > 0 && (
         <div className="flex flex-col gap-2">

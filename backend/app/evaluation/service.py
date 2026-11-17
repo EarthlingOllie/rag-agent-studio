@@ -184,6 +184,15 @@ class SideChoice:
 
 
 @dataclass(frozen=True)
+class SuggestionSide:
+    """A Suggestion's check (spec 16): the Version it was made from against ``config``, that
+    Version's AgentConfig with the suggested changes, answering with the Instructions it pins."""
+
+    version_id: uuid.UUID
+    config: AgentConfig
+
+
+@dataclass(frozen=True)
 class SourceFields:
     document_id: uuid.UUID
     passage: str
@@ -749,23 +758,32 @@ async def plan_run(
     starting: bool,
     now: datetime,
     rollout: InstructionsVersion | None = None,
+    suggestion: SuggestionSide | None = None,
 ) -> Plan:
     """Resolves a Run's sides, judge and repeats, refusing as ``start_run`` says. When
     ``starting``, the Agent's row is locked and a Run or Suggestion run in progress is refused.
     With ``rollout``, the sides are the Live Version against its rollout side answering with
-    those Instructions."""
+    those Instructions. With ``suggestion``, they are its Version against the suggestion side,
+    and the Suggestion run in progress is the one checking."""
     project = await active_project(session, scope, project_id)
     found = await active_agent(session, scope, project_id, agent_id, lock=starting)
+    # A Suggestion's check is a Run of its Suggestion run in progress: Evaluate is refused as
+    # that Suggestion run's, not as a Run's.
+    if starting and suggestion is None and await suggestion_in_progress(session, found.agent.id):
+        raise SuggestionInProgressError
     if starting and await run_in_progress(session, found.agent.id):
         raise RunInProgressError
-    if starting and await suggestion_in_progress(session, found.agent.id):
-        raise SuggestionInProgressError
     cases = await _cases(session, found.agent.id)
     if not cases:
         raise EmptySetError
     live = found.agent.live_version_id
     if rollout is not None:
         sides = [SideChoice(SideKind.VERSION, live), SideChoice(SideKind.ROLLOUT, live)]
+    elif suggestion is not None:
+        sides = [
+            SideChoice(SideKind.VERSION, suggestion.version_id),
+            SideChoice(SideKind.SUGGESTION, suggestion.version_id),
+        ]
     elif sides is None:
         sides = [SideChoice(SideKind.DRAFT)]
         if live is not None:
@@ -782,6 +800,9 @@ async def plan_run(
             side = await _version_side(session, scope, found.agent.id, choice)
             if rollout is not None and choice.kind == SideKind.ROLLOUT:
                 side = replace(side, instructions=rollout, instructions_text=rollout.markdown)
+            if suggestion is not None and choice.kind == SideKind.SUGGESTION:
+                resolved = await resolve_models(session, scope.organisation_id, suggestion.config)
+                side = replace(side, resolved=resolved)
             resolved_sides.append(side)
             continue
         resolved = await resolve_models(session, scope.organisation_id, found.draft)
@@ -871,16 +892,22 @@ async def start_run(
         starting=True,
         now=now,
     )
-    run = await add_run(session, scope, plan, RunKind.AGENT, now=now)
+    run = await add_run(session, scope, plan, RunKind.AGENT, now=now, started_by=scope.member_id)
     await session.commit()
     return run
 
 
 async def add_run(
-    session: AsyncSession, scope: OrganisationScope, plan: Plan, kind: RunKind, *, now: datetime
+    session: AsyncSession,
+    scope: OrganisationScope,
+    plan: Plan,
+    kind: RunKind,
+    *,
+    now: datetime,
+    started_by: uuid.UUID | None,
 ) -> EvaluationRun:
-    """Adds the queued Run ``plan`` describes, with its sides and its copy of every case, for
-    the caller to commit."""
+    """Adds the queued Run ``plan`` describes, started by the Member ``started_by``, with its
+    sides and its copy of every case, for the caller to commit."""
     found, cases, resolved_sides, judge, repeats = (
         plan.agent,
         plan.cases,
@@ -894,7 +921,7 @@ async def add_run(
         agent_id=found.agent.id,
         status=RunStatus.QUEUED,
         kind=kind,
-        started_by=scope.member_id,
+        started_by=started_by,
         judge_credential_id=judge.credential.id,
         judge_provider=judge.credential.provider,
         judge_model=judge.model,

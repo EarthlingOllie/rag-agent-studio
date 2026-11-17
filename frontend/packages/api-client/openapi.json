@@ -8703,6 +8703,131 @@
         "title": "SuggestionApplyConflictOut",
         "type": "object"
       },
+      "SuggestionCheckOut": {
+        "properties": {
+          "evaluation_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Run Id"
+          },
+          "live_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Score"
+          },
+          "regressions": {
+            "items": {
+              "$ref": "#/components/schemas/SummaryRegressionOut"
+            },
+            "title": "Regressions",
+            "type": "array"
+          },
+          "state": {
+            "enum": [
+              "not_checked",
+              "running",
+              "clear",
+              "regressions",
+              "failed",
+              "cancelled"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "suggestion_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion Score"
+          }
+        },
+        "required": [
+          "state",
+          "evaluation_run_id",
+          "live_score",
+          "suggestion_score",
+          "regressions"
+        ],
+        "title": "SuggestionCheckOut",
+        "type": "object"
+      },
+      "SuggestionCheckSummaryOut": {
+        "description": "The check of a Suggestion's configuration change against the Live Version on the\nEvaluation Set.",
+        "properties": {
+          "evaluation_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Run Id"
+          },
+          "live_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Score"
+          },
+          "state": {
+            "enum": [
+              "not_checked",
+              "running",
+              "clear",
+              "regressions",
+              "failed",
+              "cancelled"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "suggestion_score": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestion Score"
+          }
+        },
+        "required": [
+          "state",
+          "evaluation_run_id",
+          "live_score",
+          "suggestion_score"
+        ],
+        "title": "SuggestionCheckSummaryOut",
+        "type": "object"
+      },
       "SuggestionClashOut": {
         "properties": {
           "base_value": {
@@ -8763,6 +8888,17 @@
       },
       "SuggestionCostOut": {
         "properties": {
+          "checking_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Checking Usd"
+          },
           "estimated_checking_usd": {
             "anyOf": [
               {
@@ -8800,7 +8936,8 @@
         "required": [
           "estimated_proposing_usd",
           "estimated_checking_usd",
-          "proposing_usd"
+          "proposing_usd",
+          "checking_usd"
         ],
         "title": "SuggestionCostOut",
         "type": "object"
@@ -9025,6 +9162,16 @@
             "title": "Changes",
             "type": "array"
           },
+          "check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionCheckOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "cost": {
             "$ref": "#/components/schemas/SuggestionCostOut"
           },
@@ -9142,6 +9289,7 @@
           "stale",
           "applied_by",
           "applied_at",
+          "check",
           "explanation",
           "model_provider",
           "model_name",
@@ -9237,6 +9385,16 @@
             "title": "Base Version Number",
             "type": "integer"
           },
+          "check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionCheckSummaryOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "cost": {
             "$ref": "#/components/schemas/SuggestionCostOut"
           },
@@ -9320,7 +9478,8 @@
           "finished_at",
           "stale",
           "applied_by",
-          "applied_at"
+          "applied_at",
+          "check"
         ],
         "title": "SuggestionSummaryOut",
         "type": "object"

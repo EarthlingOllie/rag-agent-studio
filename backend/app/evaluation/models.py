@@ -70,6 +70,8 @@ class RunKind(enum.StrEnum):
     AGENT = "agent"
     # Started by Rollout evaluation: the Live Version against its rollout side.
     ROLLOUT = "rollout"
+    # Started by a Suggestion run (spec 16): the Live Version against the Suggestion, its check.
+    SUGGESTION = "suggestion"
 
 
 class SideKind(enum.StrEnum):
@@ -78,6 +80,10 @@ class SideKind(enum.StrEnum):
     # The Live Version's AgentConfig answering with a new Instructions Version, not the one it
     # pins. Only Rollout evaluation creates one, never the general Run API.
     ROLLOUT = "rollout"
+    # The Live Version's AgentConfig with a Suggestion's changes, answering with the Instructions
+    # the Live Version pins. Only a Suggestion run's check creates one, never the general Run
+    # API; it is never a Version.
+    SUGGESTION = "suggestion"
 
 
 class ResultStatus(enum.StrEnum):
@@ -219,9 +225,10 @@ class EvaluationRun(IdMixin, Base):
 
 
 class EvaluationRunSide(IdMixin, Base):
-    """One side of a Run: the Draft (at a Draft revision), an Agent Version, or a rollout side
-    (an Agent Version's AgentConfig with other Instructions), with the effective AgentConfig and
-    the Project Instructions text it answered with."""
+    """One side of a Run: the Draft (at a Draft revision), an Agent Version, a rollout side (an
+    Agent Version's AgentConfig with other Instructions), or a suggestion side (an Agent
+    Version's AgentConfig with a Suggestion's changes), with the effective AgentConfig and the
+    Project Instructions text it answered with."""
 
     __tablename__ = "evaluation_run_sides"
 

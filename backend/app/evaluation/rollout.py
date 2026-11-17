@@ -137,7 +137,10 @@ async def start_rollout(
             raise RolloutInProgressError(found.agent.name) from None
         except ProviderCredentialGoneError:
             raise RolloutCredentialGoneError(found.agent.name) from None
-        started.append((await add_run(session, scope, plan, RunKind.ROLLOUT, now=now)).id)
+        run = await add_run(
+            session, scope, plan, RunKind.ROLLOUT, now=now, started_by=scope.member_id
+        )
+        started.append(run.id)
     await session.commit()
     return started
 
