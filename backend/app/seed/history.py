@@ -7,7 +7,8 @@ ratings) happened then. The story (``content``) is played day by day through the
 Editor and Owner publish, revert and roll out Instructions; Visitors open the widget, ask the
 Agents questions through the real runtime (answered by the demo provider's ``FunctionModel``),
 give thumbs and rate Conversations, with choices drawn from a fixed random seed and each
-Version's ``Reception``. What the database stamps itself (Conversations and Messages, and the
+Version's ``Reception``. The history ends with the nightly Purge of text older than the Retention
+Window. What the database stamps itself (Conversations and Messages, and the
 foundation's rows) is backfilled to the clock's time, the only direct writes. Finally the usage
 rollup runs for every historical day, as Beat would have.
 """
@@ -20,7 +21,7 @@ import uuid
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
-from typing import Any
+from typing import Any, cast
 
 from fastapi import FastAPI
 from sqlalchemy import select, update
@@ -33,7 +34,7 @@ from app.credentials.models import ProviderCredential
 from app.documents.models import Document, DocumentStatus
 from app.feedback.models import ConversationRating, ConversationRatingChange, MessageFeedback
 from app.projects.models import Project
-from app.seed import content, evaluation, live_evaluation
+from app.seed import content, evaluation, live_evaluation, suggestions
 from app.seed.client import SeedApi, SeedError, new_client
 from app.tags.models import Tag
 from app.tenancy.models import Organisation
@@ -103,6 +104,8 @@ class _Story:
     history: content.History
     # Each Agent's Live Version number, as the story moves it.
     live: dict[str, int]
+    # The UTC day HR helper v2 was published.
+    v2_published: date | None = None
 
     def agent_path(self, name: str, *rest: str) -> str:
         return self.owner.path("projects", self.project, "agents", self.agents[name]["id"], *rest)
@@ -135,8 +138,10 @@ class _Story:
             await self.publish_hr(self.owner, content.HR_V1)
         elif day == 17:
             await self.publish_hr(self.editor, content.HR_V2)
+            self.v2_published = self.clock.now().date()
         elif day == 10:
             await self.evaluate_v2()
+            await self.suggest_for_v2()
             reverted = await self.owner.call("POST", self.agent_path(content.HR_AGENT, "revert"))
             self.live[content.HR_AGENT] = reverted["number"]
         elif day == 6:
@@ -156,6 +161,16 @@ class _Story:
         await evaluation.build_set(self.owner, self.project, agent)
         sides = await evaluation.version_sides(self.owner, self.project, agent, 1, 2)
         await evaluation.run(self.owner, self.project, agent, sides)
+
+    async def suggest_for_v2(self) -> None:
+        """The Owner has a Suggestion made from v2's time as the Live Version, up to today."""
+        await suggestions.suggest(
+            self.owner,
+            self.project,
+            self.agents[content.HR_AGENT]["id"],
+            cast(date, self.v2_published),
+            self.clock.now().date(),
+        )
 
     async def _instructions_v2(self) -> None:
         path = self.owner.path("projects", self.project, "instructions")
@@ -345,5 +360,7 @@ async def generate(
             mailer=app.state.mailer,
             studio_url=str(app.state.settings.studio_url),
         )
+    # Then the nightly Purge, as Beat runs it after the rollup: the oldest replies lose their text.
+    await suggestions.purge(app, _at(today, time(0, 10)))
     async with app.state.sessionmaker() as session, session.begin():
         await _backfill_foundation(session, uuid.UUID(owner.organisation), start)

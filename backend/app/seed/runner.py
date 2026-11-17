@@ -28,7 +28,7 @@ from fastapi import FastAPI
 from sqlalchemy import select
 
 from app.credentials.registry import PROVIDERS, Provider
-from app.seed import content, live_evaluation
+from app.seed import content, live_evaluation, suggestions
 from app.seed.client import SeedApi, new_client
 from app.seed.client import SeedError as SeedError
 from app.seed.history import ShiftedClock, generate, history_start
@@ -361,6 +361,7 @@ async def seed(
             await _instructions(api, project)
             agents = await _agents(api, project, tags, origin)
             await live_evaluation.set_up(api, project, agents)
+            await suggestions.retention_window(api)
             if fresh:
                 await generate(app, api, clock, start, project, agents, history or content.HISTORY)
                 default_model = await _default_model(api, real)

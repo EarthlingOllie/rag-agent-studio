@@ -151,6 +151,16 @@ async def test_an_interviewer_sees_four_weeks_of_history_that_tells_the_v2_story
     # No Live score drop alert stands on v3: it has too few Live Verdicts to compare.
     assert hr["live_score_drop_alert"] is False
 
+    # The Suggestion made from v2 reads its 50 most recent pieces of evidence: the oldest of its
+    # replies were purged since, the rest weren't.
+    agent = ("projects", project, "agents", hr["id"])
+    (listed,) = await get(owner, *agent, "suggestions")
+    suggestion = await get(owner, *agent, "suggestions", listed["id"])
+    replies = [e for e in suggestion["evidence"] if e["message_id"] is not None]
+    assert {e["text_purged"] for e in replies} == {True, False}
+    assert suggestion["check"]["state"] in ("clear", "regressions")
+    assert suggestion["gaps"]
+
     faq = agents["Product FAQ"]
     faq_metrics = await get(owner, "projects", project, "agents", faq["id"], "metrics")
     (faq_v1,) = faq_metrics["versions"]
@@ -357,7 +367,8 @@ async def test_the_hr_helper_has_an_evaluation_set_and_two_runs_that_explain_the
                 downvoted.add(asked["content"])
     assert {c["question"] for c in cases if c["source"] == "from_message"} <= downvoted
 
-    runs = await get(owner, *evaluation, "runs")
+    # The Runs the Agent started; the Suggestion's check is a Run of its own.
+    runs = [run for run in await get(owner, *evaluation, "runs") if run["kind"] == "agent"]
     assert [run["status"] for run in runs] == ["completed", "completed"]
     draft_run, v2_run = runs
     assert v2_run["judge_provider"] == draft_run["judge_provider"] == "demo"
@@ -482,11 +493,13 @@ async def test_the_hr_helpers_seeded_replies_have_live_verdicts_and_v2_scores_lo
         replied = datetime.fromisoformat(verdict["replied_at"])
         assert abs(judged - replied) < timedelta(minutes=5)
         assert judged.date() < datetime.now(UTC).date()
-    # v2 cited nothing, so every one of its replies failed grounding, with the judge's reason.
+    # v2 cited nothing, so every one of its replies failed grounding, with the judge's reason
+    # unless the Purge has cleared it with the reply's text since; the outcome stays.
     for verdict in by_version[2]:
         assert verdict["grounded"]["outcome"] == "fail"
-        assert verdict["grounded"]["reason"]
+        assert bool(verdict["grounded"]["reason"]) == (verdict["purged_at"] is None)
         assert verdict["passed"] is False
+    assert any(v["purged_at"] is None for v in by_version[2])
     assert any(v["passed"] for v in by_version[1])
     # Only the HR helper is sampled.
     assert not await live_verdicts_of(owner, project, agents["Product FAQ"])
@@ -543,3 +556,110 @@ async def test_the_hr_helpers_seeded_replies_have_live_verdicts_and_v2_scores_lo
     # No Live score drop alert is faked on the current Live Version, v3.
     assert hr["live_version"]["number"] == 3
     assert hr["live_score_drop_alert"] is False
+
+
+async def test_the_hr_helper_has_a_stale_suggestion_with_its_check_a_gap_and_purged_evidence(
+    app: FastAPI, new_client: ClientFactory
+) -> None:
+    """Spec 16's demo: on the morning of the revert the Owner had a Suggestion made from v2's
+    failures, which asks for citations, names a Knowledge Base gap and was checked against the
+    Evaluation Set. v1 replaced v2, so it reads as stale; the Organisation keeps Message text for
+    two weeks, so its oldest evidence reads "Text purged" while the change and its explanation
+    stay."""
+    await erase_demo(app)
+    await seed(app, ASSETS, history=LIGHT)
+
+    owner = await signed_in(new_client, content.OWNER)
+    organisation = await owner.client.get(f"/api/organisations/{owner.organisation_id}")
+    assert organisation.json()["retention_days"] == 14
+    project, agents = await demo_agents(owner)
+    hr = agents["HR helper"]
+    agent = ("projects", project, "agents", hr["id"])
+    (listed,) = await get(owner, *agent, "suggestions")
+    assert listed["status"] == "completed"
+    assert listed["outcome"] == "changes"
+    assert listed["base_version_number"] == 2
+    assert listed["stale"] is True
+    assert listed["applied_by"] is None
+
+    # Made from v2's whole time as the Live Version, under the history's clock, just before the
+    # revert.
+    live = await get(owner, *agent, "live-history")
+    published_v2 = datetime.fromisoformat(
+        next(e for e in live if e["to_version"]["number"] == 2)["occurred_at"]
+    )
+    reverted = datetime.fromisoformat(
+        next(e for e in live if e["action"] == "revert")["occurred_at"]
+    )
+    assert listed["range_start"] == str(published_v2.date())
+    assert listed["range_end"] == str(reverted.date())
+    assert published_v2 < datetime.fromisoformat(listed["created_at"])
+    assert datetime.fromisoformat(listed["finished_at"]) <= reverted
+
+    suggestion = await get(owner, *agent, "suggestions", listed["id"])
+    (change,) = suggestion["changes"]
+    assert change["path"] == "behaviour.system_prompt"
+    assert change["base_value"] == content.HR_V2.system_prompt
+    assert change["suggested_value"] == (
+        "Answer staff questions in one short sentence. Don't quote the handbook.\n"
+        "Always cite the passage you used."
+    )
+    assert change["explanation"]
+    assert change["evidence_ids"]
+    assert suggestion["gaps"]
+    assert all(gap["topic"] and gap["evidence_ids"] for gap in suggestion["gaps"])
+
+    # Its check: v2 against the Suggestion on the Evaluation Set, a Run of its own.
+    check = suggestion["check"]
+    assert check["state"] in ("clear", "regressions")
+    assert check["live_score"] is not None
+    assert check["suggestion_score"] is not None
+    run = await get(owner, *agent, "evaluation", "runs", check["evaluation_run_id"])
+    assert run["kind"] == "suggestion"
+    assert run["status"] == "completed"
+    assert [(s["kind"], s["version_number"]) for s in run["sides"]] == [
+        ("version", 2),
+        ("suggestion", 2),
+    ]
+    assert datetime.fromisoformat(run["finished_at"]) <= reverted
+
+    # The evidence: v2's replies and the Evaluation Cases v2 failed in the Run before the revert.
+    # Replies older than the Retention Window were purged since; their dates and Live Verdicts
+    # stay.
+    evidence = suggestion["evidence"]
+    replies = [e for e in evidence if e["message_id"] is not None]
+    cases = [e for e in evidence if e["run_case_id"] is not None]
+    assert cases
+    assert all(e["kind"] == "evaluation_case" and not e["case_deleted"] for e in cases)
+    cutoff = datetime.now(UTC) - timedelta(days=14)
+    purged = [e for e in replies if e["text_purged"]]
+    kept = [e for e in replies if not e["text_purged"]]
+    assert purged
+    assert kept
+    assert all(datetime.fromisoformat(e["occurred_at"]) < cutoff for e in purged)
+    assert all(datetime.fromisoformat(e["occurred_at"]) > cutoff for e in kept)
+    assert {e["live_verdict"] for e in purged} <= {"fail", None}
+    assert "fail" in {e["live_verdict"] for e in replies}
+    # The Conversations viewer has the purged reply without its text.
+    first = purged[0]
+    conversation = await get(owner, "projects", project, "conversations", first["conversation_id"])
+    (reply,) = [m for m in conversation["messages"] if m["id"] == first["message_id"]]
+    assert reply["purged_at"] is not None
+    assert reply["content"] == ""
+
+
+async def test_the_seed_stops_when_the_suggestion_run_does_not_complete(
+    app: FastAPI, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await erase_demo(app)
+
+    async def stalled(*_: object) -> None:
+        """A Suggestion run job that never picks the run up."""
+
+    monkeypatch.setattr("app.suggestions.tasks.run_suggestion", stalled)
+
+    with pytest.raises(SeedError, match="HR helper's Suggestion run ended queued"):
+        await seed(app, ASSETS, history=LIGHT)
+
+    assert isinstance(app.state.clock, SystemClock)
+    await erase_demo(app)

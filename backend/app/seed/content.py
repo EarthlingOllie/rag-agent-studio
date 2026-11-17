@@ -166,7 +166,8 @@ THEME = ThemeSettings(
 # through the API under a clock set in the past. Days count back from today (day 28 is four weeks
 # ago): on day 28 the Organisation is set up, Instructions v1 published, and the Agents published;
 # on day 17 the Editor publishes HR helper v2 (terse, without citations); on day 10 the Owner
-# builds the HR helper's Evaluation Set, runs v1 against v2, and reverts it; on day 6
+# builds the HR helper's Evaluation Set, runs v1 against v2, has a Suggestion made from v2's
+# failures, and reverts it; on day 6
 # Instructions v2 is published and rolled out to the Low-budget helper, leaving the Product FAQ
 # behind; on day 3 the Editor publishes HR helper v3, and on day 2 runs the Draft against it.
 HISTORY_DAYS = 28
@@ -321,6 +322,11 @@ HISTORY = History()
 # never spent.
 EVALUATION_BUDGET_USD = Decimal("20.00")
 LIVE_SAMPLE_RATES = {HR_AGENT: 60}
+
+# Suggestions (spec 16): the demo Organisation keeps Message text for two weeks (its Retention
+# Window), so the Purge the history ends with clears the oldest replies v2's Suggestion points at,
+# and they read "Text purged" while its change and explanation stay.
+RETENTION_DAYS = 14
 
 
 @dataclass(frozen=True)
