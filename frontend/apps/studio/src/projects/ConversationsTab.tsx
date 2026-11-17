@@ -634,7 +634,8 @@ function MessageItem({
     );
   }
   return (
-    <li aria-label={agentName} className="flex gap-3">
+    // Its id is the anchor a Suggestion's evidence links to.
+    <li id={`message-${message.id}`} aria-label={agentName} className="flex gap-3">
       <span
         aria-hidden="true"
         className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent-ink"

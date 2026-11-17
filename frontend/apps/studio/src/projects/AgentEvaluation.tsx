@@ -49,6 +49,7 @@ import { dollars } from "./format";
 import { useInstructionsVersions } from "./instructions";
 import { type AgentPath, CaseEditor } from "./EvaluationCaseEditor";
 import { ExpectationSummary, StaleBadge } from "./EvaluationExpectations";
+import { AgentSuggestions } from "./AgentSuggestions";
 import { TraceBody, TraceFold } from "./Trace";
 
 const OUTCOME_BADGES = { pass: "evaluationPass", fail: "evaluationFail", error: "evaluationError" } as const;
@@ -820,7 +821,7 @@ function CopyDialog({ agent, organisationId, onClose }: { agent: Agent; organisa
  * The Evaluation view: the Agent's Evaluation Set with its case editor and Evaluate, then its Runs
  * and the chosen Run's answers with their Verdicts and Traces. An archived Agent's set is read only.
  */
-export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+function EvaluationSetAndRuns({ agent, organisationId }: { agent: Agent; organisationId: string }) {
   const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
   const setHeadingId = useId();
   const runsHeadingId = useId();
@@ -974,6 +975,29 @@ export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organ
       >
         “{deleting.question}” leaves the Evaluation Set. Past Runs keep their copy of it.
       </ConfirmDialog>
+      )}
+    </div>
+  );
+}
+
+const EVALUATION_TABS = [
+  { value: "set", label: "Evaluation Set and Runs" },
+  { value: "suggestions", label: "Suggestions" },
+] as const;
+
+/**
+ * The Agent's Evaluation view: its Evaluation Set and Runs, and beside them its Suggestions, where
+ * failures turn into proposed changes.
+ */
+export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+  const [tab, setTab] = useState<(typeof EVALUATION_TABS)[number]["value"]>("set");
+  return (
+    <div className="flex flex-col gap-6">
+      <Segmented label="Evaluation view" options={EVALUATION_TABS} value={tab} onChange={setTab} />
+      {tab === "set" ? (
+        <EvaluationSetAndRuns agent={agent} organisationId={organisationId} />
+      ) : (
+        <AgentSuggestions agent={agent} organisationId={organisationId} />
       )}
     </div>
   );

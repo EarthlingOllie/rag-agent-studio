@@ -37,6 +37,7 @@ install_evaluation_ports(
         guardrails=build_pipeline(settings),
         embedders=current_ports().embedders,
         judge_timeout_s=settings.evaluation_judge_timeout_s,
+        suggestion_timeout_s=settings.suggestion_timeout_s,
         clock=SystemClock,
         mailer=build_mailer(settings),
         studio_url=str(settings.studio_url),

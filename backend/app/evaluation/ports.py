@@ -32,6 +32,8 @@ class EvaluationPorts:
     # Emails Owners when Live Verdicts spend the month's Evaluation budget, linking to the Studio.
     mailer: Mailer
     studio_url: str
+    # How long a Suggestion run's one proposing call may take (spec 16).
+    suggestion_timeout_s: float = 120
 
 
 class EvaluationPortsNotInstalledError(RuntimeError):
