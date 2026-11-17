@@ -810,7 +810,7 @@ One run of an Agent's Evaluation Set comparing two sides, the first and the seco
 _Avoid_: Eval, test run, benchmark run
 
 **Run side**:
-One of an Evaluation Run's sides, the first or the second: the Draft at its Draft revision, one of the Agent's Versions, or (only in a Suggestion's check) the Suggestion, which is the Live Version's configuration with the Suggestion's changes and is never Published or listed in Live History, with the Project Instructions it answers with. The Run keeps a copy of each side's effective AgentConfig and Instructions text, and of each Evaluation Case's question and expectations, as they were when it started, so editing the Draft or the Evaluation Set later never rewrites a past Run. While the Draft runs alone it is the first side.
+One of an Evaluation Run's sides, the first or the second: the Draft at its Draft revision, one of the Agent's Versions, or (only in a Suggestion's check) the Suggestion, which is the Live Version's configuration with the Suggestion's changes, answers with the Instructions the Live Version pins and is never Published or listed in Live History, with the Project Instructions it answers with. The Run keeps a copy of each side's effective AgentConfig and Instructions text, and of each Evaluation Case's question and expectations, as they were when it started, so editing the Draft or the Evaluation Set later never rewrites a past Run. While the Draft runs alone it is the first side.
 _Avoid_: Arm, variant, candidate
 
 **Verdict**:
@@ -876,6 +876,10 @@ _Avoid_: Agent (that is the assistant being changed), copilot, optimiser, auto-t
 **Suggestion run**:
 An Editor's request for a Suggestion for one Agent over a range of UTC days (the last 14 by default), after seeing how much evidence the range holds and its estimated Cost. It gathers the evidence, has the Evaluation Model propose the Suggestion and, when the Suggestion changes the configuration and the Agent has an Evaluation Set, checks it against the Live Version in an Evaluation Run. An Agent has at most one in progress, which an Editor can cancel; its Cost counts in Organisation cost, never against the Evaluation budget.
 _Avoid_: Tuning run, optimisation
+
+**Suggestion's check**:
+The Evaluation Run a Suggestion run starts when its Suggestion changes the configuration and the Agent has an Evaluation Set: the Live Version the Suggestion was made from against a **suggestion side**, that Version's configuration with the suggested changes, answering with the Instructions it pins. A suggestion side is created only this way, never when an Editor starts a Run, and it isn't the Draft, so the check never counts in the Evaluation summary; it is kept in the Agent's Run history, labelled as a Suggestion's check. The Suggestion shows both Evaluation scores and each Regression with its Verdicts' reasons; Regressions or a failed check are a warning, never a block. A Suggestion with a change on an Agent without an Evaluation Set is "Not checked", and one with no configuration change is never checked. Its actual Cost is frozen beside the proposing Cost, and cancelling the Suggestion cancels it.
+_Avoid_: Suggestion test, validation run
 
 **Knowledge Base gap**:
 A topic a Suggestion found that failed replies asked about and no Chunk covered, listed with its evidence. No configuration change can fix it, so it is never applied; it points the Editor at the Knowledge Base.
