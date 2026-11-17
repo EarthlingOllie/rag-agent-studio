@@ -23,6 +23,7 @@ import {
   OrganisationSettingsLayout,
   ThemeSettingsPage,
 } from "./settings/OrganisationSettings";
+import { evaluationSearch } from "./projects/AgentEvaluation";
 import { AgentEmbedView, AgentEvaluationView, AgentPage, AgentPlaygroundView, AgentVersionsView } from "./projects/AgentPage";
 import { AgentsTab } from "./projects/AgentsTab";
 import { AnalyticsTab } from "./projects/AnalyticsTab";
@@ -130,6 +131,8 @@ const agentVersionsRoute = createRoute({ getParentRoute: () => agentRoute, path:
 const agentEvaluationRoute = createRoute({
   getParentRoute: () => agentRoute,
   path: "/evaluation",
+  // A Suggestion's evidence opens a case's result in Run detail, as `?run=&case=`.
+  validateSearch: evaluationSearch,
   component: AgentEvaluationView,
 });
 const agentEmbedRoute = createRoute({ getParentRoute: () => agentRoute, path: "/embed", component: AgentEmbedView });

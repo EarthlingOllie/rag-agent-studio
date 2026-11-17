@@ -76,7 +76,7 @@ async def failed_live_verdicts(
 
 @dataclass(frozen=True)
 class FailedReplies:
-    # The most recent first, at most the limit asked for.
+    # The most recent first, at most the limit asked for (all of them without one).
     replies: list[tuple[Message, LiveVerdict]]
     # How many there are in all.
     total: int
@@ -88,7 +88,7 @@ async def failed_replies(
     start: datetime,
     end: datetime,
     *,
-    limit: int,
+    limit: int | None = None,
 ) -> FailedReplies:
     """The Agent Version's Visitor replies given from ``start`` up to ``end`` whose Live Verdict
     was judged and failed, leaving out Purged ones."""

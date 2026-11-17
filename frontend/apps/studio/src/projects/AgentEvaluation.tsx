@@ -1,4 +1,4 @@
-import { type SubmitEvent, useId, useState } from "react";
+import { type SubmitEvent, useEffect, useId, useRef, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import {
@@ -316,10 +316,16 @@ function changesSummary(cases: { change: string | null }[]): string {
  * A Run: its status and progress while it runs (with Cancel), then each side's Evaluation score and
  * each case, Regressions first, then improvements, then the rest, with every side's answers.
  */
-function RunDetail({ path, runId, readOnly }: { path: AgentPath; runId: string; readOnly: boolean }) {
+function RunDetail({ path, runId, readOnly, focusCase }: { path: AgentPath; runId: string; readOnly: boolean; focusCase: string | undefined }) {
   const headingId = useId();
+  const focused = useRef<HTMLLIElement>(null);
   const results = useEvaluationRunResults(path, runId);
   const cancel = useCancelEvaluationRun(path);
+  const loaded = results.data !== undefined;
+  // A link to a case's result scrolls it into view once the Run has loaded.
+  useEffect(() => {
+    focused.current?.scrollIntoView({ block: "center" });
+  }, [loaded]);
   if (results.isError) return <Notice tone="error">The Run could not be loaded. Try again shortly.</Notice>;
   if (results.data === undefined) return <Skeleton label="Loading the Run" />;
   const { run, cases } = results.data;
@@ -368,7 +374,12 @@ function RunDetail({ path, runId, readOnly }: { path: AgentPath; runId: string; 
       {!inProgress(run) && (
         <ol aria-label="Cases" className="flex flex-col gap-4">
           {cases.map((evaluationCase, index) => (
-            <li key={index} className={`${surface.panel} flex flex-col gap-3`}>
+            <li
+              key={index}
+              ref={evaluationCase.id === focusCase ? focused : undefined}
+              aria-current={evaluationCase.id === focusCase ? "true" : undefined}
+              className={`${surface.panel} flex flex-col gap-3 ${evaluationCase.id === focusCase ? "ring-2 ring-accent" : ""}`}
+            >
               <h4 className="font-medium text-ink">{evaluationCase.question}</h4>
               {evaluationCase.stale_expectation && (
                 <p className="inline-flex flex-wrap items-center gap-1.5 text-sm text-ink-2">
@@ -821,7 +832,7 @@ function CopyDialog({ agent, organisationId, onClose }: { agent: Agent; organisa
  * The Evaluation view: the Agent's Evaluation Set with its case editor and Evaluate, then its Runs
  * and the chosen Run's answers with their Verdicts and Traces. An archived Agent's set is read only.
  */
-function EvaluationSetAndRuns({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+function EvaluationSetAndRuns({ agent, organisationId, focus }: { agent: Agent; organisationId: string; focus: EvaluationFocus }) {
   const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
   const setHeadingId = useId();
   const runsHeadingId = useId();
@@ -835,7 +846,7 @@ function EvaluationSetAndRuns({ agent, organisationId }: { agent: Agent; organis
   const [copying, setCopying] = useState(false);
   const [editing, setEditing] = useState<EvaluationCase | "new" | null>(null);
   const [deleting, setDeleting] = useState<EvaluationCase | null>(null);
-  const [chosen, setChosen] = useState<string | null>(null);
+  const [chosen, setChosen] = useState<string | null>(focus.run ?? null);
   const shownRun = chosen ?? runs.data?.[0]?.id ?? null;
   const running = (runs.data ?? []).some(inProgress);
   const held = allCases.data?.length;
@@ -926,7 +937,9 @@ function EvaluationSetAndRuns({ agent, organisationId }: { agent: Agent; organis
         {runs.isError && <Notice tone="error">The Runs could not be loaded. Try again shortly.</Notice>}
         {runs.data && runs.data.length === 0 && <p className={text.muted}>No Runs yet. Evaluate to answer the set with the Draft.</p>}
         {runs.data && runs.data.length > 0 && <RunList runs={runs.data} chosen={shownRun} onChoose={setChosen} />}
-        {shownRun !== null && <RunDetail key={shownRun} path={path} runId={shownRun} readOnly={archived} />}
+        {shownRun !== null && (
+          <RunDetail key={shownRun} path={path} runId={shownRun} readOnly={archived} focusCase={shownRun === focus.run ? focus.case : undefined} />
+        )}
       </section>
       {evaluating && (
         <EvaluateDialog
@@ -980,6 +993,17 @@ function EvaluationSetAndRuns({ agent, organisationId }: { agent: Agent; organis
   );
 }
 
+/** Where a link opens the Evaluation view: a Run, and a case of it as the Run copied it. */
+export type EvaluationFocus = { run?: string; case?: string };
+
+/** The Evaluation view's search: `?run=` and `?case=`, each kept only when it is text. */
+export function evaluationSearch(search: Record<string, unknown>): EvaluationFocus {
+  const focus: EvaluationFocus = {};
+  if (typeof search.run === "string") focus.run = search.run;
+  if (typeof search.case === "string") focus.case = search.case;
+  return focus;
+}
+
 const EVALUATION_TABS = [
   { value: "set", label: "Evaluation Set and Runs" },
   { value: "suggestions", label: "Suggestions" },
@@ -989,13 +1013,13 @@ const EVALUATION_TABS = [
  * The Agent's Evaluation view: its Evaluation Set and Runs, and beside them its Suggestions, where
  * failures turn into proposed changes.
  */
-export function AgentEvaluation({ agent, organisationId }: { agent: Agent; organisationId: string }) {
+export function AgentEvaluation({ agent, organisationId, focus }: { agent: Agent; organisationId: string; focus: EvaluationFocus }) {
   const [tab, setTab] = useState<(typeof EVALUATION_TABS)[number]["value"]>("set");
   return (
     <div className="flex flex-col gap-6">
       <Segmented label="Evaluation view" options={EVALUATION_TABS} value={tab} onChange={setTab} />
       {tab === "set" ? (
-        <EvaluationSetAndRuns agent={agent} organisationId={organisationId} />
+        <EvaluationSetAndRuns agent={agent} organisationId={organisationId} focus={focus} />
       ) : (
         <AgentSuggestions agent={agent} organisationId={organisationId} />
       )}

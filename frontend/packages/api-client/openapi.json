@@ -3573,17 +3573,43 @@
       },
       "EvidenceKind": {
         "enum": [
-          "live_verdict"
+          "live_verdict",
+          "thumbs_down",
+          "low_rating",
+          "evaluation_case"
         ],
         "title": "EvidenceKind",
         "type": "string"
       },
       "EvidenceOut": {
         "properties": {
+          "case_deleted": {
+            "title": "Case Deleted",
+            "type": "boolean"
+          },
           "conversation_id": {
-            "format": "uuid",
-            "title": "Conversation Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Id"
+          },
+          "evaluation_run_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Run Id"
           },
           "id": {
             "format": "uuid",
@@ -3592,6 +3618,13 @@
           },
           "kind": {
             "$ref": "#/components/schemas/EvidenceKind"
+          },
+          "kinds": {
+            "items": {
+              "$ref": "#/components/schemas/EvidenceKind"
+            },
+            "title": "Kinds",
+            "type": "array"
           },
           "label": {
             "title": "Label",
@@ -3613,14 +3646,33 @@
             "title": "Live Verdict"
           },
           "message_id": {
-            "format": "uuid",
-            "title": "Message Id",
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Id"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
             "type": "string"
           },
-          "replied_at": {
-            "format": "date-time",
-            "title": "Replied At",
-            "type": "string"
+          "run_case_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Case Id"
           },
           "text_purged": {
             "title": "Text Purged",
@@ -3631,11 +3683,15 @@
           "id",
           "label",
           "kind",
+          "kinds",
+          "occurred_at",
           "conversation_id",
           "message_id",
-          "replied_at",
           "live_verdict",
-          "text_purged"
+          "text_purged",
+          "evaluation_run_id",
+          "run_case_id",
+          "case_deleted"
         ],
         "title": "EvidenceOut",
         "type": "object"
@@ -4793,6 +4849,39 @@
         "type": "object"
       },
       "JsonValue": {},
+      "KnowledgeBaseGapOut": {
+        "properties": {
+          "evidence_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Evidence Ids",
+            "type": "array"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "topic": {
+            "title": "Topic",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "topic",
+          "explanation",
+          "evidence_ids"
+        ],
+        "title": "KnowledgeBaseGapOut",
+        "type": "object"
+      },
       "LatencyOut": {
         "properties": {
           "first_token_p95_ms": {
@@ -7447,6 +7536,11 @@
             "title": "Expected Sources",
             "type": "array"
           },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
           "question": {
             "title": "Question",
             "type": "string"
@@ -7486,6 +7580,7 @@
           }
         },
         "required": [
+          "id",
           "case_id",
           "question",
           "reference_answer",
@@ -8466,6 +8561,13 @@
             ],
             "title": "Finished At"
           },
+          "gaps": {
+            "items": {
+              "$ref": "#/components/schemas/KnowledgeBaseGapOut"
+            },
+            "title": "Gaps",
+            "type": "array"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -8519,6 +8621,7 @@
           "model_provider",
           "model_name",
           "changes",
+          "gaps",
           "evidence"
         ],
         "title": "SuggestionOut",

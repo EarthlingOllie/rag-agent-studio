@@ -13,8 +13,9 @@ import uuid
 from collections.abc import Iterable
 from dataclasses import dataclass, replace
 from datetime import datetime
+from typing import cast
 
-from sqlalchemy import delete, select
+from sqlalchemy import ColumnElement, delete, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -213,3 +214,58 @@ async def rating_changes(
             .order_by(ConversationRatingChange.seq)
         )
     )
+
+
+# Reading for other modules: a Suggestion run's evidence (spec 16)
+
+# The current Conversation Ratings that make a Conversation's replies a Suggestion's evidence.
+LOW_RATINGS = (1, 2)
+
+
+def _visitor_replies(
+    agent_version_id: uuid.UUID, start: datetime, end: datetime
+) -> tuple[ColumnElement[bool], ...]:
+    """The Agent Version's Visitor replies given from ``start`` up to ``end``, Purged ones
+    left out."""
+    return (
+        Message.agent_version_id == agent_version_id,
+        Message.role == MessageRole.ASSISTANT,
+        Message.created_at >= start,
+        Message.created_at < end,
+        Message.purged_at.is_(None),
+        Conversation.is_playground.is_(False),
+    )
+
+
+async def thumbs_down_replies(
+    session: AsyncSession, agent_version_id: uuid.UUID, start: datetime, end: datetime
+) -> list[tuple[Message, str | None]]:
+    """The Agent Version's Visitor replies given from ``start`` up to ``end`` with a thumbs-down,
+    Purged ones left out, each with its comment."""
+    rows = await session.execute(
+        select(Message, MessageFeedback.comment)
+        .join(Conversation, Conversation.id == Message.conversation_id)
+        .join(MessageFeedback, MessageFeedback.message_id == Message.id)
+        .where(
+            *_visitor_replies(agent_version_id, start, end),
+            MessageFeedback.rating == Thumb.DOWN,
+        )
+    )
+    return [(message, comment) for message, comment in rows.all()]
+
+
+async def low_rated_replies(
+    session: AsyncSession, agent_version_id: uuid.UUID, start: datetime, end: datetime
+) -> list[tuple[Message, int]]:
+    """The Agent Version's Visitor replies given from ``start`` up to ``end`` in a Conversation
+    whose current Conversation Rating is 1 or 2, Purged ones left out, each with the rating."""
+    rows = await session.execute(
+        select(Message, ConversationRating.score)
+        .join(Conversation, Conversation.id == Message.conversation_id)
+        .join(ConversationRating, ConversationRating.conversation_id == Conversation.id)
+        .where(
+            *_visitor_replies(agent_version_id, start, end),
+            ConversationRating.score.in_(LOW_RATINGS),
+        )
+    )
+    return [(message, cast(int, score)) for message, score in rows.all()]

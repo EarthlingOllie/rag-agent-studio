@@ -3,20 +3,32 @@ import userEvent from "@testing-library/user-event";
 
 import { fakeAgentsApi, hrHelper, oldHelper } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
-import { fakeEvaluationApi } from "../test/evaluation";
+import { failedResult, fakeEvaluationApi, leaveCase, parkingCase, passed, results, run, runCaseId } from "../test/evaluation";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
-import { citingSuggestion, failedReply, fakeSuggestionsApi, suggestion } from "../test/suggestions";
+import {
+  citingSuggestion,
+  deletedCase,
+  failedCase,
+  failedReply,
+  fakeSuggestionsApi,
+  retrievalSuggestion,
+  suggestion,
+} from "../test/suggestions";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
 const publishedHelper: typeof hrHelper = { ...hrHelper, live_version: { id: "a1e00000-0000-4000-8000-000000000001", number: 1 } };
 const evaluationPage = (agentId: string) => `/organisations/${organisationId}/projects/${hrProject.id}/agents/${agentId}/evaluation`;
 
-function setUp(options: Parameters<typeof fakeSuggestionsApi>[0] = {}, agents = [publishedHelper]) {
+function setUp(
+  options: Parameters<typeof fakeSuggestionsApi>[0] = {},
+  agents = [publishedHelper],
+  evaluation: Parameters<typeof fakeEvaluationApi>[0] = {},
+) {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
   fakeAgentsApi({ agents });
-  fakeEvaluationApi();
+  fakeEvaluationApi(evaluation);
   return fakeSuggestionsApi(options);
 }
 
@@ -54,15 +66,80 @@ test("the Evaluation view's Suggestions tab lists runs, and a Suggestion shows i
   const chip = within(cited).getByRole("link", { name: "E1 · 2026-11-14 · Live Verdict failed" });
   expect(chip).toHaveAttribute(
     "href",
-    `/organisations/${organisationId}/projects/${hrProject.id}/agents/${publishedHelper.id}/conversations/${failedReply.conversation_id}#message-${failedReply.message_id}`,
+    `/organisations/${organisationId}/projects/${hrProject.id}/agents/${publishedHelper.id}/conversations/${failedReply.conversation_id as string}#message-${failedReply.message_id as string}`,
   );
   // All the evidence, purged text said so.
-  expect(detail).toHaveTextContent("2 of 3 failed replies in the range");
+  expect(detail).toHaveTextContent("2 of 3 pieces of evidence in the range");
   const evidence = within(detail).getByRole("list", { name: "Evidence" });
   expect(within(evidence).getAllByRole("link").map((link) => link.textContent)).toEqual([
     "E1 · 2026-11-14 · Live Verdict failed",
-    "E2 · 2026-11-03 · Text purged",
+    "E2 · 2026-11-03 · Text purged · Live Verdict failed",
   ]);
+});
+
+test("a retrieval change and a Knowledge Base gap show with every kind of evidence, cases opening in Run detail", async () => {
+  const user = userEvent.setup();
+  setUp({ suggestions: [[retrievalSuggestion]] });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+
+  const detail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-16 09:00 UTC" });
+  const changes = within(detail).getByRole("list", { name: "Suggested changes" });
+  expect(within(changes).getByRole("heading", { level: 4, name: "Minimum Score" })).toBeInTheDocument();
+  const diff = within(changes).getByRole("table", { name: "Suggested change to the minimum score" });
+  expect(within(diff).getByText("0.45").closest("tr")).toHaveTextContent("Added");
+  expect(within(diff).getByText("0.5").closest("tr")).toHaveTextContent("Removed");
+  // A reply with every reason, and the case result it was checked against.
+  const cited = within(changes).getByRole("list", { name: "Evidence for the minimum score change" });
+  expect(within(cited).getAllByRole("link").map((link) => link.textContent)).toEqual([
+    "E3 · 2026-11-12 · Live Verdict failed · Thumbs-down · Rated 1 or 2",
+    "E4 · 2026-11-10 · Evaluation Case failed",
+  ]);
+  expect(within(cited).getByRole("link", { name: "E4 · 2026-11-10 · Evaluation Case failed" })).toHaveAttribute(
+    "href",
+    `${evaluationPage(publishedHelper.id)}?run=${failedCase.evaluation_run_id ?? ""}&case=${failedCase.run_case_id ?? ""}`,
+  );
+  // The gaps, never a change, with the Knowledge Base a link away.
+  const gaps = within(detail).getByRole("list", { name: "Knowledge Base gaps" });
+  expect(within(gaps).getByRole("heading", { level: 5, name: "Parental leave" })).toBeInTheDocument();
+  expect(gaps).toHaveTextContent("Visitors asked about parental leave and no Chunk covered it.");
+  expect(within(gaps).getByRole("link", { name: "E5 · 2026-11-10 · Case deleted" })).toBeInTheDocument();
+  expect(within(detail).getByRole("link", { name: "Open the Knowledge Base" })).toHaveAttribute(
+    "href",
+    `/organisations/${organisationId}/projects/${hrProject.id}`,
+  );
+});
+
+const unjudgedReply: typeof failedReply = {
+  ...failedReply,
+  id: "5e000000-0000-4000-8000-000000000006",
+  label: "E6",
+  kind: "thumbs_down",
+  kinds: ["thumbs_down"],
+  live_verdict: null,
+};
+
+test("a Suggestion with only Knowledge Base gaps reads as no configuration change", async () => {
+  const user = userEvent.setup();
+  const gapsOnly = suggestion("5a000000-0000-4000-8000-000000000005", "completed", {
+    outcome: "gaps_only",
+    explanation: "The knowledge base lacks parental leave.",
+    evidence_total: 1,
+    gaps: retrievalSuggestion.gaps,
+    evidence: [deletedCase, unjudgedReply],
+  });
+  setUp({ suggestions: [[gapsOnly]] });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+
+  const runs = await within(tab).findByRole("list", { name: "Suggestion runs" });
+  expect(within(runs).getByRole("listitem")).toHaveTextContent("No configuration change");
+  const detail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-16 09:00 UTC" });
+  expect(within(detail).getByText("No configuration change.")).toBeInTheDocument();
+  expect(within(detail).queryByRole("list", { name: "Suggested changes" })).not.toBeInTheDocument();
+  expect(within(detail).getByRole("list", { name: "Knowledge Base gaps" })).toBeInTheDocument();
+  // A reply that was never judged says only why it counts.
+  expect(within(detail).getByRole("link", { name: "E6 · 2026-11-14 · Thumbs-down" })).toBeInTheDocument();
 });
 
 test("choosing another Suggestion shows it; a failed run says why and a no-change one says so", async () => {
@@ -198,4 +275,26 @@ test("a refusal without a reason says to try again", async () => {
   await user.click(within(dialog).getByRole("button", { name: "Start Suggestion run" }));
 
   expect(await within(dialog).findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
+});
+
+test("an Evaluation Case's evidence opens its result in Run detail", async () => {
+  const runId = "r1000000-0000-4000-8000-000000000002";
+  const checked = results(run(runId, "completed", 2, 2, { created_at: "2026-11-10T11:00:00Z" }), [
+    [leaveCase, passed],
+    [parkingCase, failedResult],
+  ]);
+  const newer = results(run("r1000000-0000-4000-8000-000000000003", "completed", 1, 1), [[leaveCase, passed]]);
+  setUp({}, [publishedHelper], { cases: [leaveCase, parkingCase], runs: [newer, checked] });
+
+  renderStudio(`${evaluationPage(publishedHelper.id)}?run=${runId}&case=${runCaseId(parkingCase)}`);
+
+  // The Run it names is shown, not the newest, with the case's result marked.
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-10 11:00 UTC" }, { timeout: 5000 });
+  const cases = within(detail).getByRole("list", { name: "Cases" });
+  const marked = within(cases)
+    .getAllByRole("listitem")
+    .filter((item) => item.getAttribute("aria-current") === "true");
+  expect(marked).toHaveLength(1);
+  expect(marked[0]).toHaveTextContent(parkingCase.question);
+  expect(screen.getByRole("button", { name: "Run of 2026-11-10 11:00 UTC" })).toHaveAttribute("aria-current", "true");
 });

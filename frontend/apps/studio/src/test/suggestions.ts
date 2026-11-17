@@ -10,11 +10,15 @@ export const failedReply: Evidence = {
   id: "5e000000-0000-4000-8000-000000000001",
   label: "E1",
   kind: "live_verdict",
+  kinds: ["live_verdict"],
+  occurred_at: "2026-11-14T10:00:00Z",
   conversation_id: "c0000000-0000-4000-8000-000000000011",
   message_id: "3e000000-0000-4000-8000-000000000011",
-  replied_at: "2026-11-14T10:00:00Z",
   live_verdict: "fail",
   text_purged: false,
+  evaluation_run_id: null,
+  run_case_id: null,
+  case_deleted: false,
 };
 
 export const purgedReply: Evidence = {
@@ -23,8 +27,44 @@ export const purgedReply: Evidence = {
   label: "E2",
   conversation_id: "c0000000-0000-4000-8000-000000000012",
   message_id: "3e000000-0000-4000-8000-000000000012",
-  replied_at: "2026-11-03T08:00:00Z",
+  occurred_at: "2026-11-03T08:00:00Z",
   text_purged: true,
+};
+
+/** A reply that failed its Live Verdict, has a thumbs-down and is in a Conversation rated 1 or 2. */
+export const unhappyReply: Evidence = {
+  ...failedReply,
+  id: "5e000000-0000-4000-8000-000000000003",
+  label: "E3",
+  kind: "live_verdict",
+  kinds: ["live_verdict", "thumbs_down", "low_rating"],
+  conversation_id: "c0000000-0000-4000-8000-000000000013",
+  message_id: "3e000000-0000-4000-8000-000000000013",
+  occurred_at: "2026-11-12T08:00:00Z",
+};
+
+/** An Evaluation Case that failed on the Live Version, and one whose case was since deleted. */
+export const failedCase: Evidence = {
+  id: "5e000000-0000-4000-8000-000000000004",
+  label: "E4",
+  kind: "evaluation_case",
+  kinds: ["evaluation_case"],
+  occurred_at: "2026-11-10T12:00:00Z",
+  conversation_id: null,
+  message_id: null,
+  live_verdict: null,
+  text_purged: false,
+  evaluation_run_id: "e1000000-0000-4000-8000-000000000001",
+  run_case_id: "e2000000-0000-4000-8000-000000000001",
+  case_deleted: false,
+};
+
+export const deletedCase: Evidence = {
+  ...failedCase,
+  id: "5e000000-0000-4000-8000-000000000005",
+  label: "E5",
+  run_case_id: "e2000000-0000-4000-8000-000000000002",
+  case_deleted: true,
 };
 
 /** A Suggestion of the HR helper's Version 1, at a status. */
@@ -46,6 +86,7 @@ export function suggestion(id: string, status: Suggestion["status"], overrides: 
     model_provider: "openai",
     model_name: "gpt-4.1-mini",
     changes: [],
+    gaps: [],
     evidence: [],
     ...overrides,
   };
@@ -67,6 +108,32 @@ export const citingSuggestion = suggestion("5a000000-0000-4000-8000-000000000001
     },
   ],
   evidence: [failedReply, purgedReply],
+});
+
+/** A finished Suggestion from every kind of evidence: a retrieval change and a Knowledge Base gap. */
+export const retrievalSuggestion = suggestion("5a000000-0000-4000-8000-000000000004", "completed", {
+  outcome: "changes",
+  evidence_total: 3,
+  explanation: "The right passages were excluded just under the Minimum Score.",
+  changes: [
+    {
+      id: "5c000000-0000-4000-8000-000000000002",
+      path: "retrieval.minimum_score",
+      base_value: 0.5,
+      suggested_value: 0.45,
+      explanation: "Chunks were excluded just under the Minimum Score.",
+      evidence_ids: [unhappyReply.id, failedCase.id],
+    },
+  ],
+  gaps: [
+    {
+      id: "5d000000-0000-4000-8000-000000000001",
+      topic: "Parental leave",
+      explanation: "Visitors asked about parental leave and no Chunk covered it.",
+      evidence_ids: [deletedCase.id],
+    },
+  ],
+  evidence: [unhappyReply, failedCase, deletedCase],
 });
 
 const SUMMARY_FIELDS = [
