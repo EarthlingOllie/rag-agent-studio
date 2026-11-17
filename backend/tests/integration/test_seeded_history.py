@@ -7,7 +7,7 @@ full one, whose fixed random seed makes the comparison tell its story.
 
 import itertools
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any
 
 import pytest
@@ -138,6 +138,18 @@ async def test_an_interviewer_sees_four_weeks_of_history_that_tells_the_v2_story
     for version in (v1, v2, v3):
         assert version["tokens"]["n"] == version["messages"] > 0
         assert version["fallback"]["count"] == 0
+
+    # Most of the HR helper's replies were judged: v2's uncited ones all failed grounding, so its
+    # Live score is clearly below v1's, on samples large enough not to be flagged.
+    assert v2["live_score"]["rate"] == 0
+    assert v2["live_score"]["high"] < v1["live_score"]["low"]
+    assert v1["live_score"]["n"] > v2["live_score"]["n"] >= 30
+    assert not v1["live_score"]["low_confidence"]
+    assert not v2["live_score"]["low_confidence"]
+    assert v3["live_score"]["low_confidence"]
+    assert v3["live_score"]["rate"] > 0
+    # No Live score drop alert stands on v3: it has too few Live Verdicts to compare.
+    assert hr["live_score_drop_alert"] is False
 
     faq = agents["Product FAQ"]
     faq_metrics = await get(owner, "projects", project, "agents", faq["id"], "metrics")
@@ -412,3 +424,122 @@ async def test_the_seed_stops_when_an_evaluation_run_does_not_complete(
 
     assert isinstance(app.state.clock, SystemClock)
     await erase_demo(app)
+
+
+async def live_verdicts_of(
+    owner: SignedUpMember, project: str, agent: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Every Live Verdict of the Agent's Visitor replies, read from each reply's Trace."""
+    found = []
+    for conversation in await visitor_conversations(owner, project):
+        if conversation["agent_id"] != agent["id"]:
+            continue
+        read = await get(owner, "projects", project, "conversations", conversation["id"])
+        for message in read["messages"]:
+            if message["role"] != "assistant":
+                continue
+            trace = await get(
+                owner,
+                "projects",
+                project,
+                "conversations",
+                conversation["id"],
+                "messages",
+                message["id"],
+                "trace",
+            )
+            if trace["live_verdict"] is not None:
+                found.append({**trace["live_verdict"], "replied_at": message["created_at"]})
+    return found
+
+
+async def test_the_hr_helpers_seeded_replies_have_live_verdicts_and_v2_scores_lower(
+    app: FastAPI, new_client: ClientFactory
+) -> None:
+    """Spec 15's demo: the HR helper's Visitor replies were sampled by its Live sample rate and
+    judged by the Demo model during the history, under its clock. v2's uncited replies fail
+    grounding, so its Live score is lower than v1's in the comparison and the Time series, and
+    no Live score drop alert stands on the current Live Version."""
+    await erase_demo(app)
+    await seed(app, ASSETS, history=LIGHT)
+
+    owner = await signed_in(new_client, content.OWNER)
+    project, agents = await demo_agents(owner)
+    hr = agents["HR helper"]
+    versions = await get(owner, "projects", project, "agents", hr["id"], "versions")
+    number = {v["id"]: v["number"] for v in versions["versions"]}
+
+    verdicts = await live_verdicts_of(owner, project, hr)
+    by_version: dict[int, list[dict[str, Any]]] = {}
+    for verdict in verdicts:
+        by_version.setdefault(number[verdict["agent_version_id"]], []).append(verdict)
+    assert {1, 2} <= set(by_version)
+    assert {v["status"] for v in verdicts} == {"judged"}
+    assert {(v["judge_provider"], v["judge_model"]) for v in verdicts} == {("demo", "demo-chat")}
+    # Judged during the history, as the reply was given, not today.
+    for verdict in verdicts:
+        judged = datetime.fromisoformat(verdict["judged_at"])
+        replied = datetime.fromisoformat(verdict["replied_at"])
+        assert abs(judged - replied) < timedelta(minutes=5)
+        assert judged.date() < datetime.now(UTC).date()
+    # v2 cited nothing, so every one of its replies failed grounding, with the judge's reason.
+    for verdict in by_version[2]:
+        assert verdict["grounded"]["outcome"] == "fail"
+        assert verdict["grounded"]["reason"]
+        assert verdict["passed"] is False
+    assert any(v["passed"] for v in by_version[1])
+    # Only the HR helper is sampled.
+    assert not await live_verdicts_of(owner, project, agents["Product FAQ"])
+
+    metrics = await get(owner, "projects", project, "agents", hr["id"], "metrics")
+    scores = {v["number"]: v["live_score"] for v in metrics["versions"]}
+    assert scores[1]["n"] == len(by_version[1])
+    assert scores[2]["n"] == len(by_version[2])
+    assert scores[2]["rate"] == 0
+    assert scores[2]["rate"] < scores[1]["rate"]
+
+    comparison = await owner.client.get(
+        f"/api/organisations/{owner.organisation_id}/projects/{project}/agents/{hr['id']}"
+        "/comparison",
+        params={"a": versions["versions"][2]["id"], "b": versions["versions"][1]["id"]},
+    )
+    assert comparison.status_code == 200, comparison.text
+    (row,) = [r for r in comparison.json()["metrics"] if r["metric"] == "live_score"]
+    assert row["b"] < row["a"]
+    assert row["better"] == "a"
+
+    # The Time series dips while v2 was Live.
+    series = await owner.client.get(
+        f"/api/organisations/{owner.organisation_id}/projects/{project}/agents/{hr['id']}"
+        "/time-series",
+        params={"metric": "live_score"},
+    )
+    assert series.status_code == 200, series.text
+    live = await get(owner, "projects", project, "agents", hr["id"], "live-history")
+    published_v2 = next(e for e in live if e["to_version"]["number"] == 2)
+    reverted = next(e for e in live if e["action"] == "revert")
+    v2_days = (
+        datetime.fromisoformat(published_v2["occurred_at"]).date(),
+        datetime.fromisoformat(reverted["occurred_at"]).date(),
+    )
+    points = [p for p in series.json()["points"] if p["n"]]
+    during = [
+        p["value"] for p in points if v2_days[0] <= date.fromisoformat(p["start"]) < v2_days[1]
+    ]
+    before = [p["value"] for p in points if date.fromisoformat(p["start"]) < v2_days[0]]
+    assert during
+    assert set(during) == {0}
+    assert any(value > 0 for value in before)
+
+    # The Conversations viewer finds v2's failed replies.
+    failed = await owner.client.get(
+        f"/api/organisations/{owner.organisation_id}/projects/{project}/conversations",
+        params={"agent_id": hr["id"], "live_verdict": "failed", "page_size": 100},
+    )
+    assert failed.status_code == 200, failed.text
+    assert failed.json()["total"] > 0
+    assert all(c["failed_live_verdicts"] > 0 for c in failed.json()["items"])
+
+    # No Live score drop alert is faked on the current Live Version, v3.
+    assert hr["live_version"]["number"] == 3
+    assert hr["live_score_drop_alert"] is False

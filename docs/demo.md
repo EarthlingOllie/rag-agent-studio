@@ -86,7 +86,8 @@ Select a poster to play its video. The [five-minute walkthrough](#five-minute-wa
 
 - Conversations can be filtered by source (Visitors or Playground), Version, feedback, rating and Guardrail outcome. The video filters to Visitor thumbs-down.
 - A Conversation shows each reply with the Version that wrote it and its Trace.
-- Analytics shows KPIs per Version: volume, tokens, cost, the thumbs-up rate with its 95% interval, fallback rate, Guardrail block rate, searches per reply and latency. v2 is clearly worse than v1.
+- Analytics shows KPIs per Version: volume, tokens, cost, the thumbs-up rate with its 95% interval, the Live score, fallback rate, Guardrail block rate, searches per reply and latency. v2 is clearly worse than v1.
+- The Live score is the share of sampled Visitor replies the Evaluation Model judged grounded and answering the question. Each judged reply's Trace shows its Live Verdict, and the Conversations viewer filters to failed ones.
 - **Compare two Versions** sets them side by side, with the configuration changes that explain the difference.
 
 ## 7. Choose Automatic or Agentic retrieval
@@ -137,7 +138,7 @@ Run the [Quickstart](../README.md#quickstart) first (`make dev`, then `make seed
 7. **The disallowed origin** (15 s). Open <http://localhost:5176/>: the browser refuses to show the frame (`frame-ancestors`).
 8. **The attack panel** (60 s). Open <http://localhost:5175/demo/attacks.html> and click each button; the table shows which layer acted.
 9. **The Token Budget** (15 s). On <http://localhost:5175/demo/budget.html>, **Use up today's Token Budget**; the Studio's Agents list then shows **Budget exhausted**.
-10. **Analytics comparison** (45 s). **Analytics → HR helper**: switch between v1, v2 and v3 and compare the intervals.
+10. **Analytics comparison** (45 s). **Analytics → HR helper**: switch between v1, v2 and v3 and compare the intervals. The **Live score** tells the same story: the HR helper judges 60% of its Visitor replies, and v2's uncited ones failed grounding, so its Live score is far below v1's (the comparison and the Time series show it too).
 11. **Organisation cost** (15 s). **Cost**: spend per Project; **Break down by → Agent** splits it per Agent.
 12. **The Audit tab** (15 s). **Organisation settings → Audit**: every publish, revert, bulk publish and Instructions change, with actor and before/after.
 

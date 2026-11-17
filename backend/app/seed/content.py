@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from decimal import Decimal
 
 from app.agents.config import RetrievalMode
 from app.agents.models import TOKEN_BUDGET_DEFAULT
@@ -312,6 +313,14 @@ class History:
 
 
 HISTORY = History()
+
+# Live evaluation (spec 15): the Organisation's monthly Evaluation budget, in US dollars, and each
+# Agent's Live sample rate (those not named here aren't sampled). Most of the HR helper's Visitor
+# replies are judged by the Demo model as the history plays, so v2's uncited replies fail
+# grounding and its Live score falls below v1's. The Demo model costs nothing, so the budget is
+# never spent.
+EVALUATION_BUDGET_USD = Decimal("20.00")
+LIVE_SAMPLE_RATES = {HR_AGENT: 60}
 
 
 @dataclass(frozen=True)
