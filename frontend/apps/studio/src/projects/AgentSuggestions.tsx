@@ -2,9 +2,10 @@ import { Link } from "@tanstack/react-router";
 import { type SubmitEvent, useId, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
-import { Diff, Dialog, EmptyState, Notice, PageHeader, Skeleton, Status, button, field, surface, text } from "../design";
+import { ConfirmDialog, Diff, Dialog, EmptyState, Notice, PageHeader, Skeleton, Status, button, field, surface, text, useToast } from "../design";
 import { formatTime } from "../settings/AuditPage";
-import type { Agent } from "./agents";
+import { type Agent, StaleDraftError } from "./agents";
+import { DraftConflict } from "./DraftConflict";
 import { evaluationFailure } from "./evaluation";
 import { dollars } from "./format";
 import {
@@ -14,11 +15,17 @@ import {
   type SuggestionEstimate,
   type SuggestionEvidence,
   type SuggestionRange,
+  SuggestionClashError,
+  type SuggestionClash,
+  type SuggestionDiff,
   type SuggestionSummary,
   suggestionInProgress,
+  useApplySuggestion,
   useCancelSuggestionRun,
+  useDeleteSuggestion,
   useStartSuggestionRun,
   useSuggestion,
+  useSuggestionDiff,
   useSuggestionEstimate,
   useSuggestionEvidence,
   useSuggestions,
@@ -74,6 +81,17 @@ function costText(suggestion: SuggestionSummary): string {
   return `Proposing cost ${spent === null ? "unknown" : dollars(spent)} (${estimate}). ${check}`;
 }
 
+/** Who applied the Suggestion to the Draft, and when; null until it is applied. */
+function appliedText(suggestion: SuggestionSummary): string | null {
+  if (suggestion.applied_at === null) return null;
+  const by = suggestion.applied_by === null ? "a former Member" : suggestion.applied_by.name;
+  return `Applied by ${by}, ${formatTime(suggestion.applied_at)}`;
+}
+
+function staleText(suggestion: SuggestionSummary): string {
+  return `Made from Version ${String(suggestion.base_version_number)}, which is no longer Live: its check was against the old Live Version. You can still apply it.`;
+}
+
 function SuggestionStatus({ suggestion }: { suggestion: SuggestionSummary }) {
   const status = STATUS[suggestion.status];
   return <Status tone={status.tone}>{status.label}</Status>;
@@ -111,6 +129,8 @@ function SuggestionList({
           <span className="text-ink-2">From Version {suggestion.base_version_number}</span>
           {suggestion.outcome !== null && <span className="font-medium text-ink-2">{OUTCOMES[suggestion.outcome]}</span>}
           {spentText(suggestion) !== null && <span className="font-mono text-xs text-muted">{spentText(suggestion)}</span>}
+          {suggestion.stale && <span className="text-xs font-medium text-flag">Stale</span>}
+          {appliedText(suggestion) !== null && <span className="text-xs font-medium text-accent-ink">{appliedText(suggestion)}</span>}
         </li>
       ))}
     </ul>
@@ -223,10 +243,165 @@ function GapList({ suggestion, path }: { suggestion: Suggestion; path: AgentPath
   );
 }
 
+const STATES = {
+  clean: "Will be applied",
+  applied: "Already in the Draft",
+  clash: "Clash",
+} as const;
+
+const valueText = (value: string | number) => String(value);
+
+/** The clashes applying was refused for: each setting with its base, Draft and suggested values. */
+function ClashList({ clashes }: { clashes: SuggestionClash[] }) {
+  return (
+    <ul aria-label="Clashes" className="flex flex-col gap-2">
+      {clashes.map((clash) => (
+        <li key={clash.path} className="text-sm text-ink-2">
+          <span className="font-medium text-ink">{settingName(clash.path)}</span>
+          {`: was ${valueText(clash.base_value)}, your Draft has ${valueText(clash.draft_value)}, the Suggestion has ${valueText(clash.suggested_value)}.`}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** One change against the current Draft: whether applying writes it, and the Draft value to the suggested one. */
+function ReviewRow({ change }: { change: SuggestionDiff["changes"][number] }) {
+  const name = settingName(change.path);
+  return (
+    <li className={`${surface.panel} flex flex-col gap-2`}>
+      <div className="flex flex-wrap items-center gap-3">
+        <h4 className="font-medium text-ink">{name}</h4>
+        <Status tone={change.state === "clash" ? "flagged" : "ready"}>{STATES[change.state]}</Status>
+      </div>
+      {change.state === "clash" && (
+        <p className="text-sm text-flag">
+          {`Your Draft has changed the ${name.toLowerCase()} some other way. In the Draft, set it back to ${valueText(change.base_value)} or to the suggested value, then apply.`}
+        </p>
+      )}
+      <Diff label={`The ${name.toLowerCase()}: your Draft and the Suggestion`} before={valueText(change.draft_value)} after={valueText(change.suggested_value)} />
+    </li>
+  );
+}
+
+/**
+ * "Apply to Draft": the Suggestion's Diff against the current Draft, its clashes and the stale
+ * notice, then one save of the whole Suggestion on the revision reviewed. A colleague's save in
+ * between is the Draft editor's own conflict prompt. Applying never Publishes.
+ */
+function ApplyReview({ path, suggestion, onClose }: { path: AgentPath; suggestion: Suggestion; onClose: () => void }) {
+  const diff = useSuggestionDiff(path, suggestion.id, true);
+  const apply = useApplySuggestion(path, suggestion.id);
+  const toast = useToast();
+  const [conflict, setConflict] = useState<Agent | null>(null);
+  const clashes = apply.error instanceof SuggestionClashError ? apply.error : null;
+
+  function write(baseRevision: number) {
+    setConflict(null);
+    apply.mutate(baseRevision, {
+      onSuccess: (applied) => {
+        toast.show(
+          applied.paths.length === 0
+            ? "The Draft already had every suggested value."
+            : "Applied to the Draft. Evaluate it again before Publishing.",
+        );
+        onClose();
+      },
+      onError: (error) => {
+        if (error instanceof StaleDraftError) setConflict(error.latest);
+        if (error instanceof SuggestionClashError) void diff.refetch();
+      },
+    });
+  }
+
+  const reviewed = diff.data;
+  const blocked = reviewed === undefined || reviewed.clashes > 0 || apply.isPending;
+  let failure: string | undefined;
+  if (apply.error !== null && clashes === null && !(apply.error instanceof StaleDraftError)) failure = evaluationFailure(apply.error);
+  return (
+    <Dialog
+      open
+      title="Apply to Draft"
+      description="Applying writes every suggested change into the Draft in one save. It doesn't Publish: evaluate the Draft again before Publishing it."
+      onClose={onClose}
+      closeButton={false}
+      footer={
+        <>
+          <button type="button" className={button.secondary} onClick={onClose}>
+            Cancel
+          </button>
+          <button
+            type="button"
+            className={button.primary}
+            disabled={blocked}
+            onClick={() => {
+              write((reviewed as SuggestionDiff).draft_revision);
+            }}
+          >
+            Apply to Draft
+          </button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        {diff.isPending && <Skeleton label="Reading the Draft" />}
+        {diff.isError && <Notice tone="error">{`The Draft could not be read. ${evaluationFailure(diff.error) as string}`}</Notice>}
+        {reviewed?.stale_notice && <Notice tone="warning">{reviewed.stale_notice}</Notice>}
+        {reviewed !== undefined && reviewed.clashes > 0 && (
+          <Notice tone="warning">
+            {`${count(reviewed.clashes, "setting clashes", "settings clash")} with your Draft: it has changed them some other way. Resolve each in the Draft, then apply the whole Suggestion.`}
+          </Notice>
+        )}
+        {clashes !== null && (
+          <div role="alert" className="flex flex-col gap-2">
+            <p className="text-sm text-flag">{clashes.detail}</p>
+            <ClashList clashes={clashes.clashes} />
+          </div>
+        )}
+        {failure !== undefined && <Notice tone="error">{failure}</Notice>}
+        {conflict && (
+          <DraftConflict
+            latest={conflict}
+            onLoad={() => {
+              setConflict(null);
+              apply.reset();
+              void diff.refetch();
+            }}
+            onOverwrite={(latest) => {
+              write(latest.draft_revision);
+            }}
+          />
+        )}
+        {reviewed !== undefined && (
+          <ul aria-label="Changes to the Draft" className="flex flex-col gap-3">
+            {reviewed.changes.map((change) => (
+              <ReviewRow key={change.id} change={change} />
+            ))}
+          </ul>
+        )}
+      </div>
+    </Dialog>
+  );
+}
+
 /** A Suggestion: its explanation, each change as a Diff with its evidence, its Knowledge Base gaps, and all its evidence. Polled while in progress. */
-function SuggestionDetail({ path, suggestionId }: { path: AgentPath; suggestionId: string }) {
+function SuggestionDetail({
+  path,
+  suggestionId,
+  archived,
+  onDeleted,
+}: {
+  path: AgentPath;
+  suggestionId: string;
+  archived: boolean;
+  onDeleted: () => void;
+}) {
   const read = useSuggestion(path, suggestionId);
   const cancel = useCancelSuggestionRun(path);
+  const remove = useDeleteSuggestion(path);
+  const toast = useToast();
+  const [applying, setApplying] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const headingId = useId();
   if (read.isPending) return <Skeleton label="Loading the Suggestion" />;
   if (read.isError) return <Notice tone="error">The Suggestion could not be loaded. Try again shortly.</Notice>;
@@ -243,6 +418,64 @@ function SuggestionDetail({ path, suggestionId }: { path: AgentPath; suggestionI
         {`From Version ${String(suggestion.base_version_number)}'s replies, ${rangeText(suggestion)}. Proposed by ${suggestion.model_provider}:${suggestion.model_name}.`}
       </p>
       <p className="font-mono text-xs text-muted">{costText(suggestion)}</p>
+      {appliedText(suggestion) !== null && <p className="text-sm font-medium text-accent-ink">{`${appliedText(suggestion) as string}.`}</p>}
+      {suggestion.stale && <Notice tone="warning">{staleText(suggestion)}</Notice>}
+      {!archived && !suggestionInProgress(suggestion) && (
+        <div className="flex flex-wrap items-center gap-3">
+          {suggestion.status === "completed" && suggestion.outcome === "changes" && (
+            <button
+              type="button"
+              className={button.primary}
+              onClick={() => {
+                setApplying(true);
+              }}
+            >
+              Apply to Draft
+            </button>
+          )}
+          <button
+            type="button"
+            className={button.secondary}
+            onClick={() => {
+              setDeleting(true);
+            }}
+          >
+            Delete Suggestion
+          </button>
+        </div>
+      )}
+      {applying && (
+        <ApplyReview
+          path={path}
+          suggestion={suggestion}
+          onClose={() => {
+            setApplying(false);
+          }}
+        />
+      )}
+      <ConfirmDialog
+        open={deleting}
+        title="Delete this Suggestion?"
+        confirmLabel="Delete Suggestion"
+        destructive
+        busy={remove.isPending}
+        body={remove.isError ? <Notice tone="error">{evaluationFailure(remove.error)}</Notice> : undefined}
+        onConfirm={() => {
+          remove.mutate(suggestion.id, {
+            onSuccess: () => {
+              setDeleting(false);
+              toast.show("Suggestion deleted.");
+              onDeleted();
+            },
+          });
+        }}
+        onCancel={() => {
+          setDeleting(false);
+          remove.reset();
+        }}
+      >
+        {`The Suggestion of ${formatTime(suggestion.created_at)} goes, with its changes, gaps and evidence links. The Draft and the replies it points at are kept.`}
+      </ConfirmDialog>
       {suggestionInProgress(suggestion) && (
         <div className="flex flex-wrap items-center gap-3">
           <p role="status" className="text-sm text-ink-2">
@@ -466,7 +699,17 @@ export function AgentSuggestions({ agent, organisationId }: { agent: Agent; orga
         />
       )}
       {suggestions.data && suggestions.data.length > 0 && <SuggestionList suggestions={suggestions.data} chosen={shown} onChoose={setChosen} />}
-      {shown !== null && <SuggestionDetail key={shown} path={path} suggestionId={shown} />}
+      {shown !== null && (
+        <SuggestionDetail
+          key={shown}
+          path={path}
+          suggestionId={shown}
+          archived={archived}
+          onDeleted={() => {
+            setChosen(null);
+          }}
+        />
+      )}
       {suggesting && (
         <SuggestDialog
           path={path}

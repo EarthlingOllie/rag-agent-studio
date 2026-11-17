@@ -263,6 +263,55 @@
         "title": "AgentVersionsOut",
         "type": "object"
       },
+      "AppliedSuggestionOut": {
+        "properties": {
+          "agent": {
+            "$ref": "#/components/schemas/AgentOut"
+          },
+          "paths": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Paths",
+            "type": "array"
+          },
+          "stale_notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale Notice"
+          },
+          "suggestion": {
+            "$ref": "#/components/schemas/SuggestionOut"
+          }
+        },
+        "required": [
+          "agent",
+          "suggestion",
+          "paths",
+          "stale_notice"
+        ],
+        "title": "AppliedSuggestionOut",
+        "type": "object"
+      },
+      "ApplySuggestionIn": {
+        "properties": {
+          "base_revision": {
+            "title": "Base Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "base_revision"
+        ],
+        "title": "ApplySuggestionIn",
+        "type": "object"
+      },
       "AuditActorOut": {
         "properties": {
           "email": {
@@ -1079,6 +1128,15 @@
         ],
         "title": "ChangeRoleRequest",
         "type": "object"
+      },
+      "ChangeState": {
+        "enum": [
+          "clean",
+          "applied",
+          "clash"
+        ],
+        "title": "ChangeState",
+        "type": "string"
       },
       "CheckFailedResponse": {
         "properties": {
@@ -8575,6 +8633,129 @@
         "title": "SuggestedChangeOut",
         "type": "object"
       },
+      "SuggestionApplierOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "SuggestionApplierOut",
+        "type": "object"
+      },
+      "SuggestionApplyConflictOut": {
+        "properties": {
+          "clashes": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/SuggestionClashOut"
+            },
+            "title": "Clashes",
+            "type": "array"
+          },
+          "conflict": {
+            "anyOf": [
+              {
+                "enum": [
+                  "stale_draft",
+                  "suggestion_clash"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conflict"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "latest": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgentOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "detail"
+        ],
+        "title": "SuggestionApplyConflictOut",
+        "type": "object"
+      },
+      "SuggestionClashOut": {
+        "properties": {
+          "base_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Base Value"
+          },
+          "draft_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Draft Value"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "suggested_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Suggested Value"
+          }
+        },
+        "required": [
+          "path",
+          "base_value",
+          "draft_value",
+          "suggested_value"
+        ],
+        "title": "SuggestionClashOut",
+        "type": "object"
+      },
       "SuggestionCostOut": {
         "properties": {
           "estimated_checking_usd": {
@@ -8617,6 +8798,128 @@
           "proposing_usd"
         ],
         "title": "SuggestionCostOut",
+        "type": "object"
+      },
+      "SuggestionDiffChangeOut": {
+        "properties": {
+          "base_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Base Value"
+          },
+          "draft_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Draft Value"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ChangeState"
+          },
+          "suggested_value": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              }
+            ],
+            "title": "Suggested Value"
+          }
+        },
+        "required": [
+          "id",
+          "path",
+          "base_value",
+          "draft_value",
+          "suggested_value",
+          "state",
+          "explanation"
+        ],
+        "title": "SuggestionDiffChangeOut",
+        "type": "object"
+      },
+      "SuggestionDiffOut": {
+        "properties": {
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/SuggestionDiffChangeOut"
+            },
+            "title": "Changes",
+            "type": "array"
+          },
+          "clashes": {
+            "title": "Clashes",
+            "type": "integer"
+          },
+          "draft_revision": {
+            "title": "Draft Revision",
+            "type": "integer"
+          },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
+          "stale_notice": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stale Notice"
+          },
+          "suggestion_id": {
+            "format": "uuid",
+            "title": "Suggestion Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "suggestion_id",
+          "draft_revision",
+          "stale",
+          "stale_notice",
+          "changes",
+          "clashes"
+        ],
+        "title": "SuggestionDiffOut",
         "type": "object"
       },
       "SuggestionEstimateOut": {
@@ -8679,6 +8982,28 @@
       },
       "SuggestionOut": {
         "properties": {
+          "applied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "applied_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionApplierOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "base_version_id": {
             "format": "uuid",
             "title": "Base Version Id",
@@ -8788,6 +9113,10 @@
             "title": "Range Start",
             "type": "string"
           },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
           "status": {
             "$ref": "#/components/schemas/SuggestionStatus"
           }
@@ -8805,6 +9134,9 @@
           "cost",
           "created_at",
           "finished_at",
+          "stale",
+          "applied_by",
+          "applied_at",
           "explanation",
           "model_provider",
           "model_name",
@@ -8869,6 +9201,28 @@
       },
       "SuggestionSummaryOut": {
         "properties": {
+          "applied_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applied At"
+          },
+          "applied_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionApplierOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "base_version_id": {
             "format": "uuid",
             "title": "Base Version Id",
@@ -8938,6 +9292,10 @@
             "title": "Range Start",
             "type": "string"
           },
+          "stale": {
+            "title": "Stale",
+            "type": "boolean"
+          },
           "status": {
             "$ref": "#/components/schemas/SuggestionStatus"
           }
@@ -8954,7 +9312,10 @@
           "error_message",
           "cost",
           "created_at",
-          "finished_at"
+          "finished_at",
+          "stale",
+          "applied_by",
+          "applied_at"
         ],
         "title": "SuggestionSummaryOut",
         "type": "object"
@@ -18299,6 +18660,91 @@
       }
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}": {
+      "delete": {
+        "description": "Deletes a finished Suggestion with its changes, gaps and evidence links.",
+        "operationId": "deleteSuggestion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This Suggestion run is in progress. Cancel it before deleting it. Or: the Project or Agent is archived."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Suggestion",
+        "tags": [
+          "suggestions"
+        ]
+      },
       "get": {
         "description": "The Suggestion with its changes and its evidence resolved.",
         "operationId": "getSuggestion",
@@ -18377,6 +18823,103 @@
           }
         },
         "summary": "Get Suggestion",
+        "tags": [
+          "suggestions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}/apply": {
+      "post": {
+        "description": "Applies the whole Suggestion to the Draft in one save on the revision reviewed. Any\nclash refuses it with every clashing path, and a Draft changed since is refused with the\nlatest Draft; nothing is written then. Never Publishes.",
+        "operationId": "applySuggestion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplySuggestionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppliedSuggestionOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionApplyConflictOut"
+                }
+              }
+            },
+            "description": "Your Draft has also changed settings this Suggestion changes. Resolve each clash in the Draft, then apply it again. Or: Someone else saved this Draft after you opened it. Load their changes, or save yours over them. Or: This Suggestion has no configuration change to apply. Or: the Project or Agent is archived."
+          },
+          "422": {
+            "description": "The merged Draft is not valid, as a Draft save would find it."
+          }
+        },
+        "summary": "Apply Suggestion",
         "tags": [
           "suggestions"
         ]
@@ -18471,6 +19014,90 @@
           }
         },
         "summary": "Cancel Suggestion Run",
+        "tags": [
+          "suggestions"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/suggestions/{suggestion_id}/diff": {
+      "get": {
+        "description": "The Suggestion's changes against the Agent's current Draft, each ``clean``, ``applied``\nor a ``clash``, for review before applying it.",
+        "operationId": "getSuggestionDiff",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuggestionDiffOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Suggestion Diff",
         "tags": [
           "suggestions"
         ]

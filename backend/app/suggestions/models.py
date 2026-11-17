@@ -128,6 +128,10 @@ class Suggestion(IdMixin, Base):
     proposing_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
     proposed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Who applied it to the Draft, and when; None until it is applied (and ``applied_by`` once
+    # that Member is gone).
+    applied_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey(Member.id, ondelete="SET NULL"))
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class SuggestedChange(IdMixin, Base):

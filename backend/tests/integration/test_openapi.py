@@ -196,6 +196,12 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "startSuggestionRun": (_SUGGESTIONS, "post"),
         "listSuggestions": (_SUGGESTIONS, "get"),
         "getSuggestion": (f"{_SUGGESTIONS}/{{suggestion_id}}", "get"),
+        "countSuggestionEvidence": (f"{_SUGGESTIONS}/evidence", "get"),
+        "estimateSuggestionRun": (f"{_SUGGESTIONS}/estimate", "post"),
+        "cancelSuggestionRun": (f"{_SUGGESTIONS}/{{suggestion_id}}/cancel", "post"),
+        "getSuggestionDiff": (f"{_SUGGESTIONS}/{{suggestion_id}}/diff", "get"),
+        "applySuggestion": (f"{_SUGGESTIONS}/{{suggestion_id}}/apply", "post"),
+        "deleteSuggestion": (f"{_SUGGESTIONS}/{{suggestion_id}}", "delete"),
         "getExpectedSourceDependents": (
             f"{_PROJECT}/documents/{{document_id}}/expected-sources",
             "get",

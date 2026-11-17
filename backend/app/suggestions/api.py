@@ -26,16 +26,27 @@ from datetime import date, datetime, timedelta
 from decimal import Decimal
 from typing import Annotated, Any, Literal, Self, cast
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, model_validator
 
-from app.agents.api import NOT_FOUND_RESPONSE, agent_archived, archived, not_found
-from app.agents.service import AgentArchivedError, AgentNotFoundError
+from app.agents.api import (
+    NOT_FOUND_RESPONSE,
+    STALE_DRAFT,
+    AgentOut,
+    agent_archived,
+    agent_out,
+    archived,
+    not_found,
+)
+from app.agents.service import AgentArchivedError, AgentNotFoundError, StaleDraftError
+from app.agents.validation import InvalidDraftError
 from app.auth.api import Db, ErrorResponse
 from app.evaluation.api import ClockDep, RunConflict, RunConflictOut, run_conflict
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
-from app.suggestions import service
+from app.suggestions import applying, service
+from app.suggestions.applying import ChangeState
 from app.suggestions.models import (
     EvidenceKind,
     SuggestedChange,
@@ -45,6 +56,7 @@ from app.suggestions.models import (
 )
 from app.suggestions.tasks import enqueue_suggestion
 from app.tenancy.api import ORGANISATION_PREFIX
+from app.tenancy.models import Member
 from app.tenancy.policy import Scope
 
 router = APIRouter(
@@ -129,6 +141,11 @@ class SuggestionCostOut(BaseModel):
     proposing_usd: Decimal | None
 
 
+class SuggestionApplierOut(BaseModel):
+    id: uuid.UUID
+    name: str
+
+
 class SuggestionSummaryOut(BaseModel):
     id: uuid.UUID
     status: SuggestionStatus
@@ -146,6 +163,13 @@ class SuggestionSummaryOut(BaseModel):
     cost: SuggestionCostOut
     created_at: datetime
     finished_at: datetime | None
+    # The Live Version it was made from is no longer Live: its check was against the old Live.
+    # It can still be applied.
+    stale: bool
+    # Who applied it to the Draft, and when; null until applied (``applied_by`` also once that
+    # Member is gone).
+    applied_by: SuggestionApplierOut | None
+    applied_at: datetime | None
 
 
 class SuggestedChangeOut(BaseModel):
@@ -235,7 +259,9 @@ class SuggestionEstimateOut(BaseModel):
     total_usd: Decimal | None
 
 
-def _summary(suggestion: Suggestion, base_version_number: int) -> SuggestionSummaryOut:
+def _summary(
+    suggestion: Suggestion, base_version_number: int, stale: bool, applied_by: Member | None
+) -> SuggestionSummaryOut:
     return SuggestionSummaryOut(
         id=suggestion.id,
         status=SuggestionStatus(suggestion.status),
@@ -253,6 +279,11 @@ def _summary(suggestion: Suggestion, base_version_number: int) -> SuggestionSumm
         ),
         created_at=suggestion.created_at,
         finished_at=suggestion.finished_at,
+        stale=stale,
+        applied_by=None
+        if applied_by is None
+        else SuggestionApplierOut(id=applied_by.id, name=applied_by.name),
+        applied_at=suggestion.applied_at,
     )
 
 
@@ -289,7 +320,7 @@ def _out(read: service.SuggestionRead) -> SuggestionOut:
     suggestion = read.suggestion
     evidence_ids = {each.evidence.position: each.evidence.id for each in read.evidence}
     return SuggestionOut(
-        **_summary(suggestion, read.base_version_number).model_dump(),
+        **_summary(suggestion, read.base_version_number, read.stale, read.applied_by).model_dump(),
         explanation=suggestion.explanation,
         model_provider=suggestion.model_provider,
         model_name=suggestion.model_name,
@@ -480,7 +511,7 @@ async def list_suggestions(
         found = await service.list_suggestions(db, scope, project_id, agent_id)
     except (ProjectNotFoundError, AgentNotFoundError):
         raise not_found() from None
-    return [_summary(suggestion, number) for suggestion, number in found]
+    return [_summary(*listed) for listed in found]
 
 
 @router.get("/{suggestion_id}", operation_id="getSuggestion", responses=NOT_FOUND_RESPONSE)
@@ -493,3 +524,241 @@ async def get_suggestion(
 ) -> SuggestionOut:
     """The Suggestion with its changes and its evidence resolved."""
     return await _read(db, scope, project_id, agent_id, suggestion_id)
+
+
+# Applying to the Draft, and deleting
+
+
+class SuggestionDiffChangeOut(BaseModel):
+    id: uuid.UUID
+    path: str
+    # The setting's value in the Live Version the Suggestion was made from, in the Draft now,
+    # and as suggested.
+    base_value: SettingValue
+    draft_value: SettingValue
+    suggested_value: SettingValue
+    # ``clean``: the Draft still has the base value and takes the suggested one. ``applied``:
+    # the Draft already has the suggested value. ``clash``: the Draft has changed it some other
+    # way, so applying is refused until the Editor resolves it.
+    state: ChangeState
+    explanation: str
+
+
+class SuggestionDiffOut(BaseModel):
+    suggestion_id: uuid.UUID
+    # The Draft revision this Diff was read on: send it as ``base_revision`` to apply.
+    draft_revision: int
+    # The Live Version it was made from is no longer Live, and the notice saying so.
+    stale: bool
+    stale_notice: str | None
+    changes: list[SuggestionDiffChangeOut]
+    # How many changes clash with the Draft.
+    clashes: int
+
+
+class ApplySuggestionIn(BaseModel):
+    # The Draft revision the Diff was reviewed on.
+    base_revision: int
+
+
+class AppliedSuggestionOut(BaseModel):
+    # The Agent with its new Draft; nothing is Published.
+    agent: AgentOut
+    suggestion: SuggestionOut
+    # The setting paths written; a setting the Draft already had at the suggested value isn't.
+    paths: list[str]
+    # Set when the Suggestion was made from a Version no longer Live.
+    stale_notice: str | None
+
+
+class SuggestionClashOut(BaseModel):
+    path: str
+    base_value: SettingValue
+    draft_value: SettingValue
+    suggested_value: SettingValue
+
+
+class SuggestionApplyConflictOut(BaseModel):
+    detail: str
+    # ``stale_draft``: the Draft has moved on from the revision reviewed; ``latest`` holds it, as
+    # when saving the Draft. ``suggestion_clash``: the Draft has changed settings the Suggestion
+    # changes; ``clashes`` lists each. Null when the Agent or Project is archived or there is
+    # nothing to apply.
+    conflict: Literal["stale_draft", "suggestion_clash"] | None = None
+    latest: AgentOut | None = None
+    clashes: list[SuggestionClashOut] = []
+
+
+SUGGESTION_CLASH = (
+    "Your Draft has also changed settings this Suggestion changes. Resolve each clash in the "
+    "Draft, then apply it again."
+)
+NOTHING_TO_APPLY = "This Suggestion has no configuration change to apply."
+SUGGESTION_RUNNING = "This Suggestion run is in progress. Cancel it before deleting it."
+_APPLY_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **NOT_FOUND_RESPONSE,
+    409: {
+        "model": SuggestionApplyConflictOut,
+        "description": (
+            f"{SUGGESTION_CLASH} Or: {STALE_DRAFT} Or: {NOTHING_TO_APPLY} Or: the Project or "
+            "Agent is archived."
+        ),
+    },
+    422: {"description": "The merged Draft is not valid, as a Draft save would find it."},
+}
+_DELETE_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **NOT_FOUND_RESPONSE,
+    409: {
+        "model": ErrorResponse,
+        "description": f"{SUGGESTION_RUNNING} Or: the Project or Agent is archived.",
+    },
+}
+
+
+def stale_notice(stale: bool, base_version_number: int) -> str | None:
+    if not stale:
+        return None
+    return (
+        f"This Suggestion was made from v{base_version_number}, which is no longer Live: its "
+        "check was against the old Live Version."
+    )
+
+
+@contextmanager
+def _changing() -> Iterator[None]:
+    """Turns what refuses applying or deleting a Suggestion into its HTTP error."""
+    try:
+        yield
+    except (ProjectNotFoundError, AgentNotFoundError, service.SuggestionNotFoundError):
+        raise not_found() from None
+    except ProjectArchivedError:
+        raise archived() from None
+    except AgentArchivedError:
+        raise agent_archived() from None
+
+
+@router.get("/{suggestion_id}/diff", operation_id="getSuggestionDiff", responses=NOT_FOUND_RESPONSE)
+async def get_suggestion_diff(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    suggestion_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+) -> SuggestionDiffOut:
+    """The Suggestion's changes against the Agent's current Draft, each ``clean``, ``applied``
+    or a ``clash``, for review before applying it."""
+    try:
+        found = await applying.diff_suggestion(db, scope, project_id, agent_id, suggestion_id)
+    except (ProjectNotFoundError, AgentNotFoundError, service.SuggestionNotFoundError):
+        raise not_found() from None
+    return SuggestionDiffOut(
+        suggestion_id=found.suggestion.id,
+        draft_revision=found.draft_revision,
+        stale=found.stale,
+        stale_notice=stale_notice(found.stale, found.base_version_number),
+        changes=[
+            SuggestionDiffChangeOut(
+                id=row.change.id,
+                path=row.change.path,
+                base_value=row.change.base_value,
+                draft_value=row.draft_value,
+                suggested_value=row.change.suggested_value,
+                state=row.state,
+                explanation=row.change.explanation,
+            )
+            for row in found.rows
+        ],
+        clashes=sum(row.state == ChangeState.CLASH for row in found.rows),
+    )
+
+
+def _conflict(conflict: SuggestionApplyConflictOut) -> JSONResponse:
+    return JSONResponse(conflict.model_dump(mode="json"), status.HTTP_409_CONFLICT)
+
+
+@router.post(
+    "/{suggestion_id}/apply",
+    operation_id="applySuggestion",
+    response_model=AppliedSuggestionOut,
+    responses=_APPLY_RESPONSES,
+)
+async def apply_suggestion(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    suggestion_id: uuid.UUID,
+    body: ApplySuggestionIn,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+) -> AppliedSuggestionOut | JSONResponse:
+    """Applies the whole Suggestion to the Draft in one save on the revision reviewed. Any
+    clash refuses it with every clashing path, and a Draft changed since is refused with the
+    latest Draft; nothing is written then. Never Publishes."""
+    try:
+        with _changing():
+            applied = await applying.apply_suggestion(
+                db,
+                scope,
+                project_id,
+                agent_id,
+                suggestion_id,
+                base_revision=body.base_revision,
+                now=clock.now(),
+            )
+    except applying.NothingToApplyError:
+        raise HTTPException(status.HTTP_409_CONFLICT, NOTHING_TO_APPLY) from None
+    except StaleDraftError as error:
+        return _conflict(
+            SuggestionApplyConflictOut(
+                detail=STALE_DRAFT, conflict="stale_draft", latest=agent_out(error.latest)
+            )
+        )
+    except applying.SuggestionClashError as error:
+        return _conflict(
+            SuggestionApplyConflictOut(
+                detail=SUGGESTION_CLASH,
+                conflict="suggestion_clash",
+                clashes=[
+                    SuggestionClashOut(
+                        path=row.change.path,
+                        base_value=row.change.base_value,
+                        draft_value=row.draft_value,
+                        suggested_value=row.change.suggested_value,
+                    )
+                    for row in error.clashes
+                ],
+            )
+        )
+    except InvalidDraftError as error:
+        raise RequestValidationError([p.as_error() for p in error.problems]) from None
+    return AppliedSuggestionOut(
+        agent=agent_out(applied.agent),
+        suggestion=await _read(db, scope, project_id, agent_id, suggestion_id),
+        paths=applied.paths,
+        stale_notice=stale_notice(applied.stale, applied.base_version_number),
+    )
+
+
+@router.delete(
+    "/{suggestion_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    operation_id="deleteSuggestion",
+    responses=_DELETE_RESPONSES,
+)
+async def delete_suggestion(
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    suggestion_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+) -> Response:
+    """Deletes a finished Suggestion with its changes, gaps and evidence links."""
+    try:
+        with _changing():
+            await applying.delete_suggestion(
+                db, scope, project_id, agent_id, suggestion_id, now=clock.now()
+            )
+    except applying.SuggestionRunningError:
+        raise HTTPException(status.HTTP_409_CONFLICT, SUGGESTION_RUNNING) from None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)

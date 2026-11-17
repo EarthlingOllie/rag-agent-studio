@@ -28,7 +28,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
-from typing import Any, cast
+from typing import Any, NamedTuple, cast
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -75,6 +75,7 @@ from app.suggestions.models import (
 )
 from app.suggestions.proposer import Block, EvidenceItem, ProposeError, propose
 from app.suggestions.reads import suggestion_in_progress
+from app.tenancy.models import Member
 from app.tenancy.repository import OrganisationScope
 
 # The most evidence one run reads: the most recent pieces.
@@ -810,20 +811,37 @@ class SuggestionRead:
     changes: list[SuggestedChange]
     evidence: list[EvidenceRead]
     gaps: list[KnowledgeBaseGap] = field(default_factory=list)
+    # The base Version is no longer Live: its check was against the old Live.
+    stale: bool = False
+    # Who applied it to the Draft; None until applied, or once that Member is gone.
+    applied_by: Member | None = None
+
+
+class SuggestionListed(NamedTuple):
+    suggestion: Suggestion
+    base_version_number: int
+    stale: bool
+    applied_by: Member | None
 
 
 async def list_suggestions(
     session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, agent_id: uuid.UUID
-) -> list[tuple[Suggestion, int]]:
-    """The Agent's Suggestions, newest first, each with its base Version's number."""
+) -> list[SuggestionListed]:
+    """The Agent's Suggestions, newest first, each with its base Version's number, whether it
+    is stale and who applied it."""
     found = await get_agent(session, scope, project_id, agent_id)
     rows = await session.execute(
-        select(Suggestion, AgentVersion.number)
+        select(Suggestion, AgentVersion.number, Member)
         .join(AgentVersion, AgentVersion.id == Suggestion.base_version_id)
+        .outerjoin(Member, Member.id == Suggestion.applied_by)
         .where(Suggestion.agent_id == found.agent.id)
         .order_by(Suggestion.created_at.desc(), Suggestion.id)
     )
-    return [(suggestion, number) for suggestion, number in rows.all()]
+    live = found.agent.live_version_id
+    return [
+        SuggestionListed(suggestion, number, suggestion.base_version_id != live, applied_by)
+        for suggestion, number, applied_by in rows.all()
+    ]
 
 
 async def get_suggestion(
@@ -885,6 +903,15 @@ async def get_suggestion(
         message_id = cast(uuid.UUID, each.message_id)
         return EvidenceRead(each, messages[message_id], outcomes.get(message_id))
 
+    applied_by = (
+        None if suggestion.applied_by is None else await session.get(Member, suggestion.applied_by)
+    )
     return SuggestionRead(
-        suggestion, version.number, changes, [read(each) for each in evidence], gaps
+        suggestion,
+        version.number,
+        changes,
+        [read(each) for each in evidence],
+        gaps,
+        stale=suggestion.base_version_id != found.agent.live_version_id,
+        applied_by=applied_by,
     )

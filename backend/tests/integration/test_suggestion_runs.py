@@ -467,7 +467,7 @@ async def test_a_run_cancelled_while_proposing_stops_and_keeps_what_it_spent(
         async def cancel_it(session: Any) -> None:
             scope = scope_of(owner)
             project_id, agent_id = uuid.UUID(agent["project_id"]), uuid.UUID(agent["id"])
-            ((found, _),) = await service.list_suggestions(session, scope, project_id, agent_id)
+            ((found, *_),) = await service.list_suggestions(session, scope, project_id, agent_id)
             await service.cancel_suggestion(
                 session, scope, project_id, agent_id, found.id, now=clock.now()
             )
@@ -508,7 +508,7 @@ async def test_a_run_cancelled_while_gathering_never_proposes(
             project_id, agent_id = uuid.UUID(agent["project_id"]), uuid.UUID(agent["id"])
             listed = await service.list_suggestions(session, scope, project_id, agent_id)
             # Starting reads the evidence too, to estimate; only the job's gathering cancels.
-            for found, _ in listed:
+            for found, *_ in listed:
                 await service.cancel_suggestion(
                     session, scope, project_id, agent_id, found.id, now=clock.now()
                 )
