@@ -70,11 +70,16 @@ migrate: ## Apply database migrations to the running stack
 SEED_RUN = $(COMPOSE) run --rm --no-deps -v "$(CURDIR)/seed:/seed:ro" \
 	-e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 \
 	-e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api
+# --no-deps starts nothing, so without the stack the seed only fails to reach Postgres; say so instead.
+SEED_NEEDS_STACK = @$(COMPOSE) ps --status running --services 2>/dev/null | grep -qx postgres || \
+	{ echo "The stack is not running. Start it with 'make dev' (in another terminal), then run this again." >&2; exit 1; }
 
 seed: ## Create the demo Organisation in the running stack and print its sign-in details (idempotent)
+	$(SEED_NEEDS_STACK)
 	$(SEED_RUN) sh -c "alembic upgrade head && python -m app.seed"
 
 seed-reset: ## Erase the demo Organisation (only that one) and seed it again
+	$(SEED_NEEDS_STACK)
 	$(SEED_RUN) sh -c "alembic upgrade head && python -m app.seed --reset"
 
 link-check: ## Check that every relative link (and its #anchor) in the Markdown git tracks resolves; offline, with the checker's tests at 100% coverage
