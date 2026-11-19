@@ -109,8 +109,9 @@ test.describe("Sign-in hardening", () => {
     browser,
   }) => {
     // Seven waits of 1, 2, 4, 8, 16, 30 and 30 seconds stand between the 3rd and the 10th failure;
-    // runs repeated within 15 minutes can add the host IP's own waits of up to 30 seconds each.
-    test.setTimeout(420_000);
+    // runs repeated within 15 minutes add the host IP's own waits of up to 30 seconds to each of the
+    // ten failures (about 4.5 minutes on a second back-to-back run), so leave room for both.
+    test.setTimeout(600_000);
     const visitor = await (await browser.newContext()).newPage();
 
     // Three failures are free; after six, each attempt has to wait.

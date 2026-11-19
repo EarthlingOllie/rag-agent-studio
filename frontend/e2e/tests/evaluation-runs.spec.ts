@@ -497,6 +497,10 @@ test.describe("Evaluation Runs", () => {
     await test.step("in the next Run the Expected source's Document is gone: that expectation is skipped, neither pass nor fail", async () => {
       await evaluateButton(page).click();
       await page.getByRole("dialog", { name: "Evaluate" }).getByRole("button", { name: "Start Run" }).click();
+      // Until the new Run is shown, the detail still shows the first (Completed) Run.
+      const runs = page.getByRole("list", { name: "Evaluation Runs" }).getByRole("listitem");
+      await expect(runs).toHaveCount(2, { timeout: 15_000 });
+      await expect(runs.first().getByRole("button", { name: /^Run of / })).toHaveAttribute("aria-current", "true");
       await expect(runDetail(page).getByText(/^Completed · /)).toBeVisible({ timeout: 120_000 });
       const stale = runCase(page, staleQuestion);
       await expect(stale.getByText(/An Expected source's Document or passage is gone, so it was skipped: neither pass nor fail\./)).toBeVisible();
