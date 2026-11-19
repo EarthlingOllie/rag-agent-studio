@@ -7,7 +7,7 @@ full one, whose fixed random seed makes the comparison tell its story.
 
 import itertools
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any
 
 import pytest
@@ -631,7 +631,10 @@ async def test_the_hr_helper_has_a_stale_suggestion_with_its_check_a_gap_and_pur
     cases = [e for e in evidence if e["run_case_id"] is not None]
     assert cases
     assert all(e["kind"] == "evaluation_case" and not e["case_deleted"] for e in cases)
-    cutoff = datetime.now(UTC) - timedelta(days=14)
+    # The seed's nightly Purge ran at 00:10 today, so its cutoff is that moment less the window,
+    # not now less the window (which would misjudge replies from earlier in the boundary day).
+    purge_at = datetime.combine(datetime.now(UTC).date(), time(0, 10), tzinfo=UTC)
+    cutoff = purge_at - timedelta(days=14)
     purged = [e for e in replies if e["text_purged"]]
     kept = [e for e in replies if not e["text_purged"]]
     assert purged
