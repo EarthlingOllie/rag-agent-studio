@@ -15,7 +15,7 @@ test.describe("Documents", () => {
     const form = page.getByRole("form", { name: "New Project" });
     await form.getByLabel("Name").fill("Northwind handbook");
     await form.getByRole("button", { name: "Create Project" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Documents" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 2, name: "Documents", exact: true })).toBeVisible();
     await expect(page.getByText(/No Documents yet/)).toBeVisible();
 
     // Presign, PUT straight to the object store (RustFS through the Studio's proxy), confirm.
