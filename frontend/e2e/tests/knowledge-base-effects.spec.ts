@@ -314,7 +314,10 @@ test.describe("Knowledge Base effects", () => {
     test.slow();
     await createProject(page, "P2 scanned");
     const { project } = apiPaths(page);
-    // A page of text drawn as an image, as a scanner makes it: there is no text layer.
+    // A page of text drawn as an image, as a scanner makes it: there is no text layer. It is body
+    // text, not headline-sized capitals: Docling's layout model reads large bold lines as section
+    // headers, and a page of headers alone gives no Chunks, so it would fail with "No readable
+    // text" even with OCR on.
     const [width, height] = [1240, 360];
     const pixels = await page.evaluate(
       ({ w, h }) => {
@@ -323,9 +326,9 @@ test.describe("Knowledge Base effects", () => {
         context.fillStyle = "#fff";
         context.fillRect(0, 0, w, h);
         context.fillStyle = "#000";
-        context.font = "bold 64px sans-serif";
-        context.fillText("PARKING PERMITS", 60, 130);
-        context.fillText("COME FROM RECEPTION", 60, 260);
+        context.font = "40px sans-serif";
+        context.fillText("Staff parking permits come from reception", 60, 110);
+        context.fillText("in the north lobby, on any weekday morning.", 60, 170);
         const { data } = context.getImageData(0, 0, w, h);
         let binary = "";
         for (let index = 0; index < data.length; index += 4) binary += String.fromCharCode(data[index] as number);
@@ -357,7 +360,13 @@ test.describe("Knowledge Base effects", () => {
     await expect(page.getByText(/OCR is on\./)).toBeVisible();
     await openSection(page, "Project sections", "Documents");
     await rowAction(page, "p2-scan.pdf", "Retry");
-    await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 120_000 });
+    // Waits on the Document's own status, so a run that fails again says why instead of timing out.
+    const settled = async () => {
+      const [document] = await documentsOf(page, project);
+      return document?.status === "queued" || document?.status === "processing" ? "pending" : [document?.status, document?.error_message];
+    };
+    await expect.poll(settled, { timeout: 60_000 }).toEqual(["ready", null]);
+    await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible();
     await expect.poll(async () => (await documentsOf(page, project))[0]?.chunk_count).toBeGreaterThan(0);
     expect(await permits()).toMatch(/PARKING\s+PERMITS/i);
   });
