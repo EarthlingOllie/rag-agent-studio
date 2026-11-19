@@ -180,3 +180,132 @@ test.describe("Theme editor", () => {
     expect(refused.status()).toBe(403);
   });
 });
+
+test.describe("Theme editor: colours, shape, type, mode and launcher", () => {
+  /** The fonts an Owner can choose from, as the curated list names them. */
+  const CURATED_FONTS = [
+    "Inter (sans-serif)",
+    "Roboto (sans-serif)",
+    "Open Sans (sans-serif)",
+    "Lato (sans-serif)",
+    "Source Sans 3 (sans-serif)",
+    "Nunito (sans-serif)",
+    "Work Sans (sans-serif)",
+    "IBM Plex Sans (sans-serif)",
+    "Merriweather (serif)",
+    "Lora (serif)",
+    "Source Serif 4 (serif)",
+    "JetBrains Mono (monospace)",
+  ];
+
+  test("an Owner sets the surface and accent colours, the corner radius and a curated font, previews them and saves", async ({
+    signedInPage: page,
+    makeAxeBuilder,
+  }) => {
+    await openTheme(page);
+
+    // Surface and accent, for light and dark mode.
+    await page.getByLabel("Surface (light)", { exact: true }).fill("#fef3c7");
+    await page.getByLabel("Surface (dark)", { exact: true }).fill("#1e1b4b");
+    await page.getByLabel("Accent (light)", { exact: true }).fill("#9a3412");
+    await page.getByLabel("Accent (dark)", { exact: true }).fill("#fdba74");
+    await expect.poll(() => themeProperty(preview(page), "--theme-surface")).toBe("#fef3c7");
+    expect(await themeProperty(preview(page), "--theme-accent")).toBe("#9a3412");
+    await expect(preview(page).getByRole("link", { name: "Opening hours, page 2" })).toHaveCSS("color", "rgb(154, 52, 18)");
+
+    // The corner radius: out of range is refused before saving, a whole number in range is previewed.
+    const radius = page.getByLabel("Corner radius (px)");
+    await radius.fill("40");
+    await expect(page.getByText("Use a whole number from 0 to 24.")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Save Theme" })).toBeDisabled();
+    await radius.fill("4");
+    await expect(page.getByText("Use a whole number from 0 to 24.")).toHaveCount(0);
+    await expect.poll(() => themeProperty(preview(page), "--theme-radius")).toBe("4px");
+
+    // The font comes from a curated list only; the preview loads it from the allowlisted stylesheet.
+    const font = page.getByLabel("Font", { exact: true });
+    expect(await font.getByRole("option").allTextContents()).toEqual(CURATED_FONTS);
+    await font.selectOption({ label: "Merriweather (serif)" });
+    await expect.poll(() => themeProperty(preview(page), "--theme-font-family")).toContain('"Merriweather"');
+    await expect(page.locator('link[rel="stylesheet"][href*="fonts.googleapis.com/css2?family=Merriweather"]')).toHaveCount(1);
+    expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
+
+    await page.getByRole("button", { name: "Save Theme" }).click();
+    await expect(page.getByRole("status", { name: "Saved" })).toHaveText("Theme saved. The widget uses it now.");
+
+    await page.reload();
+    await expect(page.getByLabel("Surface (dark)", { exact: true })).toHaveValue("#1e1b4b");
+    await expect(page.getByLabel("Accent (dark)", { exact: true })).toHaveValue("#fdba74");
+    await expect(page.getByLabel("Corner radius (px)")).toHaveValue("4");
+    await expect(page.getByLabel("Font", { exact: true })).toHaveValue("Merriweather");
+    const path = `/api/organisations/${await organisationId(page)}/theme`;
+    const saved = (await (await page.request.get(path)).json()) as Record<string, unknown>;
+    expect(saved).toMatchObject({
+      radius: 4,
+      font: "Merriweather",
+      colours: { surface: { light: "#fef3c7", dark: "#1e1b4b" }, accent: { light: "#9a3412", dark: "#fdba74" } },
+    });
+
+    // A font outside the list can't be saved through the API either.
+    delete saved.updated_at;
+    delete saved.logo;
+    delete saved.avatar;
+    expect((await page.request.put(path, { data: { ...saved, font: "https://fonts.example/evil.css" } })).status()).toBe(422);
+
+    await openSection(page, "Organisation settings", "Audit");
+    const row = page.getByRole("table", { name: "Audit Events" }).getByRole("row").filter({ hasText: "theme.updated" });
+    await expect(row).toHaveCount(1);
+    for (const change of ['"radius":4', '"font":"Merriweather"', '"surface":{', '"accent":{']) await expect(row).toContainText(change);
+  });
+
+  test("an Owner chooses dark, automatic or light mode and an inline or bubble launcher, and the preview and saved Theme follow", async ({
+    signedInPage: page,
+  }) => {
+    await openTheme(page);
+    const mode = page.getByRole("radiogroup", { name: "Mode" });
+    const launcher = page.getByRole("radiogroup", { name: "Launcher" });
+    await expect(mode.getByRole("radio", { name: "Light" })).toBeChecked();
+    await expect(launcher.getByRole("radio", { name: "Floating bubble" })).toBeChecked();
+
+    // Dark: the preview shows the dark colours.
+    await mode.getByRole("radio", { name: "Dark" }).check();
+    await expect(preview(page, "dark")).toHaveAttribute("data-scheme", "dark");
+    expect(await themeProperty(preview(page, "dark"), "--theme-primary")).toBe("#818cf8");
+
+    // Automatic: the Owner previews either scheme.
+    await mode.getByRole("radio", { name: "Automatic" }).check();
+    const previewColours = page.getByRole("radiogroup", { name: "Preview colours" });
+    await expect(previewColours).toBeVisible();
+    await expect(preview(page, "light")).toBeVisible();
+    await previewColours.getByRole("radio", { name: "Dark" }).check();
+    await expect(preview(page, "dark")).toBeVisible();
+
+    // Inline: no launcher or bubble corner, the chat sits in the page.
+    await launcher.getByRole("radio", { name: "Inline container" }).check();
+    await expect(page.getByRole("radiogroup", { name: "Bubble position" })).toHaveCount(0);
+    await expect(preview(page, "dark").getByRole("button", { name: /chat/ })).toHaveCount(0);
+    await expect(preview(page, "dark").getByRole("region", { name: "Chat with Assistant" })).toBeVisible();
+
+    await page.getByRole("button", { name: "Save Theme" }).click();
+    await expect(page.getByRole("status", { name: "Saved" })).toHaveText("Theme saved. The widget uses it now.");
+    await page.reload();
+    await expect(page.getByRole("radiogroup", { name: "Mode" }).getByRole("radio", { name: "Automatic" })).toBeChecked();
+    await expect(page.getByRole("radiogroup", { name: "Launcher" }).getByRole("radio", { name: "Inline container" })).toBeChecked();
+    const path = `/api/organisations/${await organisationId(page)}/theme`;
+    expect(await (await page.request.get(path)).json()).toMatchObject({ mode: "auto", launcher_type: "inline" });
+
+    // Back to a light bubble in the bottom-left corner.
+    await page.getByRole("radiogroup", { name: "Mode" }).getByRole("radio", { name: "Light" }).check();
+    await page.getByRole("radiogroup", { name: "Launcher" }).getByRole("radio", { name: "Floating bubble" }).check();
+    await page.getByRole("radiogroup", { name: "Bubble position" }).getByRole("radio", { name: "Bottom left" }).check();
+    await expect(page.getByRole("radiogroup", { name: "Preview colours" })).toHaveCount(0);
+    await expect(preview(page).getByRole("button", { name: "Close chat" })).toHaveAttribute("data-position", "bottom-left");
+    await page.getByRole("button", { name: "Save Theme" }).click();
+    await expect(page.getByRole("status", { name: "Saved" })).toHaveText("Theme saved. The widget uses it now.");
+    expect(await (await page.request.get(path)).json()).toMatchObject({
+      mode: "light",
+      launcher_type: "bubble",
+      launcher_position: "bottom-left",
+    });
+  });
+});
