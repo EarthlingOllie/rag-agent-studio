@@ -153,7 +153,9 @@ test.describe("Suggestions", () => {
         await expect(page.getByRole("table", { name: "Suggested change to the system prompt" })).toContainText(CITE_LINE);
         const check = page.getByRole("region", { name: "Check against the Evaluation Set" });
         await expect(check).toContainText(/Version 1: \d+% · Suggestion: \d+%/, { timeout: 120_000 });
-        await expect(page.getByRole("list", { name: "Knowledge Base gaps" }).getByRole("listitem")).toHaveCount(1);
+        // One gap, for the one failed reply that cited nothing (the failed Evaluation Case is not a
+        // Live Verdict). Each gap's item nests its own evidence list, so count the gaps' headings.
+        await expect(page.getByRole("list", { name: "Knowledge Base gaps" }).getByRole("heading", { level: 5 })).toHaveCount(1);
         expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
       });
 
