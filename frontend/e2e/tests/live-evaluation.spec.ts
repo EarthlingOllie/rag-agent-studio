@@ -90,10 +90,16 @@ test.describe("Live evaluation", () => {
         expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
       });
 
-      await test.step("filter to failed replies and add one to the Evaluation Set", async () => {
+      await test.step("filter to v2's failed replies and add one to the Evaluation Set", async () => {
         await openAgentView(page, "Conversations");
-        await page.getByRole("group", { name: "Filter Conversations" }).getByLabel("Live Verdict").selectOption("failed");
+        const filters = page.getByRole("group", { name: "Filter Conversations" });
+        await filters.getByLabel("Live Verdict").selectOption("failed");
         await expect(page).toHaveURL(/live=failed/);
+        // v1's and v3's replies cite the handbook but can still fail answering the question (the
+        // demo judge wants a long word shared with it), and they are the newest. v2's failed
+        // grounding: they cite nothing.
+        await filters.getByRole("combobox", { name: "Version", exact: true }).selectOption({ label: "v2" });
+        await expect(page).toHaveURL(/version=/);
         const list = page.getByRole("list", { name: "Conversations" });
         await expect(list.getByRole("listitem").first()).toContainText(/\d+ failed/, { timeout: 15_000 });
         await list.getByRole("listitem").first().getByRole("link").first().click();
