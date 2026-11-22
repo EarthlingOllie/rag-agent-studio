@@ -73,7 +73,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
 
   await test.step("3. The Agent editor and a Playground Trace, Automatic then Agentic", async () => {
     await openProjectTab(page, "Agents");
-    await page.getByRole("link", { name: "HR helper" }).click();
+    await page.getByRole("link", { name: "HR helper", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
     await page.getByLabel("Question", { exact: true }).fill("How many days of annual leave do I get?");
     await page.getByRole("button", { name: "Send" }).click();
@@ -90,7 +90,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     // lists each Search with the Chunks it found.
     const question = "Can I return a jar of honey?";
     await openProjectTab(page, "Agents");
-    await page.getByRole("link", { name: "Product FAQ" }).click();
+    await page.getByRole("link", { name: "Product FAQ", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "Product FAQ" })).toBeVisible({ timeout: 15_000 });
     await page.getByLabel("Question", { exact: true }).fill(question);
     await page.getByRole("button", { name: "Send" }).click();
@@ -108,7 +108,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
 
   await test.step("4. Publish and revert: the HR helper's Live History tells the v2 story", async () => {
     await openProjectTab(page, "Agents");
-    await page.getByRole("link", { name: "HR helper" }).click();
+    await page.getByRole("link", { name: "HR helper", exact: true }).click();
     await expect(page.getByRole("heading", { level: 1, name: "HR helper" })).toBeVisible({ timeout: 15_000 });
     await openAgentView(page, "Versions");
     const timeline = page.getByRole("list", { name: "Live History" });
@@ -157,6 +157,8 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     expect(v1).toBeLessThan(v3);
     // The Live score agrees: v2's uncited replies failed grounding when the Evaluation Model judged them.
     expect(await liveScore(page, "v2")).toBeLessThan(await liveScore(page, "v1"));
+    // The Live score checks left v1 chosen: back to v3, the small sample.
+    await page.getByRole("combobox", { name: /^Version/ }).selectOption({ label: "v3 (Live)" });
     const v3Volume = page.getByRole("list", { name: "Key numbers for v3" }).getByRole("listitem", { name: "Volume" });
     await expect(v3Volume.getByText("Low sample")).toBeVisible();
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
