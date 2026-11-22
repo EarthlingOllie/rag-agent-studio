@@ -810,8 +810,12 @@ Of an Expected source in one answer: the answer cited a Chunk holding it, which 
 _Avoid_: Used, grounded (that is the grounding Verdict)
 
 **Found rank**:
-An Expected source's best rank in any Search of one answer. Each side of an Evaluation Run shows its median Found rank over the Expected sources that were Found, next to how many were not Found.
+An Expected source's best rank in retrieval's own order within any Search of one answer (not the number in its Chunk label), whether or not it was Given. Each side of an Evaluation Run shows its median Found rank over the Expected sources that were Found, next to how many were not Found.
 _Avoid_: MRR, position (the Trace's order)
+
+**Retrieval breakdown**:
+In an Evaluation Run, each side's answers to cases with an Expected source sorted by whether every Expected source was Given and whether its other Verdicts passed: Clean pass (Given, passed), Answer miss (Given, failed), Retrieval miss (not Given, failed) and Passed without source (not Given, passed). Answers blocked before retrieval are left out and counted beside it.
+_Avoid_: Confusion matrix, generation failure, hallucination
 
 **Reference answer**:
 What a good answer to an Evaluation Case says, in the Editor's words; answers are judged against its meaning, not its wording.
@@ -886,7 +890,7 @@ The most an Organisation may spend in US dollars per calendar month (UTC) on Liv
 _Avoid_: Eval budget, judging quota, Token Budget (the Agent's reply limit)
 
 **Verdict review**:
-An Editor's agree or disagree on a judged Verdict (Reference answer or grounding) or on either check of a Live Verdict: whether they think the Evaluation Model got that pass or fail right. A Verdict has at most one, from any Editor, and reviewing it again replaces it. It never changes the Verdict or anything counted from it (Evaluation score, Regressions, Live score, alerts). It is the only reference the Evaluation Model is measured against; Message Feedback is not one.
+An Editor's own pass or fail on a judged Verdict (Reference answer or grounding) or on either check of a Live Verdict; it agrees when it matches the Evaluation Model's. In the Review sample it is given blind, before the Evaluation Model's pass or fail and reason are shown; elsewhere the Editor sees them and agrees or disagrees. A Verdict has at most one, from any Editor, and reviewing it again replaces it. It never changes the Verdict or anything counted from it (Evaluation score, Regressions, Live score, alerts). It is the only reference the Evaluation Model is measured against; Message Feedback is not one.
 _Avoid_: Label, annotation, human eval, thumbs (that is Message Feedback)
 
 **Evaluation Model agreement**:
@@ -894,7 +898,7 @@ How often the Evaluation Model's judgements match Editors' Verdict reviews made 
 _Avoid_: Judge calibration, judge accuracy, calibration (the Evaluation Model gives pass or fail, not probabilities)
 
 **Review sample**:
-The queue of randomly chosen judged Verdicts and Live Verdicts that Editors review so that Evaluation Model agreement isn't skewed towards the ones they doubted. Verdict reviews made anywhere else are kept and shown on the Verdict, but don't count.
+The Organisation's queue of judged Verdicts and Live Verdict checks, drawn at random from those by the current Evaluation Model that are not yet reviewed and whose text is not Purged, which Editors review blind so that Evaluation Model agreement isn't skewed towards the ones they doubted. Verdict reviews made anywhere else are kept and shown on the Verdict, but don't count.
 _Avoid_: Labelling queue, review queue, audit sample
 
 **Suggestion**:
