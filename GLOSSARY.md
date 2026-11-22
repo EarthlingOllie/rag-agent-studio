@@ -797,6 +797,22 @@ _Avoid_: Test case, golden question, eval
 A passage of a Document (up to 1,000 characters, picked from its Chunks) that an Evaluation Case's answer should retrieve and cite. It is matched, ignoring case and whitespace, against the Chunks of the Document's current Edition each time it is checked (when the case is saved, each Run, and as soon as a new Edition of the Document is swapped in): its Verdict passes when the answer cited a Chunk holding it and fails when it didn't (a Chunk retrieved but left uncited is a fail too); when the Document is gone or no Chunk holds the passage, the expectation is Stale. A case may hold several.
 _Avoid_: Ground truth chunk, expected chunk
 
+**Found**:
+Of an Expected source in one answer: a Chunk holding it was among those retrieval returned, at any rank, in any Search, whether or not the model was given it. The Found rate is the share of a side's Expected sources that were Found.
+_Avoid_: Recall, recall@k, hit
+
+**Given**:
+Of an Expected source in one answer: a Chunk holding it was among those given to the model (within Top-k). An Expected source Found but not Given was cut by Top-k or the reranker. The Given rate is the share of a side's Expected sources that were Given.
+_Avoid_: Recall@k (k differs between sides), in context
+
+**Cited**:
+Of an Expected source in one answer: the answer cited a Chunk holding it, which is what its Verdict passes on. The Cited rate is the share of a side's Expected sources that were Cited.
+_Avoid_: Used, grounded (that is the grounding Verdict)
+
+**Found rank**:
+An Expected source's best rank in any Search of one answer. Each side of an Evaluation Run shows its median Found rank over the Expected sources that were Found, next to how many were not Found.
+_Avoid_: MRR, position (the Trace's order)
+
 **Reference answer**:
 What a good answer to an Evaluation Case says, in the Editor's words; answers are judged against its meaning, not its wording.
 _Avoid_: Gold answer, expected output
