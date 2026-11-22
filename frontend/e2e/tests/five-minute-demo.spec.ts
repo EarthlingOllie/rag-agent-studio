@@ -135,7 +135,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 
-  await test.step("6. Suggestions: the one made from v2 is stale, checked, with a gap and purged evidence", async () => {
+  await test.step("6. [US16-60] Suggestions: the one made from v2 is stale, checked, with a gap and purged evidence", async () => {
     await page.getByRole("radiogroup", { name: "Evaluation view" }).getByRole("radio", { name: "Suggestions" }).click();
     const seeded = page.getByRole("list", { name: "Suggestion runs" }).getByRole("listitem").filter({ hasText: "From Version 2" });
     await expect(seeded).toContainText("Stale", { timeout: 15_000 });
@@ -147,7 +147,7 @@ test("the five-minute demo", async ({ page, browser, makeAxeBuilder }) => {
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
   });
 
-  await test.step("7. The analytics comparison: v2 was worse, v3 is better but a small sample", async () => {
+  await test.step("7. [US15-59] The analytics comparison: v2 was worse, v3 is better but a small sample", async () => {
     await openProjectTab(page, "Analytics");
     await page.getByRole("combobox", { name: "Agent" }).selectOption({ label: "HR helper" });
     const v1 = await thumbsUp(page, "v1");
