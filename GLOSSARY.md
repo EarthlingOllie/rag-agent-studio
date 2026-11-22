@@ -798,15 +798,15 @@ A passage of a Document (up to 1,000 characters, picked from its Chunks) that an
 _Avoid_: Ground truth chunk, expected chunk
 
 **Found**:
-Of an Expected source in one answer: a Chunk holding it was among those retrieval returned, at any rank, in any Search, whether or not the model was given it. The Found rate is the share of a side's Expected sources that were Found.
+Of an Expected source in one answer: a Chunk holding it was among those retrieval returned, at any rank, in any Search, whether or not the model was given it. The Found rate is the share of a side's Expected sources that were Found, each Expected source counting once in every answer (every repeat), shown as "x of y"; Stale expectations and answers with an Error are left out.
 _Avoid_: Recall, recall@k, hit
 
 **Given**:
-Of an Expected source in one answer: a Chunk holding it was among those given to the model (within Top-k). An Expected source Found but not Given was cut by Top-k or the reranker. The Given rate is the share of a side's Expected sources that were Given.
+Of an Expected source in one answer: a Chunk holding it was among those given to the model. An Expected source Found but not Given was left out, for the reason its Trace gives (below the Minimum Score, outside Top-k, outside the Agent's Tags, or flagged by a Guardrail). The Given rate is counted like the Found rate.
 _Avoid_: Recall@k (k differs between sides), in context
 
 **Cited**:
-Of an Expected source in one answer: the answer cited a Chunk holding it, which is what its Verdict passes on. The Cited rate is the share of a side's Expected sources that were Cited.
+Of an Expected source in one answer: the answer cited a Chunk holding it, which is what its Verdict passes on. The Cited rate is counted like the Found rate.
 _Avoid_: Used, grounded (that is the grounding Verdict)
 
 **Found rank**:
@@ -886,12 +886,16 @@ The most an Organisation may spend in US dollars per calendar month (UTC) on Liv
 _Avoid_: Eval budget, judging quota, Token Budget (the Agent's reply limit)
 
 **Verdict review**:
-An Editor's agree or disagree on a judged Verdict or Live Verdict: whether they think the Evaluation Model got that pass or fail right. It is the only reference the Evaluation Model is measured against; Message Feedback is not one.
+An Editor's agree or disagree on a judged Verdict (Reference answer or grounding) or on either check of a Live Verdict: whether they think the Evaluation Model got that pass or fail right. A Verdict has at most one, from any Editor, and reviewing it again replaces it. It never changes the Verdict or anything counted from it (Evaluation score, Regressions, Live score, alerts). It is the only reference the Evaluation Model is measured against; Message Feedback is not one.
 _Avoid_: Label, annotation, human eval, thumbs (that is Message Feedback)
 
 **Evaluation Model agreement**:
-How often the Evaluation Model's judgements match Editors' Verdict reviews: the measure of how far its Verdicts and Live Verdicts can be trusted.
+How often the Evaluation Model's judgements match Editors' Verdict reviews made from the Review sample, kept for each Evaluation Model and shown with its Wilson interval (Low sample under 30). Disagreements are split into false passes (it passed, the Editor disagrees) and false fails.
 _Avoid_: Judge calibration, judge accuracy, calibration (the Evaluation Model gives pass or fail, not probabilities)
+
+**Review sample**:
+The queue of randomly chosen judged Verdicts and Live Verdicts that Editors review so that Evaluation Model agreement isn't skewed towards the ones they doubted. Verdict reviews made anywhere else are kept and shown on the Verdict, but don't count.
+_Avoid_: Labelling queue, review queue, audit sample
 
 **Suggestion**:
 A proposed change to an Agent's Draft, drawn from its Live Version's replies that failed their Live Verdict, were given a thumbs-down or are in a Conversation rated 1 or 2, and from Evaluation Cases that failed on it, for an Editor to review: system prompt wording and retrieval settings (Top-k, Minimum Score, Hybrid weighting), each retrieval change citing the Traces behind it, plus any Knowledge Base gaps it found (questions no Chunk covered, which no configuration change can fix). An Editor starts the run that makes it and applies it to the Draft whole; it never changes the Draft or Publishes on its own, and a failed check against the Evaluation Set is a warning, not a block. Its evidence points at Messages and never copies their text, so Purged evidence reads "Text purged"; the change and its explanation are kept until an Editor deletes it.
