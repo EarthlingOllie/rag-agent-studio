@@ -890,7 +890,7 @@ The most an Organisation may spend in US dollars per calendar month (UTC) on Liv
 _Avoid_: Eval budget, judging quota, Token Budget (the Agent's reply limit)
 
 **Verdict review**:
-An Editor's own pass or fail on a judged Verdict (Reference answer or grounding) or on either check of a Live Verdict; it agrees when it matches the Evaluation Model's. In the Review sample it is given blind, before the Evaluation Model's pass or fail and reason are shown; elsewhere the Editor sees them and agrees or disagrees. A Verdict has at most one, from any Editor, and reviewing it again replaces it. It never changes the Verdict or anything counted from it (Evaluation score, Regressions, Live score, alerts). It is the only reference the Evaluation Model is measured against; Message Feedback is not one.
+An Editor's own pass or fail on a judged Verdict (Reference answer or grounding) or on either check of a Live Verdict; it agrees when it matches the Evaluation Model's. In the Review sample it is given blind, before the Evaluation Model's pass or fail and reason are shown; elsewhere the Editor sees them and agrees or disagrees. When it differs from the Evaluation Model's, the Editor may give a reason (up to 1,000 characters). A Verdict has at most one, from any Editor, and reviewing it again replaces it. It never changes the Verdict or anything counted from it (Evaluation score, Regressions, Live score, alerts). It is the only reference the Evaluation Model is measured against; Message Feedback is not one.
 _Avoid_: Label, annotation, human eval, thumbs (that is Message Feedback)
 
 **Evaluation Model agreement**:
@@ -900,6 +900,10 @@ _Avoid_: Judge calibration, judge accuracy, calibration (the Evaluation Model gi
 **Review sample**:
 The Organisation's queue of judged Verdicts and Live Verdict checks, drawn at random from those by the current Evaluation Model that are not yet reviewed and whose text is not Purged, which Editors review blind so that Evaluation Model agreement isn't skewed towards the ones they doubted. Verdict reviews made anywhere else are kept and shown on the Verdict, but don't count.
 _Avoid_: Labelling queue, review queue, audit sample
+
+**Judging guidance**:
+An Organisation's own instructions to the Evaluation Model, saved by an Owner and added to every judgement it makes, so that its Verdicts and Live Verdicts follow the Organisation's idea of a pass. The Evaluation Model can draft it from the Verdict reviews it disagreed with; a person always saves it.
+_Avoid_: Judge prompt, rubric, fine-tuning, calibration
 
 **Suggestion**:
 A proposed change to an Agent's Draft, drawn from its Live Version's replies that failed their Live Verdict, were given a thumbs-down or are in a Conversation rated 1 or 2, and from Evaluation Cases that failed on it, for an Editor to review: system prompt wording and retrieval settings (Top-k, Minimum Score, Hybrid weighting), each retrieval change citing the Traces behind it, plus any Knowledge Base gaps it found (questions no Chunk covered, which no configuration change can fix). An Editor starts the run that makes it and applies it to the Draft whole; it never changes the Draft or Publishes on its own, and a failed check against the Evaluation Set is a warning, not a block. Its evidence points at Messages and never copies their text, so Purged evidence reads "Text purged"; the change and its explanation are kept until an Editor deletes it.
