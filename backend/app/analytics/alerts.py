@@ -1,21 +1,32 @@
-"""The Block rate alert: after each hourly rollup, every Agent's Guardrail block rate over the
-last hour is compared with its baseline, the week before that hour. A spike raises the Agent's
-alert flag (the Studio's badge) and emails every Owner of its Organisation once; the first run
-that no longer finds a spike clears it.
+"""The hourly alerts, run after each rollup: the Block rate alert and the Live score drop alert.
+Each sets a flag on the Agent (the Studio's badge) and emails every Owner of its Organisation once
+when raised; the first run that no longer finds the problem clears it.
 
-A spike is at least ``SPIKE_MIN_BLOCKS`` blocked Visitor messages in the hour, making up at
-least ``SPIKE_MIN_RATE`` of the hour's Visitor messages and at least ``SPIKE_FACTOR`` times the
-baseline's block rate. Only Visitor Conversations count: the Playground never does."""
+Block rate alert: every Agent's Guardrail block rate over the last hour is compared with its
+baseline, the week before that hour. A spike is at least ``SPIKE_MIN_BLOCKS`` blocked Visitor
+messages in the hour, making up at least ``SPIKE_MIN_RATE`` of the hour's Visitor messages and at
+least ``SPIKE_FACTOR`` times the baseline's block rate. Only Visitor Conversations count: the
+Playground never does.
+
+Live score drop alert: once an Agent's Live Version has ``DROP_MIN_JUDGED`` judged Live Verdicts
+on replies since it became Live, its Live score is compared with the previous Live Version's (the
+one it replaced, in Live History) over that Version's last ``DROP_WINDOW`` as Live, which needs
+``DROP_MIN_JUDGED`` too. A drop is at least ``DROP_MIN_POINTS`` lower and lower by a one-sided
+pooled two-proportion z-test at 95%. Any change of the Live Version also clears it
+(``app.agents.versions``)."""
 
 import uuid
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
-from sqlalchemy import ColumnElement, and_, case, func, select, update
+from sqlalchemy import ColumnElement, Select, and_, case, func, select, update
+from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.agents.models import Agent
+from app.agents.models import Agent, AgentVersion, LiveHistoryEntry
+from app.analytics.stats import clearly_lower
 from app.conversations.models import Conversation, Message, MessageRole
+from app.evaluation.models import LiveStatus, LiveVerdict
 from app.mail import templates
 from app.mail.port import Mailer
 from app.tenancy.models import Member, Membership, Role
@@ -25,6 +36,9 @@ BASELINE = timedelta(days=7)
 SPIKE_MIN_BLOCKS = 5
 SPIKE_MIN_RATE = 0.2
 SPIKE_FACTOR = 3
+DROP_MIN_JUDGED = 30
+DROP_WINDOW = timedelta(days=30)
+DROP_MIN_POINTS = 0.05
 
 
 @dataclass(frozen=True)
@@ -92,15 +106,21 @@ def _percent(rate: float) -> str:
     return f"{round(rate * 100)}%"
 
 
-async def _email_owners(
-    session: AsyncSession, agent: Agent, rates: Rates, *, mailer: Mailer, studio_url: str
-) -> None:
-    owners = await session.execute(
+async def _owners(session: AsyncSession, agent: Agent) -> list[tuple[str, str]]:
+    """The name and email of every Owner of the Agent's Organisation."""
+    rows = await session.execute(
         select(Member.name, Member.email)
         .join(Membership, Membership.member_id == Member.id)
         .where(Membership.organisation_id == agent.organisation_id, Membership.role == Role.OWNER)
         .order_by(Member.email)
     )
+    return [(name, email) for name, email in rows]
+
+
+async def _email_owners(
+    session: AsyncSession, agent: Agent, rates: Rates, *, mailer: Mailer, studio_url: str
+) -> None:
+    owners = await _owners(session, agent)
     link = templates.blocked_conversations_link(
         studio_url, str(agent.organisation_id), str(agent.project_id), str(agent.id)
     )
@@ -144,3 +164,159 @@ async def check_block_rates(
     for agent_id in sorted(raised):
         agent = await session.get_one(Agent, agent_id)
         await _email_owners(session, agent, rates[agent_id], mailer=mailer, studio_url=studio_url)
+
+
+@dataclass(frozen=True)
+class Scores:
+    """An Agent's Live Version and the previous Live Version, with their judged and passed Live
+    Verdicts in the windows compared."""
+
+    version_id: uuid.UUID
+    judged: int
+    passed: int
+    previous_id: uuid.UUID
+    previous_judged: int
+    previous_passed: int
+
+    @property
+    def drop(self) -> bool:
+        return self.previous_judged >= DROP_MIN_JUDGED and clearly_lower(
+            self.previous_passed,
+            self.previous_judged,
+            self.passed,
+            self.judged,
+            min_drop=DROP_MIN_POINTS,
+        )
+
+
+async def _scores(session: AsyncSession, at: datetime) -> dict[uuid.UUID, Scores]:
+    """Each Agent whose Live Version replaced an earlier one and has at least
+    ``DROP_MIN_JUDGED`` judged Live Verdicts on replies since: both Versions' counts."""
+    # The Live History entry that made each Agent's Live Version Live.
+    became = (
+        select(
+            LiveHistoryEntry.agent_id,
+            LiveHistoryEntry.to_version_id,
+            LiveHistoryEntry.from_version_id,
+            LiveHistoryEntry.occurred_at,
+        )
+        .join(Agent, Agent.id == LiveHistoryEntry.agent_id)
+        .where(
+            LiveHistoryEntry.to_version_id == Agent.live_version_id,
+            LiveHistoryEntry.from_version_id.is_not(None),
+        )
+        .ext(distinct_on(LiveHistoryEntry.agent_id))
+        .order_by(LiveHistoryEntry.agent_id, LiveHistoryEntry.seq.desc())
+        .subquery()
+    )
+
+    def counts(
+        version: ColumnElement[uuid.UUID], *window: ColumnElement[bool]
+    ) -> Select[uuid.UUID, uuid.UUID, uuid.UUID, int, int]:
+        """Each Agent's judged and passed Live Verdicts of ``version`` on replies in ``window``,
+        with its Live Version and the previous one."""
+        return (
+            select(
+                became.c.agent_id,
+                became.c.to_version_id,
+                became.c.from_version_id,
+                func.count(),
+                _count(LiveVerdict.passed.is_(True)),
+            )
+            .join(LiveVerdict, LiveVerdict.agent_version_id == version)
+            .join(Message, Message.id == LiveVerdict.message_id)
+            .where(LiveVerdict.status == LiveStatus.JUDGED, *window)
+            .group_by(became.c.agent_id, became.c.to_version_id, became.c.from_version_id)
+        )
+
+    current = await session.execute(
+        counts(
+            became.c.to_version_id,
+            Message.created_at >= became.c.occurred_at,
+            Message.created_at <= at,
+        ).having(func.count() >= DROP_MIN_JUDGED)
+    )
+    found = {
+        agent_id: Scores(to_id, judged, passed, from_id, 0, 0)
+        for agent_id, to_id, from_id, judged, passed in current
+    }
+    previous = await session.execute(
+        counts(
+            became.c.from_version_id,
+            Message.created_at >= became.c.occurred_at - DROP_WINDOW,
+            Message.created_at < became.c.occurred_at,
+        ).where(became.c.agent_id.in_(found))
+    )
+    for agent_id, _, _, judged, passed in previous:
+        found[agent_id] = replace(found[agent_id], previous_judged=judged, previous_passed=passed)
+    return found
+
+
+def _score(passed: int, judged: int) -> str:
+    return _percent(passed / judged)
+
+
+async def _email_drop(
+    session: AsyncSession, agent: Agent, scores: Scores, *, mailer: Mailer, studio_url: str
+) -> None:
+    version = await session.get_one(AgentVersion, scores.version_id)
+    previous = await session.get_one(AgentVersion, scores.previous_id)
+    ids = (str(agent.organisation_id), str(agent.project_id), str(agent.id))
+    comparison_link = templates.version_comparison_link(
+        studio_url, *ids, str(previous.id), str(version.id)
+    )
+    failed_link = templates.failed_live_verdicts_link(studio_url, *ids)
+    for name, email in await _owners(session, agent):
+        await mailer.send(
+            templates.live_score_drop(
+                to=email,
+                name=name,
+                agent_name=agent.name,
+                version=version.number,
+                score=_score(scores.passed, scores.judged),
+                passed=scores.passed,
+                judged=scores.judged,
+                previous_version=previous.number,
+                previous_score=_score(scores.previous_passed, scores.previous_judged),
+                previous_passed=scores.previous_passed,
+                previous_judged=scores.previous_judged,
+                comparison_link=comparison_link,
+                failed_link=failed_link,
+            )
+        )
+
+
+async def check_live_scores(
+    session: AsyncSession, at: datetime, *, mailer: Mailer, studio_url: str
+) -> None:
+    """Raises the Live score drop alert of every Agent whose Live Version's Live score, as of
+    ``at``, is clearly lower than the previous Live Version's (emailing its Owners), and clears
+    it on every other Agent. An Agent already alerted is not emailed again while the drop
+    lasts."""
+    scores = await _scores(session, at)
+    dropping = {agent_id: found for agent_id, found in scores.items() if found.drop}
+    await session.execute(
+        update(Agent)
+        .where(Agent.live_score_drop_alert_at.is_not(None), Agent.id.not_in(dropping))
+        .values(live_score_drop_alert_at=None, live_score_drop_version_id=None)
+    )
+    raised: list[uuid.UUID] = []
+    for agent_id in sorted(dropping):
+        raised += await session.scalars(
+            update(Agent)
+            .where(
+                Agent.id == agent_id,
+                Agent.live_score_drop_alert_at.is_(None),
+                # Not if another Version was made Live since: the drop was about this one.
+                Agent.live_version_id == dropping[agent_id].version_id,
+            )
+            .values(
+                live_score_drop_alert_at=at,
+                live_score_drop_version_id=dropping[agent_id].version_id,
+            )
+            .returning(Agent.id)
+        )
+    await session.commit()
+    for agent_id in raised:
+        agent = await session.get_one(Agent, agent_id)
+        await _email_drop(session, agent, dropping[agent_id], mailer=mailer, studio_url=studio_url)

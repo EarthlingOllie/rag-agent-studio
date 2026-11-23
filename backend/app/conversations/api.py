@@ -15,8 +15,12 @@ from app.agents.api import NOT_FOUND_RESPONSE, not_found
 from app.auth.api import Db
 from app.conversations import service
 from app.core.clock import Clock, get_clock
+from app.evaluation.live import live_verdict_of
+from app.evaluation.live_reads import LiveVerdictFilter
+from app.evaluation.models import LiveVerdict
 from app.feedback.models import MessageFeedback
 from app.playground.api import (
+    Dollars,
     MessageOut,
     TraceOut,
     instructions_numbers,
@@ -58,6 +62,8 @@ class ConversationSummaryOut(BaseModel):
     # How many of its replies have a Guardrail outcome (blocked, flagged, logged, replaced or
     # allowed).
     guardrail_events: int
+    # How many of its replies failed their Live Verdict.
+    failed_live_verdicts: int
 
 
 class ConversationPageOut(BaseModel):
@@ -114,6 +120,16 @@ async def list_conversations(
             )
         ),
     ] = None,
+    live_verdict: Annotated[
+        LiveVerdictFilter | None,
+        Query(
+            description=(
+                "Only those with a reply whose Live Verdict passed (`passed`), failed (`failed`) "
+                "or couldn't be judged (`error`), or with a reply that wasn't chosen to be judged "
+                "(`not_judged`)"
+            )
+        ),
+    ] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 25,
 ) -> ConversationPageOut:
@@ -127,6 +143,7 @@ async def list_conversations(
         feedback=feedback,
         rating=rating,
         guardrail=guardrail,
+        live_verdict=live_verdict,
     )
     try:
         result = await service.list_conversations(
@@ -151,6 +168,7 @@ async def list_conversations(
                 rating=row.rating,
                 deleted_at=row.conversation.deleted_at,
                 guardrail_events=row.guardrail_events,
+                failed_live_verdicts=row.failed_live_verdicts,
             )
             for row in result.rows
         ],
@@ -323,6 +341,72 @@ async def delete_conversation(
         raise not_found() from None
 
 
+class LiveCheckOut(BaseModel):
+    outcome: Literal["pass", "fail"]
+    # One sentence from the Evaluation Model saying why.
+    reason: str | None
+
+
+class LiveVerdictOut(BaseModel):
+    """The reply's Live Verdict: the Evaluation Model's judgement of a Visitor reply chosen by
+    the Agent's Live sample rate."""
+
+    # ``pending`` until judged; ``error`` when the Evaluation Model couldn't judge it (then left
+    # out of the Live score); ``skipped`` when its text was Purged before it was judged.
+    status: Literal["pending", "judged", "error", "skipped"]
+    # Whether every claim is supported by the Chunks it cited, and whether it answers the
+    # question; null until judged.
+    grounded: LiveCheckOut | None
+    answers_question: LiveCheckOut | None
+    # Both checks passed; null until judged.
+    passed: bool | None
+    error_reason: str | None
+    # The Agent Version that answered, copied from the reply.
+    agent_version_id: uuid.UUID
+    # The model that judged it: the Evaluation Model, or else the Default Model.
+    judge_provider: str | None
+    judge_model: str | None
+    input_tokens: int | None
+    output_tokens: int | None
+    # What judging cost, frozen when judged; null when a price is unknown.
+    cost_usd: Dollars | None
+    judged_at: datetime | None
+    # When the Purge cleared its reasons with the reply's text ("Text purged"); its outcomes,
+    # Cost and counts stay. Null until then.
+    purged_at: datetime | None
+
+
+class ConversationTraceOut(TraceOut):
+    # Null when the reply wasn't chosen for a Live Verdict ("Not judged").
+    live_verdict: LiveVerdictOut | None
+
+
+def _check(outcome: str | None, reason: str | None) -> LiveCheckOut | None:
+    if outcome is None:
+        return None
+    return LiveCheckOut(outcome=cast(Literal["pass", "fail"], outcome), reason=reason)
+
+
+def _live_verdict_out(verdict: LiveVerdict | None) -> LiveVerdictOut | None:
+    if verdict is None:
+        return None
+    return LiveVerdictOut(
+        status=cast(Literal["pending", "judged", "error", "skipped"], verdict.status),
+        grounded=_check(verdict.grounded, verdict.grounded_reason),
+        answers_question=_check(verdict.answers_question, verdict.answers_question_reason),
+        passed=verdict.passed,
+        error_reason=verdict.error_reason,
+        agent_version_id=verdict.agent_version_id,
+        judge_provider=verdict.judge_provider,
+        judge_model=verdict.judge_model,
+        input_tokens=verdict.input_tokens,
+        output_tokens=verdict.output_tokens,
+        cost_usd=verdict.cost_usd,
+        judged_at=verdict.judged_at,
+        purged_at=verdict.purged_at,
+    )
+
+
 @router.get(
     "/{conversation_id}/messages/{message_id}/trace",
     operation_id="getConversationTrace",
@@ -334,10 +418,14 @@ async def get_trace(
     message_id: uuid.UUID,
     scope: Scope,
     db: Db,
-) -> TraceOut:
-    """The Trace of one of the Agent's answers in the Conversation."""
+) -> ConversationTraceOut:
+    """The Trace of one of the Agent's answers in the Conversation, with its Live Verdict."""
     try:
         read = await service.get_trace(db, scope, project_id, conversation_id, message_id)
     except _DETAIL_NOT_FOUND:
         raise not_found() from None
-    return await trace_out(db, read.message, read.agent_version_number, read.chunks)
+    traced = await trace_out(db, read.message, read.agent_version_number, read.chunks)
+    return ConversationTraceOut(
+        **traced.model_dump(),
+        live_verdict=_live_verdict_out(await live_verdict_of(db, read.message.id)),
+    )

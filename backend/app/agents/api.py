@@ -81,6 +81,9 @@ class AgentOut(BaseModel):
     # The Block rate alert: in the last hourly rollup, the share of Visitor messages the input
     # Guardrail blocked had spiked against the week before, as in an attack.
     block_rate_alert: bool
+    # The Live score drop alert: in the last hourly check, the Live Version's Live score was
+    # clearly lower than the previous Live Version's.
+    live_score_drop_alert: bool
 
 
 class DraftConflictOut(BaseModel):
@@ -129,6 +132,7 @@ def agent_out(found: service.AgentWithDraft) -> AgentOut:
         has_unpublished_changes=found.has_unpublished_changes,
         budget_exhausted=agent.budget_exhausted_at is not None,
         block_rate_alert=agent.block_rate_alert_at is not None,
+        live_score_drop_alert=agent.live_score_drop_alert_at is not None,
     )
 
 

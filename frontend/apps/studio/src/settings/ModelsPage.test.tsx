@@ -11,6 +11,7 @@ import {
   demoCredential,
   demoDefault,
   embeddingsOnlyOpenAi,
+  fakeEvaluationBudgetApi,
   fakeModelsApi,
   legalClaude,
 } from "../test/models";
@@ -363,4 +364,105 @@ test("an Owner whose credentials can't be loaded still sets the repeats", async 
 
   expect(await section.findByText("The credentials could not be loaded. Try again shortly.")).toBeInTheDocument();
   expect(section.getByRole("radiogroup", { name: "Evaluation repeats" })).toBeInTheDocument();
+});
+
+// The Evaluation budget
+
+async function budgetPart() {
+  const section = await evaluationSection();
+  await section.findByRole("heading", { name: "Evaluation budget" });
+  return section;
+}
+
+test("without an Evaluation budget, the Models settings say no Visitor replies are judged", async () => {
+  fakeModelsApi();
+  openAs(editorSession);
+  const section = await budgetPart();
+
+  expect(await section.findByText("Evaluation budget: none")).toBeInTheDocument();
+  expect(section.getByText("No Evaluation budget is set, so no Visitor replies are judged.")).toBeInTheDocument();
+  expect(section.queryByRole("meter")).not.toBeInTheDocument();
+});
+
+test("Editors see the Evaluation budget and this month's meter beside the evaluation settings, but cannot change it", async () => {
+  fakeModelsApi();
+  fakeEvaluationBudgetApi({ budget: "50.00", spent: "12.5" });
+  openAs(editorSession);
+  const section = await budgetPart();
+
+  expect(await section.findByText("Evaluation budget: $50.00 a month")).toBeInTheDocument();
+  const meter = section.getByRole("meter", { name: "Evaluation budget spent this month" });
+  expect(meter).toHaveAttribute("aria-valuetext", "$12.50 of $50.00");
+  expect(section.getByText(/Judgements already under way when the budget is reached still finish/)).toBeInTheDocument();
+  expect(section.getByText("Only Owners can change the Evaluation budget.")).toBeInTheDocument();
+  expect(section.queryByRole("form", { name: "Set the Evaluation budget" })).not.toBeInTheDocument();
+  expect(section.queryByRole("spinbutton")).not.toBeInTheDocument();
+});
+
+test("a spent Evaluation budget says judging is paused until the 1st", async () => {
+  fakeModelsApi();
+  fakeEvaluationBudgetApi({ budget: "10.00", spent: "10.04" });
+  openAs();
+  const section = await budgetPart();
+
+  const meter = await section.findByRole("meter", { name: "Evaluation budget spent this month" });
+  expect(meter).toHaveAttribute("aria-valuetext", "$10.04 of $10.00");
+  expect(
+    section.getByText(/Spent: no Visitor replies are judged until the budget is raised or the month ends on 1 December 2026 \(UTC\)\./),
+  ).toBeInTheDocument();
+});
+
+test("an Owner sets the Evaluation budget, then removes it", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  const budget = fakeEvaluationBudgetApi();
+  openAs();
+  const section = await budgetPart();
+  const form = within(await section.findByRole("form", { name: "Set the Evaluation budget" }));
+  const amount = form.getByRole("spinbutton", { name: "Evaluation budget (US dollars a month)" });
+  expect(amount).toHaveAccessibleDescription(
+    "The most Live Verdicts may spend each calendar month (UTC). Once it is spent, sampling pauses across the Organisation until the 1st and every Owner is emailed once. Evaluation Runs are never capped.",
+  );
+  expect(form.queryByRole("button", { name: "Remove Evaluation budget" })).not.toBeInTheDocument();
+
+  await user.type(amount, "25");
+  await user.click(form.getByRole("button", { name: "Save Evaluation budget" }));
+
+  expect(await screen.findByRole("status")).toHaveTextContent("The Evaluation budget is now $25.00 a month.");
+  expect(await section.findByText("Evaluation budget: $25.00 a month")).toBeInTheDocument();
+  expect(section.getByRole("meter", { name: "Evaluation budget spent this month" })).toHaveAttribute("aria-valuetext", "$0.00 of $25.00");
+
+  await user.click(form.getByRole("button", { name: "Remove Evaluation budget" }));
+
+  expect(await section.findByText("Evaluation budget: none")).toBeInTheDocument();
+  expect(budget.set).toEqual(["25", null]);
+});
+
+test("a refused Evaluation budget says why", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  server.use(
+    http.put("*/api/organisations/:organisationId/evaluation-budget", async () => {
+      await delay(50);
+      return HttpResponse.json({ detail: "Only Owners can do this." }, { status: 403 });
+    }),
+  );
+  openAs();
+  const form = within(await (await budgetPart()).findByRole("form", { name: "Set the Evaluation budget" }));
+
+  await user.type(form.getByRole("spinbutton"), "5");
+  await user.click(form.getByRole("button", { name: "Save Evaluation budget" }));
+
+  expect(await form.findByRole("button", { name: "Saving…" })).toBeDisabled();
+  expect(await form.findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
+});
+
+test("an Evaluation budget that can't be loaded says so", async () => {
+  fakeModelsApi();
+  server.use(http.get("*/api/organisations/:organisationId/evaluation-budget", () => HttpResponse.json({}, { status: 500 })));
+  openAs();
+  const section = await budgetPart();
+
+  expect(await section.findByText("The Evaluation budget could not be loaded. Try again shortly.")).toBeInTheDocument();
+  expect(section.queryByRole("form", { name: "Set the Evaluation budget" })).not.toBeInTheDocument();
 });

@@ -1,6 +1,6 @@
 """What the Evaluation Run task answers and judges through: the model gateway, the Guardrail
-pipeline, the local embedders retrieval embeds questions with, the judge's timeout and the
-clock.
+pipeline, the local embedders retrieval embeds questions with, the judge's timeout, the clock,
+and the mailer that tells Owners their Evaluation budget is spent.
 
 The API installs them at startup and the worker at its start; the task reads them with
 ``current_evaluation_ports``. In tests the task runs eagerly in the API's process, and the
@@ -17,6 +17,7 @@ from app.core.clock import Clock
 from app.embeddings.port import Embedder
 from app.gateway.gateway import ModelGateway
 from app.guardrails.pipeline import GuardrailPipeline
+from app.mail.port import Mailer
 
 
 @dataclass
@@ -28,6 +29,11 @@ class EvaluationPorts:
     judge_timeout_s: float
     # The clock answers and the Run's end are timed by.
     clock: Callable[[], Clock]
+    # Emails Owners when Live Verdicts spend the month's Evaluation budget, linking to the Studio.
+    mailer: Mailer
+    studio_url: str
+    # How long a Suggestion run's one proposing call may take (spec 16).
+    suggestion_timeout_s: float = 120
 
 
 class EvaluationPortsNotInstalledError(RuntimeError):

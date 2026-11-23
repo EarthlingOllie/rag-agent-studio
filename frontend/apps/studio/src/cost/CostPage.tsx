@@ -3,6 +3,7 @@ import { useState } from "react";
 import { EmptyState, field, layout, Notice, PageHeader, Segmented, Skeleton, StatCard, table, text } from "../design";
 import { dollars } from "../projects/format";
 import { ProjectRequestError } from "../projects/projects";
+import { EvaluationBudgetMeter } from "../settings/EvaluationBudget";
 import { useOrganisationRole } from "../projects/ProjectsPage";
 import { type CostGroup, type CostQuery, type OrgCost, useOrgCost } from "./cost";
 
@@ -166,7 +167,7 @@ function OrgCostReport({ organisationId }: { organisationId: string }) {
   );
 }
 
-/** The Organisation cost page: what the Organisation spent over a period, by Project or by Agent, with Playground usage and Evaluation Runs each in its own column. Owners only. */
+/** The Organisation cost page: this month's Evaluation budget meter, then what the Organisation spent over a period, by Project or by Agent, with Playground usage and Evaluation (Runs and Live Verdicts) each in its own column. Owners only. */
 export function CostPage() {
   const { organisationId, isOwner } = useOrganisationRole();
   return (
@@ -180,7 +181,15 @@ export function CostPage() {
         }
       />
       {isOwner ? (
-        <OrgCostReport organisationId={organisationId} />
+        <>
+          <section aria-labelledby="evaluation-budget-heading" className="flex max-w-2xl flex-col gap-2">
+            <h2 id="evaluation-budget-heading" className={text.subheading}>
+              Evaluation budget
+            </h2>
+            <EvaluationBudgetMeter organisationId={organisationId} />
+          </section>
+          <OrgCostReport organisationId={organisationId} />
+        </>
       ) : (
         <EmptyState
           icon="members"

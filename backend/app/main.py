@@ -40,6 +40,7 @@ from app.embed.tokens import TokenSigner
 from app.evaluation import api as evaluation_api
 from app.evaluation import rollout_api as evaluation_rollout_api
 from app.evaluation import settings_api as evaluation_settings_api
+from app.evaluation.live import seed_draws
 from app.evaluation.ports import EvaluationPorts, install_evaluation_ports
 from app.evaluation.settings import evaluation_model_references
 from app.feedback import api as feedback_api
@@ -53,6 +54,7 @@ from app.projects import embedding_api, instructions_api
 from app.projects.embedding import project_embedding_references
 from app.retention import api as retention_api
 from app.seed import attack_panel, demo_pages
+from app.suggestions import api as suggestions_api
 from app.tags import api as tags_api
 from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
@@ -92,6 +94,7 @@ ROUTERS: Sequence[APIRouter] = (
     evaluation_api.router,
     evaluation_api.documents_router,
     evaluation_rollout_api.router,
+    suggestions_api.router,
     conversations_api.router,
     analytics_api.router,
     analytics_api.cost_router,
@@ -150,9 +153,13 @@ def _lifespan(
             guardrails=app.state.guardrails,
             embedders=app.state.ingestion.embedders,
             judge_timeout_s=settings.evaluation_judge_timeout_s,
+            suggestion_timeout_s=settings.suggestion_timeout_s,
             clock=lambda: app.state.clock,
+            mailer=app.state.mailer,
+            studio_url=str(settings.studio_url),
         )
         install_evaluation_ports(app.state.evaluation)
+        seed_draws(settings.live_sample_seed)
         if settings.object_store_create_bucket:
             await app.state.ingestion.object_store.prepare()
         logger.info("API started", extra={"environment": settings.environment})

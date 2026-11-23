@@ -64,6 +64,10 @@ class UsageDaily(IdMixin, Base):
     # Knowledge Searches the replies ran (Agentic Retrieval Mode; a call the Search limit
     # refused searched nothing): the sum of their ``search_count``.
     searches: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    # Live Verdicts of this day's replies that were judged, and those of them that passed (the
+    # Live score); errors and skipped ones aren't counted.
+    live_judged: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    live_passed: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     # Histograms of milliseconds to the first token, and to the whole reply.
     first_token_histogram: Mapped[dict[str, int]] = mapped_column(JSONB)
     latency_histogram: Mapped[dict[str, int]] = mapped_column(JSONB)

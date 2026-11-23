@@ -37,6 +37,7 @@ from app.evaluation.fake_judge import fake_judgement, is_judging
 from app.gateway.demo import demo_chat_model
 from app.gateway.ports import BedrockAccount, RankedDocument, Reranker
 from app.runtime.prompt import INPUT_CLOSE, INPUT_OPEN, KNOWLEDGE_SEARCH
+from app.suggestions.fake_proposer import fake_proposal, is_proposing
 
 ChatBuilder = Callable[[Provider, str, str], Model]
 
@@ -155,7 +156,8 @@ def fake_chat(provider: Provider, secret: str, model: str) -> Model:
     cites the first Chunk ([C1]) when it is given retrieved Chunks. In Agentic Retrieval Mode
     it first makes one Knowledge Search with the Visitor's question. It answers in plain text,
     except as an LLM classifier (a structured-output call), when it returns a verdict, and as an
-    Evaluation Run's judge, when it judges by rule (``app.evaluation.fake_judge``).
+    Evaluation Run's judge, when it judges by rule (``app.evaluation.fake_judge``), and as a
+    Suggestion run's proposer, when it proposes by rule (``app.suggestions.fake_proposer``).
     Asked to ``FAKE_LEAK_PROMPT``, it streams its Canary token instead, in pieces; asked one of
     the ``FAKE_FAILURES``, it raises that provider error instead of answering."""
 
@@ -166,6 +168,8 @@ def fake_chat(provider: Provider, secret: str, model: str) -> Model:
     def complete(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         if is_judging(info):
             return fake_judgement(messages, info)
+        if is_proposing(info):
+            return fake_proposal(messages, info)
         if info.output_tools:
             return _classifier_verdict(messages, info, model)
         return ModelResponse(parts=[TextPart(reply(messages))])

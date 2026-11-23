@@ -8,6 +8,7 @@ read only through repository functions that take an ``OrganisationScope``.
 import enum
 import uuid
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy import (
     Boolean,
@@ -16,6 +17,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     UniqueConstraint,
     false,
@@ -70,6 +72,10 @@ class Organisation(IdMixin, Base):
     evaluation_repeats: Mapped[int] = mapped_column(
         Integer, server_default=text("3"), default=DEFAULT_EVALUATION_REPEATS
     )
+    # The Evaluation budget: the most Live Verdicts may spend per calendar month (UTC), in US
+    # dollars, set by Owners; None, the default, means none, and then no reply is sampled
+    # (``app.evaluation.budget``).
+    evaluation_budget_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
 
 
 class Member(IdMixin, Base):

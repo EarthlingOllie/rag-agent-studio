@@ -7,7 +7,8 @@ import { server } from "./server";
 type Summary = Schemas["ConversationSummaryOut"];
 type Detail = Schemas["ConversationDetailOut"];
 type Message = Schemas["ConversationMessageOut"];
-type Trace = Schemas["TraceOut"];
+type Trace = Schemas["ConversationTraceOut"];
+type LiveVerdict = Schemas["LiveVerdictOut"];
 
 export const VISITOR_CONVERSATION_ID = "c7000000-0000-4000-8000-000000000001";
 export const PLAYGROUND_CONVERSATION_ID = "c7000000-0000-4000-8000-000000000002";
@@ -30,6 +31,7 @@ export const visitorConversation: Summary = {
   rating: 4,
   deleted_at: null,
   guardrail_events: 2,
+  failed_live_verdicts: 0,
 };
 
 /** An Editor trying HR helper's Draft in the Playground. */
@@ -48,6 +50,7 @@ export const playgroundConversation: Summary = {
   rating: null,
   deleted_at: null,
   guardrail_events: 0,
+  failed_live_verdicts: 0,
 };
 
 const unanswered = {
@@ -155,13 +158,30 @@ export const visitorTrace: Trace = {
   instructions_source: null,
   instructions_version_id: null,
   instructions_version_number: null,
+  live_verdict: null,
+};
+
+/** A Live Verdict of the Visitor's first reply, judged: grounded, but it misses the question. */
+export const judgedVerdict: LiveVerdict = {
+  status: "judged",
+  grounded: { outcome: "pass", reason: "Every claim is in the cited leave policy." },
+  answers_question: { outcome: "fail", reason: "It gives the leave allowance, not how to book it." },
+  passed: false,
+  error_reason: null,
+  agent_version_id: agentVersion(1).id,
+  judge_provider: "anthropic",
+  judge_model: "claude-haiku-4-5",
+  input_tokens: 812,
+  output_tokens: 64,
+  cost_usd: "0.001132",
+  judged_at: "2026-11-06T10:15:09Z",
+  purged_at: null,
 };
 
 /**
  * Serves the Conversations viewer's routes from these Conversations. The list keeps those of the
- * Agent asked for and the Playground, feedback, rating and Guardrail filters, like the API; other filters are only
- * recorded. Every
- * list query is recorded, as are Trace reads.
+ * Agent asked for and the Playground, feedback, rating, Guardrail and failed Live Verdict filters, like the API;
+ * other filters are only recorded. Every list query is recorded, as are Trace reads.
  */
 export function fakeConversationsApi(
   options: {
@@ -179,7 +199,10 @@ export function fakeConversationsApi(
   let conversations = options.conversations ?? [playgroundConversation, visitorConversation];
   let details = options.details ?? [visitorDetail, playgroundDetail];
   const deletions: string[] = [];
-  const traces = options.traces ?? [visitorTrace, { ...hrTrace, message_id: PLAYGROUND_REPLY_ID, agent_version_number: null }];
+  const traces = options.traces ?? [
+    visitorTrace,
+    { ...hrTrace, message_id: PLAYGROUND_REPLY_ID, agent_version_number: null, live_verdict: null },
+  ];
   const queries: URLSearchParams[] = [];
   const traceReads: string[] = [];
   const notFound = () => HttpResponse.json({ detail: "Not found" }, { status: 404 });
@@ -198,6 +221,9 @@ export function fakeConversationsApi(
         if (guardrail === null) return true;
         return guardrail === "none" ? events === 0 : events > 0;
       };
+      // Only how many replies failed their Live Verdict is known here: other Live Verdicts keep them all.
+      const liveVerdict = query.get("live_verdict");
+      const judged = ({ failed_live_verdicts: failed }: Summary) => liveVerdict !== "failed" || failed > 0;
       const rated = ({ rating: score }: Summary) => {
         if (rating === null) return true;
         if (rating === "any") return score !== null;
@@ -217,7 +243,8 @@ export function fakeConversationsApi(
           (playground === null || String(conversation.is_playground) === playground) &&
           given(conversation) &&
           rated(conversation) &&
-          guarded(conversation),
+          guarded(conversation) &&
+          judged(conversation),
       );
       return HttpResponse.json({
         items,

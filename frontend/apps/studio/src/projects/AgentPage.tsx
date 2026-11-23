@@ -1,4 +1,4 @@
-import { Link, Outlet, useNavigate, useParams } from "@tanstack/react-router";
+import { Link, Outlet, useNavigate, useParams, useSearch } from "@tanstack/react-router";
 import { createContext, type SubmitEvent, useCallback, useContext, useId, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
@@ -775,7 +775,16 @@ export function AgentVersionsView() {
 /** The Evaluation view: the Evaluation Set, Evaluate, and the Runs with their judged answers. */
 export function AgentEvaluationView() {
   const { agent, organisationId } = useAgentView();
-  return <AgentEvaluation key={`evaluation-${agent.id}`} agent={agent} organisationId={organisationId} />;
+  // A link to a case's result opens that Run; a new one opens the view afresh.
+  const focus = useSearch({ from: "/signed-in/organisations/$organisationId/projects/$projectId/agents/$agentId/evaluation" });
+  return (
+    <AgentEvaluation
+      key={`evaluation-${agent.id}-${focus.run ?? ""}-${focus.case ?? ""}`}
+      agent={agent}
+      organisationId={organisationId}
+      focus={focus}
+    />
+  );
 }
 
 /** The Embed & limits view: the snippet, the Operational Settings and the Theme override, as cards. */

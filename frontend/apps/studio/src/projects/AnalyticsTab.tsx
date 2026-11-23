@@ -57,7 +57,7 @@ function KpiCard({
 }
 
 function Kpis({ kpis }: { kpis: VersionKpis }) {
-  const { tokens, cost, thumbs_up: thumbs, rating, fallback, guardrail_blocks: blocks, searches, latency } = kpis;
+  const { tokens, cost, thumbs_up: thumbs, rating, live_score: live, fallback, guardrail_blocks: blocks, searches, latency } = kpis;
   return (
     <ul aria-label={`Key numbers for v${String(kpis.number)}`} className="grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-4">
       <KpiCard
@@ -97,6 +97,17 @@ function Kpis({ kpis }: { kpis: VersionKpis }) {
         value={rating.mean === null ? "No ratings yet" : `${rating.mean.toFixed(1)} of 5`}
         details={<p>{`n = ${plural(rating.n, "rating")}`}</p>}
         lowSample={rating.low_confidence && "Fewer than 30 ratings"}
+      />
+      <KpiCard
+        title="Live score"
+        value={live.rate === null ? "No judged replies yet" : percent(live.rate)}
+        details={
+          <>
+            {live.low !== null && live.high !== null && <p>{`95% interval ${percent(live.low)} to ${percent(live.high)}`}</p>}
+            <p>{`n = ${plural(live.n, "judged reply", "judged replies")} (${String(live.passed)} passed)`}</p>
+          </>
+        }
+        lowSample={live.low_confidence && "Fewer than 30 judged Live Verdicts"}
       />
       <KpiCard
         title="Fallback rate"
@@ -145,12 +156,15 @@ function AgentMetrics({
   projectId,
   agentId,
   agentFilter,
+  compared,
 }: {
   organisationId: string;
   projectId: string;
   agentId: string;
   /** The Agent filter, first in the toolbar. */
   agentFilter: ReactNode;
+  /** The two Versions the URL chose to compare, if it chose. */
+  compared: { a?: string | undefined; b?: string | undefined };
 }) {
   const [range, setRange] = useState<MetricsRange>({});
   const [chosen, setChosen] = useState<string>();
@@ -184,7 +198,14 @@ function AgentMetrics({
           {`${metrics.data.start} to ${metrics.data.end} (UTC days), including today so far. Visitor Conversations only: the Playground is left out.`}
         </p>
         <Kpis kpis={shown} />
-        <VersionComparison organisationId={organisationId} projectId={projectId} agentId={agentId} versions={versions} range={range} />
+        <VersionComparison
+          organisationId={organisationId}
+          projectId={projectId}
+          agentId={agentId}
+          versions={versions}
+          range={range}
+          initial={compared}
+        />
         <TimeSeriesChart organisationId={organisationId} projectId={projectId} agentId={agentId} range={range} />
       </>
     );
@@ -231,12 +252,13 @@ const ANALYTICS = "/organisations/$organisationId/projects/$projectId/analytics"
 /**
  * The Analytics section: an Agent Version's KPI cards, with intervals, sample sizes and small
  * samples marked, the Agent's time series and two Versions compared. The Agent is in the URL
- * (`?agent=`), so each Agent's views can link here filtered to it.
+ * (`?agent=`), so each Agent's views can link here filtered to it, and so may the two Versions
+ * compared (`?a=` and `?b=`), so the Live score drop email can link to its comparison.
  */
 export function AnalyticsTab() {
   const { organisationId } = useOrganisationRole();
   const { projectId } = useParams({ from: ROUTE });
-  const { agent: agentId } = useSearch({ from: ROUTE });
+  const { agent: agentId, a, b } = useSearch({ from: ROUTE });
   const navigate = useNavigate({ from: ANALYTICS });
   const agents = useAgents(organisationId, projectId);
   const shownAgent = agents.data?.find((agent) => agent.id === agentId) ?? agents.data?.[0];
@@ -281,6 +303,7 @@ export function AnalyticsTab() {
         projectId={projectId}
         agentId={shownAgent.id}
         agentFilter={agentFilter}
+        compared={{ a, b }}
       />
     );
   }

@@ -135,6 +135,7 @@ export function VersionComparison({
   agentId,
   versions,
   range,
+  initial = {},
 }: {
   organisationId: string;
   projectId: string;
@@ -142,12 +143,17 @@ export function VersionComparison({
   // Oldest first.
   versions: VersionKpis[];
   range: MetricsRange;
+  /** Versions to compare first, by ID, in place of the defaults (one the Agent lacks is ignored). */
+  initial?: { a?: string | undefined; b?: string | undefined };
 }) {
   const newestFirst = [...versions].reverse();
   const second = versions.find((v) => v.is_live) ?? newestFirst[0];
   const first = newestFirst.find((v) => v !== second);
-  // What the Editor picked; the defaults until they pick.
-  const [chosen, setChosen] = useState<{ a?: string; b?: string }>({});
+  // What the Editor picked, or the link chose; the defaults until then.
+  const [chosen, setChosen] = useState<{ a?: string | undefined; b?: string | undefined }>(() => {
+    const known = (id?: string) => (versions.some((v) => v.version_id === id) ? id : undefined);
+    return { a: known(initial.a), b: known(initial.b) };
+  });
 
   let body;
   if (first === undefined || second === undefined) {

@@ -10,6 +10,7 @@ _THEME_IMAGE = "/api/organisations/{organisation_id}/theme/images/{kind}"
 _AGENT = f"{_PROJECT}/agents/{{agent_id}}"
 _PLAYGROUND = f"{_AGENT}/playground/conversations"
 _EVALUATION = f"{_AGENT}/evaluation"
+_SUGGESTIONS = f"{_AGENT}/suggestions"
 _ROLLOUT_EVALUATION = f"{_PROJECT}/instructions/versions/{{instructions_version_id}}/evaluation"
 _FEEDBACK = "/api/widget/agents/{public_id}/messages/{message_id}/feedback"
 _RATING = "/api/widget/agents/{public_id}/conversation/rating"
@@ -80,6 +81,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
         ),
         "setEvaluationModel": ("/api/organisations/{organisation_id}/evaluation-model", "put"),
         "setEvaluationRepeats": ("/api/organisations/{organisation_id}/evaluation-repeats", "put"),
+        "getEvaluationBudget": ("/api/organisations/{organisation_id}/evaluation-budget", "get"),
+        "setEvaluationBudget": ("/api/organisations/{organisation_id}/evaluation-budget", "put"),
         "getTheme": ("/api/organisations/{organisation_id}/theme", "get"),
         "saveTheme": ("/api/organisations/{organisation_id}/theme", "put"),
         "startThemeImageUpload": (f"{_THEME_IMAGE}/uploads", "post"),
@@ -190,6 +193,15 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "getEvaluationPublishSummary": (f"{_EVALUATION}/publish-summary", "get"),
         "startRolloutEvaluation": (_ROLLOUT_EVALUATION, "post"),
         "getRolloutEvaluation": (_ROLLOUT_EVALUATION, "get"),
+        "startSuggestionRun": (_SUGGESTIONS, "post"),
+        "listSuggestions": (_SUGGESTIONS, "get"),
+        "getSuggestion": (f"{_SUGGESTIONS}/{{suggestion_id}}", "get"),
+        "countSuggestionEvidence": (f"{_SUGGESTIONS}/evidence", "get"),
+        "estimateSuggestionRun": (f"{_SUGGESTIONS}/estimate", "post"),
+        "cancelSuggestionRun": (f"{_SUGGESTIONS}/{{suggestion_id}}/cancel", "post"),
+        "getSuggestionDiff": (f"{_SUGGESTIONS}/{{suggestion_id}}/diff", "get"),
+        "applySuggestion": (f"{_SUGGESTIONS}/{{suggestion_id}}/apply", "post"),
+        "deleteSuggestion": (f"{_SUGGESTIONS}/{{suggestion_id}}", "delete"),
         "getExpectedSourceDependents": (
             f"{_PROJECT}/documents/{{document_id}}/expected-sources",
             "get",
