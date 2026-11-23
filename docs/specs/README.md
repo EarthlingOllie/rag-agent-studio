@@ -20,6 +20,9 @@ One spec per delivery slice in [`docs/plan.md`](../plan.md), split into tickets 
 | 14 | [Evaluation loop](./14-evaluation-loop-spec.md) |
 | 15 | [Live evaluation](./15-live-evaluation-spec.md) |
 | 16 | [Suggestions](./16-suggestions-spec.md) |
+| 17 | [Retrieval diagnostics](./17-retrieval-diagnostics-spec.md) |
+| 18 | [Verdict review](./18-verdict-review-spec.md) |
+| 19 | [Judging guidance](./19-judging-guidance-spec.md) |
 
 ## Shared test seams
 
