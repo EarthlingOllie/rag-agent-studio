@@ -27,6 +27,7 @@ const METRICS: Record<TimeSeriesMetric, { label: string; format: (value: number)
     format: (value) => (value < 1000 ? `${whole(value)} ms` : `${(value / 1000).toFixed(1)} s`),
     sample: "replies",
   },
+  live_score: { label: "Live score", format: percent, sample: "judged replies" },
 };
 
 const GRANULARITIES: Record<TimeSeriesGranularity, string> = { day: "Day", week: "Week", month: "Month" };

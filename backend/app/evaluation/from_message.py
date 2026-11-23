@@ -58,7 +58,7 @@ async def _reply(session: AsyncSession, agent_id: uuid.UUID, message_id: uuid.UU
     return reply
 
 
-async def _question(session: AsyncSession, reply: Message) -> Message:
+async def question_of(session: AsyncSession, reply: Message) -> Message:
     """The Visitor's (or Editor's) question the reply answered: the last one before it."""
     question = await session.scalar(
         select(Message)
@@ -101,7 +101,7 @@ async def prefill(
     ``MessagePurgedError`` once its text or its question's has been purged."""
     found = await get_agent(session, scope, project_id, agent_id)
     reply = await _reply(session, found.agent.id, message_id)
-    question = await _question(session, reply)
+    question = await question_of(session, reply)
     if reply.purged_at is not None or question.purged_at is not None:
         raise MessagePurgedError
     return Prefill(question.content, await _cited(session, reply))

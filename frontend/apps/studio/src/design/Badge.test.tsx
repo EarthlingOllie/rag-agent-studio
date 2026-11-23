@@ -11,6 +11,7 @@ it.each([
   ["instructionsBehind", "Instructions behind"],
   ["budgetSpent", "Budget spent"],
   ["blocked", "Blocked by guardrail"],
+  ["liveScoreDrop", "Live score drop"],
   ["lowSample", "Low sample"],
   ["flagged", "Flagged"],
   ["checkPassed", "Working"],

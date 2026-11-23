@@ -13,6 +13,22 @@ export interface MetricsRange {
   to?: string;
 }
 
+/** Analytics' URL: the Agent shown, and the two Versions compared (`a` and `b`, by ID). */
+export interface AnalyticsSearch {
+  agent?: string;
+  a?: string;
+  b?: string;
+}
+
+export function analyticsSearch(search: Record<string, unknown>): AnalyticsSearch {
+  const found: AnalyticsSearch = {};
+  for (const key of ["agent", "a", "b"] as const) {
+    const value = search[key];
+    if (typeof value === "string" && value !== "") found[key] = value;
+  }
+  return found;
+}
+
 /** Every Version's KPIs for the Agent over the range. */
 export function useVersionMetrics(organisationId: string, projectId: string, agentId: string, range: MetricsRange) {
   return useQuery({

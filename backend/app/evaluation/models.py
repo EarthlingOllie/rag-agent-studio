@@ -1,20 +1,21 @@
-"""Evaluation Cases, Evaluation Runs, their sides, case results and Verdicts.
+"""Evaluation Cases, Evaluation Runs, their sides, case results and Verdicts, and Live Verdicts.
 
 Everything here belongs to one Agent and goes with it on Permanent deletion (``ON DELETE
-CASCADE``). Nothing references a Conversation or a Message, and the Purge never touches these
-tables (ADR-0016). A Run copies each case's question and expectations when it starts
-(``EvaluationRunCase``), and each side's effective AgentConfig and Instructions
+CASCADE``). Apart from Live Verdicts, nothing references a Conversation or a Message, and the
+Purge never touches these tables (ADR-0016). A Run copies each case's question and expectations
+when it starts (``EvaluationRunCase``), and each side's effective AgentConfig and Instructions
 (``EvaluationRunSide``), so editing the set or the Draft later never rewrites a past Run.
 """
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import (
     Boolean,
+    Date,
     DateTime,
     ForeignKey,
     Index,
@@ -22,6 +23,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     false,
     text,
 )
@@ -29,6 +31,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.agents.models import Agent, AgentVersion
+from app.conversations.models import Message
 from app.core.db import Base, IdMixin
 from app.credentials.models import ProviderCredential
 from app.documents.models import NAME_MAX, Document
@@ -67,6 +70,8 @@ class RunKind(enum.StrEnum):
     AGENT = "agent"
     # Started by Rollout evaluation: the Live Version against its rollout side.
     ROLLOUT = "rollout"
+    # Started by a Suggestion run (spec 16): the Live Version against the Suggestion, its check.
+    SUGGESTION = "suggestion"
 
 
 class SideKind(enum.StrEnum):
@@ -75,6 +80,10 @@ class SideKind(enum.StrEnum):
     # The Live Version's AgentConfig answering with a new Instructions Version, not the one it
     # pins. Only Rollout evaluation creates one, never the general Run API.
     ROLLOUT = "rollout"
+    # The Live Version's AgentConfig with a Suggestion's changes, answering with the Instructions
+    # the Live Version pins. Only a Suggestion run's check creates one, never the general Run
+    # API; it is never a Version.
+    SUGGESTION = "suggestion"
 
 
 class ResultStatus(enum.StrEnum):
@@ -216,9 +225,10 @@ class EvaluationRun(IdMixin, Base):
 
 
 class EvaluationRunSide(IdMixin, Base):
-    """One side of a Run: the Draft (at a Draft revision), an Agent Version, or a rollout side
-    (an Agent Version's AgentConfig with other Instructions), with the effective AgentConfig and
-    the Project Instructions text it answered with."""
+    """One side of a Run: the Draft (at a Draft revision), an Agent Version, a rollout side (an
+    Agent Version's AgentConfig with other Instructions), or a suggestion side (an Agent
+    Version's AgentConfig with a Suggestion's changes), with the effective AgentConfig and the
+    Project Instructions text it answered with."""
 
     __tablename__ = "evaluation_run_sides"
 
@@ -323,3 +333,77 @@ class EvaluationVerdict(IdMixin, Base):
     position: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     outcome: Mapped[str] = mapped_column(String(10))
     reason: Mapped[str | None] = mapped_column(Text)
+
+
+class LiveStatus(enum.StrEnum):
+    # Chosen; its judging task hasn't finished.
+    PENDING = "pending"
+    JUDGED = "judged"
+    # The Evaluation Model failed or timed out; left out of the Live score.
+    ERROR = "error"
+    # Its text was Purged before it was judged.
+    SKIPPED = "skipped"
+
+
+class LiveVerdict(IdMixin, Base):
+    """The judgement of one Visitor reply chosen by the Live sample rate (spec 15): whether it is
+    grounded and answers the question, each pass or fail with a reason, and the overall pass.
+    One per Agent Message. The Agent and Agent Version are copied from the Message's attribution;
+    the Evaluation Model, Cost and token usage are frozen when it is judged. Unlike Evaluation
+    Cases, Live Verdicts aren't an exception to retention: the Purge of its Message clears its
+    reasons."""
+
+    __tablename__ = "live_verdicts"
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
+    )
+    message_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Message.id, ondelete="CASCADE"), unique=True
+    )
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Agent.id, ondelete="CASCADE"), index=True
+    )
+    agent_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(AgentVersion.id, ondelete="CASCADE"), index=True
+    )
+    # A ``LiveStatus``.
+    status: Mapped[str] = mapped_column(String(20), default=LiveStatus.PENDING)
+    # Each check's ``VerdictOutcome`` (pass or fail) and reason; None until judged.
+    grounded: Mapped[str | None] = mapped_column(String(10))
+    grounded_reason: Mapped[str | None] = mapped_column(Text)
+    answers_question: Mapped[str | None] = mapped_column(String(10))
+    answers_question_reason: Mapped[str | None] = mapped_column(Text)
+    # Both checks passed; None until judged.
+    passed: Mapped[bool | None] = mapped_column(Boolean)
+    error_reason: Mapped[str | None] = mapped_column(Text)
+    # The Evaluation Model that judged it (or the Default Model, when none is chosen).
+    judge_provider: Mapped[str | None] = mapped_column(String(50))
+    judge_model: Mapped[str | None] = mapped_column(String(200))
+    input_tokens: Mapped[int | None] = mapped_column(Integer)
+    output_tokens: Mapped[int | None] = mapped_column(Integer)
+    # US dollars, frozen with the prices in force when judged; None when a price is unknown.
+    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
+    judged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When the Purge cleared its reasons, with its Message's text (``app.retention``): they can
+    # quote the Visitor. Its outcomes, Cost and counts stay.
+    purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class EvaluationSpend(IdMixin, Base):
+    """What an Organisation's Live Verdicts have spent in one calendar month (UTC), against its
+    Evaluation budget, and when its Owners were emailed that the budget was spent. A new month
+    is a new row, so the budget resets without a job (``app.evaluation.budget``)."""
+
+    __tablename__ = "evaluation_spend"
+    __table_args__ = (UniqueConstraint("organisation_id", "month"),)
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE")
+    )
+    # The first day of the month.
+    month: Mapped[date] = mapped_column(Date)
+    # US dollars, the sum of the month's Live Verdicts' frozen Costs.
+    spent_usd: Mapped[Decimal] = mapped_column(Numeric(18, 9), server_default=text("0"))
+    # Set by the judgement that took the spend to or past the budget, which emailed the Owners.
+    budget_spent_emailed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

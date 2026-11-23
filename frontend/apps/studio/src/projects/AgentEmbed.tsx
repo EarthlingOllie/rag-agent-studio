@@ -1,7 +1,9 @@
+import { Link } from "@tanstack/react-router";
 import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { button, CodeBlock, EditableList, field, Meter, Notice, Skeleton, surface, text as type } from "../design";
+import { useEvaluationBudget } from "../settings/evaluationSettings";
 import type { Agent } from "./agents";
 import {
   embedSnippet,
@@ -359,9 +361,91 @@ function TokenBudget({ path }: { path: SettingsPath }) {
   );
 }
 
+/** The Live sample rate: the share of Visitor replies the Evaluation Model judges as Live Verdicts. */
+function LiveSampleRate({ path }: { path: SettingsPath }) {
+  const settings = useOperationalSettings(path);
+  const save = useChangeOperationalSettings(path);
+  const budget = useEvaluationBudget(path.organisation_id);
+  const [edited, setEdited] = useState<string | null>(null);
+  // Without an Evaluation budget no reply can be judged, so the rate can't be set.
+  const unbudgeted = budget.data?.evaluation_budget_usd === null;
+  const loaded = settings.isSuccess && budget.isSuccess && !unbudgeted;
+  const rate = edited ?? String(settings.data?.live_sample_rate ?? "");
+
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    save.mutate(
+      { live_sample_rate: Number(rate) },
+      {
+        onSuccess: () => {
+          setEdited(null);
+        },
+      },
+    );
+  }
+
+  return (
+    <section aria-labelledby="live-sample-rate-heading" className={CARD}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+        <h3 id="live-sample-rate-heading" className={type.subheading}>
+          Live sample rate
+        </h3>
+        <p id="live-sample-rate-hint" className={type.muted}>
+          The share of Visitor replies chosen at random and judged in the background by the Evaluation Model, as a Live
+          Verdict in each reply&apos;s Trace. Judged by the Evaluation Model; costs count against the Evaluation budget. 0%
+          judges none; the Playground is never judged.
+        </p>
+        {unbudgeted && (
+          <Notice tone="info">
+            The Organisation has no Evaluation budget, so no reply can be judged. An Owner sets one in{" "}
+            <Link
+              to="/organisations/$organisationId/settings/models"
+              params={{ organisationId: path.organisation_id }}
+              className={type.link}
+            >
+              Organisation settings
+            </Link>
+            .
+          </Notice>
+        )}
+        {budget.isError && <Notice tone="error">The Evaluation budget could not be loaded. Try again shortly.</Notice>}
+        <div>
+          <label htmlFor="live-sample-rate" className={field.label}>
+            Visitor replies judged (%)
+          </label>
+          <input
+            id="live-sample-rate"
+            type="number"
+            min={0}
+            max={100}
+            step={1}
+            aria-describedby="live-sample-rate-hint"
+            className={`${field.inputMono} max-w-48`}
+            disabled={!loaded}
+            value={rate}
+            onChange={(event) => {
+              save.reset();
+              setEdited(event.target.value);
+            }}
+          />
+        </div>
+        <FormError message={save.error?.message} />
+        <div className="flex items-center gap-3">
+          <button type="submit" className={button.secondary} disabled={!loaded || save.isPending}>
+            Save Live sample rate
+          </button>
+          <p role="status" className={type.muted}>
+            {save.isSuccess ? "Saved. It applies to the next Visitor reply." : ""}
+          </p>
+        </div>
+      </form>
+    </section>
+  );
+}
+
 /** The Agent's Embed Snippet, once it has a Live Version, and its Operational Settings as cards: the
  * sites allowed to show it, what Visitors see when it can't answer, its daily Token Budget, with
- * today's usage, and its rate limits. They apply at once, without publishing. */
+ * today's usage, its rate limits and its Live sample rate. They apply at once, without publishing. */
 export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisationId: string }) {
   const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
   return (
@@ -378,6 +462,7 @@ export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisati
         <UnavailableText path={path} />
         <TokenBudget path={path} />
         <RateLimits path={path} />
+        <LiveSampleRate path={path} />
       </div>
     </div>
   );

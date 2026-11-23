@@ -9,6 +9,8 @@ const BADGES = {
   instructionsBehind: { label: "Instructions behind", className: "bg-flag-soft text-flag" },
   budgetSpent: { label: "Budget spent", className: "bg-danger-soft text-danger" },
   blocked: { label: "Blocked by guardrail", className: "bg-danger-soft text-danger" },
+  /** An Agent whose Live Version's Live score is clearly lower than the previous Live Version's. */
+  liveScoreDrop: { label: "Live score drop", className: "bg-danger-soft text-danger" },
   lowSample: { label: "Low sample", className: "bg-flag-soft text-flag" },
   /** A Chunk the ingestion Guardrail scan flagged as possible instructions to an AI. */
   flagged: { label: "Flagged", className: "bg-flag-soft text-flag" },
@@ -47,7 +49,7 @@ const PILL = "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px
 
 /**
  * A small pill. `kind` picks the words and colour (Live, Draft, Not live, Archived, Instructions
- * behind, Budget spent, Blocked by guardrail, Low sample, Flagged, Working, Check failed, and an
+ * behind, Budget spent, Blocked by guardrail, Live score drop, Low sample, Flagged, Working, Check failed, and an
  * Evaluation Case's Pass, Fail, Unsteady or Error);
  * `kind="version"` is a Version chip.
  * The words always carry the meaning; colour only repeats it.

@@ -4,6 +4,7 @@ import { type SubmitEvent, useEffect, useId, useState } from "react";
 import { FormError } from "../auth/AuthLayout";
 import { Segmented, button, field, surface, text, useToast } from "../design";
 import { type Credential, credentialFailure, type ProviderId, useCredentials } from "./credentials";
+import { EvaluationBudgetSettings } from "./EvaluationBudget";
 import {
   type EvaluationSettings,
   REPEATS,
@@ -304,7 +305,8 @@ function EvaluationSection({ organisationId, isOwner }: { organisationId: string
           Evaluation
         </h2>
         <p className={text.muted}>
-          The Evaluation Model judges every Evaluation Run in this Organisation, so scores stay comparable across Agents and over time.
+          The Evaluation Model judges every Evaluation Run in this Organisation, so scores stay comparable across Agents and over time,
+          and the Live Verdicts of Visitor replies, within the Evaluation budget.
         </p>
       </div>
       {settings.isError && <p role="alert" className={text.muted}>The evaluation settings could not be loaded. Try again shortly.</p>}
@@ -326,13 +328,14 @@ function EvaluationSection({ organisationId, isOwner }: { organisationId: string
           )}
         </>
       )}
+      <EvaluationBudgetSettings organisationId={organisationId} isOwner={isOwner} />
     </section>
   );
 }
 
 /**
- * Models settings: the Organisation's Default Model, the Evaluation Model and Evaluation repeats,
- * and the price table. Every Member sees them; Owners choose the Default Model and the evaluation
+ * Models settings: the Organisation's Default Model, the Evaluation Model, Evaluation repeats and
+ * Evaluation budget with this month's meter, and the price table. Every Member sees them; Owners choose the Default Model and the evaluation
  * settings (confirmed by a toast) and override prices.
  */
 export function ModelsPage({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {

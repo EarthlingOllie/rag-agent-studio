@@ -34,6 +34,8 @@ const SHOWN_OPTIONS = [
 const BUDGET_SPENT = "Today's Token Budget is spent, so Visitors see the unavailable text until midnight UTC.";
 const BLOCK_RATE_SPIKE =
   "Block rate spike: in the last hour, the input Guardrail blocked an unusual share of Visitor messages, as in an attack. Review the blocked Conversations.";
+const LIVE_SCORE_DROP =
+  "Live score drop: the Live Version's Live score is clearly lower than the previous Live Version's. Compare the two Versions in Analytics.";
 const DRAFT_CHANGES = "Unpublished changes: the Draft differs from the Live Version.";
 
 const agentCount = (count: number) => `${String(count)} ${count === 1 ? "Agent" : "Agents"}`;
@@ -89,13 +91,17 @@ function LiveCell({ agent }: { agent: Agent }) {
   );
 }
 
-/** The alerts an Agent needs looked at: a spent Token Budget, a spike in Guardrail blocks. */
+/** The alerts an Agent needs looked at: a spent Token Budget, a spike in Guardrail blocks, a drop
+ * in the Live score. */
 function AlertsCell({ agent }: { agent: Agent }) {
-  if (!agent.budget_exhausted && !agent.block_rate_alert) return <span className="text-muted">—</span>;
+  if (!agent.budget_exhausted && !agent.block_rate_alert && !agent.live_score_drop_alert) {
+    return <span className="text-muted">—</span>;
+  }
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
       {agent.budget_exhausted && <Badge kind="budgetSpent" title={BUDGET_SPENT} />}
       {agent.block_rate_alert && <Badge kind="blocked" title={BLOCK_RATE_SPIKE} />}
+      {agent.live_score_drop_alert && <Badge kind="liveScoreDrop" title={LIVE_SCORE_DROP} />}
     </span>
   );
 }

@@ -20,6 +20,7 @@ from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models.function import AgentInfo
 
 from app.retention.tasks import purge_expired
+from app.seed.runner import erase_demo
 from app.worker.celery_app import PURGE_TASK, ROLL_UP_TASK, celery_app
 from tests.agents import answer_text, answer_with, ask, parse_sse
 from tests.conftest import ClientFactory, MemberFactory, SignedUpMember, TenantFactory
@@ -318,7 +319,10 @@ async def test_the_beat_schedule_purges_daily_after_the_rollup_finalises_the_day
     assert max(roll_up_at.minute) < min(purge_at.minute)
 
 
-async def test_without_a_time_the_purge_runs_as_of_now(owner: SignedUpMember) -> None:
+async def test_without_a_time_the_purge_runs_as_of_now(app: FastAPI, owner: SignedUpMember) -> None:
+    # A seed test earlier in this worker may have left the demo Organisation, whose Retention
+    # Window of two weeks its Seeded history outlives.
+    await erase_demo(app)
     result = await asyncio.to_thread(purge_expired.apply)
 
     # An Organisation with no Messages has nothing to purge.

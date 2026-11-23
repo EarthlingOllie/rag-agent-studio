@@ -28,6 +28,7 @@ from app.agents.api import NOT_FOUND_RESPONSE, ClockDep, not_found
 from app.agents.models import (
     CONVERSATION_RATE_MAX,
     IP_RATE_MAX,
+    LIVE_SAMPLE_RATE_MAX,
     ORIGIN_MAX,
     TOKEN_BUDGET_MAX,
     UNAVAILABLE_TEXT_MAX,
@@ -42,6 +43,8 @@ from app.documents.ports import IngestionPorts
 from app.embed import service
 from app.embed.admission import Admission, Refusal
 from app.embed.tokens import TokenSigner
+from app.evaluation.live import sample_reply
+from app.evaluation.tasks import enqueue_live_verdict
 from app.guardrails.pipeline import RefusalEvent
 from app.mail.port import Mailer
 from app.playground.api import QUESTION_MAX
@@ -302,7 +305,8 @@ async def send_message(
     count against the Agent's daily Token Budget. Messages over the Agent's rate limits, per
     Conversation and per IP address, or once the day's budget is spent, get its unavailable
     text; the first refusal or reply that finds the budget spent raises the Agent's alert and
-    emails its Owners, once per day."""
+    emails its Owners, once per day. Once a reply is sent, it may be chosen by the Agent's Live
+    sample rate for a Live Verdict, judged in the background without delaying the reply."""
     token = _bearer(authorization)
     # The Agent's own words for "can't answer now", read on every request so a change applies
     # at once.
@@ -386,6 +390,17 @@ async def send_message(
             else:
                 await spent(event)
                 yield _sse("done", {"message_id": str(event.message_id)})
+                # Only once the reply is stored and sent: it may be chosen for a Live Verdict,
+                # judged in the background.
+                chosen = await sample_reply(
+                    request.app.state.sessionmaker,
+                    admitted.agent_id,
+                    event.message_id,
+                    event.event,
+                    clock=request.app.state.clock,
+                )
+                if chosen is not None:
+                    await enqueue_live_verdict(chosen)
 
     return _event_stream(events())
 
@@ -507,12 +522,16 @@ settings_router = APIRouter(
 )
 
 Origin = Annotated[str, StringConstraints(max_length=ORIGIN_MAX * 2)]
+# The 422 error type of a Live sample rate above 0 set without an Evaluation budget.
+EVALUATION_BUDGET_REQUIRED = "evaluation_budget_required"
+
 UnavailableText = Annotated[
     str, StringConstraints(strip_whitespace=True, max_length=UNAVAILABLE_TEXT_MAX)
 ]
 ConversationRate = Annotated[int, Field(ge=1, le=CONVERSATION_RATE_MAX)]
 IpRate = Annotated[int, Field(ge=1, le=IP_RATE_MAX)]
 TokenBudget = Annotated[int, Field(ge=1, le=TOKEN_BUDGET_MAX)]
+LiveSampleRate = Annotated[int, Field(ge=0, le=LIVE_SAMPLE_RATE_MAX, strict=True)]
 
 
 class OperationalSettingsOut(BaseModel):
@@ -529,6 +548,9 @@ class OperationalSettingsOut(BaseModel):
     # the day's usage reaches it, Visitors get the unavailable text until midnight UTC. The
     # Playground doesn't count.
     daily_token_budget: int
+    # The Live sample rate: the whole percentage (0 to 100) of Visitor replies chosen at random
+    # to be judged by the Evaluation Model in the background (a Live Verdict). 0 judges none.
+    live_sample_rate: int
 
 
 class OperationalSettingsChange(BaseModel):
@@ -540,6 +562,7 @@ class OperationalSettingsChange(BaseModel):
     conversation_messages_per_minute: ConversationRate | None = None
     ip_messages_per_minute: IpRate | None = None
     daily_token_budget: TokenBudget | None = None
+    live_sample_rate: LiveSampleRate | None = None
 
     @field_validator("conversation_messages_per_minute", "ip_messages_per_minute", mode="before")
     @classmethod
@@ -557,6 +580,14 @@ class OperationalSettingsChange(BaseModel):
             raise ValueError("The Token Budget must be a whole number of tokens.")
         return value
 
+    @field_validator("live_sample_rate", mode="before")
+    @classmethod
+    def _a_rate_is_a_number(cls, value: object) -> object:
+        # Leaving the rate out keeps it; 0 turns sampling off.
+        if value is None:
+            raise ValueError("The Live sample rate must be a whole percentage from 0 to 100.")
+        return value
+
 
 def _out(found: service.OperationalSettings) -> OperationalSettingsOut:
     return OperationalSettingsOut(
@@ -565,6 +596,7 @@ def _out(found: service.OperationalSettings) -> OperationalSettingsOut:
         conversation_messages_per_minute=found.conversation_messages_per_minute,
         ip_messages_per_minute=found.ip_messages_per_minute,
         daily_token_budget=found.daily_token_budget,
+        live_sample_rate=found.live_sample_rate,
     )
 
 
@@ -596,7 +628,10 @@ async def change_operational_settings(
     clock: ClockDep,
 ) -> OperationalSettingsOut:
     """Changes the settings given. The next request uses them, without publishing, and the
-    change is recorded as an Audit Event with the before and after values."""
+    change is recorded as an Audit Event with the before and after values (a Live sample rate
+    change as ``agent.live_sample_rate_changed``). A Live sample rate above 0 is refused with
+    the typed error ``evaluation_budget_required`` while the Organisation has no Evaluation
+    budget."""
     blank_text = "unavailable_text" in body.model_fields_set and body.unavailable_text is None
     try:
         found = await service.change_operational_settings(
@@ -609,10 +644,25 @@ async def change_operational_settings(
             conversation_messages_per_minute=body.conversation_messages_per_minute,
             ip_messages_per_minute=body.ip_messages_per_minute,
             daily_token_budget=body.daily_token_budget,
+            live_sample_rate=body.live_sample_rate,
             now=clock.now(),
         )
     except (ProjectNotFoundError, AgentNotFoundError):
         raise not_found() from None
+    except service.EvaluationBudgetRequiredError:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            [
+                {
+                    "loc": ["body", "live_sample_rate"],
+                    "msg": (
+                        "The Organisation has no Evaluation budget, so no reply can be judged. "
+                        "An Owner sets one in Organisation settings, Models."
+                    ),
+                    "type": EVALUATION_BUDGET_REQUIRED,
+                }
+            ],
+        ) from None
     except service.InvalidOriginError as error:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,

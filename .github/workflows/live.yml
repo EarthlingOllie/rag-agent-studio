@@ -3,8 +3,12 @@ name: live
 # The live Evaluation Run (spec 14, ticket 14-11), nightly and on demand: the demo Organisation is
 # seeded with a real Provider Credential, and one Run of three cases (one per expectation kind)
 # is answered and judged by the real model against the seed Knowledge Base. It is outside the
-# coverage gate. It uses the nightly Attack evaluation's model settings: the EVAL_PROVIDER
-# (anthropic or openai) and EVAL_MODEL repository variables and the EVAL_API_KEY secret.
+# coverage gate. So is one real Live Verdict (spec 15, ticket 15-07): a Visitor reply of the
+# seeded HR helper, judged by the same real model; and one real Suggestion run (spec 16, ticket
+# 16-07) over the seeded HR helper's evidence, asserting only that the model's output validates.
+# They use the nightly Attack evaluation's model
+# settings: the EVAL_PROVIDER (anthropic or openai) and EVAL_MODEL repository variables and the
+# EVAL_API_KEY secret.
 
 on:
   schedule:
@@ -41,3 +45,7 @@ jobs:
         run: uv sync --frozen
       - name: One real Evaluation Run against the seed Knowledge Base
         run: uv run pytest -m live --no-cov -rs tests/live/test_evaluation_run_live.py
+      - name: One real Live Verdict of a reply of the seeded HR helper
+        run: uv run pytest -m live --no-cov -rs tests/live/test_live_verdict_live.py
+      - name: One real Suggestion run over the seeded HR helper's evidence
+        run: uv run pytest -m live --no-cov -rs tests/live/test_suggestion_run_live.py

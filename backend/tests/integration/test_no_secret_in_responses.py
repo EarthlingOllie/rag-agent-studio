@@ -34,6 +34,10 @@ ALLOWED = {
     ("MessageOut", "output_tokens"): "the number of output tokens a model call used",
     ("TraceOut", "input_tokens"): "the number of input tokens the traced answer used",
     ("TraceOut", "output_tokens"): "the number of output tokens the traced answer used",
+    ("ConversationTraceOut", "input_tokens"): "the number of input tokens the traced answer used",
+    ("ConversationTraceOut", "output_tokens"): "the number of output tokens the traced answer used",
+    ("LiveVerdictOut", "input_tokens"): "the number of input tokens judging a reply used",
+    ("LiveVerdictOut", "output_tokens"): "the number of output tokens judging a reply used",
     # Spec 07: the Conversations viewer's Messages, as the Playground's; counts again.
     ("ConversationMessageOut", "input_tokens"): "the number of input tokens a model call used",
     ("ConversationMessageOut", "output_tokens"): "the number of output tokens a model call used",

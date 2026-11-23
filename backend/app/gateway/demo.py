@@ -13,7 +13,8 @@ text not to quote (the seeded HR helper v2's terse prompt, "Don't quote the hand
 only the Chunk's first sentence and cites nothing, so v2 reads as curt and its Evaluation Run
 shows Regressions against v1. Asked to judge an
 Evaluation Run's answer, it judges by rule, as the fake chat model does
-(``app.evaluation.fake_judge``), so the seeded Runs are deterministic.
+(``app.evaluation.fake_judge``), so the seeded Runs are deterministic; asked to propose a
+Suggestion, it proposes by rule too (``app.suggestions.fake_proposer``).
 
 The provider's second model, ``demo-naive``, is the Attack evaluation suite's Naive model behind
 its own label: it obeys whatever instructions it finds (decoding base64 and reciting its system
@@ -42,6 +43,7 @@ from pydantic_ai.models.function import AgentInfo, DeltaToolCall, DeltaToolCalls
 from app.evals.naive_model import PIECE, naive_answer, naive_search
 from app.evaluation.fake_judge import fake_judgement, is_judging
 from app.runtime.prompt import CHUNKS_CLOSE, CHUNKS_OPEN, INPUT_CLOSE, INPUT_OPEN, KNOWLEDGE_SEARCH
+from app.suggestions.fake_proposer import fake_proposal, is_proposing
 
 DEMO_LABEL = "Demo model (canned answer, not AI)"
 NAIVE_MODEL = "demo-naive"
@@ -126,6 +128,8 @@ def demo_answer(messages: list[ModelMessage]) -> str:
 def _reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
     if is_judging(info):
         return fake_judgement(messages, info)
+    if is_proposing(info):
+        return fake_proposal(messages, info)
     query = demo_search(messages, info)
     if query is not None:
         return ModelResponse(parts=[ToolCallPart(KNOWLEDGE_SEARCH, {"query": query})])

@@ -1,13 +1,14 @@
 """The analytics statistics, through their public functions: Wilson score intervals against
-published reference values, and percentiles read from fixed-bucket histograms against the exact
-percentiles of the same values."""
+published reference values, percentiles read from fixed-bucket histograms against the exact
+percentiles of the same values, and the one-sided two-proportion test behind the Live score drop
+alert against worked examples."""
 
 import math
 import random
 
 import pytest
 
-from app.analytics.stats import Histogram, wilson
+from app.analytics.stats import Histogram, clearly_lower, wilson
 
 # Reference values: the Wilson score interval at 95% (z = 1.959964), computed independently with
 # statsmodels 0.14 `proportion_confint(count, nobs, method="wilson")`.
@@ -107,3 +108,42 @@ def test_zero_and_values_beyond_the_last_bucket_are_kept() -> None:
     estimate = huge.percentile(0.95)
     assert estimate is not None
     assert estimate > 10**8
+
+
+# Worked examples of the pooled two-proportion z statistic, z = (p1 - p2) / sqrt(p(1 - p)(1/n1 +
+# 1/n2)) with p the pooled rate, against the one-sided 95% critical value 1.645.
+DROPS = [
+    # (before passed, before n, after passed, after n, minimum drop, clearly lower)
+    # 100% against 67%: z = 3.46, a 33 point drop.
+    (30, 30, 20, 30, 0.05, True),
+    # 90% against 80%: z = 1.20, not significant.
+    (27, 30, 48, 60, 0.05, False),
+    # 100% against 96%: z = 1.75, significant, but a 4 point drop.
+    (75, 75, 72, 75, 0.05, False),
+    # The same, with no minimum drop.
+    (75, 75, 72, 75, 0.0, True),
+    # A rise is never lower.
+    (20, 30, 30, 30, 0.05, False),
+    # Every reply passed on both sides: no variance, no drop.
+    (30, 30, 40, 40, 0.05, False),
+    # Every reply failed on both sides.
+    (0, 30, 0, 40, 0.05, False),
+    # A drop of exactly the minimum counts: 100% against 95% of 400 (z = 4.53).
+    (400, 400, 380, 400, 0.05, True),
+]
+
+
+@pytest.mark.parametrize(
+    ("before_passed", "before_n", "after_passed", "after_n", "min_drop", "expected"), DROPS
+)
+def test_a_rate_is_clearly_lower_when_significantly_and_enough_lower(
+    before_passed: int,
+    before_n: int,
+    after_passed: int,
+    after_n: int,
+    min_drop: float,
+    expected: bool,
+) -> None:
+    assert (
+        clearly_lower(before_passed, before_n, after_passed, after_n, min_drop=min_drop) is expected
+    )

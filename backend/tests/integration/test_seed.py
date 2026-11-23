@@ -7,6 +7,7 @@ seed's Word document and slide deck become real Chunks. Embeddings use the deter
 
 import uuid
 from collections.abc import AsyncIterator
+from decimal import Decimal
 from typing import Any
 
 import httpx
@@ -104,7 +105,12 @@ async def snapshot(app: FastAPI, owner: SignedUpMember) -> dict[str, Any]:
             owner, "projects", project["id"], "agents", agent["id"], "operational-settings"
         )
         live = agent["live_version"] and agent["live_version"]["number"]
-        embedding[agent["name"]] = (live, found["allowed_origins"], found["daily_token_budget"])
+        embedding[agent["name"]] = (
+            live,
+            found["allowed_origins"],
+            found["daily_token_budget"],
+            found["live_sample_rate"],
+        )
     async with app.state.sessionmaker() as session:
         audit_events = await session.scalar(
             select(func.count())
@@ -118,6 +124,7 @@ async def snapshot(app: FastAPI, owner: SignedUpMember) -> dict[str, Any]:
         "tags": sorted(t["name"] for t in await get(owner, "projects", project["id"], "tags")),
         "agents": sorted(a["name"] for a in agents),
         "embedding": embedding,
+        "evaluation_budget": (await get(owner, "evaluation-budget"))["evaluation_budget_usd"],
         "audit_events": audit_events,
     }
 
@@ -364,6 +371,32 @@ async def test_the_shop_origin_can_be_another_site(
     assert again.organisation_id == owner.organisation_id
 
 
+async def test_the_organisation_has_an_evaluation_budget_and_the_hr_helper_a_live_sample_rate(
+    demo_app: FastAPI, new_client: ClientFactory
+) -> None:
+    """Spec 15: so the HR helper's Visitor replies are judged, the Organisation has an Evaluation
+    budget and the HR helper a Live sample rate; the other Agents aren't sampled."""
+    await seed(demo_app, ASSETS)
+
+    editor = await signed_in(new_client, content.EDITOR)
+    found = await get(editor, "evaluation-budget")
+    assert Decimal(found["evaluation_budget_usd"]) == Decimal("20")
+    assert not found["exhausted"]
+    project = await demo_project(editor)
+    rates = {}
+    for agent in await get(editor, "projects", project["id"], "agents"):
+        settings = await get(
+            editor, "projects", project["id"], "agents", agent["id"], "operational-settings"
+        )
+        rates[agent["name"]] = settings["live_sample_rate"]
+    assert rates == {
+        "HR helper": 90,
+        "Product FAQ": 0,
+        "Low-budget helper": 0,
+        "Guardrail demo": 0,
+    }
+
+
 # Idempotence and reset
 
 
@@ -391,8 +424,9 @@ async def test_seeding_again_puts_back_what_was_changed(
     documents = await get(owner, "projects", project["id"], "documents")
     agents = await get(owner, "projects", project["id"], "agents")
     # Someone experiments: the Products Tag, a Document and an Agent go, the Theme changes,
-    # the Product FAQ's Allowed Origins and Token Budget change, the HR Agent loses its
-    # scoping and its Retrieval Mode, and a new credential becomes the Default Model.
+    # the Product FAQ's Allowed Origins and Token Budget change, the HR Agent's Live sample rate
+    # changes, the Evaluation budget is removed, the HR Agent loses its scoping and its
+    # Retrieval Mode, and a new credential becomes the Default Model.
     edits = [
         await owner.client.delete(f"{base}/projects/{project['id']}/tags/{tags['Products']}"),
         await owner.client.delete(
@@ -408,6 +442,15 @@ async def test_seeding_again_puts_back_what_was_changed(
         )
     )
     hr = next(a for a in agents if a["name"] == "HR helper")
+    edits.append(
+        await owner.client.patch(
+            f"{base}/projects/{project['id']}/agents/{hr['id']}/operational-settings",
+            json={"live_sample_rate": 5},
+        )
+    )
+    edits.append(
+        await owner.client.put(f"{base}/evaluation-budget", json={"evaluation_budget_usd": None})
+    )
     retrieval = {**hr["draft"]["retrieval"], "tag_ids": [], "mode": "agentic"}
     draft = {**hr["draft"], "retrieval": retrieval}
     edits.append(
@@ -425,7 +468,7 @@ async def test_seeding_again_puts_back_what_was_changed(
             json={"credential_id": other.json()["id"], "model": "gpt-4.1-mini"},
         )
     )
-    assert [e.status_code for e in edits] == [204, 204, 200, 200, 200, 200]
+    assert [e.status_code for e in edits] == [204, 204, 200, 200, 200, 200, 200, 200]
 
     await seed(demo_app, ASSETS)
 

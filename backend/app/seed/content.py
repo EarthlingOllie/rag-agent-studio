@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from decimal import Decimal
 
 from app.agents.config import RetrievalMode
 from app.agents.models import TOKEN_BUDGET_DEFAULT
@@ -165,7 +166,8 @@ THEME = ThemeSettings(
 # through the API under a clock set in the past. Days count back from today (day 28 is four weeks
 # ago): on day 28 the Organisation is set up, Instructions v1 published, and the Agents published;
 # on day 17 the Editor publishes HR helper v2 (terse, without citations); on day 10 the Owner
-# builds the HR helper's Evaluation Set, runs v1 against v2, and reverts it; on day 6
+# builds the HR helper's Evaluation Set, runs v1 against v2, has a Suggestion made from v2's
+# failures, and reverts it; on day 6
 # Instructions v2 is published and rolled out to the Low-budget helper, leaving the Product FAQ
 # behind; on day 3 the Editor publishes HR helper v3, and on day 2 runs the Draft against it.
 HISTORY_DAYS = 28
@@ -312,6 +314,27 @@ class History:
 
 
 HISTORY = History()
+
+# Live evaluation (spec 15): the Organisation's monthly Evaluation budget, in US dollars, and each
+# Agent's Live sample rate (those not named here aren't sampled). Most of the HR helper's Visitor
+# replies are judged by the Demo model as the history plays, so v2's uncited replies fail
+# grounding and its Live score falls below v1's. The Demo model costs nothing, so the budget is
+# never spent.
+# The rate is high so that v2's Live score is clearly lower after every seeding, not only a lucky
+# one: v2 passes nothing, so the top of its interval falls only with more Live Verdicts, while
+# v1's score is modest and not quite fixed. The Demo model's judge passes few of v1's answers
+# (only those sharing a long word with the question), and which Chunk a question retrieves first
+# can hang on a tie in the hybrid ranking, broken by the Chunks' random IDs, so v1 passes about
+# 15% or about 25% of its replies from one seeding to the next. At 60% v2's interval reached above
+# v1's in the lower case; at 90% it stays well below in both, while v3 keeps too few Live Verdicts
+# to compare and v2's Suggestion still reaches purged evidence within its cap.
+EVALUATION_BUDGET_USD = Decimal("20.00")
+LIVE_SAMPLE_RATES = {HR_AGENT: 90}
+
+# Suggestions (spec 16): the demo Organisation keeps Message text for two weeks (its Retention
+# Window), so the Purge the history ends with clears the oldest replies v2's Suggestion points at,
+# and they read "Text purged" while its change and explanation stay.
+RETENTION_DAYS = 14
 
 
 @dataclass(frozen=True)
