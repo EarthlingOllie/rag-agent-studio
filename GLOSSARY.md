@@ -797,6 +797,26 @@ _Avoid_: Test case, golden question, eval
 A passage of a Document (up to 1,000 characters, picked from its Chunks) that an Evaluation Case's answer should retrieve and cite. It is matched, ignoring case and whitespace, against the Chunks of the Document's current Edition each time it is checked (when the case is saved, each Run, and as soon as a new Edition of the Document is swapped in): its Verdict passes when the answer cited a Chunk holding it and fails when it didn't (a Chunk retrieved but left uncited is a fail too); when the Document is gone or no Chunk holds the passage, the expectation is Stale. A case may hold several.
 _Avoid_: Ground truth chunk, expected chunk
 
+**Found**:
+Of an Expected source in one answer: a Chunk holding it was among those retrieval returned, at any rank, in any Search, whether or not the model was given it. The Found rate is the share of a side's Expected sources that were Found, each Expected source counting once in every answer (every repeat), shown as "x of y"; Stale expectations and answers with an Error are left out.
+_Avoid_: Recall, recall@k, hit
+
+**Given**:
+Of an Expected source in one answer: a Chunk holding it was among those given to the model. An Expected source Found but not Given was left out, for the reason its Trace gives (below the Minimum Score, outside Top-k, outside the Agent's Tags, or flagged by a Guardrail). The Given rate is counted like the Found rate.
+_Avoid_: Recall@k (k differs between sides), in context
+
+**Cited**:
+Of an Expected source in one answer: the answer cited a Chunk holding it, which is what its Verdict passes on. The Cited rate is counted like the Found rate.
+_Avoid_: Used, grounded (that is the grounding Verdict)
+
+**Found rank**:
+An Expected source's best rank in retrieval's own order within any Search of one answer (not the number in its Chunk label), whether or not it was Given. Each side of an Evaluation Run shows its median Found rank over the Expected sources that were Found, next to how many were not Found.
+_Avoid_: MRR, position (the Trace's order)
+
+**Retrieval breakdown**:
+In an Evaluation Run, each side's answers to cases with an Expected source sorted by whether every Expected source was Given and whether its other Verdicts passed: Clean pass (Given, passed), Answer miss (Given, failed), Retrieval miss (not Given, failed) and Passed without source (not Given, passed). Answers blocked before retrieval are left out and counted beside it.
+_Avoid_: Confusion matrix, generation failure, hallucination
+
 **Reference answer**:
 What a good answer to an Evaluation Case says, in the Editor's words; answers are judged against its meaning, not its wording.
 _Avoid_: Gold answer, expected output
@@ -868,6 +888,26 @@ _Avoid_: Quality alarm, regression alert (a Regression is an Evaluation Case)
 **Evaluation budget**:
 The most an Organisation may spend in US dollars per calendar month (UTC) on Live Verdicts, set by Owners. There is none by default. Once the month's spend reaches it, sampling stops across the Organisation until the 1st of the next month and every Owner is emailed once; raising it resumes sampling at once. Visitor replies are never affected, and Evaluation Runs an Editor starts are never capped.
 _Avoid_: Eval budget, judging quota, Token Budget (the Agent's reply limit)
+
+**Verdict review**:
+An Editor's own pass or fail on a judged Verdict (Reference answer or grounding) or on either check of a Live Verdict; it agrees when it matches the Evaluation Model's. In the Review sample it is given blind, before the Evaluation Model's pass or fail and reason are shown; elsewhere the Editor sees them and agrees or disagrees. When it differs from the Evaluation Model's, the Editor may give a reason (up to 1,000 characters); on a Live Verdict the Purge clears that reason with the Message and keeps the review. A Verdict has at most one, from any Editor, and reviewing it again replaces it. It never changes the Verdict or anything counted from it (Evaluation score, Regressions, Live score, alerts). It is the only reference the Evaluation Model is measured against; Message Feedback is not one.
+_Avoid_: Label, annotation, human eval, thumbs (that is Message Feedback)
+
+**Evaluation Model agreement**:
+How often the Evaluation Model's judgements match Editors' Verdict reviews made from the Review sample, kept for each Judging setup and shown with its Wilson interval (Low sample under 30). Disagreements are split into false passes (it passed, the Editor disagrees) and false fails.
+_Avoid_: Judge calibration, judge accuracy, calibration (the Evaluation Model gives pass or fail, not probabilities)
+
+**Review sample**:
+The Organisation's queue of judged Verdicts and Live Verdict checks, drawn at random from those by the current Evaluation Model that are not yet reviewed and whose text is not Purged, which Editors review blind so that Evaluation Model agreement isn't skewed towards the ones they doubted. Verdict reviews made anywhere else are kept and shown on the Verdict, but don't count.
+_Avoid_: Labelling queue, review queue, audit sample
+
+**Judging guidance**:
+An Organisation's own instructions to the Evaluation Model (one text, up to 2,000 characters), saved by an Owner and added to every judgement it makes, so that its Verdicts and Live Verdicts follow the Organisation's idea of a pass. Each save is a new version and an Audit Event; Editors can read it. The Evaluation Model can draft it from the Verdict reviews it disagreed with, and the draft is checked against Review sample reviews it didn't see before an Owner saves it; a drop in agreement warns, never blocks.
+_Avoid_: Judge prompt, rubric, fine-tuning, calibration
+
+**Judging setup**:
+The Evaluation Model together with the version of Judging guidance it judges with. Every Verdict, Live Verdict and Evaluation Run keeps the Judging setup it was judged under, and only judgements under the same Judging setup are compared (Evaluation Model agreement, the Live score drop alert).
+_Avoid_: Judge config, judge version
 
 **Suggestion**:
 A proposed change to an Agent's Draft, drawn from its Live Version's replies that failed their Live Verdict, were given a thumbs-down or are in a Conversation rated 1 or 2, and from Evaluation Cases that failed on it, for an Editor to review: system prompt wording and retrieval settings (Top-k, Minimum Score, Hybrid weighting), each retrieval change citing the Traces behind it, plus any Knowledge Base gaps it found (questions no Chunk covered, which no configuration change can fix). An Editor starts the run that makes it and applies it to the Draft whole; it never changes the Draft or Publishes on its own, and a failed check against the Evaluation Set is a warning, not a block. Its evidence points at Messages and never copies their text, so Purged evidence reads "Text purged"; the change and its explanation are kept until an Editor deletes it.
