@@ -894,7 +894,7 @@ An Editor's own pass or fail on a judged Verdict (Reference answer or grounding)
 _Avoid_: Label, annotation, human eval, thumbs (that is Message Feedback)
 
 **Evaluation Model agreement**:
-How often the Evaluation Model's judgements match Editors' Verdict reviews made from the Review sample, kept for each Evaluation Model and shown with its Wilson interval (Low sample under 30). Disagreements are split into false passes (it passed, the Editor disagrees) and false fails.
+How often the Evaluation Model's judgements match Editors' Verdict reviews made from the Review sample, kept for each Judging setup and shown with its Wilson interval (Low sample under 30). Disagreements are split into false passes (it passed, the Editor disagrees) and false fails.
 _Avoid_: Judge calibration, judge accuracy, calibration (the Evaluation Model gives pass or fail, not probabilities)
 
 **Review sample**:
@@ -902,8 +902,12 @@ The Organisation's queue of judged Verdicts and Live Verdict checks, drawn at ra
 _Avoid_: Labelling queue, review queue, audit sample
 
 **Judging guidance**:
-An Organisation's own instructions to the Evaluation Model, saved by an Owner and added to every judgement it makes, so that its Verdicts and Live Verdicts follow the Organisation's idea of a pass. The Evaluation Model can draft it from the Verdict reviews it disagreed with; a person always saves it.
+An Organisation's own instructions to the Evaluation Model (one text, up to 2,000 characters), saved by an Owner and added to every judgement it makes, so that its Verdicts and Live Verdicts follow the Organisation's idea of a pass. Each save is a new version and an Audit Event; Editors can read it. The Evaluation Model can draft it from the Verdict reviews it disagreed with, and the draft is checked against Review sample reviews it didn't see before an Owner saves it; a drop in agreement warns, never blocks.
 _Avoid_: Judge prompt, rubric, fine-tuning, calibration
+
+**Judging setup**:
+The Evaluation Model together with the version of Judging guidance it judges with. Every Verdict, Live Verdict and Evaluation Run keeps the Judging setup it was judged under, and only judgements under the same Judging setup are compared (Evaluation Model agreement, the Live score drop alert).
+_Avoid_: Judge config, judge version
 
 **Suggestion**:
 A proposed change to an Agent's Draft, drawn from its Live Version's replies that failed their Live Verdict, were given a thumbs-down or are in a Conversation rated 1 or 2, and from Evaluation Cases that failed on it, for an Editor to review: system prompt wording and retrieval settings (Top-k, Minimum Score, Hybrid weighting), each retrieval change citing the Traces behind it, plus any Knowledge Base gaps it found (questions no Chunk covered, which no configuration change can fix). An Editor starts the run that makes it and applies it to the Draft whole; it never changes the Draft or Publishes on its own, and a failed check against the Evaluation Set is a warning, not a block. Its evidence points at Messages and never copies their text, so Purged evidence reads "Text purged"; the change and its explanation are kept until an Editor deletes it.
