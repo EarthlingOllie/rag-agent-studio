@@ -1,7 +1,7 @@
 # Tickets
 
 Tracer-bullet tickets split from the [slice specs](../specs/README.md). Ticket IDs are `<spec>-<NN>`, and blockers can point into other specs.
-Work the **frontier**: any ticket whose blockers are all done. `01-01`, `11-01`, `15-01` and `16-01` are the only tickets with no blockers.
+Work the **frontier**: any ticket whose blockers are all done. `01-01`, `11-01`, `15-01`, `16-01`, `18-01` and `19-01` are the only tickets with no blockers.
 
 New tickets start from [TEMPLATE.md](./TEMPLATE.md). Its standing criteria apply to every ticket: new Studio UI uses the [design system](../design/README.md) (the palette ratchet enforces it), tests sit at the highest seam with 100% coverage, and the glossary and ADRs stay current.
 
@@ -233,3 +233,29 @@ Suggestion runs that read an Agent's failures and propose changes to its Draft f
 | `16-05` | [The check against the Evaluation Set](./16-suggestions/05-check-against-evaluation-set.md) | 16-02, 16-04 |
 | `16-06` | [Applying a Suggestion to the Draft](./16-suggestions/06-apply-to-draft.md) | 16-01, 16-02 |
 | `16-07` | [Demo seed, end-to-end and live suite](./16-suggestions/07-demo-seed-e2e-live.md) | 15-07, 16-03, 16-05, 16-06 |
+
+## 18: Verdict review
+
+Editors' blind reviews of the Evaluation Model's Verdicts and the agreement counted from them ([ADR-0018](../adr/0018-reviews-measure-guidance-changes.md)). 18-01 is a prefactor with no blockers; 18-02 is the tracer.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `18-01` | [Prefactor: rebuild a judgement's input from what was stored](./18-verdict-review/01-prefactor-judge-input.md) | none |
+| `18-02` | [Verdict review tracer: blind Review sample of Run Verdicts](./18-verdict-review/02-verdict-review-tracer.md) | 18-01 |
+| `18-03` | [Live Verdict checks in the Review sample, and retention](./18-verdict-review/03-live-verdicts-in-sample-retention.md) | 18-02 |
+| `18-04` | [Reviewing where Verdicts are shown](./18-verdict-review/04-reviewing-where-shown.md) | 18-02, 18-03 |
+| `18-05` | [Evaluation Model agreement card](./18-verdict-review/05-agreement-card.md) | 18-02 |
+| `18-06` | [Demo seed and end-to-end](./18-verdict-review/06-demo-seed-e2e.md) | 18-03, 18-04, 18-05 |
+
+## 19: Judging guidance
+
+Owner-saved guidance for the Evaluation Model, drafted from disagreements and checked on held-out reviews, with the Judging setup recorded on every judgement. 19-01 is the tracer and has no blockers, so it can run beside spec 18.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `19-01` | [Judging guidance tracer: save it, judge with it, record the Judging setup](./19-judging-guidance/01-judging-guidance-tracer.md) | none |
+| `19-02` | [Comparisons by Judging setup](./19-judging-guidance/02-comparisons-by-judging-setup.md) | 19-01 |
+| `19-03` | [Agreement and Review sample per Judging setup](./19-judging-guidance/03-agreement-per-judging-setup.md) | 19-01, 18-03, 18-05 |
+| `19-04` | [Check guidance on held-out reviews](./19-judging-guidance/04-check-guidance-held-out.md) | 18-01, 19-03 |
+| `19-05` | [Draft guidance from disagreements](./19-judging-guidance/05-draft-guidance.md) | 19-04 |
+| `19-06` | [End-to-end and live suite](./19-judging-guidance/06-e2e-live.md) | 18-06, 19-02, 19-05 |

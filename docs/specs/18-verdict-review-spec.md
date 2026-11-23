@@ -1,6 +1,6 @@
 # Spec 18: Verdict review
 
-**Status:** ready-for-agent · **Builds on:** [Spec 14](./14-evaluation-loop-spec.md), [Spec 15](./15-live-evaluation-spec.md), [Spec 16](./16-suggestions-spec.md) · **Decisions:** [ADR-0016](../adr/0016-evaluation-cases-outlive-retention.md)
+**Status:** ready-for-agent · **Builds on:** [Spec 14](./14-evaluation-loop-spec.md), [Spec 15](./15-live-evaluation-spec.md), [Spec 16](./16-suggestions-spec.md) · **Decisions:** [ADR-0016](../adr/0016-evaluation-cases-outlive-retention.md), [ADR-0018](../adr/0018-reviews-measure-guidance-changes.md)
 
 ## Problem Statement
 
