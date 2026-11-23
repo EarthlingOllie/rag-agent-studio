@@ -10,7 +10,8 @@ set, so a sampled subset is stable. A chosen reply gets a ``pending`` Live Verdi
 before its task is sent. The Playground never calls this: only the widget's replies are sampled.
 
 The task judges the question, the reply, its Remembered turns (as its Agent Version remembered
-them) and the Chunks the reply was given (cited and not), each in its own data block, through the
+them) and the Chunks the reply was given (cited and not), each in its own data block (built by
+``app.evaluation.judge_input``, which can rebuild it later from the same rows), through the
 Model gateway with the Evaluation Model (or the Default Model, as for Evaluation Runs): spec 14's
 judge, asked for ``grounding`` and ``answers_question`` in one
 structured-output call at temperature 0. The system prompt and Project Instructions are never
@@ -23,7 +24,6 @@ Verdict is ``skipped`` and nothing is sent to the judge.
 """
 
 import functools
-import itertools
 import random
 import uuid
 from typing import cast
@@ -31,22 +31,18 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.agents.config import AgentConfig
-from app.agents.models import Agent, AgentVersion
-from app.conversations.models import Message, MessageRole
-from app.conversations.service import traced_chunks
+from app.agents.models import Agent
+from app.conversations.models import Message
 from app.core.clock import Clock
 from app.evaluation.budget import add_spend, email_owners, read_budget
-from app.evaluation.from_message import question_of
-from app.evaluation.judge import CitedExcerpt, JudgeError, JudgeRequest, judge
+from app.evaluation.judge import JudgeError, judge
+from app.evaluation.judge_input import judge_input
 from app.evaluation.models import LiveStatus, LiveVerdict, VerdictOutcome
 from app.evaluation.ports import EvaluationPorts
 from app.evaluation.settings import judge_model
 from app.gateway.gateway import ModelGateway
-from app.guardrails.outcomes import blocked
 from app.pricing.service import credential_pricing, price_table
 from app.pricing.table import cost
-from app.runtime.prompt import Turn
 from app.runtime.runtime import DoneEvent
 
 NO_EVALUATION_MODEL = (
@@ -107,61 +103,6 @@ async def sample_reply(
         return verdict.id
 
 
-async def remembered_turns(
-    session: AsyncSession, reply: Message, question: Message
-) -> list[tuple[Message, Message]]:
-    """The reply's Remembered turns, oldest first, as its Agent Version remembered them: the
-    last of the earlier exchanges, leaving out those the input Guardrail blocked and those
-    already Purged when the reply was given (neither was sent to the model)."""
-    version = await session.get_one(AgentVersion, reply.agent_version_id)
-    count = AgentConfig.model_validate(version.config).behaviour.remembered_turns
-    earlier = await session.scalars(
-        select(Message)
-        .where(Message.conversation_id == reply.conversation_id, Message.seq < question.seq)
-        .order_by(Message.seq)
-    )
-    turns = [
-        (asked, answer)
-        for asked, answer in itertools.pairwise(earlier)
-        if (asked.role, answer.role) == (MessageRole.USER, MessageRole.ASSISTANT)
-        and not blocked(answer.guardrail_outcomes)
-        and all(m.purged_at is None or m.purged_at > reply.created_at for m in (asked, answer))
-    ]
-    return turns[-count:] if count else []
-
-
-async def _request(session: AsyncSession, reply: Message) -> JudgeRequest | None:
-    """What the judge is given: the reply's Remembered turns, the question, the reply, and the
-    Chunks the reply was given, split into those it cited and the rest. None when the reply's
-    text, its question's or a Remembered turn's has been Purged since: nothing is judged
-    without its text."""
-    question = await question_of(session, reply)
-    turns = await remembered_turns(session, reply, question)
-    texts = [reply, question, *(m for turn in turns for m in turn)]
-    if any(m.purged_at is not None for m in texts):
-        return None
-    given: dict[int, tuple[bool, CitedExcerpt]] = {}
-    traced = await traced_chunks(session, reply)
-    # Those left out (with no rank) weren't given to the model.
-    for chunk in (c for c in traced if c.retrieval.rank is not None):
-        rank = chunk.retrieval.rank
-        excerpt = CitedExcerpt(
-            f"C{rank}", chunk.document_name or "Deleted Document", chunk.text or ""
-        )
-        # A Chunk found again by a later Search keeps its first label.
-        given.setdefault(cast(int, rank), (chunk.retrieval.cited, excerpt))
-    return JudgeRequest(
-        question=question.content,
-        answer=reply.content,
-        cited=[excerpt for cited, excerpt in given.values() if cited],
-        reference_answer=None,
-        grounding=True,
-        answers_question=True,
-        given=[excerpt for cited, excerpt in given.values() if not cited],
-        earlier_turns=[Turn(asked.content, answer.content) for asked, answer in turns],
-    )
-
-
 def _outcome(passed: bool) -> VerdictOutcome:
     return VerdictOutcome.PASS if passed else VerdictOutcome.FAIL
 
@@ -177,8 +118,7 @@ async def judge_live_verdict(
     ``skipped`` when the text it needs was Purged first."""
     async with sessionmaker() as session:
         verdict = await session.get_one(LiveVerdict, verdict_id)
-        reply = await session.get_one(Message, verdict.message_id)
-        request = await _request(session, reply)
+        request = await judge_input(session, verdict)
         if request is None:
             # Purged before it was judged: nothing is sent to the judge.
             verdict.status = LiveStatus.SKIPPED
@@ -210,7 +150,9 @@ async def judge_live_verdict(
         await session.execute(
             select(LiveVerdict.id).where(LiveVerdict.id == verdict.id).with_for_update()
         )
-        purged_at = await session.scalar(select(Message.purged_at).where(Message.id == reply.id))
+        purged_at = await session.scalar(
+            select(Message.purged_at).where(Message.id == verdict.message_id)
+        )
         grounded = judging.verdicts["grounding"]
         answers = judging.verdicts["answers_question"]
         verdict.status = LiveStatus.JUDGED
