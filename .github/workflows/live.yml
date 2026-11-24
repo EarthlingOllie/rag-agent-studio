@@ -5,7 +5,9 @@ name: live
 # is answered and judged by the real model against the seed Knowledge Base. It is outside the
 # coverage gate. So is one real Live Verdict (spec 15, ticket 15-07): a Visitor reply of the
 # seeded HR helper, judged by the same real model; and one real Suggestion run (spec 16, ticket
-# 16-07) over the seeded HR helper's evidence, asserting only that the model's output validates.
+# 16-07) over the seeded HR helper's evidence, asserting only that the model's output validates;
+# and one real Judging guidance draft and check (spec 19, ticket 19-06) over a small set of
+# reviews the test seeds, asserting the same.
 # They use the nightly Attack evaluation's model
 # settings: the EVAL_PROVIDER (anthropic or openai) and EVAL_MODEL repository variables and the
 # EVAL_API_KEY secret.
@@ -49,3 +51,5 @@ jobs:
         run: uv run pytest -m live --no-cov -rs tests/live/test_live_verdict_live.py
       - name: One real Suggestion run over the seeded HR helper's evidence
         run: uv run pytest -m live --no-cov -rs tests/live/test_suggestion_run_live.py
+      - name: One real Judging guidance draft and check over a small set of seeded reviews
+        run: uv run pytest -m live --no-cov -rs tests/live/test_judging_guidance_live.py
