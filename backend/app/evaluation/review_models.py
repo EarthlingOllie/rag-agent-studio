@@ -72,3 +72,22 @@ class VerdictReview(IdMixin, Base):
     reviewed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     # When the Purge of a Live Verdict's reply cleared the reason (``app.retention``).
     purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ReviewSampleSkip(IdMixin, Base):
+    """An item an Editor skipped on the Review sample, counted against the Evaluation Model
+    judging then so the skip count is shown beside agreement. It stores no review and names no
+    item: the item stays in the pool."""
+
+    __tablename__ = "review_sample_skips"
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
+    )
+    # The Evaluation Model judging when the item was skipped (or the Default Model), copied.
+    judge_provider: Mapped[str] = mapped_column(String(50))
+    judge_model: Mapped[str] = mapped_column(String(200))
+    skipped_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(Member.id, ondelete="SET NULL"), index=True
+    )
+    skipped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

@@ -269,10 +269,52 @@
         "type": "object"
       },
       "AgreementOut": {
+        "description": "One Evaluation Model's agreement: overall, then per check that has reviews (grounding,\nanswers the question, Reference answer).",
         "properties": {
           "agreed": {
             "title": "Agreed",
             "type": "integer"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/CheckAgreementOut"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "false_fails": {
+            "title": "False Fails",
+            "type": "integer"
+          },
+          "false_passes": {
+            "title": "False Passes",
+            "type": "integer"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "low_sample": {
+            "title": "Low Sample",
+            "type": "boolean"
           },
           "model": {
             "title": "Model",
@@ -282,16 +324,34 @@
             "title": "Provider",
             "type": "string"
           },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
           "reviews": {
             "title": "Reviews",
             "type": "integer"
           }
         },
         "required": [
+          "reviews",
+          "agreed",
+          "false_passes",
+          "false_fails",
+          "rate",
+          "low",
+          "high",
+          "low_sample",
           "provider",
           "model",
-          "reviews",
-          "agreed"
+          "checks"
         ],
         "title": "AgreementOut",
         "type": "object"
@@ -1170,6 +1230,85 @@
         ],
         "title": "ChangeState",
         "type": "string"
+      },
+      "CheckAgreementOut": {
+        "properties": {
+          "agreed": {
+            "title": "Agreed",
+            "type": "integer"
+          },
+          "check": {
+            "enum": [
+              "reference_answer",
+              "grounding",
+              "answers_question"
+            ],
+            "title": "Check",
+            "type": "string"
+          },
+          "false_fails": {
+            "title": "False Fails",
+            "type": "integer"
+          },
+          "false_passes": {
+            "title": "False Passes",
+            "type": "integer"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "low_sample": {
+            "title": "Low Sample",
+            "type": "boolean"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
+          "reviews": {
+            "title": "Reviews",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reviews",
+          "agreed",
+          "false_passes",
+          "false_fails",
+          "rate",
+          "low",
+          "high",
+          "low_sample",
+          "check"
+        ],
+        "title": "CheckAgreementOut",
+        "type": "object"
       },
       "CheckFailedResponse": {
         "properties": {
@@ -3574,10 +3713,33 @@
                 "type": "null"
               }
             ]
+          },
+          "earlier": {
+            "items": {
+              "$ref": "#/components/schemas/AgreementOut"
+            },
+            "title": "Earlier",
+            "type": "array"
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "integer"
+          },
+          "reviewed_by_you": {
+            "title": "Reviewed By You",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
           }
         },
         "required": [
-          "current"
+          "current",
+          "earlier",
+          "reviewed",
+          "reviewed_by_you",
+          "skipped"
         ],
         "title": "EvaluationAgreementOut",
         "type": "object"
@@ -14147,7 +14309,7 @@
     },
     "/api/organisations/{organisation_id}/evaluation-agreement": {
       "get": {
-        "description": "How many Review sample reviews of the current Evaluation Model agreed with it.",
+        "description": "Evaluation Model agreement over Review sample reviews: the current Evaluation Model's\nfigures (rate with its Wilson interval, Low sample, false passes and false fails, overall\nand per check), the earlier Evaluation Models that have reviews, and how many sample reviews\nthe Organisation and you have given and items were skipped.",
         "operationId": "getEvaluationAgreement",
         "parameters": [
           {
@@ -24529,6 +24691,53 @@
           }
         },
         "summary": "Submit Sample Review",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/review-sample/skips": {
+      "post": {
+        "description": "Counts an item you skipped on the Review sample against the current Evaluation Model.\nNo review is stored, so the item stays in the sample. Not found while the Organisation has\nno model to judge with.",
+        "operationId": "skipReviewSampleItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No model to judge with"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Skip Review Sample Item",
         "tags": [
           "evaluation"
         ]

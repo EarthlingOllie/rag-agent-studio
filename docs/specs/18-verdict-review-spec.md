@@ -90,14 +90,14 @@ Editors give **Verdict reviews**: their own pass or fail on a judged Verdict or 
   - The pool is every judged Evaluation Verdict of kind Reference answer or grounding (outcome pass or fail), and both checks of every judged Live Verdict that isn't purged, by the Organisation's current Evaluation Model and with no review.
   - `next` picks one uniformly at random from the pool and returns what the Evaluation Model saw, without its outcome or reason: for a Run Verdict, the case's question, the Reference answer for that check, the answer and its Trace Chunks with cited flags; for a Live Verdict, its Remembered turns, the question, the reply and the Chunks it was given with cited flags.
   - Submitting stores the review with `from_sample` true and returns the Evaluation Model's outcome and reason for the reveal. If someone else reviewed the item in the meantime, the later review replaces it, as everywhere.
-  - Skipping stores nothing; the item stays in the pool.
+  - Skipping stores no review; the item stays in the pool. The skip is only counted (against the current Evaluation Model, with who skipped and when) so the agreement card can show the skip count.
 - **Reviews elsewhere.** Put and delete on a Verdict's review from Run detail and from the Trace store `from_sample` false. Giving a review anywhere takes the target out of the pool. Replacing a sample review with one from elsewhere makes it `from_sample` false, so it stops counting.
 - **Agreement.** Counted when read, over reviews with `from_sample` true and the given Evaluation Model: reviews, agreed, false passes and false fails, overall and per check kind, with the rate's Wilson interval (the existing function) and Low sample under 30. The card shows the current Evaluation Model and lists earlier ones that have reviews.
 - **Never an override.** Nothing that counts Verdicts or Live Verdicts (the Evaluation score, Regressions, the Publish summary, the Live score, the Live score drop alert, Suggestion evidence) reads reviews.
 - **Retention.** The Purge pass that clears a Live Verdict's reasons also clears the reason on its reviews and stamps them purged-at. Outcomes stay, so agreement is unchanged. Deleting a Conversation goes through the same path. Reviews on Evaluation Run Verdicts follow their Run and are deleted with it.
 - **Audit.** Reviews aren't Audit Events. They change nothing that Audit Events protect, and there will be many of them.
 - **API.**
-  - Organisation: get the next Review sample item, submit a review for it, and read Evaluation Model agreement (current and earlier Evaluation Models) and review counts.
+  - Organisation: get the next Review sample item, submit a review for it or skip it, and read Evaluation Model agreement (current and earlier Evaluation Models) and review counts.
   - Run results: each judged Verdict gains its review (outcome, reason, who, when, from_sample), and put and delete a review on it.
   - Trace: each Live Verdict check gains its review, and put and delete a review on it.
   - Everything flows into the OpenAPI schema and the generated client.

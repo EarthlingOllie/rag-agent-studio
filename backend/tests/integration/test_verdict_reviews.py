@@ -1,6 +1,7 @@
 """API seam: the Review sample (spec 18, ticket 18-02). An Editor is served a judged Run Verdict
 blind, gives their own pass or fail, and is shown the Evaluation Model's; Evaluation Model
-agreement counts how many of those reviews agreed.
+agreement counts how many of those reviews agreed (its full figures are in
+``test_evaluation_agreement``).
 
 Verdicts come from spec 14's flow: the Draft answers through the real Guardrails and retrieval
 with a scripted ``FunctionModel``, judged by the fake judge, and the Run's task runs eagerly.
@@ -215,12 +216,9 @@ async def test_only_the_current_evaluation_models_verdicts_are_served(
     assert changed.status_code == 200, changed.text
     # The Default Model judged the Run: nothing is left for the new Evaluation Model.
     assert (await next_item(owner))["item"] is None
-    assert (await agreement(owner))["current"] == {
-        "provider": "anthropic",
-        "model": "claude-haiku-4-5",
-        "reviews": 0,
-        "agreed": 0,
-    }
+    current = (await agreement(owner))["current"]
+    assert (current["provider"], current["model"]) == ("anthropic", "claude-haiku-4-5")
+    assert (current["reviews"], current["agreed"]) == (0, 0)
     await set_evaluation_model(owner, None, None)
     assert (await next_item(owner))["item"] is not None
     assert (await agreement(owner))["current"]["reviews"] == 1
@@ -250,12 +248,9 @@ async def test_agreement_counts_sample_reviews_that_agreed_with_the_evaluation_m
 
     found = await agreement(owner)
 
-    assert found["current"] == {
-        "provider": "openai",
-        "model": "gpt-4.1-mini",
-        "reviews": 2,
-        "agreed": 1,
-    }
+    current = found["current"]
+    assert (current["provider"], current["model"]) == ("openai", "gpt-4.1-mini")
+    assert (current["reviews"], current["agreed"]) == (2, 1)
 
 
 async def test_reviewing_the_same_verdict_again_replaces_the_review(

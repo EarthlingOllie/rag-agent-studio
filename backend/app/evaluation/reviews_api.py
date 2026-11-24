@@ -107,18 +107,71 @@ class SampleReviewOut(BaseModel):
     agreed: bool
 
 
-class AgreementOut(BaseModel):
+class AgreementFiguresOut(BaseModel):
+    # Review sample reviews, how many agreed with the Evaluation Model, false passes (it passed,
+    # the Editor said fail) and false fails.
+    reviews: int
+    agreed: int
+    false_passes: int
+    false_fails: int
+    # The share that agreed and its Wilson 95% interval; null without a review.
+    rate: float | None
+    low: float | None
+    high: float | None
+    # Fewer than 30 reviews: Low sample.
+    low_sample: bool
+
+
+class CheckAgreementOut(AgreementFiguresOut):
+    check: Check
+
+
+class AgreementOut(AgreementFiguresOut):
+    """One Evaluation Model's agreement: overall, then per check that has reviews (grounding,
+    answers the question, Reference answer)."""
+
     # The Evaluation Model (or the Default Model, while none is chosen).
     provider: str
     model: str
-    # Its Review sample reviews, and how many agreed with it.
-    reviews: int
-    agreed: int
+    checks: list[CheckAgreementOut]
 
 
 class EvaluationAgreementOut(BaseModel):
-    # Null while the Organisation has no model to judge with.
+    # The current Evaluation Model's; null while the Organisation has no model to judge with.
     current: AgreementOut | None
+    # Earlier Evaluation Models that have Review sample reviews, most recently reviewed first.
+    earlier: list[AgreementOut]
+    # The current Evaluation Model's Review sample reviews: the Organisation's and yours; and
+    # the items skipped on the Review sample while it judged.
+    reviewed: int
+    reviewed_by_you: int
+    skipped: int
+
+
+def _figures(figures: reviews.Figures) -> dict[str, Any]:
+    interval = figures.interval
+    return {
+        "reviews": figures.reviews,
+        "agreed": figures.agreed,
+        "false_passes": figures.false_passes,
+        "false_fails": figures.false_fails,
+        "rate": None if interval is None else figures.agreed / figures.reviews,
+        "low": None if interval is None else interval.low,
+        "high": None if interval is None else interval.high,
+        "low_sample": figures.low_sample,
+    }
+
+
+def _agreement(found: reviews.JudgeAgreement) -> AgreementOut:
+    return AgreementOut(
+        provider=found.judge.provider,
+        model=found.judge.model,
+        **_figures(found.overall),
+        checks=[
+            CheckAgreementOut(check=cast(Check, check), **_figures(figures))
+            for check, figures in found.checks
+        ],
+    )
 
 
 def _item(item: reviews.SampleItem) -> ReviewSampleItemOut:
@@ -193,17 +246,34 @@ async def submit_sample_review(
     )
 
 
+@router.post(
+    "/review-sample/skips",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={404: {"model": ErrorResponse, "description": "No model to judge with"}},
+    operation_id="skipReviewSampleItem",
+)
+async def skip_review_sample_item(scope: Scope, db: Db, clock: ClockDep) -> None:
+    """Counts an item you skipped on the Review sample against the current Evaluation Model.
+    No review is stored, so the item stays in the sample. Not found while the Organisation has
+    no model to judge with."""
+    try:
+        await reviews.skip_sample_item(db, scope, now=clock.now())
+    except reviews.NotReviewableError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+
+
 @router.get("/evaluation-agreement", responses=_NOT_FOUND, operation_id="getEvaluationAgreement")
 async def get_evaluation_agreement(scope: Scope, db: Db) -> EvaluationAgreementOut:
-    """How many Review sample reviews of the current Evaluation Model agreed with it."""
-    found = await reviews.read_agreement(db, scope.organisation_id)
+    """Evaluation Model agreement over Review sample reviews: the current Evaluation Model's
+    figures (rate with its Wilson interval, Low sample, false passes and false fails, overall
+    and per check), the earlier Evaluation Models that have reviews, and how many sample reviews
+    the Organisation and you have given and items were skipped."""
+    found = await reviews.read_agreement(db, scope)
+    current = None if found.current is None else _agreement(found.current)
     return EvaluationAgreementOut(
-        current=None
-        if found is None
-        else AgreementOut(
-            provider=found.judge.provider,
-            model=found.judge.model,
-            reviews=found.reviews,
-            agreed=found.agreed,
-        )
+        current=current,
+        earlier=[_agreement(e) for e in found.earlier],
+        reviewed=0 if current is None else current.reviews,
+        reviewed_by_you=found.reviewed_by_you,
+        skipped=found.skipped,
     )

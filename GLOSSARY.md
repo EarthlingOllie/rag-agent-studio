@@ -898,11 +898,15 @@ An Editor's own pass or fail on a judged Verdict (Reference answer or grounding)
 _Avoid_: Label, annotation, human eval, thumbs (that is Message Feedback)
 
 **Evaluation Model agreement**:
-How often the Evaluation Model's judgements match Editors' Verdict reviews made from the Review sample, kept for each Judging setup and shown with its Wilson interval (Low sample under 30). Disagreements are split into false passes (it passed, the Editor disagrees) and false fails.
+How often the Evaluation Model's judgements match Editors' Verdict reviews made from the Review sample, counted when read, kept for each Judging setup and shown with its Wilson interval (Low sample under 30). Disagreements are split into false passes and false fails, overall and for each check (grounding, answers the question, Reference answer). The agreement card in Organisation settings › Models shows the current Evaluation Model's figures, lists earlier Evaluation Models that have reviews with theirs, and says how many sample reviews the Organisation and the reader have given and how many items were skipped; changing the Evaluation Model starts new figures. Every Member reads it.
 _Avoid_: Judge calibration, judge accuracy, calibration (the Evaluation Model gives pass or fail, not probabilities)
 
+**False pass**:
+A Review sample Verdict review where the Evaluation Model passed and the Editor said fail: the Evaluation Model is too lenient, so scores are overstated. Its opposite, a **false fail** (it failed, the Editor said pass), means scores are understated. Both are counted in Evaluation Model agreement.
+_Avoid_: False positive, false negative (which one is "positive" is ambiguous)
+
 **Review sample**:
-The Organisation's queue of judged Verdicts and Live Verdict checks, drawn at random from those by the current Evaluation Model that are not yet reviewed and whose text is not Purged (for a Live Verdict check, neither its reply, its question nor a Remembered turn), which Editors review blind so that Evaluation Model agreement isn't skewed towards the ones they doubted. Verdict reviews made anywhere else are kept and shown on the Verdict, but don't count.
+The Organisation's queue of judged Verdicts and Live Verdict checks, drawn at random from those by the current Evaluation Model that are not yet reviewed and whose text is not Purged (for a Live Verdict check, neither its reply, its question nor a Remembered turn), which Editors review blind so that Evaluation Model agreement isn't skewed towards the ones they doubted. Verdict reviews made anywhere else are kept and shown on the Verdict, but don't count. An Editor can skip an item they can't decide: no review is stored and the item stays in the queue, but the skip is counted, for the current Evaluation Model, and shown on the agreement card so the bias is visible.
 _Avoid_: Labelling queue, review queue, audit sample
 
 **Judging guidance**:

@@ -39,6 +39,7 @@ from app.suggestions.proposer import propose
 from app.tenancy.models import PLATFORM_TABLES, Role
 from app.tenancy.policy import RequireRole
 from tests import documents, theme_images
+from tests.agents import use_default_model
 from tests.conftest import MemberFactory, SignedUpMember, TenantFactory, join_organisation
 
 Prepared = tuple[dict[str, str], dict[str, Any] | None]
@@ -844,6 +845,12 @@ async def _a_review_sample_item(owner: SignedUpMember, add_member: MemberFactory
     return {}, {"verdict_id": item["verdict_id"], "outcome": "pass"}
 
 
+async def _a_model_to_judge_with(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A Review sample item can be skipped once the Organisation has a model to judge with.
+    await use_default_model(owner)
+    return {}, None
+
+
 async def _an_evaluation_budget(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     return {}, {"evaluation_budget_usd": "25"}
 
@@ -926,6 +933,12 @@ ORGANISATION_SCOPED_ROUTES = [
         "/api/organisations/{organisation_id}/review-sample/reviews",
         EDITOR,
         _a_review_sample_item,
+    ),
+    ScopedRoute(
+        "POST",
+        "/api/organisations/{organisation_id}/review-sample/skips",
+        EDITOR,
+        _a_model_to_judge_with,
     ),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/evaluation-agreement", EDITOR),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/embedding-models", EDITOR),

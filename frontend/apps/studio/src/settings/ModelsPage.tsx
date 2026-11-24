@@ -3,7 +3,8 @@ import { type SubmitEvent, useEffect, useId, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { Segmented, button, field, surface, text, useToast } from "../design";
-import { type Credential, credentialFailure, type ProviderId, useCredentials } from "./credentials";
+import { type Credential, credentialFailure, useCredentials } from "./credentials";
+import { EvaluationAgreementCard } from "./EvaluationAgreement";
 import { EvaluationBudgetSettings } from "./EvaluationBudget";
 import {
   type EvaluationSettings,
@@ -14,20 +15,10 @@ import {
 } from "./evaluationSettings";
 import { JudgingGuidanceSection } from "./JudgingGuidance";
 import { ChatModelOptions, withoutTools } from "./ModelOptions";
-import { type DefaultModel, useChatModels, useDefaultModel, useSetDefaultModel } from "./models";
+import { type DefaultModel, modelLabel, useChatModels, useDefaultModel, useSetDefaultModel } from "./models";
 import { PriceTable } from "./PriceTable";
-import { useEvaluationAgreement } from "../reviews/reviews";
 
-const PROVIDER_NAMES: Record<ProviderId, string> = {
-  anthropic: "Anthropic",
-  openai: "OpenAI",
-  bedrock: "Amazon Bedrock",
-  voyage: "Voyage AI",
-  // The seeded demo provider: canned answers from the Knowledge Base, never a real model.
-  demo: "Demo: canned answers, not a real model",
-};
-
-const label = (name: string, provider: ProviderId) => `${name} (${PROVIDER_NAMES[provider]})`;
+const label = modelLabel;
 
 function Current({ organisationId }: { organisationId: string }) {
   const current = useDefaultModel(organisationId);
@@ -297,22 +288,6 @@ function EvaluationOwnerControls({ organisationId, settings }: { organisationId:
   );
 }
 
-/** How many Review sample reviews agreed with the current Evaluation Model, and the way to give more. */
-function SampleAgreement({ organisationId }: { organisationId: string }) {
-  const agreement = useEvaluationAgreement(organisationId);
-  if (agreement.isError) return <p role="alert" className={text.muted}>The Evaluation Model agreement could not be loaded. Try again shortly.</p>;
-  if (!agreement.data) return null;
-  const { current } = agreement.data;
-  return (
-    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink">
-      {current && <span>{`${String(current.agreed)} of ${String(current.reviews)} sample reviews agreed`}</span>}
-      <Link to="/organisations/$organisationId/review-sample" params={{ organisationId }} className={text.link}>
-        Review sample
-      </Link>
-    </p>
-  );
-}
-
 function EvaluationSection({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
   const settings = useEvaluationSettings(organisationId);
   const chosen = settings.data?.evaluation_model;
@@ -339,7 +314,7 @@ function EvaluationSection({ organisationId, isOwner }: { organisationId: string
             </p>
             <p>{`Each side of a Run answers every case ${String(settings.data.repeats)} times.`}</p>
           </div>
-          <SampleAgreement organisationId={organisationId} />
+          <EvaluationAgreementCard organisationId={organisationId} />
           {isOwner ? (
             <EvaluationOwnerControls organisationId={organisationId} settings={settings.data} />
           ) : (
@@ -353,7 +328,7 @@ function EvaluationSection({ organisationId, isOwner }: { organisationId: string
 }
 
 /**
- * Models settings: the Organisation's Default Model, the Evaluation Model, Evaluation repeats and
+ * Models settings: the Organisation's Default Model, the Evaluation Model with its agreement card, Evaluation repeats and
  * Evaluation budget with this month's meter, the Judging guidance, and the price table. Every Member sees them; Owners choose the Default Model and the evaluation
  * settings (confirmed by a toast) and override prices.
  */

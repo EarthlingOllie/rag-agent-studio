@@ -56,7 +56,24 @@ export function useSubmitSampleReview(organisationId: string) {
   });
 }
 
-/** How many Review sample reviews of the current Evaluation Model agreed with it. */
+/** Counts a skipped item against the current Evaluation Model; no review is stored, so the item stays in the sample. */
+export function useSkipSampleItem(organisationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<void> => {
+      const { error, response } = await api.POST("/api/organisations/{organisation_id}/review-sample/skips", {
+        params: { path: { organisation_id: organisationId } },
+      });
+      if (!response.ok) throw failed(response, error);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: agreementKey(organisationId) }),
+  });
+}
+
+/**
+ * Evaluation Model agreement over Review sample reviews: the current Evaluation Model's figures overall and per check, earlier
+ * Evaluation Models that have reviews, and how many sample reviews the Organisation and you gave and items were skipped.
+ */
 export function useEvaluationAgreement(organisationId: string) {
   return useQuery({
     queryKey: agreementKey(organisationId),
