@@ -26,14 +26,16 @@ import functools
 import random
 import uuid
 from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
 from typing import cast
 
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.clock import Clock
+from app.default_model.service import CurrentDefault
 from app.evaluation.guidance import JudgingSetup, current_setup
 from app.evaluation.judge import Judged, JudgeError, judge
 from app.evaluation.judge_input import judge_input
@@ -97,7 +99,7 @@ def low_sample(job: GuidanceJob) -> bool:
     return job.judged < LOW_SAMPLE_BELOW
 
 
-def _setup(job: GuidanceJob) -> JudgingSetup:
+def job_setup(job: GuidanceJob) -> JudgingSetup:
     return JudgingSetup(job.judge_provider, job.judge_model, job.judging_guidance_version)
 
 
@@ -114,12 +116,20 @@ def _split(reviews: list[str], earlier: GuidanceJob | None) -> tuple[list[str], 
     return held + new[:take], other + new[take:]
 
 
-async def start_check(
-    session: AsyncSession, scope: OrganisationScope, text: str, *, now: datetime
-) -> GuidanceJob:
-    """Starts checking ``text`` (trimmed) on the held-out half of the current Judging setup's
-    Review sample reviews, for the caller to enqueue once committed. Raises
-    ``GuidanceJobInProgressError`` and ``NothingToCheckError``."""
+@dataclass(frozen=True)
+class Split:
+    """The current Judging setup, and its Review sample reviews split into halves."""
+
+    setup: JudgingSetup
+    held_out: list[str]
+    other_half: list[str]
+
+
+async def lock_and_split(session: AsyncSession, scope: OrganisationScope) -> Split:
+    """Locks the Organisation's row, so at most one guidance job starts at a time, and splits
+    the current Judging setup's Review sample reviews, keeping the latest earlier job's halves
+    under it. Raises ``GuidanceJobInProgressError`` and, when there is no model to judge with,
+    ``NothingToCheckError``."""
     await session.execute(
         select(Organisation.id).where(Organisation.id == scope.organisation_id).with_for_update()
     )
@@ -139,16 +149,32 @@ async def start_check(
         .where(
             VerdictReview.organisation_id == scope.organisation_id,
             VerdictReview.from_sample.is_(True),
-            VerdictReview.judge_provider == setup.judge_provider,
-            VerdictReview.judge_model == setup.judge_model,
-            VerdictReview.judging_guidance_version.is_not_distinct_from(setup.guidance_version),
+            *under(setup),
         )
         .order_by(VerdictReview.reviewed_at, VerdictReview.id)
     )
-    earlier = await session.scalar(
+    earlier = await latest_split(session, scope.organisation_id, setup)
+    held_out, other_half = _split([str(r) for r in reviews], earlier)
+    return Split(setup, held_out, other_half)
+
+
+def under(setup: JudgingSetup) -> list[ColumnElement[bool]]:
+    """Reviews judged under ``setup``."""
+    return [
+        VerdictReview.judge_provider == setup.judge_provider,
+        VerdictReview.judge_model == setup.judge_model,
+        VerdictReview.judging_guidance_version.is_not_distinct_from(setup.guidance_version),
+    ]
+
+
+async def latest_split(
+    session: AsyncSession, organisation_id: uuid.UUID, setup: JudgingSetup
+) -> GuidanceJob | None:
+    """The latest guidance job under ``setup``, whose halves later jobs keep."""
+    return await session.scalar(
         select(GuidanceJob)
         .where(
-            GuidanceJob.organisation_id == scope.organisation_id,
+            GuidanceJob.organisation_id == organisation_id,
             GuidanceJob.judge_provider == setup.judge_provider,
             GuidanceJob.judge_model == setup.judge_model,
             GuidanceJob.judging_guidance_version.is_not_distinct_from(setup.guidance_version),
@@ -156,28 +182,44 @@ async def start_check(
         .order_by(GuidanceJob.created_at.desc())
         .limit(1)
     )
-    held_out, other_half = _split([str(r) for r in reviews], earlier)
-    if not held_out:
-        raise NothingToCheckError(TOO_FEW_REVIEWS)
-    job = GuidanceJob(
+
+
+def new_job(
+    scope: OrganisationScope, kind: GuidanceJobKind, text: str, split: Split, now: datetime
+) -> GuidanceJob:
+    """A queued guidance job of ``kind`` over ``split``, asked for by the caller."""
+    return GuidanceJob(
         organisation_id=scope.organisation_id,
-        kind=GuidanceJobKind.CHECK,
+        kind=kind,
         status=GuidanceJobStatus.QUEUED,
-        text=text.strip(),
-        judge_provider=setup.judge_provider,
-        judge_model=setup.judge_model,
-        judging_guidance_version=setup.guidance_version,
-        held_out=held_out,
-        other_half=other_half,
+        text=text,
+        judge_provider=split.setup.judge_provider,
+        judge_model=split.setup.judge_model,
+        judging_guidance_version=split.setup.guidance_version,
+        held_out=split.held_out,
+        other_half=split.other_half,
         judged=0,
         left_out=0,
         agreed=0,
         false_passes=0,
         false_fails=0,
         agreed_before=0,
+        reviews_read=0,
         requested_by=scope.member_id,
         created_at=now,
     )
+
+
+async def start_check(
+    session: AsyncSession, scope: OrganisationScope, text: str, *, now: datetime
+) -> GuidanceJob:
+    """Starts checking ``text`` (trimmed) on the held-out half of the current Judging setup's
+    Review sample reviews, for the caller to enqueue once committed. Raises
+    ``GuidanceJobInProgressError`` and ``NothingToCheckError``."""
+    split = await lock_and_split(session, scope)
+    if not split.held_out:
+        raise NothingToCheckError(TOO_FEW_REVIEWS)
+    job = new_job(scope, GuidanceJobKind.CHECK, text.strip(), split, now)
     session.add(job)
     await session.commit()
     return job
@@ -258,7 +300,7 @@ async def _held_out(
     return targets
 
 
-async def _finish(
+async def finish(
     session: AsyncSession,
     job: GuidanceJob,
     status: GuidanceJobStatus,
@@ -274,6 +316,28 @@ async def _finish(
     await session.commit()
 
 
+async def pick_up(
+    session: AsyncSession, job_id: uuid.UUID, clock: Clock, setup_changed: str
+) -> tuple[GuidanceJob, CurrentDefault] | None:
+    """Marks a queued job running and returns it with the model to call; None when it was
+    cancelled before its task picked it up, or failed (with ``setup_changed``) because the
+    Judging setup changed after it started."""
+    job = await session.get_one(GuidanceJob, job_id, with_for_update=True)
+    if job.status != GuidanceJobStatus.QUEUED:
+        # Cancelled before its task picked it up.
+        await session.commit()
+        return None
+    job.status = GuidanceJobStatus.RUNNING
+    job.started_at = clock.now()
+    await session.commit()
+    chosen = await judge_model(session, job.organisation_id)
+    setup = await current_setup(session, job.organisation_id)
+    if chosen is None or setup != job_setup(job):
+        await finish(session, job, GuidanceJobStatus.FAILED, clock.now(), setup_changed)
+        return None
+    return job, chosen
+
+
 async def run_guidance_job(
     sessionmaker: async_sessionmaker[AsyncSession],
     ports: EvaluationPorts,
@@ -284,19 +348,10 @@ async def run_guidance_job(
     """Runs a queued check: re-judges each held-out review's target with its text and counts
     the result, until done, failed or cancelled."""
     async with sessionmaker() as session:
-        job = await session.get_one(GuidanceJob, job_id, with_for_update=True)
-        if job.status != GuidanceJobStatus.QUEUED:
-            # Cancelled before its task picked it up.
-            await session.commit()
+        picked = await pick_up(session, job_id, clock, SETUP_CHANGED)
+        if picked is None:
             return
-        job.status = GuidanceJobStatus.RUNNING
-        job.started_at = clock.now()
-        await session.commit()
-        chosen = await judge_model(session, job.organisation_id)
-        setup = await current_setup(session, job.organisation_id)
-        if chosen is None or setup != _setup(job):
-            await _finish(session, job, GuidanceJobStatus.FAILED, clock.now(), SETUP_CHANGED)
-            return
+        job, chosen = picked
         pricing = await credential_pricing(session, chosen.credential)
         build = functools.partial(gateway.chat_model, chosen.credential, chosen.model)
         for (kind, target_id), reviews in (await _held_out(session, job)).items():
@@ -322,7 +377,7 @@ async def run_guidance_job(
                     timeout_s=ports.judge_timeout_s,
                 )
             except JudgeError as error:
-                await _finish(session, job, GuidanceJobStatus.FAILED, clock.now(), error.message)
+                await finish(session, job, GuidanceJobStatus.FAILED, clock.now(), error.message)
                 return
             now = clock.now()
             session.add(
@@ -347,7 +402,7 @@ async def run_guidance_job(
                 job.false_fails += outcome == VerdictOutcome.FAIL != review.outcome
                 job.agreed_before += review.evaluation_model_outcome == review.outcome
             await session.commit()
-        await _finish(session, job, GuidanceJobStatus.COMPLETED, clock.now())
+        await finish(session, job, GuidanceJobStatus.COMPLETED, clock.now())
 
 
 async def guidance_cost(

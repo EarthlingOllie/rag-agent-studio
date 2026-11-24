@@ -248,6 +248,8 @@ async def test_a_check_re_judges_the_held_out_half_with_the_guidance_beside_curr
         "false_fails": 0,
         "agreed_before": 0,
         "low_sample": True,
+        "reviews_read": 0,
+        "draft": None,
         "cost_usd": found["cost_usd"],
         "error_reason": None,
         "requested_by": owner.name,

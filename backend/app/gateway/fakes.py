@@ -33,6 +33,7 @@ from pydantic_ai.models.function import AgentInfo, DeltaToolCall, DeltaToolCalls
 
 from app.credentials.registry import Provider
 from app.embeddings.registry import embedding_model
+from app.evaluation.fake_drafter import fake_draft, is_drafting
 from app.evaluation.fake_judge import fake_judgement, is_judging
 from app.gateway.demo import demo_chat_model
 from app.gateway.ports import BedrockAccount, RankedDocument, Reranker
@@ -157,7 +158,8 @@ def fake_chat(provider: Provider, secret: str, model: str) -> Model:
     it first makes one Knowledge Search with the Visitor's question. It answers in plain text,
     except as an LLM classifier (a structured-output call), when it returns a verdict, and as an
     Evaluation Run's judge, when it judges by rule (``app.evaluation.fake_judge``), and as a
-    Suggestion run's proposer, when it proposes by rule (``app.suggestions.fake_proposer``).
+    Suggestion run's proposer, when it proposes by rule (``app.suggestions.fake_proposer``), and
+    as a guidance drafter, when it drafts by rule (``app.evaluation.fake_drafter``).
     Asked to ``FAKE_LEAK_PROMPT``, it streams its Canary token instead, in pieces; asked one of
     the ``FAKE_FAILURES``, it raises that provider error instead of answering."""
 
@@ -170,6 +172,8 @@ def fake_chat(provider: Provider, secret: str, model: str) -> Model:
             return fake_judgement(messages, info)
         if is_proposing(info):
             return fake_proposal(messages, info)
+        if is_drafting(info):
+            return fake_draft(messages, info)
         if info.output_tools:
             return _classifier_verdict(messages, info, model)
         return ModelResponse(parts=[TextPart(reply(messages))])

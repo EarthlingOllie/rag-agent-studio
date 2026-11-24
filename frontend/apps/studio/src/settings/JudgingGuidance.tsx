@@ -10,10 +10,12 @@ import {
   type GuidanceVersion,
   jobInProgress,
   useCancelGuidanceJob,
+  useGuidanceDrafting,
   useJudgingGuidance,
   useLatestGuidanceJob,
   useSaveJudgingGuidance,
   useStartGuidanceCheck,
+  useStartGuidanceDraft,
 } from "./judgingGuidance";
 
 const savedDay = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
@@ -97,17 +99,56 @@ function CheckResult({ organisationId, job, draft }: { organisationId: string; j
   );
 }
 
-function GuidanceEditor({ organisationId, current, onDone }: { organisationId: string; current: string; onDone: () => void }) {
+/** A completed draft an Owner opened in the editor: its job, how many reviews it read, and what it proposes. */
+interface OpenedDraft {
+  id: string;
+  reviewsRead: number;
+  proposal: NonNullable<GuidanceJob["draft"]>;
+}
+
+/** A completed draft's explanation: each part with how many of the disagreeing reviews it answers. */
+function DraftExplanation({ opened }: { opened: OpenedDraft }) {
+  return (
+    <div role="group" aria-label="The draft's explanation" className="flex flex-col gap-2 rounded-xl bg-sunken px-3.5 py-2.5">
+      <p className={text.small}>
+        {`Drafted by the Evaluation Model from ${count.format(opened.reviewsRead)} disagreeing reviews outside the held-out half. Edit it, check it on the held-out reviews, then save it.`}
+      </p>
+      <ul className="flex flex-col gap-1">
+        {opened.proposal.explanation.map((part) => (
+          <li key={part.part} className={text.body}>
+            {part.part}{" "}
+            <span className={text.muted}>{`(answers ${count.format(part.reviews.length)} disagreeing ${part.reviews.length === 1 ? "review" : "reviews"})`}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function GuidanceEditor({
+  organisationId,
+  current,
+  opened,
+  onDone,
+}: {
+  organisationId: string;
+  current: string;
+  /** The completed draft the editor opens on, if any: its text replaces the current one, and saving it saves a `drafted` version. */
+  opened: OpenedDraft | null;
+  onDone: () => void;
+}) {
   const save = useSaveJudgingGuidance(organisationId);
   const start = useStartGuidanceCheck(organisationId);
-  const job = useLatestGuidanceJob(organisationId, true).data;
+  const latest = useLatestGuidanceJob(organisationId, true).data;
+  // Only a check's result is shown here; a draft is followed in the card.
+  const job = latest?.kind === "check" ? latest : null;
   const toast = useToast();
-  const [draft, setDraft] = useState(current);
+  const [draft, setDraft] = useState(opened ? opened.proposal.text : current);
   const [confirming, setConfirming] = useState(false);
   const editorId = useId();
   const hintId = useId();
   const tooLong = draft.length > GUIDANCE_MAX;
-  const checking = job !== undefined && job !== null && jobInProgress(job);
+  const checking = latest !== undefined && latest !== null && jobInProgress(latest);
   const checked = job?.status === "completed" && job.text === draft.trim();
   return (
     <form
@@ -118,6 +159,7 @@ function GuidanceEditor({ organisationId, current, onDone }: { organisationId: s
         setConfirming(true);
       }}
     >
+      {opened && <DraftExplanation opened={opened} />}
       <div className="flex flex-col">
         <label htmlFor={editorId} className={field.label}>
           Judging guidance
@@ -190,7 +232,7 @@ function GuidanceEditor({ organisationId, current, onDone }: { organisationId: s
           setConfirming(false);
         }}
         onConfirm={() => {
-          save.mutate(draft, {
+          save.mutate({ text: draft, draftId: opened ? opened.id : null }, {
             onSuccess: (next) => {
               const version = next.current;
               toast.show(
@@ -239,7 +281,7 @@ function RemoveGuidance({ organisationId }: { organisationId: string }) {
           setOpen(false);
         }}
         onConfirm={() => {
-          save.mutate("", {
+          save.mutate({ text: "" }, {
             onSuccess: () => {
               setOpen(false);
               toast.show("Judging guidance is removed: new judgements use the Evaluation Model's own instructions.");
@@ -255,14 +297,146 @@ function RemoveGuidance({ organisationId }: { organisationId: string }) {
   );
 }
 
+/** The latest draft while it runs, or why it ended without one: Owners follow and cancel it. */
+function DraftProgress({ organisationId, job }: { organisationId: string; job: GuidanceJob }) {
+  const cancel = useCancelGuidanceJob(organisationId);
+  if (jobInProgress(job)) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className={text.small}>
+          {job.status === "queued"
+            ? "Drafting guidance: waiting to start…"
+            : `Drafting guidance from ${count.format(job.reviews_read)} disagreeing reviews…`}
+        </p>
+        <FormError message={credentialFailure(cancel.error)} />
+        <div>
+          <button
+            type="button"
+            className={button.secondary}
+            disabled={cancel.isPending}
+            onClick={() => {
+              cancel.mutate(job.id);
+            }}
+          >
+            Cancel draft
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (job.status === "failed") return <Notice tone="error">{`The draft failed: ${String(job.error_reason)}`}</Notice>;
+  return <p className={text.muted}>The draft was cancelled.</p>;
+}
+
+/** A finished draft (only a completed one has a proposal) of the guidance still current (one the Owner hasn't saved over), ready to open; null otherwise. */
+function readyDraft(job: GuidanceJob, currentText: string): OpenedDraft | null {
+  if (job.draft === null || job.text !== currentText) return null;
+  return { id: job.id, reviewsRead: job.reviews_read, proposal: job.draft };
+}
+
+/**
+ * Drafting guidance from Editors' disagreements (Owners): the Draft button, offered once the current
+ * Judging setup has enough reviews (else it says what is missing), its dialog with the estimated Cost,
+ * the draft in progress, and a finished draft to open in the editor.
+ */
+function DraftGuidance({
+  organisationId,
+  currentText,
+  onOpen,
+}: {
+  organisationId: string;
+  currentText: string;
+  onOpen: (opened: OpenedDraft) => void;
+}) {
+  const drafting = useGuidanceDrafting(organisationId);
+  const latest = useLatestGuidanceJob(organisationId, true).data;
+  const start = useStartGuidanceDraft(organisationId);
+  const [confirming, setConfirming] = useState(false);
+  const whyId = useId();
+  const draft = latest?.kind === "draft" ? latest : null;
+  const busy = draft !== null && jobInProgress(draft);
+  const ready = draft ? readyDraft(draft, currentText) : null;
+  const found = drafting.data;
+  const why = drafting.isError ? credentialFailure(drafting.error) : found?.missing;
+  return (
+    <div role="group" aria-label="Draft guidance" className="flex flex-col gap-2 border-t border-line pt-4">
+      <h3 className={text.subheading}>Draft from disagreements</h3>
+      {draft && draft.status !== "completed" && <DraftProgress organisationId={organisationId} job={draft} />}
+      {ready && (
+        <Notice tone="info">
+          <span className="flex flex-wrap items-center gap-3">
+            {`A draft from ${count.format(ready.reviewsRead)} disagreeing reviews is ready to edit, check and save.`}
+            <button
+              type="button"
+              className={button.secondary}
+              onClick={() => {
+                onOpen(ready);
+              }}
+            >
+              Open the draft
+            </button>
+          </span>
+        </Notice>
+      )}
+      <div>
+        <button
+          type="button"
+          className={button.secondary}
+          disabled={found?.offered !== true || busy}
+          aria-describedby={why ? whyId : undefined}
+          onClick={() => {
+            start.reset();
+            setConfirming(true);
+          }}
+        >
+          Draft guidance
+        </button>
+      </div>
+      {why && (
+        <p id={whyId} className={text.muted}>
+          {why}
+        </p>
+      )}
+      <p className={text.muted}>
+        The Evaluation Model reads the reviews Editors disagreed with, outside the held-out half a check uses, and proposes general rules
+        with an explanation. Nothing is saved until you save it.
+      </p>
+      {found && (
+        <ConfirmDialog
+          open={confirming}
+          title="Draft guidance from disagreements?"
+          confirmLabel="Draft guidance"
+          busy={start.isPending}
+          body={<FormError message={credentialFailure(start.error)} />}
+          onCancel={() => {
+            setConfirming(false);
+          }}
+          onConfirm={() => {
+            start.mutate(undefined, {
+              onSuccess: () => {
+                setConfirming(false);
+              },
+            });
+          }}
+        >
+          {`The Evaluation Model reads about ${count.format(found.reviews_read)} disagreeing reviews and the current guidance. Estimated Cost: ${
+            found.estimated_cost_usd === null ? "unknown (the model has no price)" : dollars.format(Number(found.estimated_cost_usd))
+          }. It counts in Organisation cost, never against the Evaluation budget.`}
+        </ConfirmDialog>
+      )}
+    </div>
+  );
+}
+
 /**
  * The Judging guidance card in Organisation settings (Models): the Organisation's own instructions
  * to the Evaluation Model, its current version and every version, each with the check it kept.
- * Every Member reads it; Owners edit, check, save and remove it.
+ * Every Member reads it; Owners edit, check, save and remove it, and draft it from Editors' disagreements.
  */
 export function JudgingGuidanceSection({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
   const guidance = useJudgingGuidance(organisationId);
   const [editing, setEditing] = useState(false);
+  const [opened, setOpened] = useState<OpenedDraft | null>(null);
   const current = guidance.data?.current ?? null;
   const currentText = current?.text ?? "";
   return (
@@ -294,23 +468,35 @@ export function JudgingGuidanceSection({ organisationId, isOwner }: { organisati
               <GuidanceEditor
                 organisationId={organisationId}
                 current={currentText}
+                opened={opened}
                 onDone={() => {
                   setEditing(false);
+                  setOpened(null);
                 }}
               />
             ) : (
-              <div className="flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
-                  className={button.secondary}
-                  onClick={() => {
+              <>
+                <div className="flex flex-wrap items-center gap-3">
+                  <button
+                    type="button"
+                    className={button.secondary}
+                    onClick={() => {
+                      setEditing(true);
+                    }}
+                  >
+                    Edit guidance
+                  </button>
+                  {currentText !== "" && <RemoveGuidance organisationId={organisationId} />}
+                </div>
+                <DraftGuidance
+                  organisationId={organisationId}
+                  currentText={currentText}
+                  onOpen={(draft) => {
+                    setOpened(draft);
                     setEditing(true);
                   }}
-                >
-                  Edit guidance
-                </button>
-                {currentText !== "" && <RemoveGuidance organisationId={organisationId} />}
-              </div>
+                />
+              </>
             )
           ) : (
             <p className={text.muted}>Only Owners can change the Judging guidance.</p>

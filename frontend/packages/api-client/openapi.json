@@ -3491,6 +3491,92 @@
         "title": "DraftConflictOut",
         "type": "object"
       },
+      "DraftPartOut": {
+        "description": "A part of a draft's explanation: a rule in a short sentence, and the reviews it answers.",
+        "properties": {
+          "part": {
+            "title": "Part",
+            "type": "string"
+          },
+          "reviews": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Reviews",
+            "type": "array"
+          }
+        },
+        "required": [
+          "part",
+          "reviews"
+        ],
+        "title": "DraftPartOut",
+        "type": "object"
+      },
+      "DraftingOut": {
+        "description": "Whether drafting guidance is offered under the current Judging setup, and its estimate.",
+        "properties": {
+          "disagreements": {
+            "title": "Disagreements",
+            "type": "integer"
+          },
+          "estimated_cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Usd"
+          },
+          "missing": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing"
+          },
+          "needs_disagreements": {
+            "title": "Needs Disagreements",
+            "type": "integer"
+          },
+          "needs_sample_reviews": {
+            "title": "Needs Sample Reviews",
+            "type": "integer"
+          },
+          "offered": {
+            "title": "Offered",
+            "type": "boolean"
+          },
+          "reviews_read": {
+            "title": "Reviews Read",
+            "type": "integer"
+          },
+          "sample_reviews": {
+            "title": "Sample Reviews",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "disagreements",
+          "sample_reviews",
+          "needs_disagreements",
+          "needs_sample_reviews",
+          "offered",
+          "missing",
+          "reviews_read",
+          "estimated_cost_usd"
+        ],
+        "title": "DraftingOut",
+        "type": "object"
+      },
       "EmbeddingModelChoiceOut": {
         "description": "An Embedding Model the Organisation can choose, and the credential it is called\nthrough (none for the built-in local model).",
         "properties": {
@@ -4656,6 +4742,28 @@
         "title": "GuidanceCheckOut",
         "type": "object"
       },
+      "GuidanceDraftOut": {
+        "description": "What a completed draft proposes: guidance text, up to 2,000 characters, and its\nexplanation.",
+        "properties": {
+          "explanation": {
+            "items": {
+              "$ref": "#/components/schemas/DraftPartOut"
+            },
+            "title": "Explanation",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "explanation"
+        ],
+        "title": "GuidanceDraftOut",
+        "type": "object"
+      },
       "GuidanceJobOut": {
         "properties": {
           "agreed": {
@@ -4674,6 +4782,16 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceDraftOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "error_reason": {
             "anyOf": [
@@ -4720,7 +4838,10 @@
             "type": "integer"
           },
           "kind": {
-            "const": "check",
+            "enum": [
+              "check",
+              "draft"
+            ],
             "title": "Kind",
             "type": "string"
           },
@@ -4742,6 +4863,10 @@
               }
             ],
             "title": "Requested By"
+          },
+          "reviews_read": {
+            "title": "Reviews Read",
+            "type": "integer"
           },
           "started_at": {
             "anyOf": [
@@ -4784,6 +4909,8 @@
           "false_fails",
           "agreed_before",
           "low_sample",
+          "reviews_read",
+          "draft",
           "cost_usd",
           "error_reason",
           "requested_by",
@@ -8901,6 +9028,18 @@
       "SaveJudgingGuidanceRequest": {
         "description": "The new guidance, up to 2,000 characters; empty (or only spaces) removes it.",
         "properties": {
+          "draft_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Id"
+          },
           "text": {
             "maxLength": 2000,
             "title": "Text",
@@ -15475,7 +15614,7 @@
         ]
       },
       "put": {
-        "description": "Saves the Judging guidance as a new current version, which new Evaluation Runs and Live\nVerdicts are judged with; empty text removes it (Owners only). Saving the current text again\nchanges nothing. Recorded as ``organisation.judging_guidance_changed``.",
+        "description": "Saves the Judging guidance as a new current version, which new Evaluation Runs and Live\nVerdicts are judged with; empty text removes it (Owners only). Text from a completed draft\nis saved as ``drafted``. Saving the current text again changes nothing. Recorded as\n``organisation.judging_guidance_changed``.",
         "operationId": "saveJudgingGuidance",
         "parameters": [
           {
@@ -15531,7 +15670,7 @@
             "description": "Not found"
           },
           "422": {
-            "description": "Longer than 2,000 characters"
+            "description": "Longer than 2,000 characters, or not a completed draft"
           }
         },
         "summary": "Save Judging Guidance",
@@ -15619,6 +15758,144 @@
           }
         },
         "summary": "Start Guidance Check",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/judging-guidance/drafting": {
+      "get": {
+        "description": "Whether drafting guidance from Editors' disagreements is offered under the current\nJudging setup, what is missing if not, and the estimated Cost (Owners only).",
+        "operationId": "getGuidanceDrafting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No model to judge with"
+          }
+        },
+        "summary": "Get Guidance Drafting",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/judging-guidance/drafts": {
+      "post": {
+        "description": "Starts drafting guidance: the Evaluation Model reads the current Judging setup's\ndisagreeing reviews outside the held-out half and the current guidance, in the background,\nand proposes guidance with an explanation (Owners only). At most one draft or check is in\nprogress per Organisation. Its Cost counts in Organisation cost, never against the\nEvaluation budget.",
+        "operationId": "startGuidanceDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A draft or check is already in progress in the Organisation."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No model to judge with, or drafting isn't offered yet"
+          }
+        },
+        "summary": "Start Guidance Draft",
         "tags": [
           "models"
         ]

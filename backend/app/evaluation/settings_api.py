@@ -230,10 +230,16 @@ class JudgingGuidanceOut(BaseModel):
     versions: list[GuidanceVersionOut]
 
 
+NOT_A_DRAFT = "That is not a completed draft of the Organisation's guidance."
+
+
 class SaveJudgingGuidanceRequest(BaseModel):
     """The new guidance, up to 2,000 characters; empty (or only spaces) removes it."""
 
     text: Annotated[str, Field(max_length=GUIDANCE_MAX)]
+    # The completed draft the text came from, edited or not: it is saved as ``drafted``. Null for
+    # text an Owner wrote.
+    draft_id: uuid.UUID | None = None
 
 
 def _version_out(saved: guidance.SavedVersion) -> GuidanceVersionOut:
@@ -273,13 +279,23 @@ async def get_judging_guidance(scope: Scope, db: Db) -> JudgingGuidanceOut:
 
 @router.put(
     "/judging-guidance",
-    responses={**_OWNERS, 422: {"description": "Longer than 2,000 characters"}},
+    responses={
+        **_OWNERS,
+        422: {"description": "Longer than 2,000 characters, or not a completed draft"},
+    },
     operation_id="saveJudgingGuidance",
 )
 async def save_judging_guidance(
     body: SaveJudgingGuidanceRequest, scope: OwnerScope, db: Db, clock: ClockDep
 ) -> JudgingGuidanceOut:
     """Saves the Judging guidance as a new current version, which new Evaluation Runs and Live
-    Verdicts are judged with; empty text removes it (Owners only). Saving the current text again
-    changes nothing. Recorded as ``organisation.judging_guidance_changed``."""
-    return _guidance_out(await guidance.save_guidance(db, scope, body.text, now=clock.now()))
+    Verdicts are judged with; empty text removes it (Owners only). Text from a completed draft
+    is saved as ``drafted``. Saving the current text again changes nothing. Recorded as
+    ``organisation.judging_guidance_changed``."""
+    try:
+        saved = await guidance.save_guidance(
+            db, scope, body.text, now=clock.now(), draft_id=body.draft_id
+        )
+    except guidance.NotADraftError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NOT_A_DRAFT) from None
+    return _guidance_out(saved)

@@ -7,7 +7,8 @@ transaction. Removing guidance saves an empty version. Saving the text already c
 and records nothing. Saving locks the Organisation's row, so two saves can't take one number.
 Only Owners save, which the routes enforce; every Member reads. A version keeps the result of
 the latest completed check of its text under the Judging setup it replaced
-(``app.evaluation.guidance_check``), if there was one.
+(``app.evaluation.guidance_check``), if there was one. Text an Owner saves from a completed
+draft (``app.evaluation.guidance_draft``), edited or not, is a ``drafted`` version.
 
 A judgement records the version current when it starts, beside its judge model: its Judging
 setup. ``guidance_text`` reads a recorded version's text back for judging; ``current_setup`` is
@@ -218,13 +219,36 @@ async def _latest_check(
     )
 
 
+class NotADraftError(Exception):
+    """No completed draft of the Organisation has that ID."""
+
+
 async def save_guidance(
-    session: AsyncSession, scope: OrganisationScope, text: str, *, now: datetime
+    session: AsyncSession,
+    scope: OrganisationScope,
+    text: str,
+    *,
+    now: datetime,
+    draft_id: uuid.UUID | None = None,
 ) -> Guidance:
     """Saves ``text`` (trimmed; empty removes guidance) as the Organisation's new current
-    version, unless it is the current text already. The new version keeps the result of the
-    latest completed check of the same text under the Judging setup it replaces."""
+    version, unless it is the current text already: ``drafted`` when it came from the completed
+    draft ``draft_id`` (edited or not), else ``written``. The new version keeps the result of the
+    latest completed check of the same text under the Judging setup it replaces. Raises
+    ``NotADraftError``."""
     text = text.strip()
+    if draft_id is not None and (
+        await session.scalar(
+            select(GuidanceJob.id).where(
+                GuidanceJob.id == draft_id,
+                GuidanceJob.organisation_id == scope.organisation_id,
+                GuidanceJob.kind == GuidanceJobKind.DRAFT,
+                GuidanceJob.status == GuidanceJobStatus.COMPLETED,
+            )
+        )
+        is None
+    ):
+        raise NotADraftError
     organisation = (
         await session.scalars(
             select(Organisation).where(Organisation.id == scope.organisation_id).with_for_update()
@@ -243,7 +267,7 @@ async def save_guidance(
             organisation_id=scope.organisation_id,
             version=(organisation.judging_guidance_version or 0) + 1,
             text=text,
-            source=GuidanceSource.WRITTEN,
+            source=GuidanceSource.WRITTEN if draft_id is None else GuidanceSource.DRAFTED,
             saved_by=scope.member_id,
             saved_at=now,
         )

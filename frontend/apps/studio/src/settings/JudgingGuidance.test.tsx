@@ -3,7 +3,17 @@ import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
-import { fakeGuidanceJobApi, fakeJudgingGuidanceApi, fakeModelsApi, guidanceCheck, guidanceVersion, PARTIAL_GUIDANCE } from "../test/models";
+import {
+  DRAFTED_GUIDANCE,
+  fakeGuidanceJobApi,
+  fakeJudgingGuidanceApi,
+  fakeModelsApi,
+  guidanceCheck,
+  guidanceDraft,
+  guidanceDrafting,
+  guidanceVersion,
+  PARTIAL_GUIDANCE,
+} from "../test/models";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -405,4 +415,218 @@ test("an Owner can still check and save when the latest check can't be loaded", 
   });
   expect(section.getByRole("group", { name: "Check result" })).toBeEmptyDOMElement();
   expect(section.getByRole("button", { name: "Check guidance" })).toBeEnabled();
+});
+
+// Drafting guidance from disagreements (ticket 19-05)
+
+async function drafting() {
+  return within(await (await card()).findByRole("group", { name: "Draft guidance" }));
+}
+
+const MISSING =
+  "Drafting needs 10 disagreeing reviews and 30 Review sample reviews under the current Judging setup: 6 more disagreeing reviews and 26 more Review sample reviews.";
+
+test("the Draft button says what is missing until there are enough reviews", async () => {
+  fakeModelsApi();
+  fakeGuidanceJobApi({ drafting: guidanceDrafting({ disagreements: 4, sample_reviews: 4, offered: false, missing: MISSING }) });
+  openAs();
+  const group = await drafting();
+
+  const draft = group.getByRole("button", { name: "Draft guidance" });
+  await waitFor(() => {
+    expect(draft).toHaveAccessibleDescription(MISSING);
+  });
+  expect(draft).toBeDisabled();
+});
+
+test("without a model to judge with, drafting says so", async () => {
+  fakeModelsApi();
+  openAs();
+  const group = await drafting();
+
+  const draft = group.getByRole("button", { name: "Draft guidance" });
+  await waitFor(() => {
+    expect(draft).toHaveAccessibleDescription("The Organisation has neither an Evaluation Model nor a Default Model to judge with.");
+  });
+  expect(draft).toBeDisabled();
+});
+
+test("Editors are not offered drafting", async () => {
+  fakeModelsApi();
+  openAs(editorSession);
+  const section = await card();
+
+  expect(await section.findByText("Only Owners can change the Judging guidance.")).toBeInTheDocument();
+  expect(section.queryByRole("group", { name: "Draft guidance" })).not.toBeInTheDocument();
+});
+
+test("an Owner drafts guidance after reading its estimated Cost, follows it and opens it with its explanation", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  fakeJudgingGuidanceApi();
+  const api = fakeGuidanceJobApi({ then: [{ status: "running", reviews_read: 14 }, guidanceDraft("")] });
+  openAs();
+  const group = await drafting();
+  const draft = group.getByRole("button", { name: "Draft guidance" });
+  await waitFor(() => {
+    expect(draft).toBeEnabled();
+  });
+  expect(draft).not.toHaveAccessibleDescription();
+
+  await user.click(draft);
+  const dialog = await screen.findByRole("dialog", { name: "Draft guidance from disagreements?" });
+  expect(dialog).toHaveAccessibleDescription(
+    "The Evaluation Model reads about 15 disagreeing reviews and the current guidance. Estimated Cost: $0.0106. It counts in Organisation cost, never against the Evaluation budget.",
+  );
+  await user.click(within(dialog).getByRole("button", { name: "Draft guidance" }));
+
+  expect(await group.findByText("Drafting guidance: waiting to start…")).toBeInTheDocument();
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(api.drafts).toHaveLength(1);
+  expect(group.getByRole("button", { name: "Draft guidance" })).toBeDisabled();
+  expect(await group.findByText("Drafting guidance from 14 disagreeing reviews…", {}, { timeout: 3000 })).toBeInTheDocument();
+  expect(await group.findByText("A draft from 14 disagreeing reviews is ready to edit, check and save.", {}, { timeout: 3000 })).toBeInTheDocument();
+
+  await user.click(group.getByRole("button", { name: "Open the draft" }));
+
+  const section = await card();
+  expect(section.getByRole("textbox", { name: "Judging guidance" })).toHaveValue(DRAFTED_GUIDANCE);
+  const explanation = within(section.getByRole("group", { name: "The draft's explanation" }));
+  expect(
+    explanation.getByText(
+      "Drafted by the Evaluation Model from 14 disagreeing reviews outside the held-out half. Edit it, check it on the held-out reviews, then save it.",
+    ),
+  ).toBeInTheDocument();
+  expect(explanation.getAllByRole("listitem").map((item) => item.textContent)).toEqual([
+    "Partial answers that say what they don't cover pass. (answers 3 disagreeing reviews)",
+    "Judge grounding by the cited excerpts alone. (answers 1 disagreeing review)",
+  ]);
+  // A draft is no check: there is no check result yet.
+  expect(section.getByRole("group", { name: "Check result" })).toBeEmptyDOMElement();
+});
+
+test("an Owner edits a draft, checks it and saves it as a drafted version", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  const guidance = fakeJudgingGuidanceApi();
+  const jobs = fakeGuidanceJobApi({ latest: guidanceDraft("") });
+  openAs();
+  const group = await drafting();
+  await user.click(await group.findByRole("button", { name: "Open the draft" }));
+  const section = await card();
+  await user.type(section.getByRole("textbox", { name: "Judging guidance" }), " Be brief.");
+
+  await user.click(section.getByRole("button", { name: "Check guidance" }));
+
+  expect(await section.findByText("Checking on 12 held-out reviews…")).toBeInTheDocument();
+  expect(jobs.started).toEqual([`${DRAFTED_GUIDANCE} Be brief.`]);
+  expect(section.getByRole("group", { name: "The draft's explanation" })).toBeInTheDocument();
+  await user.click(section.getByRole("button", { name: "Save guidance" }));
+  await confirmSave(user);
+
+  expect(await screen.findByRole("status")).toHaveTextContent("Judging guidance version 1 is saved");
+  expect(guidance.saved).toEqual([`${DRAFTED_GUIDANCE} Be brief.`]);
+  expect(guidance.draftIds).toEqual(["draft-1"]);
+  const history = within(section.getByRole("list", { name: "Guidance versions" }));
+  expect(history.getByText("Version 1, drafted, saved by Ada Lovelace on 11 November 2026")).toBeInTheDocument();
+  // The draft is saved over: it is not offered again.
+  expect(section.queryByRole("button", { name: "Open the draft" })).not.toBeInTheDocument();
+});
+
+test("guidance written by hand is saved as written", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  const guidance = fakeJudgingGuidanceApi();
+  openAs();
+  const section = await editing(user);
+  await user.type(section.getByRole("textbox", { name: "Judging guidance" }), PARTIAL_GUIDANCE);
+
+  await user.click(section.getByRole("button", { name: "Save guidance" }));
+  await confirmSave(user);
+
+  expect(await screen.findByRole("status")).toHaveTextContent("Judging guidance version 1 is saved");
+  expect(guidance.draftIds).toEqual([null]);
+});
+
+test("a draft of guidance since replaced is not offered", async () => {
+  fakeModelsApi();
+  fakeJudgingGuidanceApi({ versions: [guidanceVersion(1, PARTIAL_GUIDANCE)] });
+  fakeGuidanceJobApi({ latest: guidanceDraft("") });
+  openAs();
+  const group = await drafting();
+
+  await waitFor(() => {
+    expect(group.getByRole("button", { name: "Draft guidance" })).toBeEnabled();
+  });
+  expect(group.queryByRole("button", { name: "Open the draft" })).not.toBeInTheDocument();
+});
+
+test("an Owner cancels a draft in progress", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  fakeJudgingGuidanceApi();
+  const api = fakeGuidanceJobApi({ latest: guidanceDraft("", { status: "running", draft: null, finished_at: null }) });
+  openAs();
+  const group = await drafting();
+
+  await user.click(await group.findByRole("button", { name: "Cancel draft" }));
+
+  expect(await group.findByText("The draft was cancelled.")).toBeInTheDocument();
+  expect(api.cancelled).toEqual(["draft-1"]);
+});
+
+test("a refused draft cancel says why", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  fakeJudgingGuidanceApi();
+  fakeGuidanceJobApi({ latest: guidanceDraft("", { status: "running", draft: null }) });
+  server.use(
+    http.post("*/api/organisations/:organisationId/guidance-jobs/:jobId/cancel", () =>
+      HttpResponse.json({ detail: "Only a draft or check in progress can be cancelled." }, { status: 409 }),
+    ),
+  );
+  openAs();
+  const group = await drafting();
+
+  await user.click(await group.findByRole("button", { name: "Cancel draft" }));
+
+  expect(await group.findByRole("alert")).toHaveTextContent("Only a draft or check in progress can be cancelled.");
+});
+
+test("a failed draft says why", async () => {
+  fakeModelsApi();
+  fakeJudgingGuidanceApi();
+  const reason = "The Evaluation Model couldn't draft guidance: the provider is unavailable.";
+  fakeGuidanceJobApi({ latest: guidanceDraft("", { status: "failed", draft: null, error_reason: reason }) });
+  openAs();
+  const group = await drafting();
+
+  expect(await group.findByRole("alert")).toHaveTextContent(`The draft failed: ${reason}`);
+});
+
+test("a refused draft says why in its dialog, which can be closed", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  fakeJudgingGuidanceApi();
+  fakeGuidanceJobApi({ drafting: guidanceDrafting({ estimated_cost_usd: null }) });
+  server.use(
+    http.post("*/api/organisations/:organisationId/judging-guidance/drafts", () =>
+      HttpResponse.json({ detail: "A draft or check is already in progress in the Organisation." }, { status: 409 }),
+    ),
+  );
+  openAs();
+  const group = await drafting();
+  const draft = group.getByRole("button", { name: "Draft guidance" });
+  await waitFor(() => {
+    expect(draft).toBeEnabled();
+  });
+  await user.click(draft);
+  const dialog = await screen.findByRole("dialog", { name: "Draft guidance from disagreements?" });
+  expect(dialog).toHaveAccessibleDescription(expect.stringContaining("Estimated Cost: unknown (the model has no price)."));
+
+  await user.click(within(dialog).getByRole("button", { name: "Draft guidance" }));
+
+  expect(await within(dialog).findByRole("alert")).toHaveTextContent("A draft or check is already in progress in the Organisation.");
+  await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 });

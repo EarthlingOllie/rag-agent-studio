@@ -73,6 +73,10 @@ export const server = setupServer(
   ),
   // No Organisation has saved Judging guidance.
   http.get("*/api/organisations/:organisationId/judging-guidance", () => HttpResponse.json({ current: null, versions: [] })),
+  // Nor has a model to draft it with.
+  http.get("*/api/organisations/:organisationId/judging-guidance/drafting", () =>
+    HttpResponse.json({ detail: "The Organisation has neither an Evaluation Model nor a Default Model to judge with." }, { status: 422 }),
+  ),
   // Nor started a draft or check of it.
   http.get("*/api/organisations/:organisationId/guidance-jobs/latest", () => HttpResponse.json(null)),
   // No Organisation has a model to judge with, so there is no Evaluation Model agreement.

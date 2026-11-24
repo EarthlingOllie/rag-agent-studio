@@ -1,6 +1,6 @@
 """The Evaluation Run Celery task, which the start endpoint enqueues once the Run is committed, the
 Live Verdict task, which the widget enqueues once a chosen reply's Live Verdict is committed, and
-the guidance job task, which starting a guidance check enqueues once the job is committed."""
+the guidance job task, which starting a guidance draft or check enqueues once it is committed."""
 
 import asyncio
 import uuid
@@ -10,7 +10,7 @@ import httpx2
 
 from app.core.db import create_engine, create_sessionmaker
 from app.core.settings import load_settings
-from app.evaluation.guidance_check import run_guidance_job
+from app.evaluation.guidance_draft import run_guidance_job
 from app.evaluation.job import run_evaluation
 from app.evaluation.live import judge_live_verdict
 from app.evaluation.ports import current_evaluation_ports
@@ -56,7 +56,7 @@ async def enqueue_live_verdict(verdict_id: uuid.UUID) -> None:
 
 @celery_app.task(name=GUIDANCE_JOB_TASK)
 def run_guidance_job_task(job_id: str) -> None:
-    """Runs a queued guidance check (spec 19)."""
+    """Runs a queued guidance draft or check (spec 19)."""
     asyncio.run(_run(run_guidance_job, uuid.UUID(job_id)))
 
 
