@@ -191,3 +191,57 @@ export function fakeReviewSampleApi(options: { items?: Judged[]; reviewed?: numb
   );
   return { reviews, draws, skips };
 }
+
+type VerdictReview = Schemas["VerdictReviewOut"];
+
+/** A review of a judged Verdict or Live Verdict check, given in Run results or the Trace unless overridden. */
+export function aReview(overrides: Partial<VerdictReview> = {}): VerdictReview {
+  return {
+    outcome: "fail",
+    reason: null,
+    reviewed_by: "Grace Hopper",
+    reviewed_at: "2026-11-20T09:30:00Z",
+    from_sample: false,
+    purged_at: null,
+    ...overrides,
+  };
+}
+
+/**
+ * A stateful stand-in for putting and removing reviews where Verdicts are shown. `shown` maps each target (a Verdict's ID, or a Live
+ * Verdict's ID and check as `id:check`) to the object that carries its review in the payload the page reads (a Run results Verdict,
+ * a Trace's Live Verdict check): putting or removing a review changes it there, so the page reads it back, as from the API. Every
+ * request is recorded; `status` answers every request with that status instead.
+ */
+export function fakeVerdictReviewsApi(shown: Record<string, { review: VerdictReview | null }>, options: { status?: number } = {}) {
+  const puts: { target: string; body: Schemas["ReviewRequest"] }[] = [];
+  const deletes: string[] = [];
+  const failure = () => HttpResponse.json({ detail: "Not found" }, { status: options.status ?? 500 });
+  const put = (target: string) => async ({ request }: { request: Request }) => {
+    const body = (await request.json()) as Schemas["ReviewRequest"];
+    puts.push({ target, body });
+    if (options.status) return failure();
+    const review = aReview({ outcome: body.outcome, reason: body.reason ?? null });
+    (shown[target] as { review: VerdictReview | null }).review = review;
+    return HttpResponse.json(review);
+  };
+  const remove = (target: string) => {
+    deletes.push(target);
+    if (options.status) return failure();
+    (shown[target] as { review: VerdictReview | null }).review = null;
+    return new HttpResponse(null, { status: 204 });
+  };
+  server.use(
+    http.put("*/api/organisations/:organisationId/verdicts/:verdictId/review", ({ params, request }) =>
+      put(String(params.verdictId))({ request }),
+    ),
+    http.delete("*/api/organisations/:organisationId/verdicts/:verdictId/review", ({ params }) => remove(String(params.verdictId))),
+    http.put("*/api/organisations/:organisationId/live-verdicts/:liveVerdictId/checks/:check/review", ({ params, request }) =>
+      put(`${String(params.liveVerdictId)}:${String(params.check)}`)({ request }),
+    ),
+    http.delete("*/api/organisations/:organisationId/live-verdicts/:liveVerdictId/checks/:check/review", ({ params }) =>
+      remove(`${String(params.liveVerdictId)}:${String(params.check)}`),
+    ),
+  );
+  return { puts, deletes };
+}

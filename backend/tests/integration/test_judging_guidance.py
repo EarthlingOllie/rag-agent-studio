@@ -163,6 +163,7 @@ async def test_new_live_verdicts_are_judged_with_the_current_guidance_and_record
         "outcome": "pass",
         "reason": "Fake judge: a partial answer that says what it doesn't cover passes, "
         "as the guidance says.",
+        "review": None,
     }
     assert (guided["judge_provider"], guided["judge_model"]) == ("openai", "gpt-4.1-mini")
 

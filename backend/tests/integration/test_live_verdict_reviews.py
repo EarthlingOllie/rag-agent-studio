@@ -4,9 +4,9 @@ blind with the reply's Remembered turns; the Purge, and deleting a Conversation,
 on their reviews and stamp them purged-at, while the outcomes stay and agreement is unchanged.
 
 Live Verdicts come from spec 15's flow: a Visitor reply streamed by a scripted ``FunctionModel``,
-judged in the background by the same model's structured output, eagerly. Reviews aren't shown
-anywhere yet (ticket 18-04 adds them to the Trace), so their reason and purged-at stamp are read
-from the table.
+judged in the background by the same model's structured output, eagerly. Here reviews' reason
+and purged-at stamp are read from the table; ``test_reviews_where_shown`` reads them in the
+Trace.
 """
 
 import uuid

@@ -1,8 +1,8 @@
 import type { Schemas } from "@studio/api-client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryKey, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api";
-import { failed } from "../settings/credentials";
+import { type CredentialRequestError, failed } from "../settings/credentials";
 
 export type ReviewSampleNext = Schemas["ReviewSampleNextOut"];
 export type ReviewSampleItem = Schemas["ReviewSampleItemOut"];
@@ -85,4 +85,68 @@ export function useEvaluationAgreement(organisationId: string) {
       return data;
     },
   });
+}
+
+export type VerdictReview = Schemas["VerdictReviewOut"];
+export type ReviewRequest = Schemas["ReviewRequest"];
+type LiveCheck = "grounding" | "answers_question";
+
+/** What a review given where Verdicts are shown names: a Run Verdict, or one check of a Live Verdict. */
+export type ReviewTarget = { verdict_id: string } | { live_verdict_id: string; check: LiveCheck };
+
+/**
+ * Agree or disagree with a judged Verdict or Live Verdict check where it is shown (Run results, the Trace), as the Editor's own pass
+ * or fail, or remove the review. Either reads `shownKey` (what shows the Verdict) again, and the Review sample and agreement, since a
+ * review takes its target out of the sample and replacing a sample review stops it counting.
+ */
+export function useVerdictReview(organisationId: string, target: ReviewTarget, shownKey: QueryKey) {
+  const queryClient = useQueryClient();
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: shownKey }),
+      queryClient.invalidateQueries({ queryKey: nextKey(organisationId) }),
+      queryClient.invalidateQueries({ queryKey: agreementKey(organisationId) }),
+    ]);
+  const put = useMutation({
+    mutationFn: async (body: ReviewRequest): Promise<VerdictReview> => {
+      const request =
+        "verdict_id" in target
+          ? api.PUT("/api/organisations/{organisation_id}/verdicts/{verdict_id}/review", {
+              params: { path: { organisation_id: organisationId, verdict_id: target.verdict_id } },
+              body,
+            })
+          : api.PUT("/api/organisations/{organisation_id}/live-verdicts/{live_verdict_id}/checks/{check}/review", {
+              params: { path: { organisation_id: organisationId, ...target } },
+              body,
+            });
+      const { data, error, response } = await request;
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: refresh,
+  });
+  const remove = useMutation({
+    mutationFn: async (): Promise<void> => {
+      const request =
+        "verdict_id" in target
+          ? api.DELETE("/api/organisations/{organisation_id}/verdicts/{verdict_id}/review", {
+              params: { path: { organisation_id: organisationId, verdict_id: target.verdict_id } },
+            })
+          : api.DELETE("/api/organisations/{organisation_id}/live-verdicts/{live_verdict_id}/checks/{check}/review", {
+              params: { path: { organisation_id: organisationId, ...target } },
+            });
+      const { error, response } = await request;
+      if (!response.ok) throw failed(response, error);
+    },
+    onSuccess: refresh,
+  });
+  return { put, remove };
+}
+
+/** What to tell an Editor whose review couldn't be saved or removed. */
+export function reviewFailure(error: Error | null): string | undefined {
+  if (error === null) return undefined;
+  if ((error as Partial<CredentialRequestError>).status === 404)
+    return "This can no longer be reviewed: its text may have been purged, or the review was already removed. Reload to see it as it is now.";
+  return "Something went wrong. Try again.";
 }

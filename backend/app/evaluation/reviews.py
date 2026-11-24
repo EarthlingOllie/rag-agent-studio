@@ -20,6 +20,11 @@ reviews, replacing any earlier review of the target, and returns the Evaluation 
 and reason for the reveal. Skipping stores no review, so the item stays in the pool; it is only
 counted, against the current Judging setup, so the skip count can be shown beside agreement.
 
+Reviews given where Verdicts are shown (Run results, the Trace) are stored with ``from_sample``
+false: they take their target out of the pool like any review, but never count towards
+agreement, and one replacing a sample review stops it counting. Removing a review puts its
+target back in the pool. ``shown_reviews`` reads them back for display, with who gave them.
+
 Agreement is counted when read, over the sample reviews of each Judging setup, from the outcomes
 copied onto each review: agreed, false passes and false fails, overall and per check, with the
 rate's Wilson interval. Changing the Evaluation Model or the guidance starts new figures; the
@@ -32,7 +37,18 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, cast
 
-from sqlalchemy import ColumnElement, Select, and_, case, exists, func, literal, select, union_all
+from sqlalchemy import (
+    ColumnElement,
+    Select,
+    and_,
+    case,
+    delete,
+    exists,
+    func,
+    literal,
+    select,
+    union_all,
+)
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, aliased
@@ -54,6 +70,7 @@ from app.evaluation.models import (
 )
 from app.evaluation.review_models import ReviewSampleSkip, VerdictReview
 from app.runtime.prompt import Turn
+from app.tenancy.models import Member
 from app.tenancy.repository import OrganisationScope
 
 # The Verdicts the Evaluation Model judges, and so the ones that can be reviewed.
@@ -399,17 +416,17 @@ async def _live_target(
     )
 
 
-async def submit_sample_review(
+async def _store(
     session: AsyncSession,
     scope: OrganisationScope,
     target: RunTarget | LiveTarget,
     outcome: VerdictOutcome,
     reason: str | None,
     *,
+    from_sample: bool,
     now: datetime,
-) -> Reveal:
-    """Stores the Editor's review of a Review sample item, replacing any earlier review of the
-    target, and returns the Evaluation Model's outcome and reason. Raises
+) -> _Reviewed:
+    """Stores the Editor's review of the target, replacing any earlier review of it. Raises
     ``NotReviewableError``."""
     if isinstance(target, RunTarget):
         found = await _run_target(session, scope.organisation_id, target)
@@ -426,10 +443,11 @@ async def submit_sample_review(
         "judge_provider": found.setup.judge_provider,
         "judge_model": found.setup.judge_model,
         "judging_guidance_version": found.setup.guidance_version,
-        "from_sample": True,
+        "from_sample": from_sample,
         "reason": reason,
         "reviewed_by": scope.member_id,
         "reviewed_at": now,
+        "purged_at": None,
     }
     await session.execute(
         insert(VerdictReview)
@@ -443,7 +461,121 @@ async def submit_sample_review(
         .on_conflict_do_update(index_elements=conflict, set_=values)
     )
     await session.commit()
+    return found
+
+
+async def submit_sample_review(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    target: RunTarget | LiveTarget,
+    outcome: VerdictOutcome,
+    reason: str | None,
+    *,
+    now: datetime,
+) -> Reveal:
+    """Stores the Editor's review of a Review sample item, replacing any earlier review of the
+    target, and returns the Evaluation Model's outcome and reason. Raises
+    ``NotReviewableError``."""
+    found = await _store(session, scope, target, outcome, reason, from_sample=True, now=now)
     return Reveal(outcome.value, found.evaluation_model_outcome, found.evaluation_model_reason)
+
+
+@dataclass(frozen=True)
+class ShownReview:
+    """A review as it is shown on its Verdict: the Editor's outcome and reason (None when they
+    gave none, or once the Purge cleared it, then with ``purged_at``), who gave it (None once
+    they are deleted), when, and whether it came from the Review sample."""
+
+    outcome: str
+    reason: str | None
+    reviewed_by: str | None
+    reviewed_at: datetime
+    from_sample: bool
+    purged_at: datetime | None
+
+
+async def put_review(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    target: RunTarget | LiveTarget,
+    outcome: VerdictOutcome,
+    reason: str | None,
+    *,
+    now: datetime,
+) -> ShownReview:
+    """Stores the Editor's review given where the Verdict is shown (``from_sample`` false),
+    replacing any earlier review of the target, even one from the Review sample, so it stops
+    counting towards agreement. Raises ``NotReviewableError``."""
+    await _store(session, scope, target, outcome, reason, from_sample=False, now=now)
+    (shown,) = (await _shown(session, scope.organisation_id, _target_is(target))).values()
+    return shown
+
+
+async def delete_review(
+    session: AsyncSession, scope: OrganisationScope, target: RunTarget | LiveTarget
+) -> None:
+    """Removes the target's review, which puts the target back in the Review sample's pool.
+    Raises ``NotReviewableError`` when the Organisation has no review of it."""
+    deleted = await session.scalar(
+        delete(VerdictReview)
+        .where(VerdictReview.organisation_id == scope.organisation_id, _target_is(target))
+        .returning(VerdictReview.id)
+    )
+    if deleted is None:
+        raise NotReviewableError
+    await session.commit()
+
+
+def _target_is(target: RunTarget | LiveTarget) -> ColumnElement[bool]:
+    if isinstance(target, RunTarget):
+        return VerdictReview.verdict_id == target.verdict_id
+    return and_(
+        VerdictReview.live_verdict_id == target.live_verdict_id,
+        VerdictReview.check == target.check,
+    )
+
+
+async def _shown(
+    session: AsyncSession, organisation_id: uuid.UUID, condition: ColumnElement[bool]
+) -> dict[RunTarget | LiveTarget, ShownReview]:
+    found = await session.execute(
+        select(VerdictReview, Member.name)
+        .outerjoin(Member, Member.id == VerdictReview.reviewed_by)
+        .where(VerdictReview.organisation_id == organisation_id, condition)
+    )
+    shown: dict[RunTarget | LiveTarget, ShownReview] = {}
+    for review, name in found.all():
+        target: RunTarget | LiveTarget = (
+            RunTarget(review.verdict_id)
+            if review.verdict_id is not None
+            else LiveTarget(cast(uuid.UUID, review.live_verdict_id), review.check)
+        )
+        shown[target] = ShownReview(
+            outcome=review.outcome,
+            reason=review.reason,
+            reviewed_by=name,
+            reviewed_at=review.reviewed_at,
+            from_sample=review.from_sample,
+            purged_at=review.purged_at,
+        )
+    return shown
+
+
+async def shown_reviews(
+    session: AsyncSession,
+    organisation_id: uuid.UUID,
+    *,
+    verdict_ids: list[uuid.UUID] | None = None,
+    live_verdict_id: uuid.UUID | None = None,
+) -> dict[RunTarget | LiveTarget, ShownReview]:
+    """The Organisation's reviews of the given Run Verdicts, or of the given Live Verdict's
+    checks, by target, as they are shown on their Verdicts."""
+    condition = (
+        VerdictReview.verdict_id.in_(verdict_ids or [])
+        if live_verdict_id is None
+        else VerdictReview.live_verdict_id == live_verdict_id
+    )
+    return await _shown(session, organisation_id, condition)
 
 
 async def skip_sample_item(

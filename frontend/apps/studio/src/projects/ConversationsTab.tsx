@@ -15,6 +15,7 @@ import {
   PAGE_SIZE,
   useConversation,
   useConversations,
+  traceKey,
   useConversationTrace,
   useDeleteConversation,
 } from "./conversations";
@@ -680,7 +681,13 @@ function ConversationTrace({ path, visitor }: { path: ConversationPath & { messa
   return (
     <TraceContent
       trace={useConversationTrace(path)}
-      after={visitor ? (trace) => <LiveVerdictSection verdict={trace.live_verdict} /> : undefined}
+      after={
+        visitor
+          ? (trace) => (
+              <LiveVerdictSection verdict={trace.live_verdict} place={{ organisationId: path.organisation_id, shownKey: traceKey(path) }} />
+            )
+          : undefined
+      }
     />
   );
 }

@@ -10,6 +10,7 @@ from typing import Annotated, Literal, cast
 
 from fastapi import APIRouter, Depends, Query, Response, status
 from pydantic import AwareDatetime, BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.api import NOT_FOUND_RESPONSE, not_found
 from app.auth.api import Db
@@ -17,7 +18,9 @@ from app.conversations import service
 from app.core.clock import Clock, get_clock
 from app.evaluation.live import live_verdict_of
 from app.evaluation.live_reads import LiveVerdictFilter
-from app.evaluation.models import LiveVerdict
+from app.evaluation.models import LiveVerdict, VerdictKind
+from app.evaluation.reviews import ANSWERS_QUESTION, LiveTarget, ShownReview, shown_reviews
+from app.evaluation.reviews_api import VerdictReviewOut, review_out
 from app.feedback.models import MessageFeedback
 from app.playground.api import (
     Dollars,
@@ -31,6 +34,7 @@ from app.projects.service import ProjectNotFoundError
 from app.retention import service as retention
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import OwnerScope, Scope
+from app.tenancy.repository import OrganisationScope
 
 router = APIRouter(
     prefix=ORGANISATION_PREFIX + "/projects/{project_id}/conversations", tags=["conversations"]
@@ -345,12 +349,16 @@ class LiveCheckOut(BaseModel):
     outcome: Literal["pass", "fail"]
     # One sentence from the Evaluation Model saying why.
     reason: str | None
+    # An Editor's review of this check; null without one.
+    review: VerdictReviewOut | None
 
 
 class LiveVerdictOut(BaseModel):
     """The reply's Live Verdict: the Evaluation Model's judgement of a Visitor reply chosen by
     the Agent's Live sample rate."""
 
+    # Where its checks' reviews are put and removed.
+    id: uuid.UUID
     # ``pending`` until judged; ``error`` when the Evaluation Model couldn't judge it (then left
     # out of the Live score); ``skipped`` when its text was Purged before it was judged.
     status: Literal["pending", "judged", "error", "skipped"]
@@ -384,19 +392,33 @@ class ConversationTraceOut(TraceOut):
     live_verdict: LiveVerdictOut | None
 
 
-def _check(outcome: str | None, reason: str | None) -> LiveCheckOut | None:
+def _check(
+    outcome: str | None, reason: str | None, review: ShownReview | None
+) -> LiveCheckOut | None:
     if outcome is None:
         return None
-    return LiveCheckOut(outcome=cast(Literal["pass", "fail"], outcome), reason=reason)
+    return LiveCheckOut(
+        outcome=cast(Literal["pass", "fail"], outcome), reason=reason, review=review_out(review)
+    )
 
 
-def _live_verdict_out(verdict: LiveVerdict | None) -> LiveVerdictOut | None:
+async def _live_verdict_out(
+    db: AsyncSession, scope: OrganisationScope, verdict: LiveVerdict | None
+) -> LiveVerdictOut | None:
     if verdict is None:
         return None
+    shown = await shown_reviews(db, scope.organisation_id, live_verdict_id=verdict.id)
+
+    def review(check: str) -> ShownReview | None:
+        return shown.get(LiveTarget(verdict.id, check))
+
     return LiveVerdictOut(
+        id=verdict.id,
         status=cast(Literal["pending", "judged", "error", "skipped"], verdict.status),
-        grounded=_check(verdict.grounded, verdict.grounded_reason),
-        answers_question=_check(verdict.answers_question, verdict.answers_question_reason),
+        grounded=_check(verdict.grounded, verdict.grounded_reason, review(VerdictKind.GROUNDING)),
+        answers_question=_check(
+            verdict.answers_question, verdict.answers_question_reason, review(ANSWERS_QUESTION)
+        ),
         passed=verdict.passed,
         error_reason=verdict.error_reason,
         agent_version_id=verdict.agent_version_id,
@@ -431,5 +453,5 @@ async def get_trace(
     traced = await trace_out(db, read.message, read.agent_version_number, read.chunks)
     return ConversationTraceOut(
         **traced.model_dump(),
-        live_verdict=_live_verdict_out(await live_verdict_of(db, read.message.id)),
+        live_verdict=await _live_verdict_out(db, scope, await live_verdict_of(db, read.message.id)),
     )

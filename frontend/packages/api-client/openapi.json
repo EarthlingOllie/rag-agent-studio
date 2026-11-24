@@ -5780,11 +5780,22 @@
               }
             ],
             "title": "Reason"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VerdictReviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "outcome",
-          "reason"
+          "reason",
+          "review"
         ],
         "title": "LiveCheckOut",
         "type": "object"
@@ -6007,6 +6018,11 @@
               }
             ]
           },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
           "input_tokens": {
             "anyOf": [
               {
@@ -6109,6 +6125,7 @@
           }
         },
         "required": [
+          "id",
           "status",
           "grounded",
           "answers_question",
@@ -8166,6 +8183,36 @@
           "cited"
         ],
         "title": "ReviewChunkOut",
+        "type": "object"
+      },
+      "ReviewRequest": {
+        "description": "An Editor's agree or disagree with the shown pass or fail, as their own pass or fail.",
+        "properties": {
+          "outcome": {
+            "enum": [
+              "pass",
+              "fail"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "outcome"
+        ],
+        "title": "ReviewRequest",
         "type": "object"
       },
       "ReviewSampleItemOut": {
@@ -11815,6 +11862,11 @@
       },
       "VerdictOut": {
         "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
@@ -11833,14 +11885,92 @@
               }
             ],
             "title": "Reason"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VerdictReviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
+          "id",
           "kind",
           "outcome",
-          "reason"
+          "reason",
+          "review"
         ],
         "title": "VerdictOut",
+        "type": "object"
+      },
+      "VerdictReviewOut": {
+        "description": "An Editor's review of a judged Verdict or Live Verdict check, as shown on it.",
+        "properties": {
+          "from_sample": {
+            "title": "From Sample",
+            "type": "boolean"
+          },
+          "outcome": {
+            "enum": [
+              "pass",
+              "fail"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "purged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purged At"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "reviewed_at": {
+            "format": "date-time",
+            "title": "Reviewed At",
+            "type": "string"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          }
+        },
+        "required": [
+          "outcome",
+          "reason",
+          "reviewed_by",
+          "reviewed_at",
+          "from_sample",
+          "purged_at"
+        ],
+        "title": "VerdictReviewOut",
         "type": "object"
       },
       "VersionAuthor": {
@@ -15955,6 +16085,154 @@
         "summary": "Leave Organisation",
         "tags": [
           "members"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/live-verdicts/{live_verdict_id}/checks/{check}/review": {
+      "delete": {
+        "description": "Removes the review of the Live Verdict's check, which puts it back in the Review sample\nwhile its text is still there. Not found when it has none.",
+        "operationId": "deleteLiveVerdictReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "live_verdict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Live Verdict Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "check",
+            "required": true,
+            "schema": {
+              "enum": [
+                "grounding",
+                "answers_question"
+              ],
+              "title": "Check",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Live Verdict Review",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "put": {
+        "description": "Stores your review of one check of a judged Live Verdict in the Trace, replacing any\nearlier review of it (one from the Review sample then stops counting towards agreement).\nIt takes the check out of the Review sample and never changes the Live Verdict. A Live\nVerdict that isn't judged or whose text is gone, or another Organisation's, is not\nfound.",
+        "operationId": "putLiveVerdictReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "live_verdict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Live Verdict Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "check",
+            "required": true,
+            "schema": {
+              "enum": [
+                "grounding",
+                "answers_question"
+              ],
+              "title": "Check",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerdictReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Not pass or fail, or a reason over 1,000 characters"
+          }
+        },
+        "summary": "Put Live Verdict Review",
+        "tags": [
+          "evaluation"
         ]
       }
     },
@@ -25994,6 +26272,128 @@
         "summary": "Start Image Upload",
         "tags": [
           "theme"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/verdicts/{verdict_id}/review": {
+      "delete": {
+        "description": "Removes the Verdict's review, which puts it back in the Review sample. Not found when it\nhas none.",
+        "operationId": "deleteVerdictReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "verdict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Verdict Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Verdict Review",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "put": {
+        "description": "Stores your review of a judged Reference answer or grounding Verdict in Run results,\nreplacing any earlier review of it (one from the Review sample then stops counting towards\nagreement). It takes the Verdict out of the Review sample and never changes the Verdict.\nAny other Verdict, or another Organisation's, is not found.",
+        "operationId": "putVerdictReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "verdict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Verdict Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerdictReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Not pass or fail, or a reason over 1,000 characters"
+          }
+        },
+        "summary": "Put Verdict Review",
+        "tags": [
+          "evaluation"
         ]
       }
     },

@@ -1039,6 +1039,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/live-verdicts/{live_verdict_id}/checks/{check}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Live Verdict Review
+         * @description Stores your review of one check of a judged Live Verdict in the Trace, replacing any
+         *     earlier review of it (one from the Review sample then stops counting towards agreement).
+         *     It takes the check out of the Review sample and never changes the Live Verdict. A Live
+         *     Verdict that isn't judged or whose text is gone, or another Organisation's, is not
+         *     found.
+         */
+        put: operations["putLiveVerdictReview"];
+        post?: never;
+        /**
+         * Delete Live Verdict Review
+         * @description Removes the review of the Live Verdict's check, which puts it back in the Review sample
+         *     while its text is still there. Not found when it has none.
+         */
+        delete: operations["deleteLiveVerdictReview"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/members": {
         parameters: {
             query?: never;
@@ -2973,6 +3002,34 @@ export interface paths {
          */
         post: operations["startThemeImageUpload"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/verdicts/{verdict_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Verdict Review
+         * @description Stores your review of a judged Reference answer or grounding Verdict in Run results,
+         *     replacing any earlier review of it (one from the Review sample then stops counting towards
+         *     agreement). It takes the Verdict out of the Review sample and never changes the Verdict.
+         *     Any other Verdict, or another Organisation's, is not found.
+         */
+        put: operations["putVerdictReview"];
+        post?: never;
+        /**
+         * Delete Verdict Review
+         * @description Removes the Verdict's review, which puts it back in the Review sample. Not found when it
+         *     has none.
+         */
+        delete: operations["deleteVerdictReview"];
         options?: never;
         head?: never;
         patch?: never;
@@ -5253,6 +5310,7 @@ export interface components {
             outcome: "pass" | "fail";
             /** Reason */
             reason: string | null;
+            review: components["schemas"]["VerdictReviewOut"] | null;
         };
         /** LiveHistoryEntryOut */
         LiveHistoryEntryOut: {
@@ -5334,6 +5392,11 @@ export interface components {
             /** Error Reason */
             error_reason: string | null;
             grounded: components["schemas"]["LiveCheckOut"] | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /** Input Tokens */
             input_tokens: number | null;
             /** Judge Model */
@@ -6112,6 +6175,19 @@ export interface components {
             label: string;
             /** Text */
             text: string;
+        };
+        /**
+         * ReviewRequest
+         * @description An Editor's agree or disagree with the shown pass or fail, as their own pass or fail.
+         */
+        ReviewRequest: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "pass" | "fail";
+            /** Reason */
+            reason?: string | null;
         };
         /**
          * ReviewSampleItemOut
@@ -7322,12 +7398,42 @@ export interface components {
         };
         /** VerdictOut */
         VerdictOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /** Kind */
             kind: string;
             /** Outcome */
             outcome: string;
             /** Reason */
             reason: string | null;
+            review: components["schemas"]["VerdictReviewOut"] | null;
+        };
+        /**
+         * VerdictReviewOut
+         * @description An Editor's review of a judged Verdict or Live Verdict check, as shown on it.
+         */
+        VerdictReviewOut: {
+            /** From Sample */
+            from_sample: boolean;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "pass" | "fail";
+            /** Purged At */
+            purged_at: string | null;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Reviewed At
+             * Format: date-time
+             */
+            reviewed_at: string;
+            /** Reviewed By */
+            reviewed_by: string | null;
         };
         /** VersionAuthor */
         VersionAuthor: {
@@ -10181,6 +10287,90 @@ export interface operations {
             };
             /** @description An Organisation needs at least one Owner. Make someone else an Owner first. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    putLiveVerdictReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                live_verdict_id: string;
+                check: "grounding" | "answers_question";
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerdictReviewOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not pass or fail, or a reason over 1,000 characters */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteLiveVerdictReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                live_verdict_id: string;
+                check: "grounding" | "answers_question";
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -15930,6 +16120,88 @@ export interface operations {
             };
             /** @description Upload a PNG, JPEG or WebP image. */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    putVerdictReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                verdict_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerdictReviewOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not pass or fail, or a reason over 1,000 characters */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteVerdictReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                verdict_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

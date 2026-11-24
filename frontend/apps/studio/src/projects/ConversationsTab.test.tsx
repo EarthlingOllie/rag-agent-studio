@@ -422,7 +422,7 @@ test("a judged reply's Trace shows its Live Verdict: both checks with their reas
   expect(
     within(checks)
       .getAllByRole("listitem")
-      .map((item) => item.textContent),
+      .map((item) => item.firstElementChild?.textContent),
   ).toEqual([
     "GroundedPassEvery claim is in the cited leave policy.",
     "Answers the questionFailIt gives the leave allowance, not how to book it.",
@@ -436,7 +436,7 @@ test("a reply that passed both checks passes its Live Verdict", async () => {
   const passing = {
     ...judgedVerdict,
     passed: true,
-    answers_question: { outcome: "pass" as const, reason: "It says how much." },
+    answers_question: { outcome: "pass" as const, reason: "It says how much.", review: null },
     // The Evaluation Model has no known price.
     cost_usd: null,
   };
@@ -525,8 +525,8 @@ test("a reply skipped before it was judged says so", async () => {
 test("a purged reply's Live Verdict keeps its outcomes and says its text was purged", async () => {
   const purged = {
     ...judgedVerdict,
-    grounded: { outcome: "pass" as const, reason: null },
-    answers_question: { outcome: "fail" as const, reason: null },
+    grounded: { outcome: "pass" as const, reason: null, review: null },
+    answers_question: { outcome: "fail" as const, reason: null, review: null },
     purged_at: "2026-11-14T10:00:00Z",
   };
 
@@ -538,7 +538,7 @@ test("a purged reply's Live Verdict keeps its outcomes and says its text was pur
   expect(
     within(checks)
       .getAllByRole("listitem")
-      .map((item) => item.textContent),
+      .map((item) => item.firstElementChild?.textContent),
   ).toEqual(["GroundedPassText purged", "Answers the questionFailText purged"]);
   expect(section).toHaveTextContent(
     "The reasons were purged with the reply's text on 2026-11-14 10:00 UTC.",
