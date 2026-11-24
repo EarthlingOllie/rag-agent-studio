@@ -109,16 +109,17 @@ export function useVerdictReview(organisationId: string, target: ReviewTarget, s
     ]);
   const put = useMutation({
     mutationFn: async (body: ReviewRequest): Promise<VerdictReview> => {
-      const { data, error, response } =
+      const request =
         "verdict_id" in target
-          ? await api.PUT("/api/organisations/{organisation_id}/verdicts/{verdict_id}/review", {
+          ? api.PUT("/api/organisations/{organisation_id}/verdicts/{verdict_id}/review", {
               params: { path: { organisation_id: organisationId, verdict_id: target.verdict_id } },
               body,
             })
-          : await api.PUT("/api/organisations/{organisation_id}/live-verdicts/{live_verdict_id}/checks/{check}/review", {
+          : api.PUT("/api/organisations/{organisation_id}/live-verdicts/{live_verdict_id}/checks/{check}/review", {
               params: { path: { organisation_id: organisationId, ...target } },
               body,
             });
+      const { data, error, response } = await request;
       if (!data) throw failed(response, error);
       return data;
     },
@@ -126,14 +127,15 @@ export function useVerdictReview(organisationId: string, target: ReviewTarget, s
   });
   const remove = useMutation({
     mutationFn: async (): Promise<void> => {
-      const { error, response } =
+      const request =
         "verdict_id" in target
-          ? await api.DELETE("/api/organisations/{organisation_id}/verdicts/{verdict_id}/review", {
+          ? api.DELETE("/api/organisations/{organisation_id}/verdicts/{verdict_id}/review", {
               params: { path: { organisation_id: organisationId, verdict_id: target.verdict_id } },
             })
-          : await api.DELETE("/api/organisations/{organisation_id}/live-verdicts/{live_verdict_id}/checks/{check}/review", {
+          : api.DELETE("/api/organisations/{organisation_id}/live-verdicts/{live_verdict_id}/checks/{check}/review", {
               params: { path: { organisation_id: organisationId, ...target } },
             });
+      const { error, response } = await request;
       if (!response.ok) throw failed(response, error);
     },
     onSuccess: refresh,

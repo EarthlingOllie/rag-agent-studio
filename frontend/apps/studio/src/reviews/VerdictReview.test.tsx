@@ -127,6 +127,7 @@ test("removing a review leaves the Verdict unreviewed again", async () => {
 
   expect(deletes).toEqual([grounding.id]);
   expect(await within(review).findByRole("button", { name: "Agree" })).toBeInTheDocument();
+  expect(within(review).queryByRole("alert")).not.toBeInTheDocument();
   expect(review).not.toHaveTextContent("Agreed");
 });
 
