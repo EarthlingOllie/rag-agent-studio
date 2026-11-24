@@ -227,7 +227,7 @@ The chat model that judges every Evaluation Run and Live Verdict in an Organisat
 _Avoid_: Judge, grader model, eval model
 
 **Demo model**:
-The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk (unless its system prompt says "Don't quote", as HR helper v2's does: then it gives the Chunk's first sentence, uncited), and every answer starts "Demo model (canned answer, not AI)". Asked to judge an Evaluation Run's answer or a Live Verdict, it judges by rule, as the fake Evaluation Model does: answering the question passes when the reply shares a key phrase with the question (a phrase in double quotes, or else a word of five letters or more). It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
+The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk (unless its system prompt says "Don't quote", as HR helper v2's does: then it gives the Chunk's first sentence, uncited), and every answer starts "Demo model (canned answer, not AI)". Asked to judge an Evaluation Run's answer or a Live Verdict, it judges by rule, as the fake Evaluation Model does: answering the question passes when the reply shares a key phrase with the question (a phrase in double quotes, or else a word of five letters or more). Under Judging guidance that holds the scripted phrase "partial answers that say what they don't cover pass", a reply that shares no key phrase but says what it doesn't cover passes too. It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
 _Avoid_: Fake model (that is the test double), mock, stub model
 
 **Naive demo model**:
@@ -902,7 +902,7 @@ The Organisation's queue of judged Verdicts and Live Verdict checks, drawn at ra
 _Avoid_: Labelling queue, review queue, audit sample
 
 **Judging guidance**:
-An Organisation's own instructions to the Evaluation Model (one text, up to 2,000 characters), saved by an Owner and added to every judgement it makes, so that its Verdicts and Live Verdicts follow the Organisation's idea of a pass. Each save is a new version and an Audit Event; Editors can read it. The Evaluation Model can draft it from the Verdict reviews it disagreed with, and the draft is checked against Review sample reviews it didn't see before an Owner saves it; a drop in agreement warns, never blocks.
+An Organisation's own instructions to the Evaluation Model (one text, up to 2,000 characters), saved by an Owner and added to every judgement it makes, so that its Verdicts and Live Verdicts follow the Organisation's idea of a pass. Each save is a new version and an Audit Event; removing it saves an empty version. Editors can read it. The Evaluation Model can draft it from the Verdict reviews it disagreed with, and the draft is checked against Review sample reviews it didn't see before an Owner saves it; a drop in agreement warns, never blocks.
 _Avoid_: Judge prompt, rubric, fine-tuning, calibration
 
 **Judging setup**:

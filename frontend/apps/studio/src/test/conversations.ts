@@ -171,6 +171,7 @@ export const judgedVerdict: LiveVerdict = {
   agent_version_id: agentVersion(1).id,
   judge_provider: "anthropic",
   judge_model: "claude-haiku-4-5",
+  judging_guidance_version: null,
   input_tokens: 812,
   output_tokens: 64,
   cost_usd: "0.001132",

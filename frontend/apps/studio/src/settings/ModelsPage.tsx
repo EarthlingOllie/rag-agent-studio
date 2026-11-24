@@ -12,6 +12,7 @@ import {
   useSetEvaluationModel,
   useSetEvaluationRepeats,
 } from "./evaluationSettings";
+import { JudgingGuidanceSection } from "./JudgingGuidance";
 import { ChatModelOptions, withoutTools } from "./ModelOptions";
 import { type DefaultModel, useChatModels, useDefaultModel, useSetDefaultModel } from "./models";
 import { PriceTable } from "./PriceTable";
@@ -335,7 +336,7 @@ function EvaluationSection({ organisationId, isOwner }: { organisationId: string
 
 /**
  * Models settings: the Organisation's Default Model, the Evaluation Model, Evaluation repeats and
- * Evaluation budget with this month's meter, and the price table. Every Member sees them; Owners choose the Default Model and the evaluation
+ * Evaluation budget with this month's meter, the Judging guidance, and the price table. Every Member sees them; Owners choose the Default Model and the evaluation
  * settings (confirmed by a toast) and override prices.
  */
 export function ModelsPage({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
@@ -343,6 +344,7 @@ export function ModelsPage({ organisationId, isOwner }: { organisationId: string
     <div className="flex flex-col gap-10">
       <DefaultModelSection organisationId={organisationId} isOwner={isOwner} />
       <EvaluationSection organisationId={organisationId} isOwner={isOwner} />
+      <JudgingGuidanceSection organisationId={organisationId} isOwner={isOwner} />
       <PriceTable organisationId={organisationId} isOwner={isOwner} />
     </div>
   );

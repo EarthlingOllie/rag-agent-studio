@@ -268,7 +268,7 @@ test.describe("Evaluation Runs", () => {
       await expect(runDetail(page).getByText("Cancelled", { exact: true })).toBeVisible({ timeout: 15_000 });
       expect((await readRun(page, agent, runId)).progress.done).toBeLessThanOrEqual(cancelled.progress.done + 1);
       // The Draft alone answered: one side, named by its Draft revision.
-      await expect(runDetail(page).getByText(/^Cancelled · Draft revision \d+ · no Project Instructions · demo demo-chat · judged by anthropic claude-haiku-4-5 · 9 repeats$/)).toBeVisible();
+      await expect(runDetail(page).getByText(/^Cancelled · Draft revision \d+ · no Project Instructions · demo demo-chat · judged by anthropic claude-haiku-4-5 with no guidance · 9 repeats$/)).toBeVisible();
     });
   });
 
@@ -360,7 +360,7 @@ test.describe("Evaluation Runs", () => {
 
     await test.step("the Run's Cost split into answers and judging, and its details in the history", async () => {
       const detail = runDetail(page);
-      await expect(detail.getByText(/^Completed · Version 2 · Instructions v1 · demo demo-chat against Version 1 · Instructions v1 · demo demo-chat · judged by anthropic claude-haiku-4-5 · 3 repeats$/)).toBeVisible();
+      await expect(detail.getByText(/^Completed · Version 2 · Instructions v1 · demo demo-chat against Version 1 · Instructions v1 · demo demo-chat · judged by anthropic claude-haiku-4-5 with no guidance · 3 repeats$/)).toBeVisible();
       await expect(detail.getByText(/^Cost \$\S+: answers \$0\.00, judging \$\S+ \(estimated \$\S+\)$/)).toBeVisible();
       expect(Number(run.cost.answers_usd)).toBe(0);
       expect(Number(run.cost.judging_usd)).toBeGreaterThan(0);
@@ -383,7 +383,7 @@ test.describe("Evaluation Runs", () => {
       await expect(list.getByRole("listitem").first()).toContainText("Version 2: 0% · Draft revision");
       await older.getByRole("button", { name: /^Run of / }).click();
       await expect(older.getByRole("button", { name: /^Run of / })).toHaveAttribute("aria-current", "true");
-      await expect(runDetail(page).getByText(/^Completed · Version 2 · Instructions v1 · demo demo-chat against Version 1 · Instructions v1 · demo demo-chat · judged by anthropic claude-haiku-4-5 · 3 repeats$/)).toBeVisible();
+      await expect(runDetail(page).getByText(/^Completed · Version 2 · Instructions v1 · demo demo-chat against Version 1 · Instructions v1 · demo demo-chat · judged by anthropic claude-haiku-4-5 with no guidance · 3 repeats$/)).toBeVisible();
       await expect(runDetail(page).getByText(/^Cost \$\S+: answers \$0\.00, judging \$\S+/)).toBeVisible();
     });
 
@@ -432,7 +432,7 @@ test.describe("Evaluation Runs", () => {
       await expect(instructions.locator("option:checked")).toHaveText("Current Instructions Version (v1)", { timeout: 15_000 });
       await expect(instructions.getByRole("option")).toHaveText(["Current Instructions Version (v1)", "Instructions Draft", "Instructions v1"]);
       await dialog.getByRole("button", { name: "Start Run" }).click();
-      await expect(runDetail(page).getByText(/^Completed · Draft revision \d+ · Instructions v1 · demo demo-chat · judged by demo demo-chat · 3 repeats$/)).toBeVisible({ timeout: 120_000 });
+      await expect(runDetail(page).getByText(/^Completed · Draft revision \d+ · Instructions v1 · demo demo-chat · judged by demo demo-chat with no guidance · 3 repeats$/)).toBeVisible({ timeout: 120_000 });
       await expect(runDetail(page).getByText("Evaluation score: 100%")).toBeVisible();
       await expect(runCase(page, question).getByText(`from ${document} [C1]`).first()).toBeVisible();
     });
@@ -443,7 +443,7 @@ test.describe("Evaluation Runs", () => {
       await dialog.getByLabel("Draft's Instructions").selectOption({ label: "Instructions Draft" });
       await expect(dialog.getByRole("status", { name: "Estimated Cost" })).toHaveText(/^About \$/, { timeout: 15_000 });
       await dialog.getByRole("button", { name: "Start Run" }).click();
-      await expect(runDetail(page).getByText(/^Completed · Draft revision \d+ · Instructions Draft · demo demo-chat · judged by demo demo-chat · 3 repeats$/)).toBeVisible({ timeout: 120_000 });
+      await expect(runDetail(page).getByText(/^Completed · Draft revision \d+ · Instructions Draft · demo demo-chat · judged by demo demo-chat with no guidance · 3 repeats$/)).toBeVisible({ timeout: 120_000 });
       await expect(runDetail(page).getByText("Evaluation score: 0%")).toBeVisible();
       await expect(runCase(page, question).getByText(`from ${document} [C1]`)).toHaveCount(0);
       await expect(runCase(page, question).getByRole("list", { name: "Verdicts" }).first()).toContainText(`Reference answer: Fail. Fake judge: the answer lacks “${document}”.`);

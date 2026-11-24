@@ -189,6 +189,32 @@ export function fakeEvaluationBudgetApi(options: { budget?: string | null; spent
   return { set };
 }
 
+export type JudgingGuidance = Schemas["JudgingGuidanceOut"];
+type GuidanceVersion = Schemas["GuidanceVersionOut"];
+
+export const PARTIAL_GUIDANCE = "Partial answers that say what they don't cover pass.";
+
+export function guidanceVersion(version: number, text: string, savedBy: string | null = "Ada Lovelace"): GuidanceVersion {
+  return { version, text, source: "written", saved_by: savedBy, saved_at: `2026-11-${String(10 + version)}T09:30:00Z` };
+}
+
+/** Judging guidance as `GET …/judging-guidance` answers it; an Owner's save adds a version unless the text is already current. */
+export function fakeJudgingGuidanceApi(options: { versions?: GuidanceVersion[] } = {}) {
+  let versions = options.versions ?? [];
+  const saved: string[] = [];
+  const current = (): JudgingGuidance => ({ current: versions[0] ?? null, versions });
+  server.use(
+    http.get("*/api/organisations/:organisationId/judging-guidance", () => HttpResponse.json(current())),
+    http.put("*/api/organisations/:organisationId/judging-guidance", async ({ request }) => {
+      const text = ((await request.json()) as Schemas["SaveJudgingGuidanceRequest"]).text.trim();
+      saved.push(text);
+      if ((versions[0]?.text ?? "") !== text) versions = [guidanceVersion(versions.length + 1, text), ...versions];
+      return HttpResponse.json(current());
+    }),
+  );
+  return { saved };
+}
+
 type ModelPrices = Schemas["ModelPricesOut"];
 type PriceOverride = Schemas["OverridePricesRequest"];
 

@@ -56,6 +56,7 @@ export function run(
     progress: { done, total },
     judge_provider: "openai",
     judge_model: "gpt-4.1-mini",
+    judging_guidance_version: null,
     repeats: 1,
     error_message: null,
     stale: false,
