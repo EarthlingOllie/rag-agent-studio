@@ -1,7 +1,7 @@
 # Tickets
 
 Tracer-bullet tickets split from the [slice specs](../specs/README.md). Ticket IDs are `<spec>-<NN>`, and blockers can point into other specs.
-Work the **frontier**: any ticket whose blockers are all done. `01-01`, `11-01`, `15-01`, `16-01`, `18-01` and `19-01` are the only tickets with no blockers.
+Work the **frontier**: any ticket whose blockers are all done. `01-01`, `11-01`, `15-01`, `16-01`, `18-01`, `19-01`, `20-01` and `20-02` are the only tickets with no blockers.
 
 New tickets start from [TEMPLATE.md](./TEMPLATE.md). Its standing criteria apply to every ticket: new Studio UI uses the [design system](../design/README.md) (the palette ratchet enforces it), tests sit at the highest seam with 100% coverage, and the glossary and ADRs stay current.
 
@@ -259,3 +259,24 @@ Owner-saved guidance for the Evaluation Model, drafted from disagreements and ch
 | `19-04` | [Check guidance on held-out reviews](./19-judging-guidance/04-check-guidance-held-out.md) | 18-01, 19-03 |
 | `19-05` | [Draft guidance from disagreements](./19-judging-guidance/05-draft-guidance.md) | 19-04 |
 | `19-06` | [End-to-end and live suite](./19-judging-guidance/06-e2e-live.md) | 18-06, 19-02, 19-05 |
+
+## 20: Calls
+
+A Visitor chooses Message or Call; a Call is the same Agent with ElevenLabs speaking for our runtime (ADR-0019). 20-01 (a prefactor) and 20-02 have no blockers; 20-04 is the tracer, built on the fake voice layer, and seven tickets open up behind it.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `20-01` | [Prefactor: serve a Visitor turn from one place](./20-calls/01-serve-visitor-turn-prefactor.md) | none |
+| `20-02` | [ElevenLabs Provider Credential](./20-calls/02-elevenlabs-provider-credential.md) | none |
+| `20-03` | [Call settings and the voice layer](./20-calls/03-call-settings-voice-layer.md) | 20-02 |
+| `20-04` | [Call tracer: a Visitor calls an Agent](./20-calls/04-call-tracer.md) | 20-01, 20-03 |
+| `20-05` | [Real ElevenLabs adapter](./20-calls/05-real-elevenlabs-adapter.md) | 20-04 |
+| `20-06` | [Speaking a reply well](./20-calls/06-speaking-a-reply.md) | 20-04 |
+| `20-07` | [Call limits](./20-calls/07-call-limits.md) | 20-04 |
+| `20-08` | [Voice Cost](./20-calls/08-voice-cost.md) | 20-07 |
+| `20-09` | [When a Call can't start](./20-calls/09-when-a-call-cant-start.md) | 20-04 |
+| `20-10` | [Moving between typing and talking](./20-calls/10-typing-and-talking.md) | 20-04 |
+| `20-11` | [Feedback, interruptions and accessibility](./20-calls/11-feedback-interruptions-accessibility.md) | 20-04 |
+| `20-12` | [Reviewing Calls in the Studio](./20-calls/12-reviewing-calls-in-the-studio.md) | 20-07 |
+| `20-13` | [Playground Calls](./20-calls/13-playground-calls.md) | 20-06 |
+| `20-14` | [Seed, demo and docs](./20-calls/14-seed-demo-docs.md) | 20-05, 20-07 |

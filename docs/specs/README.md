@@ -23,6 +23,7 @@ One spec per delivery slice in [`docs/plan.md`](../plan.md), split into tickets 
 | 17 | [Retrieval diagnostics](./17-retrieval-diagnostics-spec.md) |
 | 18 | [Verdict review](./18-verdict-review-spec.md) |
 | 19 | [Judging guidance](./19-judging-guidance-spec.md) |
+| 20 | [Calls](./20-calls-spec.md) |
 
 ## Shared test seams
 
@@ -45,6 +46,7 @@ Every spec tests at the **highest seam available** and uses as few seams as poss
 | Object store | S3 | RustFS in integration tests; in-memory fake in unit tests |
 | Mailer | SES | In-memory outbox; Mailpit in `docker compose` |
 | Clock | System clock | Controllable clock |
+| Voice layer | ElevenLabs Agents | Scripted fake: a Call with no audio, whose turns the test drives |
 
 - **Live suite:** tests marked `live` call real providers and real Docling. They run nightly and on demand, outside the coverage gate.
 
