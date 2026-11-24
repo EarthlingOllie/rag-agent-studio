@@ -75,6 +75,7 @@ async def test_agreement_counts_false_fails_per_check_with_the_wilson_interval(
     assert current == {
         "provider": "openai",
         "model": "gpt-4.1-mini",
+        "guidance_version": None,
         **figures(2, 1, 0, 1, 0.0945, 0.9055),
         "checks": [
             {"check": "grounding", **figures(1, 1, 0, 0, 0.2065, 1.0)},
@@ -121,6 +122,7 @@ async def test_agreement_is_a_low_sample_under_thirty_reviews(
     assert current == {
         "provider": "openai",
         "model": "gpt-4.1-mini",
+        "guidance_version": None,
         **figures(30, 30, 0, 0, 0.8865, 1.0),
         "checks": [
             {"check": "grounding", **figures(15, 15, 0, 0, 0.7961, 1.0)},
@@ -145,6 +147,7 @@ async def test_changing_the_evaluation_model_starts_new_figures_and_lists_the_ol
     assert found["current"] == {
         "provider": "anthropic",
         "model": "claude-haiku-4-5",
+        "guidance_version": None,
         "reviews": 0,
         "agreed": 0,
         "false_passes": 0,

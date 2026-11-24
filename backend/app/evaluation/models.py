@@ -163,7 +163,7 @@ class JudgingGuidanceVersion(IdMixin, Base):
     saved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
-def _judged_under(table: str) -> ForeignKeyConstraint:
+def judged_under(table: str) -> ForeignKeyConstraint:
     """A judgement's guidance version, always its own Organisation's."""
     return ForeignKeyConstraint(
         ["organisation_id", "judging_guidance_version"],
@@ -230,7 +230,7 @@ class EvaluationRun(IdMixin, Base):
 
     __tablename__ = "evaluation_runs"
     __table_args__ = (
-        _judged_under("evaluation_runs"),
+        judged_under("evaluation_runs"),
         Index(
             "uq_evaluation_runs_in_progress_agent",
             "agent_id",
@@ -401,7 +401,7 @@ class LiveVerdict(IdMixin, Base):
     reasons."""
 
     __tablename__ = "live_verdicts"
-    __table_args__ = (_judged_under("live_verdicts"),)
+    __table_args__ = (judged_under("live_verdicts"),)
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey(Organisation.id, ondelete="CASCADE"), index=True

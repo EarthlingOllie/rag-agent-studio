@@ -33,7 +33,7 @@ test("every Member reads the current Evaluation Model's agreement: the rate with
 
   const agreement = await card();
 
-  expect(agreement.getByText("gpt-4.1-mini (OpenAI)")).toBeInTheDocument();
+  expect(agreement.getByText("gpt-4.1-mini (OpenAI) with guidance version 2")).toBeInTheDocument();
   expect(agreement.getByText("85% agreed")).toBeInTheDocument();
   expect(agreement.getByText("95% interval 71% to 93%")).toBeInTheDocument();
   expect(agreement.getByText("34 of 40 sample reviews agreed: 4 false passes, 2 false fails")).toBeInTheDocument();
@@ -71,22 +71,44 @@ test("a Low sample is marked on the current figures", async () => {
   expect(within(agreement.getByText("50% agreed").parentElement as HTMLElement).getByTitle("Fewer than 30 sample reviews")).toHaveTextContent("Low sample");
 });
 
-test("after the Evaluation Model changed, its figures start afresh and the earlier ones stay listed", async () => {
+test("after the Evaluation Model changed, its Judging setup's figures start afresh and the earlier ones stay listed", async () => {
   fakeModelsApi();
   fakeAgreementApi({ current: unreviewed("anthropic", "claude-sonnet-4-5"), earlier: [gptAgreement, claudeAgreement], skipped: 0 });
   openAs();
 
   const agreement = await card();
 
-  expect(agreement.getByText("claude-sonnet-4-5 (Anthropic)")).toBeInTheDocument();
-  expect(agreement.getByText("No sample reviews of this Evaluation Model yet.")).toBeInTheDocument();
+  expect(agreement.getByText("claude-sonnet-4-5 (Anthropic) with no guidance")).toBeInTheDocument();
+  expect(agreement.getByText("No sample reviews under this Judging setup yet.")).toBeInTheDocument();
   expect(agreement.queryByRole("table", { name: "Agreement per check" })).not.toBeInTheDocument();
-  expect(rows(agreement.getByRole("table", { name: "Earlier Evaluation Models" }))).toEqual([
-    ["Evaluation Model", "Reviews", "Agreed", "95% interval", "False passes", "False fails"],
-    ["gpt-4.1-mini (OpenAI)", "40", "85%", "71% to 93%", "4", "2"],
-    ["claude-haiku-4-5 (Anthropic)", "6", "50%Low sample", "19% to 81%", "3", "0"],
+  expect(rows(agreement.getByRole("table", { name: "Earlier Judging setups" }))).toEqual([
+    ["Judging setup", "Reviews", "Agreed", "95% interval", "False passes", "False fails"],
+    ["gpt-4.1-mini (OpenAI) with guidance version 2", "40", "85%", "71% to 93%", "4", "2"],
+    ["claude-haiku-4-5 (Anthropic) with no guidance", "6", "50%Low sample", "19% to 81%", "3", "0"],
   ]);
   expect(agreement.getByText("0 sample reviews in this Organisation, 0 of them yours. 0 items skipped.")).toBeInTheDocument();
+});
+
+test("after guidance is saved, the same Evaluation Model's figures start afresh and each earlier guidance version is listed apart", async () => {
+  fakeModelsApi();
+  fakeAgreementApi({
+    current: unreviewed("openai", "gpt-4.1-mini", 3),
+    earlier: [gptAgreement, { ...gptAgreement, guidance_version: null, reviews: 6, agreed: 3, rate: 0.5, low: 0.188, high: 0.812 }],
+  });
+  openAs();
+
+  const agreement = await card();
+
+  expect(agreement.getByText("gpt-4.1-mini (OpenAI) with guidance version 3")).toBeInTheDocument();
+  expect(agreement.getByText("No sample reviews under this Judging setup yet.")).toBeInTheDocument();
+  expect(
+    rows(agreement.getByRole("table", { name: "Earlier Judging setups" }))
+      .slice(1)
+      .map((row) => row.slice(0, 2)),
+  ).toEqual([
+    ["gpt-4.1-mini (OpenAI) with guidance version 2", "40"],
+    ["gpt-4.1-mini (OpenAI) with no guidance", "6"],
+  ]);
 });
 
 test("one review and one skip read in the singular", async () => {
@@ -105,7 +127,7 @@ test("one review and one skip read in the singular", async () => {
   expect(agreement.getByText("1 sample review in this Organisation, 1 of them yours. 1 item skipped.")).toBeInTheDocument();
 });
 
-test("without a model to judge with there is nothing to agree with, but earlier Evaluation Models stay listed", async () => {
+test("without a model to judge with there is nothing to agree with, but earlier Judging setups stay listed", async () => {
   fakeModelsApi();
   fakeAgreementApi({ current: null, earlier: [claudeAgreement] });
   openAs();
@@ -114,7 +136,7 @@ test("without a model to judge with there is nothing to agree with, but earlier 
 
   expect(agreement.getByText("No model to judge with yet, so there is no agreement to count.")).toBeInTheDocument();
   expect(agreement.queryByText(/sample reviews? in this Organisation/)).not.toBeInTheDocument();
-  expect(agreement.getByRole("table", { name: "Earlier Evaluation Models" })).toBeInTheDocument();
+  expect(agreement.getByRole("table", { name: "Earlier Judging setups" })).toBeInTheDocument();
   expect(agreement.getByRole("link", { name: "Review sample" })).toBeInTheDocument();
 });
 
@@ -124,7 +146,7 @@ test("the card links to the Review sample, and a review given there counts on re
   openAs(editorSession);
 
   const agreement = await card();
-  expect(agreement.getByText("No sample reviews of this Evaluation Model yet.")).toBeInTheDocument();
+  expect(agreement.getByText("No sample reviews under this Judging setup yet.")).toBeInTheDocument();
   await userEvent.click(agreement.getByRole("link", { name: "Review sample" }));
   await screen.findByRole("article", { name: "Item to review" });
   await userEvent.click(screen.getByRole("button", { name: "Skip" }));
