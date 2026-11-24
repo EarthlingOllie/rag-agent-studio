@@ -202,6 +202,28 @@ test("a clear Run says so with both scores", async () => {
   await publishesAnyway(form);
 });
 
+test("a Run judged under an earlier Judging setup brings a notice that never blocks", async () => {
+  setUp({ summaries: [publishSummary("regressions", { run: liveAgainstDraft, regressions: [brokenCase], earlier_judging_setup: true })] });
+  renderStudio(agentPage);
+  const { form, section } = await evaluationSection();
+
+  expect(await within(section).findByText(/earlier Judging setup/)).toHaveTextContent(
+    "The Draft's latest Run was judged under an earlier Judging setup (another Evaluation Model or Judging guidance version), so its scores may read differently now. You can still Publish.",
+  );
+  // Beside the summary's own state, which it doesn't replace.
+  expect(within(section).getByText(/This Draft has 1 Regression/)).toBeInTheDocument();
+  await publishesAnyway(form);
+});
+
+test("a Run under the current Judging setup brings no such notice", async () => {
+  setUp({ summaries: [publishSummary("clear", { run: liveAgainstDraft })] });
+  renderStudio(agentPage);
+  const { section } = await evaluationSection();
+
+  await within(section).findByText(/No Regressions/);
+  expect(within(section).queryByText(/earlier Judging setup/)).not.toBeInTheDocument();
+});
+
 test("a clear Run of the Draft alone gives its score", async () => {
   const alone = run("r1000000-0000-4000-8000-000000000002", "completed", 2, 2);
   setUp({ summaries: [publishSummary("clear", { run: alone })] }, hrHelper);

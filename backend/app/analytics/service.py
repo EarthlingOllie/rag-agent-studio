@@ -1,6 +1,7 @@
 """The analytics query interface: ``version_metrics``, each Agent Version's KPIs over a range
 of UTC days, and ``time_series``, one metric of an Agent per day, week or month, with Live
-History markers and the Project's Document changes (a confounder). Days before today come
+History markers, the Project's Document changes (a confounder) and the Judging setups of its
+Live Verdicts (another, for the Live score; ``judging_setups``). Days before today come
 from the ``usage_daily`` rollups; today, the live partial day, is worked out from the raw
 tables. Playground Conversations never count in either. ``org_cost`` is what the Organisation
 spent over a range of UTC days, by Project or by Agent, with Playground replies' cost in a
@@ -31,6 +32,11 @@ from app.analytics.usage import DOLLARS, Only, Usage, day_bounds, usage_on
 from app.audit.models import AuditEvent
 from app.conversations.models import Conversation, Message, MessageRole
 from app.documents.models import Document
+from app.evaluation.guidance import (
+    JudgingSetupChange,
+    judging_setup_changes,
+    mixed_judging_setups,
+)
 from app.evaluation.service import evaluation_cost
 from app.projects.models import Project
 from app.suggestions.reads import proposing_cost
@@ -386,10 +392,39 @@ class DocumentChanges:
 
 
 @dataclass(frozen=True)
+class JudgingSetups:
+    """The Organisation's Judging setup changes during a range, and whether the Live Verdicts it
+    holds were judged under more than one Judging setup: then their Live scores don't compare
+    like with like."""
+
+    changes: list[JudgingSetupChange]
+    mixed: bool
+
+
+async def judging_setups(
+    session: AsyncSession,
+    organisation_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    version_ids: Sequence[uuid.UUID] | None,
+    start: date,
+    end: date,
+) -> JudgingSetups:
+    """The Judging setups over the UTC days ``start`` to ``end`` inclusive, of the Live Verdicts
+    of the Agent's ``version_ids`` (every Version's when None)."""
+    since, _ = day_bounds(start)
+    _, until = day_bounds(end)
+    return JudgingSetups(
+        await judging_setup_changes(session, organisation_id, since, until),
+        await mixed_judging_setups(session, agent_id, version_ids, since, until),
+    )
+
+
+@dataclass(frozen=True)
 class TimeSeries:
     points: list[Point]
     markers: list[Marker]
     document_changes: DocumentChanges
+    judging_setups: JudgingSetups
 
 
 async def _markers(
@@ -455,8 +490,8 @@ async def time_series(
 ) -> TimeSeries:
     """The metric over every Version of the Agent, per period of the UTC days ``start`` to
     ``end`` inclusive (each period clipped to the range), including today so far; with the
-    Live History entries made during the range and the Project's Document changes during it.
-    Raises ``AgentNotFoundError``."""
+    Live History entries made during the range, the Project's Document changes during it and
+    its Judging setups. Raises ``AgentNotFoundError``."""
     agent = (await get_agent(session, scope, project_id, agent_id)).agent
     daily: dict[date, Usage] = {}
     rolled = await session.scalars(
@@ -486,5 +521,8 @@ async def time_series(
         markers=await _markers(session, agent.id, since, until),
         document_changes=await _document_changes(
             session, scope.organisation_id, agent.project_id, since, until
+        ),
+        judging_setups=await judging_setups(
+            session, scope.organisation_id, agent.id, None, start, end
         ),
     )

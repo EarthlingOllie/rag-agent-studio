@@ -4,6 +4,7 @@ import { AgentDiffView } from "./AgentDiff";
 import { useTagNames } from "./AgentPublish";
 import { type MetricRow, type MetricsRange, type VersionKpis, comparisonCsvUrl, useVersionComparison } from "./analytics";
 import { dollars, duration } from "./format";
+import { JudgingSetupNote } from "./JudgingSetupNote";
 import { Notice, Skeleton, button, field, table, text } from "../design";
 
 const percent = (rate: number) => `${String(Math.round(rate * 100))}%`;
@@ -103,7 +104,7 @@ function Compared({
   if (sides.a === sides.b) return <p className={text.muted}>Pick two different Versions to compare.</p>;
   if (comparison.isPending) return <Skeleton label="Comparing the Versions" />;
   if (comparison.isError) return <Notice tone="error">The comparison could not be loaded. Try again shortly.</Notice>;
-  const { a, b, metrics, config_diff: diff } = comparison.data;
+  const { a, b, metrics, config_diff: diff, judging_setup_changes: judgingChanges, mixed_judging_setups: mixed } = comparison.data;
   return (
     <>
       <p>
@@ -111,6 +112,7 @@ function Compared({
           Export as CSV
         </a>
       </p>
+      <JudgingSetupNote mixed={mixed} changes={judgingChanges} />
       <div className="grid gap-6 lg:grid-cols-2">
         <ComparisonTable rows={metrics} a={a} b={b} />
         <section aria-labelledby="config-changes-heading">

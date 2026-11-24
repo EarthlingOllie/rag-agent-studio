@@ -442,3 +442,54 @@ test("the comparison says so while it loads", async () => {
   expect(await screen.findByRole("status", { name: "Comparing the Versions" })).toBeInTheDocument();
   expect(await screen.findByRole("table", { name: "v1 compared with v2" })).toBeInTheDocument();
 });
+
+test("a comparison whose Live Verdicts mix Judging setups notes it, with each change", async () => {
+  fakeAuthApi({ signedInAs: editorSession });
+  fakeProjectsApi();
+  fakeAgentsApi({ agents: [hrHelper] });
+  fakeMetricsApi({ versions: { [hrHelper.id]: [largeSample, smallSample] } });
+  fakeComparisonApi({
+    comparisons: [
+      {
+        ...versionComparison(largeSample, smallSample, v1AgainstV2Metrics, v1ToV2Diff),
+        mixed_judging_setups: true,
+        judging_setup_changes: [
+          { occurred_at: "2026-11-04T09:00:00Z", kind: "guidance", guidance_version: 1, guidance_removed: false, evaluation_model: null },
+          { occurred_at: "2026-11-05T09:00:00Z", kind: "guidance", guidance_version: 2, guidance_removed: true, evaluation_model: null },
+          { occurred_at: "2026-11-05T10:00:00Z", kind: "evaluation_model", guidance_version: null, guidance_removed: false, evaluation_model: "gpt-4.1" },
+          { occurred_at: "2026-11-06T10:00:00Z", kind: "evaluation_model", guidance_version: null, guidance_removed: false, evaluation_model: null },
+        ],
+      },
+    ],
+  });
+  renderStudio(analyticsTab);
+  await screen.findByRole("table", { name: "v1 compared with v2" });
+
+  expect(screen.getByRole("note")).toHaveTextContent(
+    "Live Verdicts in this period were judged under more than one Judging setup (4 Nov: Judging guidance v1 saved; 5 Nov: Judging guidance removed (v2); 5 Nov: Evaluation Model changed to gpt-4.1; 6 Nov: Evaluation Model back to the Default Model). A difference in the Live score across a change may come from how replies were judged rather than the Version.",
+  );
+});
+
+test("a comparison mixing Judging setups with no change in its range still notes it", async () => {
+  fakeAuthApi({ signedInAs: editorSession });
+  fakeProjectsApi();
+  fakeAgentsApi({ agents: [hrHelper] });
+  fakeMetricsApi({ versions: { [hrHelper.id]: [largeSample, smallSample] } });
+  fakeComparisonApi({
+    comparisons: [{ ...versionComparison(largeSample, smallSample, v1AgainstV2Metrics, v1ToV2Diff), mixed_judging_setups: true }],
+  });
+  renderStudio(analyticsTab);
+  await screen.findByRole("table", { name: "v1 compared with v2" });
+
+  expect(screen.getByRole("note")).toHaveTextContent(
+    /^Live Verdicts in this period were judged under more than one Judging setup\. A difference/,
+  );
+});
+
+test("a comparison under one Judging setup has no note", async () => {
+  setUp();
+  renderStudio(analyticsTab);
+  await screen.findByRole("table", { name: "v1 compared with v2" });
+
+  expect(screen.queryByRole("note")).not.toBeInTheDocument();
+});

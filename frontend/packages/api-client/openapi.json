@@ -5081,6 +5081,59 @@
         "title": "JudgingGuidanceOut",
         "type": "object"
       },
+      "JudgingSetupChangeOut": {
+        "description": "A change of the Organisation's Judging setup during the range: Judging guidance saved or\nremoved, or the Evaluation Model changed. Live Verdicts judged before and after it don't\ncompare like with like.",
+        "properties": {
+          "evaluation_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Model"
+          },
+          "guidance_removed": {
+            "title": "Guidance Removed",
+            "type": "boolean"
+          },
+          "guidance_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Version"
+          },
+          "kind": {
+            "enum": [
+              "guidance",
+              "evaluation_model"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "kind",
+          "guidance_version",
+          "guidance_removed",
+          "evaluation_model"
+        ],
+        "title": "JudgingSetupChangeOut",
+        "type": "object"
+      },
       "KnowledgeBaseGapOut": {
         "properties": {
           "evidence_ids": {
@@ -7068,6 +7121,10 @@
       "PublishSummaryOut": {
         "description": "Whether the Draft has been evaluated against the current Live Version with the\nInstructions being published. Advisory: Publishing never depends on it.",
         "properties": {
+          "earlier_judging_setup": {
+            "title": "Earlier Judging Setup",
+            "type": "boolean"
+          },
           "evaluated_live_version_number": {
             "anyOf": [
               {
@@ -7131,7 +7188,8 @@
           "regressions",
           "lower_score",
           "evaluated_live_version_number",
-          "publishing_instructions_version_number"
+          "publishing_instructions_version_number",
+          "earlier_judging_setup"
         ],
         "title": "PublishSummaryOut",
         "type": "object"
@@ -10276,6 +10334,70 @@
         "title": "TimeSeriesGranularity",
         "type": "string"
       },
+      "TimeSeriesJudgingSetupChangeOut": {
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "evaluation_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Model"
+          },
+          "guidance_removed": {
+            "title": "Guidance Removed",
+            "type": "boolean"
+          },
+          "guidance_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Version"
+          },
+          "kind": {
+            "enum": [
+              "guidance",
+              "evaluation_model"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "point_start": {
+            "format": "date",
+            "title": "Point Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "kind",
+          "guidance_version",
+          "guidance_removed",
+          "evaluation_model",
+          "day",
+          "point_start"
+        ],
+        "title": "TimeSeriesJudgingSetupChangeOut",
+        "type": "object"
+      },
       "TimeSeriesMetric": {
         "description": "What a time series measures, over each of its periods.",
         "enum": [
@@ -10310,6 +10432,13 @@
           "granularity": {
             "$ref": "#/components/schemas/TimeSeriesGranularity"
           },
+          "judging_setup_changes": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesJudgingSetupChangeOut"
+            },
+            "title": "Judging Setup Changes",
+            "type": "array"
+          },
           "markers": {
             "items": {
               "$ref": "#/components/schemas/LiveHistoryMarkerOut"
@@ -10319,6 +10448,10 @@
           },
           "metric": {
             "$ref": "#/components/schemas/TimeSeriesMetric"
+          },
+          "mixed_judging_setups": {
+            "title": "Mixed Judging Setups",
+            "type": "boolean"
           },
           "points": {
             "items": {
@@ -10341,7 +10474,9 @@
           "end",
           "points",
           "markers",
-          "document_changes"
+          "document_changes",
+          "judging_setup_changes",
+          "mixed_judging_setups"
         ],
         "title": "TimeSeriesOut",
         "type": "object"
@@ -11150,12 +11285,23 @@
             "title": "End",
             "type": "string"
           },
+          "judging_setup_changes": {
+            "items": {
+              "$ref": "#/components/schemas/JudgingSetupChangeOut"
+            },
+            "title": "Judging Setup Changes",
+            "type": "array"
+          },
           "metrics": {
             "items": {
               "$ref": "#/components/schemas/MetricRowOut"
             },
             "title": "Metrics",
             "type": "array"
+          },
+          "mixed_judging_setups": {
+            "title": "Mixed Judging Setups",
+            "type": "boolean"
           },
           "start": {
             "format": "date",
@@ -11170,7 +11316,9 @@
           "a",
           "b",
           "metrics",
-          "config_diff"
+          "config_diff",
+          "judging_setup_changes",
+          "mixed_judging_setups"
         ],
         "title": "VersionComparisonOut",
         "type": "object"
@@ -16049,7 +16197,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison": {
       "get": {
-        "description": "Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at\nmost 366 days, today's so far included): each Version's KPIs, every metric's difference and\nthe Version it favours, and the configuration diff from `a` to `b`. Only Visitor\nConversations count.",
+        "description": "Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at\nmost 366 days, today's so far included): each Version's KPIs, every metric's difference and\nthe Version it favours, the configuration diff from `a` to `b`, and the Judging setup\nchanges during the range. Only Visitor Conversations count.",
         "operationId": "compareVersions",
         "parameters": [
           {
@@ -20337,7 +20485,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/time-series": {
       "get": {
-        "description": "One metric of the Agent (every Version together) per period of the UTC days `start` to\n`end` (both inclusive, at most 366 days), including today's so far; with markers where the\nLive Version changed and the Project's Document changes during the range. Only Visitor\nConversations count.",
+        "description": "One metric of the Agent (every Version together) per period of the UTC days `start` to\n`end` (both inclusive, at most 366 days), including today's so far; with markers where the\nLive Version changed, the Project's Document changes and the Judging setup changes during\nthe range. Only Visitor Conversations count.",
         "operationId": "getTimeSeries",
         "parameters": [
           {

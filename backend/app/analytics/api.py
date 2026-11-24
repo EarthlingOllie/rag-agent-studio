@@ -1,14 +1,15 @@
 """Studio routes for Version KPIs (an Agent's Versions' key numbers over a range of UTC days),
 Version comparison (two Versions side by side, also as CSV) and the time series (one metric of
 the Agent per day, week or month, with Live History markers and a confounder note's Document
-changes). Editors and Owners may read them. Playground Conversations never count. Org cost (what
-the Organisation spent over a range of UTC days, by Project or by Agent, with Playground usage in
-a separate column) is for Owners only."""
+changes); both also list the Judging setup changes in their range and say whether its Live
+Verdicts mix Judging setups (spec 19). Editors and Owners may read them. Playground Conversations
+never count. Org cost (what the Organisation spent over a range of UTC days, by Project or by
+Agent, with Playground usage in a separate column) is for Owners only."""
 
 import uuid
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
@@ -21,6 +22,7 @@ from app.agents.service import AgentNotFoundError
 from app.agents.versions_api import AgentDiffOut, diff_out
 from app.analytics import comparison, service
 from app.auth.api import Db
+from app.evaluation.guidance import JudgingSetupChange
 from app.playground.api import Dollars
 from app.projects.service import ProjectNotFoundError
 from app.tenancy.api import ORGANISATION_PREFIX
@@ -358,6 +360,36 @@ class DocumentChangesOut(BaseModel):
     deleted: int
 
 
+class JudgingSetupChangeOut(BaseModel):
+    """A change of the Organisation's Judging setup during the range: Judging guidance saved or
+    removed, or the Evaluation Model changed. Live Verdicts judged before and after it don't
+    compare like with like."""
+
+    occurred_at: datetime
+    kind: Literal["guidance", "evaluation_model"]
+    # For ``guidance``: the version saved, and whether it removed guidance (an empty version).
+    guidance_version: int | None
+    guidance_removed: bool
+    # For ``evaluation_model``: the model chosen; null when it went back to the Default Model.
+    evaluation_model: str | None
+
+
+def _judging_change(change: JudgingSetupChange) -> JudgingSetupChangeOut:
+    return JudgingSetupChangeOut(
+        occurred_at=change.occurred_at,
+        kind=change.kind,
+        guidance_version=change.guidance_version,
+        guidance_removed=change.guidance_removed,
+        evaluation_model=change.evaluation_model,
+    )
+
+
+class TimeSeriesJudgingSetupChangeOut(JudgingSetupChangeOut):
+    # The UTC day it happened on, and the start of the point (period) that day is in.
+    day: date
+    point_start: date
+
+
 class TimeSeriesOut(BaseModel):
     agent_id: uuid.UUID
     metric: service.TimeSeriesMetric
@@ -369,6 +401,10 @@ class TimeSeriesOut(BaseModel):
     markers: list[LiveHistoryMarkerOut]
     # The Knowledge Base isn't versioned: changes during the range may confound the series.
     document_changes: DocumentChangesOut
+    # The Organisation's Judging setup changes during the range, oldest first, and whether the
+    # Agent's Live Verdicts in it were judged under more than one Judging setup.
+    judging_setup_changes: list[TimeSeriesJudgingSetupChangeOut]
+    mixed_judging_setups: bool
 
 
 def _version(version: AgentVersion) -> MarkerVersionOut:
@@ -395,8 +431,8 @@ async def get_time_series(
 ) -> TimeSeriesOut:
     """One metric of the Agent (every Version together) per period of the UTC days `start` to
     `end` (both inclusive, at most 366 days), including today's so far; with markers where the
-    Live Version changed and the Project's Document changes during the range. Only Visitor
-    Conversations count."""
+    Live Version changed, the Project's Document changes and the Judging setup changes during
+    the range. Only Visitor Conversations count."""
     today = clock.now().astimezone(UTC).date()
     first, last = _range(start, end, today)
     try:
@@ -428,6 +464,15 @@ async def get_time_series(
         document_changes=DocumentChangesOut(
             changed=found.document_changes.changed, deleted=found.document_changes.deleted
         ),
+        judging_setup_changes=[
+            TimeSeriesJudgingSetupChangeOut(
+                **_judging_change(c).model_dump(),
+                day=c.occurred_at.astimezone(UTC).date(),
+                point_start=_point_start(found.points, c.occurred_at.astimezone(UTC).date()),
+            )
+            for c in found.judging_setups.changes
+        ],
+        mixed_judging_setups=found.judging_setups.mixed,
     )
 
 
@@ -463,6 +508,10 @@ class VersionComparisonOut(BaseModel):
     metrics: list[MetricRowOut]
     # The configuration diff from Version a to Version b, as the Agent diff gives it.
     config_diff: AgentDiffOut
+    # The Organisation's Judging setup changes during the range, oldest first, and whether the
+    # two Versions' Live Verdicts in it were judged under more than one Judging setup.
+    judging_setup_changes: list[JudgingSetupChangeOut]
+    mixed_judging_setups: bool
 
 
 def _number(value: comparison.Value | None) -> float | None:
@@ -493,7 +542,7 @@ async def _compared(
     b: Annotated[uuid.UUID, Query(description="Another of the Agent's Versions: the second side")],
     start: StartQuery = None,
     end: EndQuery = None,
-) -> tuple[date, date, comparison.Comparison, versions.ConfigDiff]:
+) -> tuple[date, date, comparison.Comparison, versions.ConfigDiff, service.JudgingSetups]:
     today = clock.now().astimezone(UTC).date()
     first, last = _range(start, end, today)
     if a == b:
@@ -503,14 +552,18 @@ async def _compared(
             db, scope, project_id, agent_id, [a, b], first, last, today
         )
         diff = await versions.diff(db, scope, project_id, agent_id, a, b)
+        setups = await service.judging_setups(
+            db, scope.organisation_id, agent_id, [a, b], first, last
+        )
     except (ProjectNotFoundError, AgentNotFoundError, service.VersionNotFoundError):
         raise not_found() from None
     by_id = {kpis.version.id: kpis for kpis in found}
-    return first, last, comparison.compare(by_id[a], by_id[b]), diff
+    return first, last, comparison.compare(by_id[a], by_id[b]), diff, setups
 
 
 Compared = Annotated[
-    tuple[date, date, comparison.Comparison, versions.ConfigDiff], Depends(_compared)
+    tuple[date, date, comparison.Comparison, versions.ConfigDiff, service.JudgingSetups],
+    Depends(_compared),
 ]
 
 
@@ -518,9 +571,9 @@ Compared = Annotated[
 async def compare_versions(agent_id: uuid.UUID, compared: Compared) -> VersionComparisonOut:
     """Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at
     most 366 days, today's so far included): each Version's KPIs, every metric's difference and
-    the Version it favours, and the configuration diff from `a` to `b`. Only Visitor
-    Conversations count."""
-    first, last, found, diff = compared
+    the Version it favours, the configuration diff from `a` to `b`, and the Judging setup
+    changes during the range. Only Visitor Conversations count."""
+    first, last, found, diff, setups = compared
     return VersionComparisonOut(
         agent_id=agent_id,
         start=first,
@@ -529,6 +582,8 @@ async def compare_versions(agent_id: uuid.UUID, compared: Compared) -> VersionCo
         b=_out(found.b),
         metrics=[_row_out(row) for row in found.metrics],
         config_diff=diff_out(diff),
+        judging_setup_changes=[_judging_change(change) for change in setups.changes],
+        mixed_judging_setups=setups.mixed,
     )
 
 
@@ -544,7 +599,7 @@ async def compare_versions(agent_id: uuid.UUID, compared: Compared) -> VersionCo
 async def export_version_comparison(compared: Compared) -> Response:
     """The comparison of Versions `a` and `b` as a CSV download: a row per metric with both
     Versions' values, the difference and the Version it favours."""
-    first, last, found, _ = compared
+    first, last, found, _, _ = compared
     name = f"comparison-v{found.a.version.number}-v{found.b.version.number}-{first}-to-{last}.csv"
     return Response(
         comparison.to_csv(found),

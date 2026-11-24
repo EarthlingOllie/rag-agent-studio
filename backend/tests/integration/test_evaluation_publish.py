@@ -27,7 +27,7 @@ from tests.integration.test_evaluation import (
     evaluation_path,
     judge_with,
 )
-from tests.integration.test_evaluation_settings import set_repeats
+from tests.integration.test_evaluation_settings import set_evaluation_model, set_repeats
 from tests.integration.test_evaluation_sides import (
     DRAFT,
     LIVE,
@@ -39,8 +39,10 @@ from tests.integration.test_evaluation_sides import (
     start,
     unsent,
 )
+from tests.integration.test_judging_guidance import saved
 from tests.integration.test_playground import ready_agent
 from tests.integration.test_project_instructions_versions import published as instructions
+from tests.integration.test_provider_credentials import added
 
 
 async def summary(
@@ -91,6 +93,7 @@ async def test_an_agent_without_a_set_has_no_set_and_still_publishes(
         "lower_score": False,
         "evaluated_live_version_number": None,
         "publishing_instructions_version_number": None,
+        "earlier_judging_setup": False,
     }
     await publishes(owner, project_id, agent_id)
 
@@ -219,6 +222,55 @@ async def test_a_run_with_no_regression_and_no_lower_score_is_clear(
 
     assert (found["state"], found["regressions"], found["lower_score"]) == ("clear", [], False)
     await publishes(owner, project_id, agent_id)
+
+
+async def test_a_run_judged_under_an_earlier_judging_setup_brings_a_notice(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    judge_with(app, answering(TABLE))
+    project_id, agent_id, _ = await live_and_draft(app, owner)
+    await add_case(owner, project_id, agent_id, "Same?")
+    await evaluated(owner, project_id, agent_id)
+    assert (await summary(owner, project_id, agent_id))["earlier_judging_setup"] is False
+
+    await saved(owner, "Be strict about grounding.")
+    found = await summary(owner, project_id, agent_id)
+
+    # A notice beside the state, which it doesn't change; Publishing still succeeds.
+    assert (found["state"], found["earlier_judging_setup"]) == ("clear", True)
+    await publishes(owner, project_id, agent_id)
+
+
+async def test_a_run_under_the_current_judging_setup_brings_no_notice(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    judge_with(app, answering(TABLE))
+    project_id, agent_id, _ = await live_and_draft(app, owner)
+    await add_case(owner, project_id, agent_id, "Same?")
+    await saved(owner, "Be strict about grounding.")
+    await evaluated(owner, project_id, agent_id)
+
+    found = await summary(owner, project_id, agent_id)
+
+    assert (found["state"], found["earlier_judging_setup"]) == ("clear", False)
+
+
+async def test_changing_the_evaluation_model_also_brings_the_notice(
+    app: FastAPI, owner: SignedUpMember
+) -> None:
+    judge_with(app, answering(TABLE))
+    project_id, agent_id, _ = await live_and_draft(app, owner)
+    await add_case(owner, project_id, agent_id, "Same?")
+    await evaluated(owner, project_id, agent_id)
+    await published(owner, project_id, agent_id)
+    claude = await added(owner, name="Claude")
+    response = await set_evaluation_model(owner, claude["id"], "claude-haiku-4-5")
+    assert response.status_code == 200, response.text
+
+    found = await summary(owner, project_id, agent_id)
+
+    # The notice is about the Draft's latest Run, even one compared with an earlier Live Version.
+    assert (found["state"], found["earlier_judging_setup"]) == ("live_changed", True)
 
 
 async def test_a_never_published_agents_draft_alone_qualifies(

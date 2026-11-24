@@ -12,12 +12,16 @@ Live score drop alert: once an Agent's Live Version has ``DROP_MIN_JUDGED`` judg
 on replies since it became Live, its Live score is compared with the previous Live Version's (the
 one it replaced, in Live History) over that Version's last ``DROP_WINDOW`` as Live, which needs
 ``DROP_MIN_JUDGED`` too. A drop is at least ``DROP_MIN_POINTS`` lower and lower by a one-sided
-pooled two-proportion z-test at 95%. Any change of the Live Version also clears it
-(``app.agents.versions``)."""
+pooled two-proportion z-test at 95%. Only Live Verdicts judged under the Organisation's current
+Judging setup count, on both sides (spec 19): a new Judging setup restarts the counts, so saving
+Judging guidance or changing the Evaluation Model can't raise it, and it stays quiet while the
+previous Version has fewer than ``DROP_MIN_JUDGED`` under the new one. Any change of the Live
+Version also clears it (``app.agents.versions``)."""
 
 import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
+from typing import Any, cast
 
 from sqlalchemy import ColumnElement, Select, and_, case, func, select, update
 from sqlalchemy.dialects.postgresql import distinct_on
@@ -26,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.models import Agent, AgentVersion, LiveHistoryEntry
 from app.analytics.stats import clearly_lower
 from app.conversations.models import Conversation, Message, MessageRole
+from app.evaluation.guidance import JudgingSetup, current_setup
 from app.evaluation.models import LiveStatus, LiveVerdict
 from app.mail import templates
 from app.mail.port import Mailer
@@ -191,11 +196,13 @@ class Scores:
 
 async def _scores(session: AsyncSession, at: datetime) -> dict[uuid.UUID, Scores]:
     """Each Agent whose Live Version replaced an earlier one and has at least
-    ``DROP_MIN_JUDGED`` judged Live Verdicts on replies since: both Versions' counts."""
+    ``DROP_MIN_JUDGED`` judged Live Verdicts on replies since: both Versions' counts, of Live
+    Verdicts judged under the Organisation's current Judging setup only."""
     # The Live History entry that made each Agent's Live Version Live.
     became = (
         select(
             LiveHistoryEntry.agent_id,
+            Agent.organisation_id,
             LiveHistoryEntry.to_version_id,
             LiveHistoryEntry.from_version_id,
             LiveHistoryEntry.occurred_at,
@@ -209,37 +216,59 @@ async def _scores(session: AsyncSession, at: datetime) -> dict[uuid.UUID, Scores
         .order_by(LiveHistoryEntry.agent_id, LiveHistoryEntry.seq.desc())
         .subquery()
     )
+    setups: dict[uuid.UUID, JudgingSetup | None] = {}
 
-    def counts(
-        version: ColumnElement[uuid.UUID], *window: ColumnElement[bool]
-    ) -> Select[uuid.UUID, uuid.UUID, uuid.UUID, int, int]:
+    async def under_current(
+        organisation_id: uuid.UUID, provider: str | None, model: str | None, version: int | None
+    ) -> bool:
+        """Whether Live Verdicts judged under this Judging setup were judged under the
+        Organisation's current one."""
+        if organisation_id not in setups:
+            setups[organisation_id] = await current_setup(session, organisation_id)
+        return setups[organisation_id] == JudgingSetup(
+            cast(str, provider), cast(str, model), version
+        )
+
+    def counts(version: ColumnElement[uuid.UUID], *window: ColumnElement[bool]) -> Select[Any]:
         """Each Agent's judged and passed Live Verdicts of ``version`` on replies in ``window``,
-        with its Live Version and the previous one."""
+        per Judging setup, with its Organisation, its Live Version and the previous one."""
         return (
             select(
                 became.c.agent_id,
+                became.c.organisation_id,
                 became.c.to_version_id,
                 became.c.from_version_id,
+                LiveVerdict.judge_provider,
+                LiveVerdict.judge_model,
+                LiveVerdict.judging_guidance_version,
                 func.count(),
                 _count(LiveVerdict.passed.is_(True)),
             )
             .join(LiveVerdict, LiveVerdict.agent_version_id == version)
             .join(Message, Message.id == LiveVerdict.message_id)
             .where(LiveVerdict.status == LiveStatus.JUDGED, *window)
-            .group_by(became.c.agent_id, became.c.to_version_id, became.c.from_version_id)
+            .group_by(
+                became.c.agent_id,
+                became.c.organisation_id,
+                became.c.to_version_id,
+                became.c.from_version_id,
+                LiveVerdict.judge_provider,
+                LiveVerdict.judge_model,
+                LiveVerdict.judging_guidance_version,
+            )
         )
 
-    current = await session.execute(
+    latest = await session.execute(
         counts(
             became.c.to_version_id,
             Message.created_at >= became.c.occurred_at,
             Message.created_at <= at,
         ).having(func.count() >= DROP_MIN_JUDGED)
     )
-    found = {
-        agent_id: Scores(to_id, judged, passed, from_id, 0, 0)
-        for agent_id, to_id, from_id, judged, passed in current
-    }
+    found: dict[uuid.UUID, Scores] = {}
+    for agent_id, organisation_id, to_id, from_id, *setup, judged, passed in latest:
+        if await under_current(organisation_id, *setup):
+            found[agent_id] = Scores(to_id, judged, passed, from_id, 0, 0)
     previous = await session.execute(
         counts(
             became.c.from_version_id,
@@ -247,8 +276,11 @@ async def _scores(session: AsyncSession, at: datetime) -> dict[uuid.UUID, Scores
             Message.created_at < became.c.occurred_at,
         ).where(became.c.agent_id.in_(found))
     )
-    for agent_id, _, _, judged, passed in previous:
-        found[agent_id] = replace(found[agent_id], previous_judged=judged, previous_passed=passed)
+    for agent_id, organisation_id, _, _, *setup, judged, passed in previous:
+        if await under_current(organisation_id, *setup):
+            found[agent_id] = replace(
+                found[agent_id], previous_judged=judged, previous_passed=passed
+            )
     return found
 
 
