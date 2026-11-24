@@ -268,6 +268,34 @@
         "title": "AgentVersionsOut",
         "type": "object"
       },
+      "AgreementOut": {
+        "properties": {
+          "agreed": {
+            "title": "Agreed",
+            "type": "integer"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "reviews": {
+            "title": "Reviews",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "provider",
+          "model",
+          "reviews",
+          "agreed"
+        ],
+        "title": "AgreementOut",
+        "type": "object"
+      },
       "AppliedSuggestionOut": {
         "properties": {
           "agent": {
@@ -3533,6 +3561,25 @@
           "total_usd"
         ],
         "title": "EstimateOut",
+        "type": "object"
+      },
+      "EvaluationAgreementOut": {
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgreementOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "current"
+        ],
+        "title": "EvaluationAgreementOut",
         "type": "object"
       },
       "EvaluationBudgetOut": {
@@ -7444,6 +7491,128 @@
         "title": "RetrievalMode",
         "type": "string"
       },
+      "ReviewChunkOut": {
+        "properties": {
+          "cited": {
+            "title": "Cited",
+            "type": "boolean"
+          },
+          "document_name": {
+            "title": "Document Name",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "document_name",
+          "text",
+          "cited"
+        ],
+        "title": "ReviewChunkOut",
+        "type": "object"
+      },
+      "ReviewSampleItemOut": {
+        "description": "A judged Verdict, as the Evaluation Model was given it, without its outcome or reason.",
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "agent_name": {
+            "title": "Agent Name",
+            "type": "string"
+          },
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "check": {
+            "enum": [
+              "reference_answer",
+              "grounding"
+            ],
+            "title": "Check",
+            "type": "string"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewChunkOut"
+            },
+            "title": "Chunks",
+            "type": "array"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "reference_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Answer"
+          },
+          "verdict_id": {
+            "format": "uuid",
+            "title": "Verdict Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict_id",
+          "check",
+          "agent_id",
+          "agent_name",
+          "question",
+          "reference_answer",
+          "answer",
+          "chunks"
+        ],
+        "title": "ReviewSampleItemOut",
+        "type": "object"
+      },
+      "ReviewSampleNextOut": {
+        "properties": {
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewSampleItemOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "integer"
+          },
+          "reviewed_by_you": {
+            "title": "Reviewed By You",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "item",
+          "reviewed",
+          "reviewed_by_you"
+        ],
+        "title": "ReviewSampleNextOut",
+        "type": "object"
+      },
       "Role": {
         "enum": [
           "owner",
@@ -8050,6 +8219,85 @@
           "score"
         ],
         "title": "RunSideOut",
+        "type": "object"
+      },
+      "SampleReviewOut": {
+        "description": "The reveal: the Editor's outcome beside the Evaluation Model's, and its reason.",
+        "properties": {
+          "agreed": {
+            "title": "Agreed",
+            "type": "boolean"
+          },
+          "evaluation_model_outcome": {
+            "enum": [
+              "pass",
+              "fail"
+            ],
+            "title": "Evaluation Model Outcome",
+            "type": "string"
+          },
+          "evaluation_model_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Model Reason"
+          },
+          "outcome": {
+            "enum": [
+              "pass",
+              "fail"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome",
+          "evaluation_model_outcome",
+          "evaluation_model_reason",
+          "agreed"
+        ],
+        "title": "SampleReviewOut",
+        "type": "object"
+      },
+      "SampleReviewRequest": {
+        "properties": {
+          "outcome": {
+            "enum": [
+              "pass",
+              "fail"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "verdict_id": {
+            "format": "uuid",
+            "title": "Verdict Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "verdict_id",
+          "outcome"
+        ],
+        "title": "SampleReviewRequest",
         "type": "object"
       },
       "ScopedAgentOut": {
@@ -13553,6 +13801,60 @@
         "summary": "List Embedding Models",
         "tags": [
           "embedding-models"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/evaluation-agreement": {
+      "get": {
+        "description": "How many Review sample reviews of the current Evaluation Model agreed with it.",
+        "operationId": "getEvaluationAgreement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationAgreementOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Evaluation Agreement",
+        "tags": [
+          "evaluation"
         ]
       }
     },
@@ -23658,6 +23960,117 @@
         "summary": "Set Retention Window",
         "tags": [
           "organisations"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/review-sample/next": {
+      "get": {
+        "description": "One judged Verdict drawn at random from those of the current Evaluation Model not yet\nreviewed (null when there are none), without the Evaluation Model's outcome or reason, and\nhow many Review sample reviews the Organisation and you have given.",
+        "operationId": "getReviewSampleItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewSampleNextOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Review Sample Item",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/review-sample/reviews": {
+      "post": {
+        "description": "Stores your pass or fail on a Review sample item, replacing any earlier review of the\nVerdict, and reveals the Evaluation Model's outcome and reason. A Verdict that isn't a judged\nReference answer or grounding Verdict of this Organisation is not found.",
+        "operationId": "submitSampleReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SampleReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Not pass or fail, or a reason over 1,000 characters"
+          }
+        },
+        "summary": "Submit Sample Review",
+        "tags": [
+          "evaluation"
         ]
       }
     },

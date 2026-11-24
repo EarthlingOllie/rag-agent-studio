@@ -116,6 +116,7 @@ function SettingsPath({ organisationId }: { organisationId: string }) {
 type OrganisationPage =
   | "/organisations/$organisationId/projects"
   | "/organisations/$organisationId/cost"
+  | "/organisations/$organisationId/review-sample"
   | "/organisations/$organisationId/security"
   | "/organisations/$organisationId/profile";
 
@@ -123,6 +124,7 @@ type OrganisationPage =
 const PAGES: { label: string; to: OrganisationPage }[] = [
   { label: "Projects", to: `${ORGANISATION}/projects` },
   { label: "Cost", to: `${ORGANISATION}/cost` },
+  { label: "Review sample", to: `${ORGANISATION}/review-sample` },
   { label: "Security", to: `${ORGANISATION}/security` },
   { label: "Profile", to: `${ORGANISATION}/profile` },
 ];

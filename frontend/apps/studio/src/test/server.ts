@@ -71,6 +71,8 @@ export const server = setupServer(
       retention_days: 90,
     }),
   ),
+  // No Organisation has a model to judge with, so there is no Evaluation Model agreement.
+  http.get("*/api/organisations/:organisationId/evaluation-agreement", () => HttpResponse.json({ current: null })),
   // No Organisation has an Evaluation budget, so no Visitor reply is judged.
   http.get("*/api/organisations/:organisationId/evaluation-budget", () =>
     HttpResponse.json({

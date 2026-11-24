@@ -17,6 +17,7 @@ from app.credentials import models as credential_models
 from app.default_model import models as default_model_models
 from app.documents import models as document_models
 from app.evaluation import models as evaluation_models
+from app.evaluation import review_models as evaluation_review_models
 from app.feedback import models as feedback_models
 from app.pricing import models as pricing_models
 from app.pricing.sync import sync_price_table
@@ -43,6 +44,7 @@ _MODEL_MODULES = (
     default_model_models,
     document_models,
     evaluation_models,
+    evaluation_review_models,
     feedback_models,
     tag_models,
     pricing_models,
