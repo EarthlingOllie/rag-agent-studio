@@ -64,6 +64,8 @@ function GuidanceEditor({ organisationId, current, onDone }: { organisationId: s
         <p id={hintId} className={tooLong ? field.error : field.hint}>
           {`${count.format(draft.length)} of ${count.format(GUIDANCE_MAX)} characters. `}
           Every save starts a new Judging setup: new Evaluation Runs and Live Verdicts are judged with it, and earlier ones keep theirs.
+          Evaluation Model agreement starts again under it, and the Live score drop alert stays quiet for the previous Live Version
+          until that Version has 30 Live Verdicts under it.
         </p>
       </div>
       <FormError message={credentialFailure(save.error)} />
@@ -115,7 +117,8 @@ function RemoveGuidance({ organisationId }: { organisationId: string }) {
         }}
       >
         New Evaluation Runs and Live Verdicts are judged by the Evaluation Model's own instructions. This saves an empty version, so
-        earlier versions stay in the history.
+        earlier versions stay in the history. It starts a new Judging setup: Evaluation Model agreement starts again, and the Live
+        score drop alert stays quiet for the previous Live Version until that Version has 30 Live Verdicts under it.
       </ConfirmDialog>
     </>
   );

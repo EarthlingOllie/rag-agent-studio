@@ -4,10 +4,12 @@ import { Area, CartesianGrid, ComposedChart, ReferenceArea, ReferenceLine, Toolt
 import { Icon, Notice, Segmented, Skeleton, field, notice, surface, table, text } from "../design";
 
 import { type MetricsRange, type TimeSeries, type TimeSeriesGranularity, type TimeSeriesMetric, useTimeSeries } from "./analytics";
+import { JudgingSetupNote, judgingChange } from "./JudgingSetupNote";
 import { ProjectRequestError } from "./projects";
 
 type Point = TimeSeries["points"][number];
 type Marker = TimeSeries["markers"][number];
+type JudgingMarker = TimeSeries["judging_setup_changes"][number];
 
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", minimumFractionDigits: 2, maximumSignificantDigits: 3 });
 const percent = (rate: number) => `${String(Math.round(rate * 100))}%`;
@@ -54,6 +56,13 @@ function markersByPoint(markers: Marker[]): Map<string, Marker[]> {
   return found;
 }
 
+/** The Judging setup changes grouped by the point (period) whose days hold them, keyed by that point's start. */
+function judgingByPoint(changes: JudgingMarker[]): Map<string, JudgingMarker[]> {
+  const found = new Map<string, JudgingMarker[]>();
+  for (const change of changes) found.set(change.point_start, [...(found.get(change.point_start) ?? []), change]);
+  return found;
+}
+
 function ConfounderNote({ changes }: { changes: TimeSeries["document_changes"] }) {
   if (changes.changed === 0 && changes.deleted === 0) return null;
   const parts = [];
@@ -87,6 +96,16 @@ function MarkerLabel({ viewBox, value }: { viewBox?: { x: number; y: number }; v
         {value}
       </text>
     </g>
+  );
+}
+
+/** A Judging setup marker's label: the words, in the flag colour, at the foot of its rule. */
+function JudgingLabel({ viewBox }: { viewBox?: { x: number; y: number; height: number } }) {
+  const { x, y, height } = viewBox as { x: number; y: number; height: number };
+  return (
+    <text x={x + 4} y={y + height - 6} fill="var(--ds-flag)" fontSize={12}>
+      Judging setup
+    </text>
   );
 }
 
@@ -136,9 +155,13 @@ function Readout({
   );
 }
 
+/** Judging setups only change how the Live score is judged, so only its series marks their changes. */
+const judgingMarkers = (series: TimeSeries) => (series.metric === "live_score" ? series.judging_setup_changes : []);
+
 function Chart({ series }: { series: TimeSeries }) {
   const metric = METRICS[series.metric];
   const byPoint = markersByPoint(series.markers);
+  const judging = judgingByPoint(judgingMarkers(series));
   const { changed, deleted } = series.document_changes;
   const first = series.points[0];
   const last = series.points.at(-1);
@@ -175,6 +198,16 @@ function Chart({ series }: { series: TimeSeries }) {
             stroke="var(--ds-muted)"
             strokeDasharray="4 3"
             label={<MarkerLabel value={markers.map((m) => `v${String(m.to_version.number)}`).join(", ")} />}
+          />
+        ))}
+        {[...judging].map(([start, changes]) => (
+          <ReferenceLine
+            key={`judging-${start}`}
+            x={start}
+            stroke="var(--ds-flag)"
+            strokeDasharray="2 2"
+            label={<JudgingLabel />}
+            aria-label={changes.map(judgingChange).join(", ")}
           />
         ))}
       </ComposedChart>
@@ -225,12 +258,13 @@ function Series({ series }: { series: TimeSeries }) {
     <figure aria-labelledby={captionId} className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <figcaption id={captionId} className={`${text.muted} max-w-2xl`}>
-          {`${label} per ${series.granularity}, from ${series.start} until ${series.end} (UTC), today so far included. Every Version of the Agent together; the Playground is left out. Dashed lines mark where the Live Version changed.`}
+          {`${label} per ${series.granularity}, from ${series.start} until ${series.end} (UTC), today so far included. Every Version of the Agent together; the Playground is left out. Dashed lines mark where the Live Version changed${series.metric === "live_score" ? ", dotted ones where the Judging setup changed" : ""}.`}
         </figcaption>
         <Segmented label="Show as" options={VIEWS} value={view} onChange={setView} />
       </div>
       {view === "chart" ? <Chart series={series} /> : <NumbersTable series={series} />}
       <ConfounderNote changes={series.document_changes} />
+      {series.metric === "live_score" && <JudgingSetupNote mixed={series.mixed_judging_setups} changes={series.judging_setup_changes} />}
       <div>
         <h4 className="text-sm font-medium text-ink">Live Version changes</h4>
         {series.markers.length === 0 ? (
@@ -246,6 +280,19 @@ function Series({ series }: { series: TimeSeries }) {
           </ul>
         )}
       </div>
+      {judgingMarkers(series).length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium text-ink">Judging setup changes</h4>
+          <ul aria-label="Judging setup changes" className="mt-1 flex flex-col gap-0.5 text-sm text-ink-2">
+            {judgingMarkers(series).map((change) => (
+              <li key={change.occurred_at + change.kind}>
+                <span className="font-mono text-[13px]">{change.day}</span>
+                {`: ${judgingChange(change)}`}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </figure>
   );
 }

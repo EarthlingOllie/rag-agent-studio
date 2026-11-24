@@ -62,7 +62,7 @@ test("an Owner writes and saves guidance as a new version", async () => {
   const editor = form.getByRole("textbox", { name: "Judging guidance" });
   expect(editor).toHaveFocus();
   expect(editor).toHaveAccessibleDescription(
-    "0 of 2,000 characters. Every save starts a new Judging setup: new Evaluation Runs and Live Verdicts are judged with it, and earlier ones keep theirs.",
+    "0 of 2,000 characters. Every save starts a new Judging setup: new Evaluation Runs and Live Verdicts are judged with it, and earlier ones keep theirs. Evaluation Model agreement starts again under it, and the Live score drop alert stays quiet for the previous Live Version until that Version has 30 Live Verdicts under it.",
   );
   await user.type(editor, PARTIAL_GUIDANCE);
   expect(form.getByText(`${String(PARTIAL_GUIDANCE.length)} of 2,000 characters.`, { exact: false })).toBeInTheDocument();
@@ -116,6 +116,10 @@ test("an Owner removes guidance after confirming, saving an empty version", asyn
 
   await user.click(await section.findByRole("button", { name: "Remove guidance" }));
   const dialog = within(await screen.findByRole("alertdialog", { name: "Remove the Judging guidance?" }));
+  // Before removing, it says what a new Judging setup restarts.
+  expect(dialog.getByText(/It starts a new Judging setup/)).toHaveTextContent(
+    "It starts a new Judging setup: Evaluation Model agreement starts again, and the Live score drop alert stays quiet for the previous Live Version until that Version has 30 Live Verdicts under it.",
+  );
   await user.click(dialog.getByRole("button", { name: "Remove guidance" }));
 
   expect(await screen.findByRole("status")).toHaveTextContent("Judging guidance is removed: new judgements use the Evaluation Model's own instructions.");

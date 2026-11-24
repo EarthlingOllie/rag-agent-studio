@@ -251,6 +251,7 @@ export function publishSummary(
     lower_score: false,
     evaluated_live_version_number: null,
     publishing_instructions_version_number: 2,
+    earlier_judging_setup: false,
     ...overrides,
   };
 }
