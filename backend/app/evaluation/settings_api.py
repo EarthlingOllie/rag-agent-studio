@@ -17,6 +17,7 @@ from app.default_model.api import NOT_FOR_CHAT, NOT_IN_ORGANISATION
 from app.default_model.service import CredentialNotInOrganisationError
 from app.evaluation import budget, guidance, settings
 from app.evaluation.models import GUIDANCE_MAX
+from app.evaluation.reviews import LOW_SAMPLE_BELOW
 from app.gateway.gateway import CapabilityNotGrantedError, ModelNotOfferedError
 from app.playground.api import Dollars
 from app.tenancy.api import ORGANISATION_PREFIX
@@ -195,6 +196,19 @@ async def set_evaluation_budget(
     )
 
 
+class GuidanceCheckOut(BaseModel):
+    """The latest check of a version's text before it was saved: held-out reviews counted, how
+    many it would agree on, its false passes and false fails, how many the Judging setup it
+    replaced agreed on, and whether that is a Low sample (under 30 reviews)."""
+
+    reviews: int
+    agreed: int
+    false_passes: int
+    false_fails: int
+    agreed_before: int
+    low_sample: bool
+
+
 class GuidanceVersionOut(BaseModel):
     # Numbered from 1 in the Organisation.
     version: int
@@ -205,6 +219,8 @@ class GuidanceVersionOut(BaseModel):
     # The Member who saved it; null once they are deleted.
     saved_by: str | None
     saved_at: datetime
+    # The latest check of its text, kept when it was saved; null when it was saved unchecked.
+    check: GuidanceCheckOut | None
 
 
 class JudgingGuidanceOut(BaseModel):
@@ -214,10 +230,16 @@ class JudgingGuidanceOut(BaseModel):
     versions: list[GuidanceVersionOut]
 
 
+NOT_A_DRAFT = "That is not a completed draft of the Organisation's guidance."
+
+
 class SaveJudgingGuidanceRequest(BaseModel):
     """The new guidance, up to 2,000 characters; empty (or only spaces) removes it."""
 
     text: Annotated[str, Field(max_length=GUIDANCE_MAX)]
+    # The completed draft the text came from, edited or not: it is saved as ``drafted``. Null for
+    # text an Owner wrote.
+    draft_id: uuid.UUID | None = None
 
 
 def _version_out(saved: guidance.SavedVersion) -> GuidanceVersionOut:
@@ -228,6 +250,16 @@ def _version_out(saved: guidance.SavedVersion) -> GuidanceVersionOut:
         source=cast(Literal["written", "drafted"], version.source),
         saved_by=saved.saved_by_name,
         saved_at=version.saved_at,
+        check=None
+        if version.check_reviews is None
+        else GuidanceCheckOut(
+            reviews=version.check_reviews,
+            agreed=cast(int, version.check_agreed),
+            false_passes=cast(int, version.check_false_passes),
+            false_fails=cast(int, version.check_false_fails),
+            agreed_before=cast(int, version.check_agreed_before),
+            low_sample=version.check_reviews < LOW_SAMPLE_BELOW,
+        ),
     )
 
 
@@ -247,13 +279,23 @@ async def get_judging_guidance(scope: Scope, db: Db) -> JudgingGuidanceOut:
 
 @router.put(
     "/judging-guidance",
-    responses={**_OWNERS, 422: {"description": "Longer than 2,000 characters"}},
+    responses={
+        **_OWNERS,
+        422: {"description": "Longer than 2,000 characters, or not a completed draft"},
+    },
     operation_id="saveJudgingGuidance",
 )
 async def save_judging_guidance(
     body: SaveJudgingGuidanceRequest, scope: OwnerScope, db: Db, clock: ClockDep
 ) -> JudgingGuidanceOut:
     """Saves the Judging guidance as a new current version, which new Evaluation Runs and Live
-    Verdicts are judged with; empty text removes it (Owners only). Saving the current text again
-    changes nothing. Recorded as ``organisation.judging_guidance_changed``."""
-    return _guidance_out(await guidance.save_guidance(db, scope, body.text, now=clock.now()))
+    Verdicts are judged with; empty text removes it (Owners only). Text from a completed draft
+    is saved as ``drafted``. Saving the current text again changes nothing. Recorded as
+    ``organisation.judging_guidance_changed``."""
+    try:
+        saved = await guidance.save_guidance(
+            db, scope, body.text, now=clock.now(), draft_id=body.draft_id
+        )
+    except guidance.NotADraftError:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, NOT_A_DRAFT) from None
+    return _guidance_out(saved)

@@ -14,7 +14,8 @@ only the Chunk's first sentence and cites nothing, so v2 reads as curt and its E
 shows Regressions against v1. Asked to judge an
 Evaluation Run's answer, it judges by rule, as the fake chat model does
 (``app.evaluation.fake_judge``), so the seeded Runs are deterministic; asked to propose a
-Suggestion, it proposes by rule too (``app.suggestions.fake_proposer``).
+Suggestion, it proposes by rule too (``app.suggestions.fake_proposer``), and asked to draft Judging
+guidance, it drafts by rule (``app.evaluation.fake_drafter``).
 
 The provider's second model, ``demo-naive``, is the Attack evaluation suite's Naive model behind
 its own label: it obeys whatever instructions it finds (decoding base64 and reciting its system
@@ -41,6 +42,7 @@ from pydantic_ai.models import Model
 from pydantic_ai.models.function import AgentInfo, DeltaToolCall, DeltaToolCalls, FunctionModel
 
 from app.evals.naive_model import PIECE, naive_answer, naive_search
+from app.evaluation.fake_drafter import fake_draft, is_drafting
 from app.evaluation.fake_judge import fake_judgement, is_judging
 from app.runtime.prompt import CHUNKS_CLOSE, CHUNKS_OPEN, INPUT_CLOSE, INPUT_OPEN, KNOWLEDGE_SEARCH
 from app.suggestions.fake_proposer import fake_proposal, is_proposing
@@ -130,6 +132,8 @@ def _reply(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
         return fake_judgement(messages, info)
     if is_proposing(info):
         return fake_proposal(messages, info)
+    if is_drafting(info):
+        return fake_draft(messages, info)
     query = demo_search(messages, info)
     if query is not None:
         return ModelResponse(parts=[ToolCallPart(KNOWLEDGE_SEARCH, {"query": query})])

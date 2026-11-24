@@ -194,25 +194,146 @@ type GuidanceVersion = Schemas["GuidanceVersionOut"];
 
 export const PARTIAL_GUIDANCE = "Partial answers that say what they don't cover pass.";
 
-export function guidanceVersion(version: number, text: string, savedBy: string | null = "Ada Lovelace"): GuidanceVersion {
-  return { version, text, source: "written", saved_by: savedBy, saved_at: `2026-11-${String(10 + version)}T09:30:00Z` };
+export function guidanceVersion(
+  version: number,
+  text: string,
+  savedBy: string | null = "Ada Lovelace",
+  check: GuidanceVersion["check"] = null,
+): GuidanceVersion {
+  return { version, text, source: "written", saved_by: savedBy, saved_at: `2026-11-${String(10 + version)}T09:30:00Z`, check };
+}
+
+export type GuidanceJob = Schemas["GuidanceJobOut"];
+
+/** A finished check of `text` on 12 held-out reviews: it would agree on 10, against 7 now. */
+export function guidanceCheck(text: string, overrides: Partial<GuidanceJob> = {}): GuidanceJob {
+  return {
+    id: "job-1",
+    kind: "check",
+    status: "completed",
+    text,
+    held_out: 12,
+    judged: 12,
+    left_out: 0,
+    agreed: 10,
+    false_passes: 1,
+    false_fails: 1,
+    agreed_before: 7,
+    low_sample: true,
+    reviews_read: 0,
+    draft: null,
+    cost_usd: "0.0034",
+    error_reason: null,
+    requested_by: "Ada Lovelace",
+    created_at: "2026-11-24T09:00:00Z",
+    started_at: "2026-11-24T09:00:01Z",
+    finished_at: "2026-11-24T09:00:30Z",
+    ...overrides,
+  };
+}
+
+export const DRAFTED_GUIDANCE = "Answers that say what they don't cover may pass answers_question.";
+
+/** A finished draft of `DRAFTED_GUIDANCE`, revising the guidance `text`, from 14 disagreeing reviews. */
+export function guidanceDraft(text: string, overrides: Partial<GuidanceJob> = {}): GuidanceJob {
+  return guidanceCheck(text, {
+    id: "draft-1",
+    kind: "draft",
+    judged: 0,
+    agreed: 0,
+    false_passes: 0,
+    false_fails: 0,
+    agreed_before: 0,
+    reviews_read: 14,
+    cost_usd: "0.0082",
+    draft: {
+      text: DRAFTED_GUIDANCE,
+      explanation: [
+        { part: "Partial answers that say what they don't cover pass.", reviews: ["r-1", "r-2", "r-3"] },
+        { part: "Judge grounding by the cited excerpts alone.", reviews: ["r-4"] },
+      ],
+    },
+    ...overrides,
+  });
+}
+
+export type GuidanceDrafting = Schemas["DraftingOut"];
+
+/** Drafting as `GET …/judging-guidance/drafting` answers it: offered, from 30 disagreements, reading about 15 for $0.0106. */
+export function guidanceDrafting(overrides: Partial<GuidanceDrafting> = {}): GuidanceDrafting {
+  return {
+    disagreements: 30,
+    sample_reviews: 30,
+    needs_disagreements: 10,
+    needs_sample_reviews: 30,
+    offered: true,
+    missing: null,
+    reviews_read: 15,
+    estimated_cost_usd: "0.0106",
+    ...overrides,
+  };
+}
+
+/**
+ * Guidance jobs as `GET …/guidance-jobs/latest` answers them (`latest`, null before the first).
+ * Starting a check answers it running on 12 held-out reviews, and starting a draft answers it queued
+ * (drafting as `drafting` answers it); each later read answers the next of `then` (the last one
+ * stays). Cancelling answers the job cancelled.
+ */
+export function fakeGuidanceJobApi(options: { latest?: GuidanceJob | null; then?: Partial<GuidanceJob>[]; drafting?: GuidanceDrafting } = {}) {
+  let latest = options.latest ?? null;
+  const steps = [...(options.then ?? [])];
+  const started: string[] = [];
+  const cancelled: string[] = [];
+  const drafts: string[] = [];
+  server.use(
+    http.get("*/api/organisations/:organisationId/judging-guidance/drafting", () => HttpResponse.json(options.drafting ?? guidanceDrafting())),
+    http.post("*/api/organisations/:organisationId/judging-guidance/drafts", () => {
+      drafts.push("draft");
+      latest = guidanceDraft("", { status: "queued", reviews_read: 0, draft: null, started_at: null, finished_at: null });
+      return HttpResponse.json(latest, { status: 202 });
+    }),
+    http.get("*/api/organisations/:organisationId/guidance-jobs/latest", () => {
+      if (latest !== null && steps.length > 0) latest = { ...latest, ...(steps.length > 1 ? steps.shift() : steps[0]) };
+      return HttpResponse.json(latest);
+    }),
+    http.post("*/api/organisations/:organisationId/judging-guidance/checks", async ({ request }) => {
+      const text = ((await request.json()) as Schemas["StartCheckRequest"]).text.trim();
+      started.push(text);
+      latest = guidanceCheck(text, { id: `job-${String(started.length + 1)}`, status: "running", judged: 0, agreed: 0, false_passes: 0, false_fails: 0, agreed_before: 0, finished_at: null });
+      return HttpResponse.json(latest, { status: 202 });
+    }),
+    http.post("*/api/organisations/:organisationId/guidance-jobs/:jobId/cancel", ({ params }) => {
+      cancelled.push(String(params.jobId));
+      steps.length = 0;
+      latest = { ...(latest as GuidanceJob), status: "cancelled" };
+      return HttpResponse.json(latest);
+    }),
+  );
+  return { started, cancelled, drafts };
 }
 
 /** Judging guidance as `GET …/judging-guidance` answers it; an Owner's save adds a version unless the text is already current. */
 export function fakeJudgingGuidanceApi(options: { versions?: GuidanceVersion[] } = {}) {
   let versions = options.versions ?? [];
   const saved: string[] = [];
+  const draftIds: (string | null | undefined)[] = [];
   const current = (): JudgingGuidance => ({ current: versions[0] ?? null, versions });
   server.use(
     http.get("*/api/organisations/:organisationId/judging-guidance", () => HttpResponse.json(current())),
     http.put("*/api/organisations/:organisationId/judging-guidance", async ({ request }) => {
-      const text = ((await request.json()) as Schemas["SaveJudgingGuidanceRequest"]).text.trim();
+      const body = (await request.json()) as Schemas["SaveJudgingGuidanceRequest"];
+      const text = body.text.trim();
       saved.push(text);
-      if ((versions[0]?.text ?? "") !== text) versions = [guidanceVersion(versions.length + 1, text), ...versions];
+      draftIds.push(body.draft_id);
+      if ((versions[0]?.text ?? "") !== text) {
+        const version = guidanceVersion(versions.length + 1, text);
+        versions = [body.draft_id ? { ...version, source: "drafted" } : version, ...versions];
+      }
       return HttpResponse.json(current());
     }),
   );
-  return { saved };
+  return { saved, draftIds };
 }
 
 type ModelPrices = Schemas["ModelPricesOut"];

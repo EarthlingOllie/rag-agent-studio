@@ -58,7 +58,7 @@ def is_judging(info: AgentInfo) -> bool:
     )
 
 
-def _request(messages: list[ModelMessage]) -> str:
+def request_text(messages: list[ModelMessage]) -> str:
     return "\n".join(
         str(part.content)
         for message in messages
@@ -114,7 +114,7 @@ def _answers_question(question: str, answer: str, guidance: str) -> dict[str, ob
 
 def fake_judgement(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
     """The fake judge's answer: its structured-output tool called with the Verdicts asked."""
-    request = _request(messages)
+    request = request_text(messages)
     answer = _normal(_block(request, ANSWER_OPEN, ANSWER_CLOSE) or "")
     asked = request.rsplit(JUDGE_LINE, 1)[-1]
     judgement: dict[str, dict[str, object]] = {}
