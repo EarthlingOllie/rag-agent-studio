@@ -422,7 +422,7 @@ A suggested question the widget offers a Visitor before the first message. An Ag
 _Avoid_: Suggested prompt, quick reply
 
 **UI text override**:
-An Agent's replacement for one piece of the widget's built-in text, such as the "Send" button. Empty keeps the built-in text.
+An Agent's replacement for one piece of the widget's built-in text, such as the "Send" button or the Launcher's "Message" and "Call" choices. Empty keeps the built-in text.
 _Avoid_: Translation, label override
 
 **Autosave**:
@@ -689,7 +689,7 @@ One Visitor's thread of Messages with an Agent, whether typed or spoken in a Cal
 _Avoid_: Session, chat, thread
 
 **Call**:
-A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. The Agent is asked exactly what it would be asked for a typed Message; only formatting and citation markers are left out of what is spoken (ADR-0019). Only a Visitor in the widget, or a Member in the Playground, starts one; the Conversation log shows it as text while it is spoken, and its audio is never stored. A Conversation has one Call at a time and may have several over its life: a reload ends the Call, and the resumed widget offers to continue with a new one. The spoken greeting opens only a Call that starts an empty Conversation, and the Visitor ends the Call to type. While an Agentic Agent searches, the Searching status is spoken; a Guardrail refusal is spoken and the Call goes on; anything that makes the Agent unavailable speaks the Unavailable text, ends the Call and returns the Visitor to messaging.
+A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. The Agent is asked exactly what it would be asked for a typed Message; only formatting and citation markers are left out of what is spoken (ADR-0019). Only a Visitor in the widget, or a Member in the Playground, starts one (a Playground Call speaks with the Agent's Call settings and stays out of metrics and the Call minutes budget; its Voice Cost still counts); the Conversation log shows it as text while it is spoken, and its audio is never stored. A Conversation has one Call at a time and may have several over its life: a reload ends the Call, and the resumed widget offers to continue with a new one. The spoken greeting opens only a Call that starts an empty Conversation, and the Visitor ends the Call to type. While an Agentic Agent searches, the Searching status is spoken; a Guardrail refusal is spoken and the Call goes on; anything that makes the Agent unavailable speaks the Unavailable text, ends the Call and returns the Visitor to messaging.
 _Avoid_: Voice chat, voice session, phone call
 
 **Call token**:
