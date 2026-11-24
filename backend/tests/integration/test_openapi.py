@@ -85,6 +85,15 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "setEvaluationBudget": ("/api/organisations/{organisation_id}/evaluation-budget", "put"),
         "getJudgingGuidance": ("/api/organisations/{organisation_id}/judging-guidance", "get"),
         "saveJudgingGuidance": ("/api/organisations/{organisation_id}/judging-guidance", "put"),
+        "getReviewSampleItem": ("/api/organisations/{organisation_id}/review-sample/next", "get"),
+        "submitSampleReview": (
+            "/api/organisations/{organisation_id}/review-sample/reviews",
+            "post",
+        ),
+        "getEvaluationAgreement": (
+            "/api/organisations/{organisation_id}/evaluation-agreement",
+            "get",
+        ),
         "getTheme": ("/api/organisations/{organisation_id}/theme", "get"),
         "saveTheme": ("/api/organisations/{organisation_id}/theme", "put"),
         "startThemeImageUpload": (f"{_THEME_IMAGE}/uploads", "post"),

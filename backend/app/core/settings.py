@@ -169,6 +169,9 @@ class Settings(BaseSettings):
     # Seeds the one random source that chooses Visitor replies for Live Verdicts by the Live
     # sample rate (``app.evaluation.live``), so tests sample a stable subset. Unset: unseeded.
     live_sample_seed: int | None = None
+    # Seeds the random source the Review sample draws its next item from
+    # (``app.evaluation.reviews``), so tests are served a stable item. Unset: unseeded.
+    review_sample_seed: int | None = None
     # The largest Chunk, in the Embedding Model's tokens; capped at the model's own limit.
     chunk_max_tokens: int = Field(default=256, gt=0)
     # Transient ingestion failures (the Embedding Model's provider failing) are retried

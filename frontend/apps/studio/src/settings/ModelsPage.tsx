@@ -16,6 +16,7 @@ import { JudgingGuidanceSection } from "./JudgingGuidance";
 import { ChatModelOptions, withoutTools } from "./ModelOptions";
 import { type DefaultModel, useChatModels, useDefaultModel, useSetDefaultModel } from "./models";
 import { PriceTable } from "./PriceTable";
+import { useEvaluationAgreement } from "../reviews/reviews";
 
 const PROVIDER_NAMES: Record<ProviderId, string> = {
   anthropic: "Anthropic",
@@ -296,6 +297,22 @@ function EvaluationOwnerControls({ organisationId, settings }: { organisationId:
   );
 }
 
+/** How many Review sample reviews agreed with the current Evaluation Model, and the way to give more. */
+function SampleAgreement({ organisationId }: { organisationId: string }) {
+  const agreement = useEvaluationAgreement(organisationId);
+  if (agreement.isError) return <p role="alert" className={text.muted}>The Evaluation Model agreement could not be loaded. Try again shortly.</p>;
+  if (!agreement.data) return null;
+  const { current } = agreement.data;
+  return (
+    <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-ink">
+      {current && <span>{`${String(current.agreed)} of ${String(current.reviews)} sample reviews agreed`}</span>}
+      <Link to="/organisations/$organisationId/review-sample" params={{ organisationId }} className={text.link}>
+        Review sample
+      </Link>
+    </p>
+  );
+}
+
 function EvaluationSection({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
   const settings = useEvaluationSettings(organisationId);
   const chosen = settings.data?.evaluation_model;
@@ -322,6 +339,7 @@ function EvaluationSection({ organisationId, isOwner }: { organisationId: string
             </p>
             <p>{`Each side of a Run answers every case ${String(settings.data.repeats)} times.`}</p>
           </div>
+          <SampleAgreement organisationId={organisationId} />
           {isOwner ? (
             <EvaluationOwnerControls organisationId={organisationId} settings={settings.data} />
           ) : (

@@ -73,6 +73,8 @@ export const server = setupServer(
   ),
   // No Organisation has saved Judging guidance.
   http.get("*/api/organisations/:organisationId/judging-guidance", () => HttpResponse.json({ current: null, versions: [] })),
+  // No Organisation has a model to judge with, so there is no Evaluation Model agreement.
+  http.get("*/api/organisations/:organisationId/evaluation-agreement", () => HttpResponse.json({ current: null })),
   // No Organisation has an Evaluation budget, so no Visitor reply is judged.
   http.get("*/api/organisations/:organisationId/evaluation-budget", () =>
     HttpResponse.json({

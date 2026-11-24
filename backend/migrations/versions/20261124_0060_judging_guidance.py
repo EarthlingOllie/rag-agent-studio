@@ -1,8 +1,8 @@
 """Judging guidance (spec 19): its versions, the Organisation's current one, and the version
 each Evaluation Run and Live Verdict was judged under (with its judge model, its Judging setup).
 
-Revision ID: 0059_judging_guidance
-Revises: 0058_suggestion_check
+Revision ID: 0060_judging_guidance
+Revises: 0059_verdict_reviews
 Create Date: 2026-11-24
 """
 
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0059_judging_guidance"
-down_revision: str | None = "0058_suggestion_check"
+revision: str = "0060_judging_guidance"
+down_revision: str | None = "0059_verdict_reviews"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
