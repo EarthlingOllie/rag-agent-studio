@@ -600,7 +600,7 @@ What a Visitor sees in place of the chat when the Agent is archived, in an archi
 _Avoid_: Error page, 404
 
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits, Token Budget, Maximum Call length, Call minutes budget and Live sample rate. Allowed Origins, the Unavailable text, the rate limits, the Token Budget and the Live sample rate are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`, or `agent.live_sample_rate_changed` for the Live sample rate) holding the before and after values of the settings it changed.
+An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits, Token Budget, the Call settings, Maximum Call length, Call minutes budget and Live sample rate. Allowed Origins, the Unavailable text, the rate limits, the Token Budget and the Live sample rate are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`, or `agent.live_sample_rate_changed` for the Live sample rate) holding the before and after values of the settings it changed.
 
 **Unavailable text**:
 What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit or because the day's Token Budget is spent). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
@@ -689,8 +689,12 @@ One Visitor's thread of Messages with an Agent, whether typed or spoken in a Cal
 _Avoid_: Session, chat, thread
 
 **Call**:
-A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. Only a Visitor in the widget, or a Member in the Playground, starts one; the Conversation log shows it as text while it is spoken, and its audio is never stored.
+A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. The Agent is asked exactly what it would be asked for a typed Message; only formatting and citation markers are left out of what is spoken (ADR-0019). Only a Visitor in the widget, or a Member in the Playground, starts one; the Conversation log shows it as text while it is spoken, and its audio is never stored.
 _Avoid_: Voice chat, voice session, phone call
+
+**Call settings**:
+Whether an Agent takes Calls (off by default), the voice it speaks with and its spoken greeting. Part of the Operational Settings, so they apply at once and no Version holds them.
+_Avoid_: Voice config, calling options
 
 **Maximum Call length**:
 How long one Call may last before the widget ends it. Part of the Operational Settings.
