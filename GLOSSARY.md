@@ -183,7 +183,7 @@ A secret an Organisation stores so it can call a model provider.
 _Avoid_: API key, token, connection
 
 **Capability**:
-What a Provider Credential can be used for: chat, embeddings or reranking. Each provider offers a fixed set, listed with its models in the capability registry; a credential may be limited to some of them.
+What a Provider Credential can be used for: chat, embeddings, reranking or voice (carrying a Call; ElevenLabs is the only provider that offers it). Each provider offers a fixed set, listed with its models in the capability registry; a credential may be limited to some of them.
 _Avoid_: Feature, scope, permission
 
 **Masked suffix**:
@@ -685,8 +685,12 @@ An anonymous person chatting with an embedded Agent.
 _Avoid_: User, customer, end user
 
 **Conversation**:
-One Visitor's thread of Messages with an Agent.
+One Visitor's thread of Messages with an Agent, whether typed or spoken in a Call.
 _Avoid_: Session, chat, thread
+
+**Call**:
+A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both.
+_Avoid_: Voice chat, voice session, phone call
 
 **Message**:
 One turn in a Conversation, from either the Visitor or the Agent. An Agent Message records what produced it: the Agent Version that answered, or the Draft marker for a Playground answer (Message attribution). A Playground answer also records the Project Instructions it ran with: an Instructions Version or the Draft marker.
