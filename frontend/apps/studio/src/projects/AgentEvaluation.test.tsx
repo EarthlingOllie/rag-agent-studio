@@ -18,6 +18,7 @@ import {
   repeat,
   results,
   run,
+  verdict,
 } from "../test/evaluation";
 import { aChunk, aDocument, fakeDocumentViewerApi } from "../test/documents";
 import { openSection } from "../test/navigation";
@@ -316,9 +317,11 @@ test("Run detail shows the sides, failing Verdicts with reasons, and each answer
   const parking = within(cases).getAllByRole("listitem").filter((item) => item.parentElement === cases)[1] as HTMLElement;
   expect(parking).toHaveTextContent("Repeat 1: Fail");
   expect(parking).toHaveTextContent("Reference answer: In the north car park.");
-  expect(within(parking).getByRole("list", { name: "Verdicts" })).toHaveTextContent(
-    "Reference answer: Fail. The answer doesn't name the north car park.Grounding: Fail. Nothing cited supports it.",
-  );
+  expect(
+    within(within(parking).getByRole("list", { name: "Verdicts" }))
+      .getAllByRole("listitem")
+      .map((item) => item.firstElementChild?.textContent),
+  ).toEqual(["Reference answer: Fail. The answer doesn't name the north car park.", "Grounding: Fail. Nothing cited supports it."]);
 
   const trace = within(parking).getByRole("group", { name: "Trace" });
   await user.click(within(trace).getByText("Trace"));
@@ -949,15 +952,15 @@ test("Run detail shows Expected source and fallback Verdicts, Stale ones skipped
   const checked: typeof passed = {
     ...passed,
     verdicts: [
-      { kind: "expected_source", outcome: "pass", reason: "The answer cited the passage of leave.txt." },
-      { kind: "expected_source", outcome: "stale", reason: "parking.txt has been deleted, so this was skipped." },
-      { kind: "grounding", outcome: "pass", reason: "Every claim is in the cited excerpt." },
+      verdict("expected_source", "pass", "The answer cited the passage of leave.txt."),
+      verdict("expected_source", "stale", "parking.txt has been deleted, so this was skipped."),
+      verdict("grounding", "pass", "Every claim is in the cited excerpt."),
     ],
   };
   const fallbackCase = { ...parkingCase, reference_answer: null, expect_fallback: true };
   const fallbackResult: typeof passed = {
     ...failedResult,
-    verdicts: [{ kind: "fallback", outcome: "fail", reason: "The answer wasn't the Fallback Text or the Refusal text." }],
+    verdicts: [verdict("fallback", "fail", "The answer wasn't the Fallback Text or the Refusal text.")],
   };
   setUp({
     cases: [staleCase, fallbackCase],

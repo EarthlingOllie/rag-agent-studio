@@ -1,8 +1,10 @@
 import type { Schemas } from "@studio/api-client";
+import type { QueryKey } from "@tanstack/react-query";
 import { useId } from "react";
 
 import { Badge, text as type } from "../design";
 import { formatTime } from "../settings/AuditPage";
+import { VerdictReviewControls } from "../reviews/VerdictReview";
 import { dollars } from "./format";
 
 type LiveVerdict = Schemas["LiveVerdictOut"];
@@ -19,10 +21,16 @@ function judgedBy(verdict: LiveVerdict): string {
   return `Judged by ${String(verdict.judge_provider)} · ${String(verdict.judge_model)} for ${cost} on ${formatTime(String(verdict.judged_at))}.`;
 }
 
-function Judged({ verdict }: { verdict: LiveVerdict }) {
-  const checks: [string, LiveCheck][] = [
-    ["Grounded", verdict.grounded as LiveCheck],
-    ["Answers the question", verdict.answers_question as LiveCheck],
+/** Where a review of the Live Verdict's checks goes: the Organisation, and what shows the Live Verdict to read again. */
+export interface ReviewPlace {
+  organisationId: string;
+  shownKey: QueryKey;
+}
+
+function Judged({ verdict, place }: { verdict: LiveVerdict; place: ReviewPlace }) {
+  const checks: [string, "grounding" | "answers_question", LiveCheck][] = [
+    ["Grounded", "grounding", verdict.grounded as LiveCheck],
+    ["Answers the question", "answers_question", verdict.answers_question as LiveCheck],
   ];
   return (
     <>
@@ -32,16 +40,27 @@ function Judged({ verdict }: { verdict: LiveVerdict }) {
           A reply passes when it is grounded and answers the question.
         </span>
       </p>
-      <ul aria-label="Live Verdict checks" className="space-y-1">
-        {checks.map(([name, check]) => (
-          <li key={name} className="flex flex-wrap items-baseline gap-x-2">
-            <span className="font-medium">{name}</span>
-            <Outcome passed={check.outcome === "pass"} />
-            {verdict.purged_at === null ? (
-              <span>{check.reason}</span>
-            ) : (
-              <span className={type.muted}>Text purged</span>
-            )}
+      <ul aria-label="Live Verdict checks" className="space-y-3">
+        {checks.map(([name, key, check]) => (
+          <li key={key} className="flex flex-col gap-2">
+            <p className="flex flex-wrap items-baseline gap-x-2">
+              <span className="font-medium">{name}</span>
+              <Outcome passed={check.outcome === "pass"} />
+              {verdict.purged_at === null ? (
+                <span>{check.reason}</span>
+              ) : (
+                <span className={type.muted}>Text purged</span>
+              )}
+            </p>
+            <VerdictReviewControls
+              organisationId={place.organisationId}
+              target={{ live_verdict_id: verdict.id, check: key }}
+              judged={check.outcome}
+              review={check.review}
+              shownKey={place.shownKey}
+              label={`the ${name} check`}
+              reviewable={verdict.purged_at === null}
+            />
           </li>
         ))}
       </ul>
@@ -56,7 +75,7 @@ function Judged({ verdict }: { verdict: LiveVerdict }) {
   );
 }
 
-function Body({ verdict }: { verdict: LiveVerdict | null }) {
+function Body({ verdict, place }: { verdict: LiveVerdict | null; place: ReviewPlace }) {
   if (verdict === null)
     return (
       <p className={type.muted}>
@@ -88,15 +107,20 @@ function Body({ verdict }: { verdict: LiveVerdict | null }) {
         </p>
       );
     case "judged":
-      return <Judged verdict={verdict} />;
+      return <Judged verdict={verdict} place={place} />;
   }
 }
 
-/** A Visitor reply's Live Verdict in its Trace: the Evaluation Model's two checks with their reasons (or "Text purged" once the Purge cleared them), or why there are none. */
+/**
+ * A Visitor reply's Live Verdict in its Trace: the Evaluation Model's two checks with their reasons (or "Text purged" once the Purge
+ * cleared them) and an Editor's review of each, or why there are none.
+ */
 export function LiveVerdictSection({
   verdict,
+  place,
 }: {
   verdict: LiveVerdict | null;
+  place: ReviewPlace;
 }) {
   const headingId = useId();
   return (
@@ -104,7 +128,7 @@ export function LiveVerdictSection({
       <h3 id={headingId} className="font-medium">
         Live Verdict
       </h3>
-      <Body verdict={verdict} />
+      <Body verdict={verdict} place={place} />
     </section>
   );
 }

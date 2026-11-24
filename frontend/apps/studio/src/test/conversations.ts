@@ -163,9 +163,10 @@ export const visitorTrace: Trace = {
 
 /** A Live Verdict of the Visitor's first reply, judged: grounded, but it misses the question. */
 export const judgedVerdict: LiveVerdict = {
+  id: "5b1e0000-0000-4000-8000-0000000000c1",
   status: "judged",
-  grounded: { outcome: "pass", reason: "Every claim is in the cited leave policy." },
-  answers_question: { outcome: "fail", reason: "It gives the leave allowance, not how to book it." },
+  grounded: { outcome: "pass", reason: "Every claim is in the cited leave policy.", review: null },
+  answers_question: { outcome: "fail", reason: "It gives the leave allowance, not how to book it.", review: null },
   passed: false,
   error_reason: null,
   agent_version_id: agentVersion(1).id,

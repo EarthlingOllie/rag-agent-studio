@@ -242,9 +242,12 @@ export function useCancelEvaluationRun(path: AgentPath) {
 }
 
 /** A Run with each case's answers, Verdicts and Traces, read again while it is in progress. */
+/** Where a Run's results are kept: read again once a Verdict's review changes. */
+export const runResultsKey = (path: AgentPath, runId: string) => [...runsKey(path), runId, "results"] as const;
+
 export function useEvaluationRunResults(path: AgentPath, runId: string) {
   return useQuery({
-    queryKey: [...runsKey(path), runId, "results"],
+    queryKey: runResultsKey(path, runId),
     queryFn: async (): Promise<EvaluationRunResults> => {
       const { data, error, response } = await api.GET(
         "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/evaluation/runs/{run_id}/results",
