@@ -689,11 +689,15 @@ One Visitor's thread of Messages with an Agent, whether typed or spoken in a Cal
 _Avoid_: Session, chat, thread
 
 **Call**:
-A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. The Agent is asked exactly what it would be asked for a typed Message; only formatting and citation markers are left out of what is spoken (ADR-0019). Only a Visitor in the widget, or a Member in the Playground, starts one; the Conversation log shows it as text while it is spoken, and its audio is never stored.
+A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. The Agent is asked exactly what it would be asked for a typed Message; only formatting and citation markers are left out of what is spoken (ADR-0019). Only a Visitor in the widget, or a Member in the Playground, starts one; the Conversation log shows it as text while it is spoken, and its audio is never stored. A Conversation has one Call at a time. While an Agentic Agent searches, the Searching status is spoken; a Guardrail refusal is spoken and the Call goes on; anything that makes the Agent unavailable speaks the Unavailable text, ends the Call and returns the Visitor to messaging.
 _Avoid_: Voice chat, voice session, phone call
 
+**Spoken Message**:
+A Message said in a Call rather than typed: the Visitor's words as transcribed, or the Agent's reply as the model wrote it. An Agent's Spoken Message the Visitor talked over is marked interrupted and still holds the whole reply, so it matches its Trace. It takes Message Feedback, counts in a Version's metrics and is judged like a typed one.
+_Avoid_: Voice message, transcript line, utterance
+
 **Call settings**:
-Whether an Agent takes Calls (off by default), the voice it speaks with and its spoken greeting. Part of the Operational Settings, so they apply at once and no Version holds them.
+Whether an Agent takes Calls (off by default), the voice-capable Provider Credential and the voice it speaks with (a Credential reference), and its spoken greeting. Calls are held in English. Part of the Operational Settings, so they apply at once and no Version holds them.
 _Avoid_: Voice config, calling options
 
 **Maximum Call length**:
