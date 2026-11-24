@@ -172,6 +172,9 @@ class Settings(BaseSettings):
     # Seeds the random source the Review sample draws its next item from
     # (``app.evaluation.reviews``), so tests are served a stable item. Unset: unseeded.
     review_sample_seed: int | None = None
+    # Seeds the random source that splits Review sample reviews into a held-out half for guidance
+    # checks (``app.evaluation.guidance_check``), so tests hold out a stable half. Unset: unseeded.
+    guidance_split_seed: int | None = None
     # The largest Chunk, in the Embedding Model's tokens; capped at the model's own limit.
     chunk_max_tokens: int = Field(default=256, gt=0)
     # Transient ingestion failures (the Embedding Model's provider failing) are retried

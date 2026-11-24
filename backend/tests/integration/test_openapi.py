@@ -85,6 +85,19 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "setEvaluationBudget": ("/api/organisations/{organisation_id}/evaluation-budget", "put"),
         "getJudgingGuidance": ("/api/organisations/{organisation_id}/judging-guidance", "get"),
         "saveJudgingGuidance": ("/api/organisations/{organisation_id}/judging-guidance", "put"),
+        "startGuidanceCheck": (
+            "/api/organisations/{organisation_id}/judging-guidance/checks",
+            "post",
+        ),
+        "getLatestGuidanceJob": (
+            "/api/organisations/{organisation_id}/guidance-jobs/latest",
+            "get",
+        ),
+        "getGuidanceJob": ("/api/organisations/{organisation_id}/guidance-jobs/{job_id}", "get"),
+        "cancelGuidanceJob": (
+            "/api/organisations/{organisation_id}/guidance-jobs/{job_id}/cancel",
+            "post",
+        ),
         "getReviewSampleItem": ("/api/organisations/{organisation_id}/review-sample/next", "get"),
         "submitSampleReview": (
             "/api/organisations/{organisation_id}/review-sample/reviews",

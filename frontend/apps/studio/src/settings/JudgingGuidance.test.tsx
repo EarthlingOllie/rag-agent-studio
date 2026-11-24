@@ -1,9 +1,9 @@
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
-import { fakeJudgingGuidanceApi, fakeModelsApi, guidanceVersion, PARTIAL_GUIDANCE } from "../test/models";
+import { fakeGuidanceJobApi, fakeJudgingGuidanceApi, fakeModelsApi, guidanceCheck, guidanceVersion, PARTIAL_GUIDANCE } from "../test/models";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -18,6 +18,12 @@ function openAs(session = adaSession) {
 
 async function card() {
   return within(await screen.findByRole("region", { name: "Judging guidance" }));
+}
+
+/** Confirms the save dialog the form's Save guidance opens. */
+async function confirmSave(user: ReturnType<typeof userEvent.setup>) {
+  const dialog = within(await screen.findByRole("dialog", { name: "Save the Judging guidance?" }));
+  await user.click(dialog.getByRole("button", { name: "Save guidance" }));
 }
 
 test("an Organisation without guidance says the Evaluation Model judges by its own instructions", async () => {
@@ -67,6 +73,11 @@ test("an Owner writes and saves guidance as a new version", async () => {
   await user.type(editor, PARTIAL_GUIDANCE);
   expect(form.getByText(`${String(PARTIAL_GUIDANCE.length)} of 2,000 characters.`, { exact: false })).toBeInTheDocument();
   await user.click(form.getByRole("button", { name: "Save guidance" }));
+  // Unchecked text is saved after a confirmation that says so.
+  expect(await screen.findByRole("dialog", { name: "Save the Judging guidance?" })).toHaveAccessibleDescription(
+    "New Evaluation Runs and Live Verdicts are judged with it, and it starts a new Judging setup. This text hasn't been checked on held-out reviews.",
+  );
+  await confirmSave(user);
 
   expect(await screen.findByRole("status")).toHaveTextContent("Judging guidance version 1 is saved: new judgements use it.");
   expect(within(await section.findByRole("group", { name: "Current guidance" })).getByText(PARTIAL_GUIDANCE)).toBeInTheDocument();
@@ -156,9 +167,13 @@ test("a refused save says why and keeps the edit", async () => {
 
   await user.type(section.getByRole("textbox", { name: "Judging guidance" }), "Be fair.");
   await user.click(section.getByRole("button", { name: "Save guidance" }));
+  const dialog = within(await screen.findByRole("dialog", { name: "Save the Judging guidance?" }));
+  await user.click(dialog.getByRole("button", { name: "Save guidance" }));
 
-  expect(await section.findByRole("button", { name: "Saving…" })).toBeDisabled();
-  expect(await section.findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
+  expect(dialog.getByRole("button", { name: "Save guidance" })).toBeDisabled();
+  expect(await dialog.findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
+  await user.click(dialog.getByRole("button", { name: "Cancel" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   expect(section.getByRole("textbox", { name: "Judging guidance" })).toHaveValue("Be fair.");
 });
 
@@ -182,6 +197,7 @@ test("clearing the editor and saving removes the guidance", async () => {
 
   await user.clear(section.getByRole("textbox", { name: "Judging guidance" }));
   await user.click(section.getByRole("button", { name: "Save guidance" }));
+  await confirmSave(user);
 
   expect(await screen.findByRole("status")).toHaveTextContent("Judging guidance is removed: new judgements use the Evaluation Model's own instructions.");
   expect(api.saved).toEqual([""]);
@@ -196,8 +212,197 @@ test("saving nothing when there is no guidance keeps there being none", async ()
   await user.click(await section.findByRole("button", { name: "Edit guidance" }));
 
   await user.click(section.getByRole("button", { name: "Save guidance" }));
+  await confirmSave(user);
 
   expect(await screen.findByRole("status")).toHaveTextContent("Judging guidance is removed");
   expect(section.getByText("No guidance: the Evaluation Model judges by its own instructions alone.")).toBeInTheDocument();
   expect(api.saved).toEqual([""]);
+});
+
+// Checking guidance on held-out reviews (ticket 19-04)
+
+async function editing(user: ReturnType<typeof userEvent.setup>) {
+  const section = await card();
+  await user.click(await section.findByRole("button", { name: "Edit guidance" }));
+  return section;
+}
+
+test("an Owner checks guidance on held-out reviews and reads its progress, then its result", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  fakeJudgingGuidanceApi();
+  const api = fakeGuidanceJobApi({ then: [{ status: "running", judged: 6, agreed: 5, agreed_before: 3 }, { ...guidanceCheck(PARTIAL_GUIDANCE), id: "job-2" }] });
+  openAs();
+  const section = await editing(user);
+  await user.type(section.getByRole("textbox", { name: "Judging guidance" }), PARTIAL_GUIDANCE);
+
+  await user.click(section.getByRole("button", { name: "Check guidance" }));
+
+  const result = within(section.getByRole("group", { name: "Check result" }));
+  expect(await result.findByText("Checking on 12 held-out reviews…")).toBeInTheDocument();
+  expect(result.getByRole("meter", { name: "Check progress" })).toHaveAttribute("aria-valuetext", "0 of 12 reviews");
+  expect(section.getByRole("button", { name: "Check guidance" })).toBeDisabled();
+  await waitFor(
+    () => {
+      expect(result.getByRole("meter", { name: "Check progress" })).toHaveAttribute("aria-valuetext", "6 of 12 reviews");
+    },
+    { timeout: 3000 },
+  );
+  expect(await result.findByText("On held-out reviews, this guidance would agree on 10 of 12 (now 7).", {}, { timeout: 3000 })).toBeInTheDocument();
+  expect(result.getByText("Low sample")).toBeInTheDocument();
+  expect(result.getByText("False passes: 1, false fails: 1. Cost $0.0034.")).toBeInTheDocument();
+  expect(section.getByRole("button", { name: "Check again" })).toBeEnabled();
+  expect(api.started).toEqual([PARTIAL_GUIDANCE]);
+});
+
+test("editing the text marks the check out of date", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  fakeJudgingGuidanceApi({ versions: [guidanceVersion(1, PARTIAL_GUIDANCE)] });
+  fakeGuidanceJobApi({ latest: guidanceCheck(PARTIAL_GUIDANCE, { left_out: 2, low_sample: false }) });
+  openAs();
+  const section = await editing(user);
+  const result = within(section.getByRole("group", { name: "Check result" }));
+  expect(await result.findByText("False passes: 1, false fails: 1. 2 left out: their replies were deleted. Cost $0.0034.")).toBeInTheDocument();
+  expect(result.queryByText("Low sample")).not.toBeInTheDocument();
+  expect(result.queryByRole("status")).not.toBeInTheDocument();
+
+  await user.type(section.getByRole("textbox", { name: "Judging guidance" }), " Always.");
+
+  expect(result.getByRole("status")).toHaveTextContent("Out of date: the text has changed since this check. Check again before saving.");
+  expect(section.getByRole("button", { name: "Check guidance" })).toBeEnabled();
+});
+
+test("the save dialog warns when the check shows lower agreement, and still saves", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  const guidance = fakeJudgingGuidanceApi();
+  fakeGuidanceJobApi({ latest: guidanceCheck("Be strict.", { agreed: 5 }) });
+  openAs();
+  const section = await editing(user);
+  await user.type(section.getByRole("textbox", { name: "Judging guidance" }), "Be strict.");
+
+  await user.click(section.getByRole("button", { name: "Save guidance" }));
+
+  const dialog = within(await screen.findByRole("dialog", { name: "Save the Judging guidance?" }));
+  expect(dialog.getByRole("status")).toHaveTextContent(
+    "The latest check shows lower agreement: on held-out reviews this guidance would agree on 5 of 12 (now 7). You can still save it.",
+  );
+  expect(await screen.findByRole("dialog")).toHaveAccessibleDescription("New Evaluation Runs and Live Verdicts are judged with it, and it starts a new Judging setup.");
+  await user.click(dialog.getByRole("button", { name: "Save guidance" }));
+  expect(await screen.findByText("Judging guidance version 1 is saved: new judgements use it.")).toBeInTheDocument();
+  expect(guidance.saved).toEqual(["Be strict."]);
+});
+
+test("a check showing higher agreement saves without a warning", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  fakeJudgingGuidanceApi();
+  fakeGuidanceJobApi({ latest: guidanceCheck("Be strict.") });
+  openAs();
+  const section = await editing(user);
+  await user.type(section.getByRole("textbox", { name: "Judging guidance" }), "Be strict.");
+
+  await user.click(section.getByRole("button", { name: "Save guidance" }));
+
+  const dialog = within(await screen.findByRole("dialog", { name: "Save the Judging guidance?" }));
+  expect(dialog.queryByRole("status")).not.toBeInTheDocument();
+});
+
+test("an Owner cancels a check in progress", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  fakeJudgingGuidanceApi();
+  const api = fakeGuidanceJobApi({ latest: guidanceCheck("Be strict.", { status: "queued", judged: 0 }) });
+  openAs();
+  const section = await editing(user);
+  const result = within(section.getByRole("group", { name: "Check result" }));
+
+  await user.click(await result.findByRole("button", { name: "Cancel check" }));
+
+  expect(await result.findByText("The check was cancelled.")).toBeInTheDocument();
+  expect(api.cancelled).toEqual(["job-1"]);
+});
+
+test("a refused cancel says why", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  fakeJudgingGuidanceApi();
+  fakeGuidanceJobApi({ latest: guidanceCheck("Be strict.", { status: "running", judged: 3 }) });
+  server.use(
+    http.post("*/api/organisations/:organisationId/guidance-jobs/:jobId/cancel", () =>
+      HttpResponse.json({ detail: "Only a draft or check in progress can be cancelled." }, { status: 409 }),
+    ),
+  );
+  openAs();
+  const section = await editing(user);
+
+  await user.click(await section.findByRole("button", { name: "Cancel check" }));
+
+  expect(await section.findByRole("alert")).toHaveTextContent("Only a draft or check in progress can be cancelled.");
+});
+
+test("a failed check says why", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  fakeJudgingGuidanceApi();
+  fakeGuidanceJobApi({ latest: guidanceCheck("Be strict.", { status: "failed", error_reason: "The Evaluation Model didn't answer in time." }) });
+  openAs();
+  const section = await editing(user);
+
+  expect(await section.findByRole("alert")).toHaveTextContent("The check failed: The Evaluation Model didn't answer in time.");
+});
+
+test("a refused check says why", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  fakeJudgingGuidanceApi();
+  server.use(
+    http.post("*/api/organisations/:organisationId/judging-guidance/checks", () =>
+      HttpResponse.json({ detail: "A check needs at least 2 Review sample reviews under the current Judging setup." }, { status: 422 }),
+    ),
+  );
+  openAs();
+  const section = await editing(user);
+
+  await user.click(section.getByRole("button", { name: "Check guidance" }));
+
+  expect(await section.findByRole("alert")).toHaveTextContent("A check needs at least 2 Review sample reviews under the current Judging setup.");
+  await user.type(section.getByRole("textbox", { name: "Judging guidance" }), "x");
+  expect(section.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+test("a saved version shows the check it kept", async () => {
+  const check = { reviews: 40, agreed: 36, false_passes: 1, false_fails: 3, agreed_before: 31, low_sample: false };
+  fakeModelsApi();
+  fakeJudgingGuidanceApi({ versions: [guidanceVersion(2, PARTIAL_GUIDANCE, "Ada Lovelace", check), guidanceVersion(1, "Be strict.", "Ada Lovelace", { ...check, reviews: 12, low_sample: true })] });
+  openAs(editorSession);
+  const section = await card();
+
+  const current = within(await section.findByRole("group", { name: "Current guidance" }));
+  expect(current.getByText("Checked before saving: would agree on 36 of 40 (now 31), false passes: 1, false fails: 3.")).toBeInTheDocument();
+  expect(current.queryByText("Low sample")).not.toBeInTheDocument();
+  const [, earlier] = within(section.getByRole("list", { name: "Guidance versions" })).getAllByRole("listitem");
+  expect(within(earlier as HTMLElement).getByText("Low sample")).toBeInTheDocument();
+});
+
+test("an Owner can still check and save when the latest check can't be loaded", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  fakeJudgingGuidanceApi();
+  let reads = 0;
+  server.use(
+    http.get("*/api/organisations/:organisationId/guidance-jobs/latest", () => {
+      reads += 1;
+      return HttpResponse.json({ detail: "Something broke." }, { status: 500 });
+    }),
+  );
+  openAs();
+  const section = await editing(user);
+
+  await waitFor(() => {
+    expect(reads).toBeGreaterThan(0);
+  });
+  expect(section.getByRole("group", { name: "Check result" })).toBeEmptyDOMElement();
+  expect(section.getByRole("button", { name: "Check guidance" })).toBeEnabled();
 });

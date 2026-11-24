@@ -5,7 +5,9 @@ Each save is a new ``JudgingGuidanceVersion``, numbered from 1, made current on 
 and recorded as ``organisation.judging_guidance_changed`` with before and after, in the same
 transaction. Removing guidance saves an empty version. Saving the text already current changes
 and records nothing. Saving locks the Organisation's row, so two saves can't take one number.
-Only Owners save, which the routes enforce; every Member reads.
+Only Owners save, which the routes enforce; every Member reads. A version keeps the result of
+the latest completed check of its text under the Judging setup it replaced
+(``app.evaluation.guidance_check``), if there was one.
 
 A judgement records the version current when it starts, beside its judge model: its Judging
 setup. ``guidance_text`` reads a recorded version's text back for judging; ``current_setup`` is
@@ -28,7 +30,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import audit
 from app.audit.models import AuditEvent
 from app.conversations.models import Message
-from app.evaluation.models import GuidanceSource, JudgingGuidanceVersion, LiveStatus, LiveVerdict
+from app.evaluation.models import (
+    GuidanceJob,
+    GuidanceJobKind,
+    GuidanceJobStatus,
+    GuidanceSource,
+    JudgingGuidanceVersion,
+    LiveStatus,
+    LiveVerdict,
+)
 from app.evaluation.settings import EVALUATION_MODEL_CHANGED, judge_model
 from app.tenancy.models import Member, Organisation
 from app.tenancy.repository import OrganisationScope
@@ -187,11 +197,33 @@ def _summary(version: JudgingGuidanceVersion | None) -> dict[str, object] | None
     return None if version is None else {"version": version.version, "text": version.text}
 
 
+async def _latest_check(
+    session: AsyncSession, scope: OrganisationScope, text: str, setup: JudgingSetup
+) -> GuidanceJob | None:
+    """The latest completed check of ``text`` under ``setup`` (ticket 19-04), which the version
+    saving it keeps."""
+    return await session.scalar(
+        select(GuidanceJob)
+        .where(
+            GuidanceJob.organisation_id == scope.organisation_id,
+            GuidanceJob.kind == GuidanceJobKind.CHECK,
+            GuidanceJob.status == GuidanceJobStatus.COMPLETED,
+            GuidanceJob.text == text,
+            GuidanceJob.judge_provider == setup.judge_provider,
+            GuidanceJob.judge_model == setup.judge_model,
+            GuidanceJob.judging_guidance_version.is_not_distinct_from(setup.guidance_version),
+        )
+        .order_by(GuidanceJob.created_at.desc())
+        .limit(1)
+    )
+
+
 async def save_guidance(
     session: AsyncSession, scope: OrganisationScope, text: str, *, now: datetime
 ) -> Guidance:
     """Saves ``text`` (trimmed; empty removes guidance) as the Organisation's new current
-    version, unless it is the current text already."""
+    version, unless it is the current text already. The new version keeps the result of the
+    latest completed check of the same text under the Judging setup it replaces."""
     text = text.strip()
     organisation = (
         await session.scalars(
@@ -205,6 +237,8 @@ async def save_guidance(
         )
     )
     if (before.text if before is not None else "") != text:
+        setup = await current_setup(session, scope.organisation_id)
+        check = None if setup is None else await _latest_check(session, scope, text, setup)
         after = JudgingGuidanceVersion(
             organisation_id=scope.organisation_id,
             version=(organisation.judging_guidance_version or 0) + 1,
@@ -213,6 +247,12 @@ async def save_guidance(
             saved_by=scope.member_id,
             saved_at=now,
         )
+        if check is not None:
+            after.check_reviews = check.judged
+            after.check_agreed = check.agreed
+            after.check_false_passes = check.false_passes
+            after.check_false_fails = check.false_fails
+            after.check_agreed_before = check.agreed_before
         session.add(after)
         await session.flush()
         organisation.judging_guidance_version = after.version

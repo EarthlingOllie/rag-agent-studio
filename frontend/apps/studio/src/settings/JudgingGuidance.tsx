@@ -1,9 +1,20 @@
 import { type SubmitEvent, useId, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
-import { button, ConfirmDialog, field, Skeleton, surface, text, useToast } from "../design";
+import { Badge, button, ConfirmDialog, field, Meter, Notice, Skeleton, surface, text, useToast } from "../design";
 import { credentialFailure } from "./credentials";
-import { GUIDANCE_MAX, type GuidanceVersion, useJudgingGuidance, useSaveJudgingGuidance } from "./judgingGuidance";
+import {
+  GUIDANCE_MAX,
+  type GuidanceCheck,
+  type GuidanceJob,
+  type GuidanceVersion,
+  jobInProgress,
+  useCancelGuidanceJob,
+  useJudgingGuidance,
+  useLatestGuidanceJob,
+  useSaveJudgingGuidance,
+  useStartGuidanceCheck,
+} from "./judgingGuidance";
 
 const savedDay = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
 const count = new Intl.NumberFormat("en-GB");
@@ -17,30 +28,94 @@ function GuidanceText({ version }: { version: GuidanceVersion }) {
   return <blockquote className="whitespace-pre-wrap border-l-2 border-field pl-3 text-sm text-ink">{version.text}</blockquote>;
 }
 
+const dollars = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 4 });
+
+/** "would agree on x of y (now z)": a check's agreement on the held-out reviews beside the current Judging setup's. */
+function wouldAgree({ agreed, of, before }: { agreed: number; of: number; before: number }): string {
+  return `would agree on ${count.format(agreed)} of ${count.format(of)} (now ${count.format(before)})`;
+}
+
+function disagreements({ false_passes, false_fails }: { false_passes: number; false_fails: number }): string {
+  return `false passes: ${count.format(false_passes)}, false fails: ${count.format(false_fails)}`;
+}
+
+/** The check a saved version keeps: its result on the held-out reviews before it was saved. */
+function SavedCheck({ check }: { check: GuidanceCheck }) {
+  return (
+    <p className={`${text.small} flex flex-wrap items-center gap-2`}>
+      {`Checked before saving: ${wouldAgree({ agreed: check.agreed, of: check.reviews, before: check.agreed_before })}, ${disagreements(check)}.`}
+      {check.low_sample && <Badge kind="lowSample" />}
+    </p>
+  );
+}
+
+/** Whether a completed check of this text shows lower agreement than the current Judging setup's. */
+function agreementDrops(job: GuidanceJob | null | undefined, draft: string): job is GuidanceJob {
+  return job?.status === "completed" && job.text === draft.trim() && job.agreed < job.agreed_before;
+}
+
+/** The latest check: its progress while it runs, then its result, marked out of date once the text changes. */
+function CheckResult({ organisationId, job, draft }: { organisationId: string; job: GuidanceJob; draft: string }) {
+  const cancel = useCancelGuidanceJob(organisationId);
+  if (jobInProgress(job)) {
+    return (
+      <div className="flex flex-col gap-2">
+        <p className={text.small}>{`Checking on ${count.format(job.held_out)} held-out reviews…`}</p>
+        <Meter label="Check progress" value={job.judged + job.left_out} max={job.held_out} unit="reviews" progress />
+        <FormError message={credentialFailure(cancel.error)} />
+        <div>
+          <button
+            type="button"
+            className={button.secondary}
+            disabled={cancel.isPending}
+            onClick={() => {
+              cancel.mutate(job.id);
+            }}
+          >
+            Cancel check
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (job.status === "failed") return <Notice tone="error">{`The check failed: ${String(job.error_reason)}`}</Notice>;
+  if (job.status === "cancelled") return <p className={text.muted}>The check was cancelled.</p>;
+  const outOfDate = job.text !== draft.trim();
+  return (
+    <div className="flex flex-col gap-2">
+      <p className={`${text.body} flex flex-wrap items-center gap-2`}>
+        <span className="font-medium">{`On held-out reviews, this guidance ${wouldAgree({ agreed: job.agreed, of: job.judged, before: job.agreed_before })}.`}</span>
+        {job.low_sample && <Badge kind="lowSample" />}
+      </p>
+      <p className={text.small}>
+        {`${disagreements(job).replace(/^f/, "F")}.`}
+        {job.left_out > 0 && ` ${count.format(job.left_out)} left out: their replies were deleted.`}
+        {` Cost ${dollars.format(Number(job.cost_usd))}.`}
+      </p>
+      {outOfDate && <Notice tone="warning">Out of date: the text has changed since this check. Check again before saving.</Notice>}
+    </div>
+  );
+}
+
 function GuidanceEditor({ organisationId, current, onDone }: { organisationId: string; current: string; onDone: () => void }) {
   const save = useSaveJudgingGuidance(organisationId);
+  const start = useStartGuidanceCheck(organisationId);
+  const job = useLatestGuidanceJob(organisationId, true).data;
   const toast = useToast();
   const [draft, setDraft] = useState(current);
+  const [confirming, setConfirming] = useState(false);
   const editorId = useId();
   const hintId = useId();
   const tooLong = draft.length > GUIDANCE_MAX;
+  const checking = job !== undefined && job !== null && jobInProgress(job);
+  const checked = job?.status === "completed" && job.text === draft.trim();
   return (
     <form
       aria-label="Edit the Judging guidance"
       className="flex flex-col gap-3"
       onSubmit={(event: SubmitEvent<HTMLFormElement>) => {
         event.preventDefault();
-        save.mutate(draft, {
-          onSuccess: (next) => {
-            const version = next.current;
-            toast.show(
-              version === null || version.text === ""
-                ? "Judging guidance is removed: new judgements use the Evaluation Model's own instructions."
-                : `Judging guidance version ${String(version.version)} is saved: new judgements use it.`,
-            );
-            onDone();
-          },
-        });
+        setConfirming(true);
       }}
     >
       <div className="flex flex-col">
@@ -58,6 +133,7 @@ function GuidanceEditor({ organisationId, current, onDone }: { organisationId: s
           value={draft}
           onChange={(event) => {
             save.reset();
+            start.reset();
             setDraft(event.target.value);
           }}
         />
@@ -68,15 +144,70 @@ function GuidanceEditor({ organisationId, current, onDone }: { organisationId: s
           until that Version has 30 Live Verdicts under it.
         </p>
       </div>
-      <FormError message={credentialFailure(save.error)} />
+      <div aria-live="polite" aria-label="Check result" role="group" className="flex flex-col gap-2">
+        {job && <CheckResult organisationId={organisationId} job={job} draft={draft} />}
+      </div>
+      <FormError message={credentialFailure(start.error)} />
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className={button.primary} disabled={save.isPending || tooLong}>
           {save.isPending ? "Saving…" : "Save guidance"}
+        </button>
+        <button
+          type="button"
+          className={button.secondary}
+          disabled={tooLong || checking || start.isPending}
+          onClick={() => {
+            start.mutate(draft);
+          }}
+        >
+          {checked ? "Check again" : "Check guidance"}
         </button>
         <button type="button" className={button.secondary} disabled={save.isPending} onClick={onDone}>
           Cancel
         </button>
       </div>
+      <p className={text.muted}>
+        A check re-judges the held-out half of the Review sample reviews with this text, without saving it or changing any Verdict. Its
+        Cost counts in Organisation cost, never against the Evaluation budget.
+      </p>
+      <ConfirmDialog
+        open={confirming}
+        title="Save the Judging guidance?"
+        confirmLabel="Save guidance"
+        busy={save.isPending}
+        body={
+          <>
+            {agreementDrops(job, draft) && (
+              <Notice tone="warning">
+                {`The latest check shows lower agreement: on held-out reviews this guidance ${wouldAgree({ agreed: job.agreed, of: job.judged, before: job.agreed_before })}. You can still save it.`}
+              </Notice>
+            )}
+            <FormError message={credentialFailure(save.error)} />
+          </>
+        }
+        onCancel={() => {
+          save.reset();
+          setConfirming(false);
+        }}
+        onConfirm={() => {
+          save.mutate(draft, {
+            onSuccess: (next) => {
+              const version = next.current;
+              toast.show(
+                version === null || version.text === ""
+                  ? "Judging guidance is removed: new judgements use the Evaluation Model's own instructions."
+                  : `Judging guidance version ${String(version.version)} is saved: new judgements use it.`,
+              );
+              setConfirming(false);
+              onDone();
+            },
+          });
+        }}
+      >
+        {checked
+          ? "New Evaluation Runs and Live Verdicts are judged with it, and it starts a new Judging setup."
+          : "New Evaluation Runs and Live Verdicts are judged with it, and it starts a new Judging setup. This text hasn't been checked on held-out reviews."}
+      </ConfirmDialog>
     </form>
   );
 }
@@ -126,8 +257,8 @@ function RemoveGuidance({ organisationId }: { organisationId: string }) {
 
 /**
  * The Judging guidance card in Organisation settings (Models): the Organisation's own instructions
- * to the Evaluation Model, its current version and every version. Every Member reads it; Owners
- * edit and remove it.
+ * to the Evaluation Model, its current version and every version, each with the check it kept.
+ * Every Member reads it; Owners edit, check, save and remove it.
  */
 export function JudgingGuidanceSection({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
   const guidance = useJudgingGuidance(organisationId);
@@ -155,6 +286,7 @@ export function JudgingGuidanceSection({ organisationId, isOwner }: { organisati
             <div role="group" aria-label="Current guidance" className="flex flex-col gap-2">
               <p className={text.small}>{`Version ${String(current.version)}, ${saved(current)}`}</p>
               <GuidanceText version={current} />
+              {current.check && <SavedCheck check={current.check} />}
             </div>
           )}
           {isOwner ? (
@@ -191,6 +323,7 @@ export function JudgingGuidanceSection({ organisationId, isOwner }: { organisati
                   <li key={version.version} className="flex flex-col gap-1">
                     <p className={text.small}>{`Version ${String(version.version)}, ${version.source}, ${saved(version)}`}</p>
                     <GuidanceText version={version} />
+                    {version.check && <SavedCheck check={version.check} />}
                   </li>
                 ))}
               </ol>
