@@ -7357,6 +7357,24 @@
         "title": "RegressionReasonOut",
         "type": "object"
       },
+      "RememberedTurnOut": {
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "answer"
+        ],
+        "title": "RememberedTurnOut",
+        "type": "object"
+      },
       "RenewInviteRequest": {
         "properties": {
           "send_email": {
@@ -7604,7 +7622,7 @@
         "type": "object"
       },
       "ReviewSampleItemOut": {
-        "description": "A judged Verdict, as the Evaluation Model was given it, without its outcome or reason.",
+        "description": "A judged Verdict or Live Verdict check, as the Evaluation Model was given it, without its\noutcome or reason. Exactly one of ``verdict_id`` and ``live_verdict_id`` is set.",
         "properties": {
           "agent_id": {
             "format": "uuid",
@@ -7622,7 +7640,8 @@
           "check": {
             "enum": [
               "reference_answer",
-              "grounding"
+              "grounding",
+              "answers_question"
             ],
             "title": "Check",
             "type": "string"
@@ -7633,6 +7652,18 @@
             },
             "title": "Chunks",
             "type": "array"
+          },
+          "live_verdict_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Verdict Id"
           },
           "question": {
             "title": "Question",
@@ -7649,21 +7680,37 @@
             ],
             "title": "Reference Answer"
           },
+          "remembered_turns": {
+            "items": {
+              "$ref": "#/components/schemas/RememberedTurnOut"
+            },
+            "title": "Remembered Turns",
+            "type": "array"
+          },
           "verdict_id": {
-            "format": "uuid",
-            "title": "Verdict Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict Id"
           }
         },
         "required": [
           "verdict_id",
+          "live_verdict_id",
           "check",
           "agent_id",
           "agent_name",
           "question",
           "reference_answer",
           "answer",
-          "chunks"
+          "chunks",
+          "remembered_turns"
         ],
         "title": "ReviewSampleItemOut",
         "type": "object"
@@ -8362,7 +8409,36 @@
         "type": "object"
       },
       "SampleReviewRequest": {
+        "description": "A review of a Run Verdict (``verdict_id``) or of one check of a Live Verdict\n(``live_verdict_id`` and ``check``): exactly one of the two IDs.",
         "properties": {
+          "check": {
+            "anyOf": [
+              {
+                "enum": [
+                  "reference_answer",
+                  "grounding",
+                  "answers_question"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check"
+          },
+          "live_verdict_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Verdict Id"
+          },
           "outcome": {
             "enum": [
               "pass",
@@ -8384,13 +8460,19 @@
             "title": "Reason"
           },
           "verdict_id": {
-            "format": "uuid",
-            "title": "Verdict Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict Id"
           }
         },
         "required": [
-          "verdict_id",
           "outcome"
         ],
         "title": "SampleReviewRequest",
@@ -24195,7 +24277,7 @@
     },
     "/api/organisations/{organisation_id}/review-sample/next": {
       "get": {
-        "description": "One judged Verdict drawn at random from those of the current Evaluation Model not yet\nreviewed (null when there are none), without the Evaluation Model's outcome or reason, and\nhow many Review sample reviews the Organisation and you have given.",
+        "description": "One judged Verdict or Live Verdict check drawn at random from those of the current\nEvaluation Model not yet reviewed whose text is still there (null when there are none),\nwithout the Evaluation Model's outcome or reason, and how many Review sample reviews the\nOrganisation and you have given.",
         "operationId": "getReviewSampleItem",
         "parameters": [
           {
@@ -24249,7 +24331,7 @@
     },
     "/api/organisations/{organisation_id}/review-sample/reviews": {
       "post": {
-        "description": "Stores your pass or fail on a Review sample item, replacing any earlier review of the\nVerdict, and reveals the Evaluation Model's outcome and reason. A Verdict that isn't a judged\nReference answer or grounding Verdict of this Organisation is not found.",
+        "description": "Stores your pass or fail on a Review sample item, replacing any earlier review of it,\nand reveals the Evaluation Model's outcome and reason. A Verdict that isn't a judged\nReference answer or grounding Verdict of this Organisation, or a Live Verdict that isn't\njudged or whose text is gone, is not found.",
         "operationId": "submitSampleReview",
         "parameters": [
           {
@@ -24295,7 +24377,7 @@
             "description": "Not found"
           },
           "422": {
-            "description": "Not pass or fail, or a reason over 1,000 characters"
+            "description": "Not pass or fail, a reason over 1,000 characters, or not exactly one target (a Live Verdict needs its check)"
           }
         },
         "summary": "Submit Sample Review",

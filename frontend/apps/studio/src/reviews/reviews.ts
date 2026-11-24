@@ -10,6 +10,11 @@ export type SampleReview = Schemas["SampleReviewOut"];
 export type EvaluationAgreement = Schemas["EvaluationAgreementOut"];
 export type ReviewOutcome = Schemas["SampleReviewRequest"]["outcome"];
 
+/** What a review of the item names: its Run Verdict, or its Live Verdict and which check. */
+export function targetOf(item: ReviewSampleItem): Pick<Schemas["SampleReviewRequest"], "verdict_id" | "live_verdict_id" | "check"> {
+  return item.verdict_id === null ? { live_verdict_id: item.live_verdict_id, check: item.check } : { verdict_id: item.verdict_id };
+}
+
 /** The longest reason an Editor may give when they differ from the Evaluation Model. */
 export const REASON_MAX = 1000;
 
@@ -17,7 +22,7 @@ const nextKey = (organisationId: string) => ["review-sample", organisationId] as
 const agreementKey = (organisationId: string) => ["evaluation-agreement", organisationId] as const;
 
 /**
- * One judged Verdict drawn at random from those not yet reviewed (null when there are none), without the
+ * One judged Verdict or Live Verdict check drawn at random from those not yet reviewed (null when there are none), without the
  * Evaluation Model's outcome or reason. It is drawn again only when asked (Skip, Next).
  */
 export function useReviewSampleItem(organisationId: string) {

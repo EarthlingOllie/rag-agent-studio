@@ -10,14 +10,19 @@ import {
   type ReviewOutcome,
   type ReviewSampleItem,
   type SampleReview,
+  targetOf,
   useReviewSampleItem,
   useSubmitSampleReview,
 } from "./reviews";
 
-const CHECKS: Record<ReviewSampleItem["check"], string> = {
-  reference_answer: "Does the answer agree in meaning with the Reference answer?",
-  grounding: "Is every claim in the answer supported by the excerpts it cited?",
+/** What is being checked, of a Run Verdict's answer or a Live Verdict's reply. */
+const CHECKS: Record<ReviewSampleItem["check"], (judged: string) => string> = {
+  reference_answer: (judged) => `Does the ${judged} agree in meaning with the Reference answer?`,
+  grounding: (judged) => `Is every claim in the ${judged} supported by the excerpts it cited?`,
+  answers_question: (judged) => `Does the ${judged} answer the question it was asked?`,
 };
+
+const isLive = (item: ReviewSampleItem) => item.live_verdict_id !== null;
 
 function OutcomeBadge({ outcome }: { outcome: ReviewOutcome }) {
   return <Badge kind={outcome === "pass" ? "evaluationPass" : "evaluationFail"} />;
@@ -33,23 +38,55 @@ function Given({ label, children }: { label: string; children: string }) {
   );
 }
 
-/** The judged Verdict as the Evaluation Model saw it: never its outcome or reason. */
+/** A Live reply's Remembered turns, oldest first, as the Evaluation Model was given them. */
+function RememberedTurns({ turns }: { turns: ReviewSampleItem["remembered_turns"] }) {
+  const headingId = useId();
+  if (turns.length === 0) return null;
+  return (
+    <div className="flex flex-col gap-2">
+      <h3 id={headingId} className={text.small}>
+        Earlier in the Conversation
+      </h3>
+      <ul aria-labelledby={headingId} className="flex flex-col gap-2">
+        {turns.map((turn, index) => (
+          <li key={index} className="flex flex-col gap-1 rounded-xl bg-sunken px-3.5 py-2.5 text-sm text-ink">
+            <p className="whitespace-pre-wrap">
+              <span className="text-muted">Visitor: </span>
+              {turn.question}
+            </p>
+            <p className="whitespace-pre-wrap">
+              <span className="text-muted">Reply: </span>
+              {turn.answer}
+            </p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+/** The judged Verdict or Live Verdict check as the Evaluation Model saw it: never its outcome or reason. */
 function Item({ item }: { item: ReviewSampleItem }) {
+  const live = isLive(item);
+  const excerptsId = useId();
   return (
     <article aria-label="Item to review" className={`${surface.panel} flex flex-col gap-4`}>
       <div className="flex flex-col gap-1">
-        <p className={text.small}>{`${item.agent_name} · Evaluation Run`}</p>
-        <h2 className={text.subheading}>{CHECKS[item.check]}</h2>
+        <p className={text.small}>{`${item.agent_name} · ${live ? "Live reply" : "Evaluation Run"}`}</p>
+        <h2 className={text.subheading}>{CHECKS[item.check](live ? "reply" : "answer")}</h2>
       </div>
+      <RememberedTurns turns={item.remembered_turns} />
       <Given label="Question">{item.question}</Given>
       {item.reference_answer !== null && <Given label="Reference answer">{item.reference_answer}</Given>}
-      <Given label="Answer">{item.answer}</Given>
+      <Given label={live ? "Reply" : "Answer"}>{item.answer}</Given>
       <div className="flex flex-col gap-2">
-        <h3 className={text.small}>Excerpts it was given</h3>
+        <h3 id={excerptsId} className={text.small}>
+          Excerpts it was given
+        </h3>
         {item.chunks.length === 0 ? (
-          <p className={text.muted}>None: the answer cited nothing.</p>
+          <p className={text.muted}>{live ? "None: it was given no excerpts." : "None: the answer cited nothing."}</p>
         ) : (
-          <ul className="flex flex-col gap-2">
+          <ul aria-labelledby={excerptsId} className="flex flex-col gap-2">
             {item.chunks.map((chunk) => (
               <li key={chunk.label} className="flex flex-col gap-1 rounded-xl bg-sunken px-3.5 py-2.5">
                 <span className="flex flex-wrap items-center gap-2 text-xs text-muted">
@@ -106,7 +143,7 @@ function Reveal({
           onSubmit={(event: SubmitEvent<HTMLFormElement>) => {
             event.preventDefault();
             save.mutate(
-              { verdict_id: item.verdict_id, outcome: review.outcome, reason: reason.trim() },
+              { ...targetOf(item), outcome: review.outcome, reason: reason.trim() },
               {
                 onSuccess: () => {
                   toast.show("Your reason is saved.");
@@ -158,7 +195,7 @@ function Decide({
 }) {
   const submit = useSubmitSampleReview(organisationId);
   const decide = (outcome: ReviewOutcome) => {
-    submit.mutate({ verdict_id: item.verdict_id, outcome }, { onSuccess: onReviewed });
+    submit.mutate({ ...targetOf(item), outcome }, { onSuccess: onReviewed });
   };
   // Pass and Fail look alike, so neither is suggested.
   return (
@@ -199,7 +236,7 @@ function Sample({ organisationId }: { organisationId: string }) {
         <EmptyState
           icon="check"
           title="Nothing to review"
-          description="Every judged Verdict by the current Evaluation Model has been reviewed. New ones come with each Evaluation Run."
+          description="Every judged Verdict and Live Verdict check by the current Evaluation Model has been reviewed. New ones come with each Evaluation Run and judged Live reply."
           action={
             <Link to="/organisations/$organisationId/settings/models" params={{ organisationId }} className={text.link}>
               Back to Models settings
@@ -221,7 +258,7 @@ function Sample({ organisationId }: { organisationId: string }) {
 }
 
 /**
- * The Review sample: one judged Verdict at a time, drawn at random from those by the current Evaluation Model
+ * The Review sample: one judged Verdict or Live Verdict check at a time, drawn at random from those by the current Evaluation Model
  * not yet reviewed. The Editor gives their own pass or fail before the Evaluation Model's is revealed, so
  * Evaluation Model agreement isn't skewed towards the Verdicts people already doubted.
  */

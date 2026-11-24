@@ -5,7 +5,7 @@ import uuid
 from typing import Annotated, Any, Literal, cast
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.auth.api import Db, ErrorResponse
 from app.core.clock import Clock, get_clock
@@ -24,7 +24,8 @@ _NOT_FOUND: dict[int | str, dict[str, Any]] = {
 ClockDep = Annotated[Clock, Depends(get_clock)]
 
 Outcome = Literal["pass", "fail"]
-Check = Literal["reference_answer", "grounding"]
+Check = Literal["reference_answer", "grounding", "answers_question"]
+LiveCheck = Literal["grounding", "answers_question"]
 
 
 class ReviewChunkOut(BaseModel):
@@ -36,10 +37,19 @@ class ReviewChunkOut(BaseModel):
     cited: bool
 
 
-class ReviewSampleItemOut(BaseModel):
-    """A judged Verdict, as the Evaluation Model was given it, without its outcome or reason."""
+class RememberedTurnOut(BaseModel):
+    question: str
+    answer: str
 
-    verdict_id: uuid.UUID
+
+class ReviewSampleItemOut(BaseModel):
+    """A judged Verdict or Live Verdict check, as the Evaluation Model was given it, without its
+    outcome or reason. Exactly one of ``verdict_id`` and ``live_verdict_id`` is set."""
+
+    # A Run Verdict's ID, or null for a Live Verdict check.
+    verdict_id: uuid.UUID | None
+    # A Live Verdict's ID, with ``check`` naming which of its checks; null for a Run Verdict.
+    live_verdict_id: uuid.UUID | None
     # What is being checked.
     check: Check
     agent_id: uuid.UUID
@@ -49,6 +59,9 @@ class ReviewSampleItemOut(BaseModel):
     reference_answer: str | None
     answer: str
     chunks: list[ReviewChunkOut]
+    # A Live Verdict's reply's Remembered turns, oldest first, as the Evaluation Model was given
+    # them; empty for a Run Verdict.
+    remembered_turns: list[RememberedTurnOut]
 
 
 class ReviewSampleNextOut(BaseModel):
@@ -60,10 +73,29 @@ class ReviewSampleNextOut(BaseModel):
 
 
 class SampleReviewRequest(BaseModel):
-    verdict_id: uuid.UUID
+    """A review of a Run Verdict (``verdict_id``) or of one check of a Live Verdict
+    (``live_verdict_id`` and ``check``): exactly one of the two IDs."""
+
+    verdict_id: uuid.UUID | None = None
+    live_verdict_id: uuid.UUID | None = None
+    # Which check of the Live Verdict; ignored for a Run Verdict.
+    check: Check | None = None
     outcome: Outcome
     # Why the Editor differs from the Evaluation Model, when they do.
     reason: Annotated[str, Field(max_length=REVIEW_REASON_MAX)] | None = None
+
+    @model_validator(mode="after")
+    def _one_target(self) -> "SampleReviewRequest":
+        if (self.verdict_id is None) == (self.live_verdict_id is None):
+            raise ValueError("Give exactly one of verdict_id and live_verdict_id")
+        if self.live_verdict_id is not None and self.check not in reviews.LIVE_CHECKS:
+            raise ValueError("A Live Verdict's check is grounding or answers_question")
+        return self
+
+    def target(self) -> reviews.RunTarget | reviews.LiveTarget:
+        if self.verdict_id is not None:
+            return reviews.RunTarget(self.verdict_id)
+        return reviews.LiveTarget(cast(uuid.UUID, self.live_verdict_id), cast(str, self.check))
 
 
 class SampleReviewOut(BaseModel):
@@ -90,8 +122,10 @@ class EvaluationAgreementOut(BaseModel):
 
 
 def _item(item: reviews.SampleItem) -> ReviewSampleItemOut:
+    target = item.target
     return ReviewSampleItemOut(
-        verdict_id=item.verdict_id,
+        verdict_id=target.verdict_id if isinstance(target, reviews.RunTarget) else None,
+        live_verdict_id=target.live_verdict_id if isinstance(target, reviews.LiveTarget) else None,
         check=cast(Check, item.check),
         agent_id=item.agent_id,
         agent_name=item.agent_name,
@@ -107,14 +141,18 @@ def _item(item: reviews.SampleItem) -> ReviewSampleItemOut:
             )
             for c in item.chunks
         ],
+        remembered_turns=[
+            RememberedTurnOut(question=t.question, answer=t.answer) for t in item.remembered_turns
+        ],
     )
 
 
 @router.get("/review-sample/next", responses=_NOT_FOUND, operation_id="getReviewSampleItem")
 async def get_review_sample_item(scope: Scope, db: Db) -> ReviewSampleNextOut:
-    """One judged Verdict drawn at random from those of the current Evaluation Model not yet
-    reviewed (null when there are none), without the Evaluation Model's outcome or reason, and
-    how many Review sample reviews the Organisation and you have given."""
+    """One judged Verdict or Live Verdict check drawn at random from those of the current
+    Evaluation Model not yet reviewed whose text is still there (null when there are none),
+    without the Evaluation Model's outcome or reason, and how many Review sample reviews the
+    Organisation and you have given."""
     found = await reviews.next_item(db, scope)
     return ReviewSampleNextOut(
         item=None if found.item is None else _item(found.item),
@@ -127,19 +165,23 @@ async def get_review_sample_item(scope: Scope, db: Db) -> ReviewSampleNextOut:
     "/review-sample/reviews",
     responses={
         **_NOT_FOUND,
-        422: {"description": "Not pass or fail, or a reason over 1,000 characters"},
+        422: {
+            "description": "Not pass or fail, a reason over 1,000 characters, or not exactly one "
+            "target (a Live Verdict needs its check)"
+        },
     },
     operation_id="submitSampleReview",
 )
 async def submit_sample_review(
     body: SampleReviewRequest, scope: Scope, db: Db, clock: ClockDep
 ) -> SampleReviewOut:
-    """Stores your pass or fail on a Review sample item, replacing any earlier review of the
-    Verdict, and reveals the Evaluation Model's outcome and reason. A Verdict that isn't a judged
-    Reference answer or grounding Verdict of this Organisation is not found."""
+    """Stores your pass or fail on a Review sample item, replacing any earlier review of it,
+    and reveals the Evaluation Model's outcome and reason. A Verdict that isn't a judged
+    Reference answer or grounding Verdict of this Organisation, or a Live Verdict that isn't
+    judged or whose text is gone, is not found."""
     try:
         reveal = await reviews.submit_sample_review(
-            db, scope, body.verdict_id, VerdictOutcome(body.outcome), body.reason, now=clock.now()
+            db, scope, body.target(), VerdictOutcome(body.outcome), body.reason, now=clock.now()
         )
     except reviews.NotReviewableError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None

@@ -2709,9 +2709,10 @@ export interface paths {
         };
         /**
          * Get Review Sample Item
-         * @description One judged Verdict drawn at random from those of the current Evaluation Model not yet
-         *     reviewed (null when there are none), without the Evaluation Model's outcome or reason, and
-         *     how many Review sample reviews the Organisation and you have given.
+         * @description One judged Verdict or Live Verdict check drawn at random from those of the current
+         *     Evaluation Model not yet reviewed whose text is still there (null when there are none),
+         *     without the Evaluation Model's outcome or reason, and how many Review sample reviews the
+         *     Organisation and you have given.
          */
         get: operations["getReviewSampleItem"];
         put?: never;
@@ -2733,9 +2734,10 @@ export interface paths {
         put?: never;
         /**
          * Submit Sample Review
-         * @description Stores your pass or fail on a Review sample item, replacing any earlier review of the
-         *     Verdict, and reveals the Evaluation Model's outcome and reason. A Verdict that isn't a judged
-         *     Reference answer or grounding Verdict of this Organisation is not found.
+         * @description Stores your pass or fail on a Review sample item, replacing any earlier review of it,
+         *     and reveals the Evaluation Model's outcome and reason. A Verdict that isn't a judged
+         *     Reference answer or grounding Verdict of this Organisation, or a Live Verdict that isn't
+         *     judged or whose text is gone, is not found.
          */
         post: operations["submitSampleReview"];
         delete?: never;
@@ -5635,6 +5637,13 @@ export interface components {
             /** Reason */
             reason: string | null;
         };
+        /** RememberedTurnOut */
+        RememberedTurnOut: {
+            /** Answer */
+            answer: string;
+            /** Question */
+            question: string;
+        };
         /** RenewInviteRequest */
         RenewInviteRequest: {
             /**
@@ -5754,7 +5763,8 @@ export interface components {
         };
         /**
          * ReviewSampleItemOut
-         * @description A judged Verdict, as the Evaluation Model was given it, without its outcome or reason.
+         * @description A judged Verdict or Live Verdict check, as the Evaluation Model was given it, without its
+         *     outcome or reason. Exactly one of ``verdict_id`` and ``live_verdict_id`` is set.
          */
         ReviewSampleItemOut: {
             /**
@@ -5770,18 +5780,19 @@ export interface components {
              * Check
              * @enum {string}
              */
-            check: "reference_answer" | "grounding";
+            check: "reference_answer" | "grounding" | "answers_question";
             /** Chunks */
             chunks: components["schemas"]["ReviewChunkOut"][];
+            /** Live Verdict Id */
+            live_verdict_id: string | null;
             /** Question */
             question: string;
             /** Reference Answer */
             reference_answer: string | null;
-            /**
-             * Verdict Id
-             * Format: uuid
-             */
-            verdict_id: string;
+            /** Remembered Turns */
+            remembered_turns: components["schemas"]["RememberedTurnOut"][];
+            /** Verdict Id */
+            verdict_id: string | null;
         };
         /** ReviewSampleNextOut */
         ReviewSampleNextOut: {
@@ -6017,8 +6028,16 @@ export interface components {
              */
             outcome: "pass" | "fail";
         };
-        /** SampleReviewRequest */
+        /**
+         * SampleReviewRequest
+         * @description A review of a Run Verdict (``verdict_id``) or of one check of a Live Verdict
+         *     (``live_verdict_id`` and ``check``): exactly one of the two IDs.
+         */
         SampleReviewRequest: {
+            /** Check */
+            check?: ("reference_answer" | "grounding" | "answers_question") | null;
+            /** Live Verdict Id */
+            live_verdict_id?: string | null;
             /**
              * Outcome
              * @enum {string}
@@ -6026,11 +6045,8 @@ export interface components {
             outcome: "pass" | "fail";
             /** Reason */
             reason?: string | null;
-            /**
-             * Verdict Id
-             * Format: uuid
-             */
-            verdict_id: string;
+            /** Verdict Id */
+            verdict_id?: string | null;
         };
         /**
          * SaveJudgingGuidanceRequest
@@ -14838,7 +14854,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Not pass or fail, or a reason over 1,000 characters */
+            /** @description Not pass or fail, a reason over 1,000 characters, or not exactly one target (a Live Verdict needs its check) */
             422: {
                 headers: {
                     [name: string]: unknown;

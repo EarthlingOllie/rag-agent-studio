@@ -1,16 +1,21 @@
 """Verdict reviews, the Review sample and Evaluation Model agreement (spec 18).
 
-The Review sample's pool is every judged Reference answer and grounding Verdict of an answered
-Run result (outcome pass or fail) in the Organisation, judged by its current Evaluation Model
-(or the Default Model, when none is chosen), with no review. Expected source and Expect Fallback
-Text Verdicts aren't judged by the Evaluation Model, Stale ones are neither pass nor fail, and an
-errored answer has no Verdicts, so none of them is ever in it.
+The Review sample's pool is, in the Organisation and judged by its current Evaluation Model (or
+the Default Model, when none is chosen), with no review:
+
+- every judged Reference answer and grounding Verdict of an answered Run result (outcome pass or
+  fail). Expected source and Expect Fallback Text Verdicts aren't judged by the Evaluation Model,
+  Stale ones are neither pass nor fail, and an errored answer has no Verdicts, so none of them is
+  ever in it;
+- both checks (grounding, answers the question) of every judged Live Verdict whose text is all
+  still there: not purged, and with no earlier Message of its Conversation purged since the reply
+  (a Remembered turn may be gone). Error and skipped Live Verdicts were never judged.
 
 ``next_item`` draws one uniformly at random from the pool, from the one module-level random
 source seeded with ``Settings.review_sample_seed`` (tests set it), and returns what the
 Evaluation Model was given (``app.evaluation.judge_input``), never its outcome or reason.
 Submitting stores the review with ``from_sample`` true, replacing any earlier review of the
-Verdict, and returns the Evaluation Model's outcome and reason for the reveal. Skipping stores
+target, and returns the Evaluation Model's outcome and reason for the reveal. Skipping stores
 nothing.
 
 Agreement is counted when read, over the sample reviews of a given Evaluation Model, from the
@@ -21,29 +26,37 @@ import random
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from typing import cast
+from typing import Any, cast
 
-from sqlalchemy import ColumnElement, Select, case, func, select
+from sqlalchemy import ColumnElement, Select, and_, case, exists, func, literal, select, union_all
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute, aliased
 
 from app.agents.models import Agent
+from app.conversations.models import Message
 from app.evaluation.judge import CitedExcerpt, JudgeRequest
 from app.evaluation.judge_input import judge_input
 from app.evaluation.models import (
     EvaluationCaseResult,
     EvaluationRun,
     EvaluationVerdict,
+    LiveStatus,
+    LiveVerdict,
     VerdictKind,
     VerdictOutcome,
 )
 from app.evaluation.review_models import VerdictReview
 from app.evaluation.settings import judge_model
+from app.runtime.prompt import Turn
 from app.tenancy.repository import OrganisationScope
 
 # The Verdicts the Evaluation Model judges, and so the ones that can be reviewed.
 REVIEWED_KINDS = (VerdictKind.REFERENCE_ANSWER, VerdictKind.GROUNDING)
 JUDGED = (VerdictOutcome.PASS, VerdictOutcome.FAIL)
+# A Live Verdict's checks, as reviews name them.
+ANSWERS_QUESTION = "answers_question"
+LIVE_CHECKS = (VerdictKind.GROUNDING.value, ANSWERS_QUESTION)
 
 # The one random source the Review sample draws from.
 _draws = random.Random()  # noqa: S311 (sampling, not security)
@@ -69,8 +82,23 @@ class ReviewChunk:
 
 
 @dataclass(frozen=True)
-class SampleItem:
+class RunTarget:
+    """A Run Verdict."""
+
     verdict_id: uuid.UUID
+
+
+@dataclass(frozen=True)
+class LiveTarget:
+    """One check (one of ``LIVE_CHECKS``) of a Live Verdict."""
+
+    live_verdict_id: uuid.UUID
+    check: str
+
+
+@dataclass(frozen=True)
+class SampleItem:
+    target: RunTarget | LiveTarget
     check: str
     agent_id: uuid.UUID
     agent_name: str
@@ -79,6 +107,8 @@ class SampleItem:
     reference_answer: str | None
     answer: str
     chunks: list[ReviewChunk]
+    # A Live Verdict's reply's Remembered turns, oldest first; empty for a Run Verdict.
+    remembered_turns: list[Turn]
 
 
 @dataclass(frozen=True)
@@ -104,7 +134,8 @@ class Agreement:
 
 
 class NotReviewableError(Exception):
-    """No judged Reference answer or grounding Verdict of the Organisation has that ID."""
+    """No judged Reference answer or grounding Verdict, or judged Live Verdict whose text is
+    still there, of the Organisation has that ID."""
 
 
 async def current_judge(session: AsyncSession, organisation_id: uuid.UUID) -> Judge | None:
@@ -137,12 +168,32 @@ def _of(judge: Judge, organisation_id: uuid.UUID) -> list[ColumnElement[bool]]:
     ]
 
 
+def _live_reviewable(organisation_id: uuid.UUID) -> Select[LiveVerdict]:
+    reply, earlier = aliased(Message), aliased(Message)
+    # A Remembered turn purged after the reply was given: it can't be shown as it was judged.
+    turn_gone = exists().where(
+        earlier.conversation_id == reply.conversation_id,
+        earlier.seq < reply.seq,
+        earlier.purged_at > reply.created_at,
+    )
+    return (
+        select(LiveVerdict)
+        .join(reply, reply.id == LiveVerdict.message_id)
+        .where(
+            LiveVerdict.organisation_id == organisation_id,
+            LiveVerdict.status == LiveStatus.JUDGED,
+            LiveVerdict.purged_at.is_(None),
+            ~turn_gone,
+        )
+    )
+
+
 async def next_item(session: AsyncSession, scope: OrganisationScope) -> SampleNext:
     """One item drawn at random from the pool, or None when it is empty, with review counts."""
     judge = await current_judge(session, scope.organisation_id)
     if judge is None:
         return SampleNext(None, 0, 0)
-    pool = (
+    runs = (
         _reviewable(scope.organisation_id)
         .outerjoin(VerdictReview, VerdictReview.verdict_id == EvaluationVerdict.id)
         .where(
@@ -150,8 +201,30 @@ async def next_item(session: AsyncSession, scope: OrganisationScope) -> SampleNe
             EvaluationRun.judge_model == judge.model,
             VerdictReview.id.is_(None),
         )
+        .with_only_columns(
+            literal("run").label("target"),
+            EvaluationVerdict.id.label("id"),
+            EvaluationVerdict.kind.label("check"),
+        )
     )
-    size = await session.scalar(select(func.count()).select_from(pool.subquery())) or 0
+    lives = [
+        _live_reviewable(scope.organisation_id)
+        .outerjoin(
+            VerdictReview,
+            and_(VerdictReview.live_verdict_id == LiveVerdict.id, VerdictReview.check == check),
+        )
+        .where(
+            LiveVerdict.judge_provider == judge.provider,
+            LiveVerdict.judge_model == judge.model,
+            VerdictReview.id.is_(None),
+        )
+        .with_only_columns(
+            literal("live").label("target"), LiveVerdict.id.label("id"), literal(check)
+        )
+        for check in LIVE_CHECKS
+    ]
+    pool = union_all(runs, *lives).subquery()
+    size = await session.scalar(select(func.count()).select_from(pool)) or 0
     by_you = case((VerdictReview.reviewed_by == scope.member_id, 1), else_=0)
     reviewed, reviewed_by_you = (
         await session.execute(
@@ -162,22 +235,32 @@ async def next_item(session: AsyncSession, scope: OrganisationScope) -> SampleNe
     ).one()
     if size == 0:
         return SampleNext(None, reviewed, reviewed_by_you)
-    verdict, run = (
+    target, target_id, check = (
         await session.execute(
-            pool.order_by(EvaluationVerdict.id).offset(_draws.randrange(size)).limit(1)
+            select(pool).order_by(*pool.c).offset(_draws.randrange(size)).limit(1)
         )
     ).one()
-    return SampleNext(await _item(session, verdict, run), reviewed, reviewed_by_you)
+    if target == "run":
+        item = await _run_item(session, await session.get_one(EvaluationVerdict, target_id))
+    else:
+        item = await _live_item(session, await session.get_one(LiveVerdict, target_id), check)
+    return SampleNext(item, reviewed, reviewed_by_you)
 
 
-async def _item(
-    session: AsyncSession, verdict: EvaluationVerdict, run: EvaluationRun
-) -> SampleItem:
+def _chunks(request: JudgeRequest) -> list[ReviewChunk]:
+    return [ReviewChunk(c, True) for c in request.cited] + [
+        ReviewChunk(c, False) for c in request.given
+    ]
+
+
+async def _run_item(session: AsyncSession, verdict: EvaluationVerdict) -> SampleItem:
     # Only answered results are in the pool, and their input is always rebuilt.
     request = cast(JudgeRequest, await judge_input(session, verdict))
+    result = await session.get_one(EvaluationCaseResult, verdict.result_id)
+    run = await session.get_one(EvaluationRun, result.run_id)
     agent = await session.get_one(Agent, run.agent_id)
     return SampleItem(
-        verdict_id=verdict.id,
+        target=RunTarget(verdict.id),
         check=verdict.kind,
         agent_id=agent.id,
         agent_name=agent.name,
@@ -186,37 +269,104 @@ async def _item(
             request.reference_answer if verdict.kind == VerdictKind.REFERENCE_ANSWER else None
         ),
         answer=request.answer,
-        chunks=[ReviewChunk(c, True) for c in request.cited]
-        + [ReviewChunk(c, False) for c in request.given],
+        chunks=_chunks(request),
+        remembered_turns=[],
+    )
+
+
+async def _live_item(session: AsyncSession, verdict: LiveVerdict, check: str) -> SampleItem:
+    # Only Live Verdicts whose text is all still there are in the pool.
+    request = cast(JudgeRequest, await judge_input(session, verdict))
+    agent = await session.get_one(Agent, verdict.agent_id)
+    return SampleItem(
+        target=LiveTarget(verdict.id, check),
+        check=check,
+        agent_id=agent.id,
+        agent_name=agent.name,
+        question=request.question,
+        reference_answer=None,
+        answer=request.answer,
+        chunks=_chunks(request),
+        remembered_turns=list(request.earlier_turns),
+    )
+
+
+@dataclass(frozen=True)
+class _Reviewed:
+    """What a review copies from its target, and the reason revealed with it."""
+
+    agent_id: uuid.UUID
+    check: str
+    evaluation_model_outcome: str
+    evaluation_model_reason: str | None
+    judge: Judge
+
+
+async def _run_target(
+    session: AsyncSession, organisation_id: uuid.UUID, target: RunTarget
+) -> _Reviewed:
+    found = (
+        await session.execute(
+            _reviewable(organisation_id).where(EvaluationVerdict.id == target.verdict_id)
+        )
+    ).one_or_none()
+    if found is None:
+        raise NotReviewableError
+    verdict, run = found
+    return _Reviewed(
+        run.agent_id,
+        verdict.kind,
+        verdict.outcome,
+        verdict.reason,
+        Judge(run.judge_provider, run.judge_model),
+    )
+
+
+async def _live_target(
+    session: AsyncSession, organisation_id: uuid.UUID, target: LiveTarget
+) -> _Reviewed:
+    verdict = await session.scalar(
+        _live_reviewable(organisation_id).where(LiveVerdict.id == target.live_verdict_id)
+    )
+    if verdict is None:
+        raise NotReviewableError
+    grounding = target.check == VerdictKind.GROUNDING
+    # A judged Live Verdict has both outcomes and its judge.
+    return _Reviewed(
+        verdict.agent_id,
+        target.check,
+        cast(str, verdict.grounded if grounding else verdict.answers_question),
+        verdict.grounded_reason if grounding else verdict.answers_question_reason,
+        Judge(cast(str, verdict.judge_provider), cast(str, verdict.judge_model)),
     )
 
 
 async def submit_sample_review(
     session: AsyncSession,
     scope: OrganisationScope,
-    verdict_id: uuid.UUID,
+    target: RunTarget | LiveTarget,
     outcome: VerdictOutcome,
     reason: str | None,
     *,
     now: datetime,
 ) -> Reveal:
     """Stores the Editor's review of a Review sample item, replacing any earlier review of the
-    Verdict, and returns the Evaluation Model's outcome and reason. Raises
+    target, and returns the Evaluation Model's outcome and reason. Raises
     ``NotReviewableError``."""
-    found = (
-        await session.execute(
-            _reviewable(scope.organisation_id).where(EvaluationVerdict.id == verdict_id)
-        )
-    ).one_or_none()
-    if found is None:
-        raise NotReviewableError
-    verdict, run = found
+    if isinstance(target, RunTarget):
+        found = await _run_target(session, scope.organisation_id, target)
+        keys = {"verdict_id": target.verdict_id}
+        conflict: list[InstrumentedAttribute[Any]] = [VerdictReview.verdict_id]
+    else:
+        found = await _live_target(session, scope.organisation_id, target)
+        keys = {"live_verdict_id": target.live_verdict_id}
+        conflict = [VerdictReview.live_verdict_id, VerdictReview.check]
     values = {
         "outcome": outcome.value,
-        "evaluation_model_outcome": verdict.outcome,
-        "check": verdict.kind,
-        "judge_provider": run.judge_provider,
-        "judge_model": run.judge_model,
+        "evaluation_model_outcome": found.evaluation_model_outcome,
+        "check": found.check,
+        "judge_provider": found.judge.provider,
+        "judge_model": found.judge.model,
         "from_sample": True,
         "reason": reason,
         "reviewed_by": scope.member_id,
@@ -227,14 +377,14 @@ async def submit_sample_review(
         .values(
             id=uuid.uuid4(),
             organisation_id=scope.organisation_id,
-            agent_id=run.agent_id,
-            verdict_id=verdict.id,
+            agent_id=found.agent_id,
+            **keys,
             **values,
         )
-        .on_conflict_do_update(index_elements=[VerdictReview.verdict_id], set_=values)
+        .on_conflict_do_update(index_elements=conflict, set_=values)
     )
     await session.commit()
-    return Reveal(outcome.value, verdict.outcome, verdict.reason)
+    return Reveal(outcome.value, found.evaluation_model_outcome, found.evaluation_model_reason)
 
 
 async def read_agreement(session: AsyncSession, organisation_id: uuid.UUID) -> Agreement | None:
