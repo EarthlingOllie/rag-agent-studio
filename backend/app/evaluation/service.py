@@ -66,6 +66,7 @@ from app.evaluation.combining import (
 )
 from app.evaluation.estimate import Estimate, EstimateSide, estimate
 from app.evaluation.expectations import refresh_stale
+from app.evaluation.guidance import current_version
 from app.evaluation.models import (
     IN_PROGRESS,
     CaseSource,
@@ -925,6 +926,7 @@ async def add_run(
         judge_credential_id=judge.credential.id,
         judge_provider=judge.credential.provider,
         judge_model=judge.model,
+        judging_guidance_version=await current_version(session, scope.organisation_id),
         repeats=repeats,
         answers_done=0,
         answers_total=len(cases) * repeats * len(resolved_sides),

@@ -35,6 +35,7 @@ from app.agents.models import Agent
 from app.conversations.models import Message
 from app.core.clock import Clock
 from app.evaluation.budget import add_spend, email_owners, read_budget
+from app.evaluation.guidance import current_version
 from app.evaluation.judge import JudgeError, judge
 from app.evaluation.judge_input import judge_input
 from app.evaluation.models import LiveStatus, LiveVerdict, VerdictOutcome
@@ -118,6 +119,8 @@ async def judge_live_verdict(
     ``skipped`` when the text it needs was Purged first."""
     async with sessionmaker() as session:
         verdict = await session.get_one(LiveVerdict, verdict_id)
+        # Judged under the Judging guidance current as judging starts, recorded with the model.
+        verdict.judging_guidance_version = await current_version(session, verdict.organisation_id)
         request = await judge_input(session, verdict)
         if request is None:
             # Purged before it was judged: nothing is sent to the judge.

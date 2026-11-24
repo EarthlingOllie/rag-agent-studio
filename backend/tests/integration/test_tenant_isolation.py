@@ -837,6 +837,10 @@ async def _an_evaluation_budget(owner: SignedUpMember, add_member: MemberFactory
     return {}, {"evaluation_budget_usd": "25"}
 
 
+async def _judging_guidance(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {}, {"text": "Partial answers that say what they don't cover pass."}
+
+
 ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS, EDITOR),
     ScopedRoute("POST", PROJECTS, EDITOR, _new_project_body),
@@ -900,6 +904,10 @@ ORGANISATION_SCOPED_ROUTES = [
         "/api/organisations/{organisation_id}/evaluation-budget",
         OWNER,
         _an_evaluation_budget,
+    ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/judging-guidance", EDITOR),
+    ScopedRoute(
+        "PUT", "/api/organisations/{organisation_id}/judging-guidance", OWNER, _judging_guidance
     ),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/embedding-models", EDITOR),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/theme", EDITOR),

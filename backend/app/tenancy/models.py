@@ -15,6 +15,7 @@ from sqlalchemy import (
     DateTime,
     Enum,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
@@ -57,6 +58,16 @@ def _role_type() -> Enum:
 
 class Organisation(IdMixin, Base):
     __tablename__ = "organisations"
+    __table_args__ = (
+        # Its current Judging guidance version is always one of its own. Named by table, as
+        # the guidance versions table references this one (``use_alter`` breaks the cycle).
+        ForeignKeyConstraint(
+            ["id", "judging_guidance_version"],
+            ["judging_guidance_versions.organisation_id", "judging_guidance_versions.version"],
+            name="fk_organisations_judging_guidance_version",
+            use_alter=True,
+        ),
+    )
 
     name: Mapped[str] = mapped_column(String(200))
     # The Require MFA policy: while it is on, Members without MFA are refused this
@@ -76,6 +87,9 @@ class Organisation(IdMixin, Base):
     # dollars, set by Owners; None, the default, means none, and then no reply is sampled
     # (``app.evaluation.budget``).
     evaluation_budget_usd: Mapped[Decimal | None] = mapped_column(Numeric(12, 2))
+    # The current Judging guidance version's number (``app.evaluation.guidance``); None until
+    # guidance is first saved.
+    judging_guidance_version: Mapped[int | None] = mapped_column(Integer)
 
 
 class Member(IdMixin, Base):

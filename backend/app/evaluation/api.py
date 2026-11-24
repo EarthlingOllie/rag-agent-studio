@@ -401,6 +401,9 @@ class RunOut(BaseModel):
     # the Evaluation repeats, as they were when it started.
     judge_provider: str
     judge_model: str
+    # The Judging guidance version it was judged under, beside its judge model (its Judging
+    # setup); null when the Organisation had never saved guidance.
+    judging_guidance_version: int | None
     repeats: int
     error_message: str | None
     # Whether it has a Draft side and the Draft has a newer Draft revision since.
@@ -522,6 +525,7 @@ def _run_out(detail: service.RunDetail) -> RunOut:
         progress=ProgressOut(done=run.answers_done, total=run.answers_total),
         judge_provider=run.judge_provider,
         judge_model=run.judge_model,
+        judging_guidance_version=run.judging_guidance_version,
         repeats=run.repeats,
         error_message=run.error_message,
         stale=detail.stale,
