@@ -468,6 +468,7 @@ test("a reply still being judged is pending in its Trace", async () => {
     passed: null,
     judge_provider: null,
     judge_model: null,
+    judging_guidance_version: null,
     input_tokens: null,
     output_tokens: null,
     cost_usd: null,

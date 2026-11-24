@@ -11,6 +11,9 @@ later (a Verdict review, a guidance check) rebuilds the same request from the sa
   (as its Agent Version remembered them) and the Chunks the reply was given, split into those it
   cited and the rest; it asks for ``grounding`` and ``answers_question``.
 
+Either is judged with the Judging guidance version it recorded beside its judge model (its
+Judging setup): the Run's for a case result, the Live Verdict's own.
+
 Chunks are labelled by their rank and listed in Trace order, a Chunk found again by a later
 Search keeping its first label. There is no request (None) when the text it needs is gone: a
 case result whose answering errored, or a Live Verdict whose reply, question or a Remembered turn
@@ -28,9 +31,11 @@ from app.agents.models import AgentVersion
 from app.conversations.models import Message, MessageRole
 from app.conversations.service import traced_chunks
 from app.evaluation.from_message import question_of
+from app.evaluation.guidance import guidance_text
 from app.evaluation.judge import CitedExcerpt, JudgeRequest
 from app.evaluation.models import (
     EvaluationCaseResult,
+    EvaluationRun,
     EvaluationRunCase,
     EvaluationVerdict,
     LiveVerdict,
@@ -105,6 +110,9 @@ async def _live(session: AsyncSession, verdict: LiveVerdict) -> JudgeRequest | N
         answers_question=True,
         given=uncited,
         earlier_turns=[Turn(asked.content, answer.content) for asked, answer in turns],
+        guidance=await guidance_text(
+            session, verdict.organisation_id, verdict.judging_guidance_version
+        ),
     )
 
 
@@ -113,6 +121,7 @@ async def _run(session: AsyncSession, result: EvaluationCaseResult) -> JudgeRequ
         # Answering errored: there is no answer to judge.
         return None
     case = await session.get_one(EvaluationRunCase, result.run_case_id)
+    run = await session.get_one(EvaluationRun, result.run_id)
     # An answered result always has its Trace.
     trace = TraceOut.model_validate(result.trace)
     chunks = [*trace.chunks, *(c for search in trace.searches for c in search.chunks)]
@@ -123,6 +132,7 @@ async def _run(session: AsyncSession, result: EvaluationCaseResult) -> JudgeRequ
         cited=cited,
         reference_answer=case.reference_answer,
         grounding=not trace.fallback,
+        guidance=await guidance_text(session, run.organisation_id, run.judging_guidance_version),
     )
 
 

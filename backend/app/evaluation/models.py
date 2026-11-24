@@ -18,6 +18,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
@@ -129,6 +130,48 @@ class EvaluationModel(IdMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+# The longest Judging guidance (spec 19), in characters.
+GUIDANCE_MAX = 2000
+
+
+class GuidanceSource(enum.StrEnum):
+    # Written by an Owner in the guidance editor.
+    WRITTEN = "written"
+    # Drafted by the Evaluation Model from Editors' disagreements, then saved by an Owner.
+    DRAFTED = "drafted"
+
+
+class JudgingGuidanceVersion(IdMixin, Base):
+    """One saved version of an Organisation's Judging guidance (spec 19): its own instructions to
+    the Evaluation Model, added to every judgement. Versions are numbered from 1 per
+    Organisation and never change; the Organisation points at its current one
+    (``Organisation.judging_guidance_version``). Empty text means none: removing guidance saves
+    an empty version. Evaluation Runs and Live Verdicts name the version they were judged under
+    by its number, beside the Evaluation Model (their Judging setup)."""
+
+    __tablename__ = "judging_guidance_versions"
+    __table_args__ = (UniqueConstraint("organisation_id", "version"),)
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE")
+    )
+    version: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(String(GUIDANCE_MAX))
+    # A ``GuidanceSource``.
+    source: Mapped[str] = mapped_column(String(20))
+    saved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey(Member.id, ondelete="SET NULL"))
+    saved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+def _judged_under(table: str) -> ForeignKeyConstraint:
+    """A judgement's guidance version, always its own Organisation's."""
+    return ForeignKeyConstraint(
+        ["organisation_id", "judging_guidance_version"],
+        [JudgingGuidanceVersion.organisation_id, JudgingGuidanceVersion.version],
+        name=f"fk_{table}_judging_guidance_version",
+    )
+
+
 class EvaluationCase(IdMixin, Base):
     """One standalone question in an Agent's Evaluation Set, with what a good answer does."""
 
@@ -187,6 +230,7 @@ class EvaluationRun(IdMixin, Base):
 
     __tablename__ = "evaluation_runs"
     __table_args__ = (
+        _judged_under("evaluation_runs"),
         Index(
             "uq_evaluation_runs_in_progress_agent",
             "agent_id",
@@ -214,6 +258,9 @@ class EvaluationRun(IdMixin, Base):
     judge_provider: Mapped[str] = mapped_column(String(50))
     judge_model: Mapped[str] = mapped_column(String(200))
     repeats: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    # The Judging guidance version in force when it started, beside its judge model (its
+    # Judging setup); None when the Organisation had never saved guidance.
+    judging_guidance_version: Mapped[int | None] = mapped_column(Integer)
     # Answers done (answered or errored) out of every answer the Run gives.
     answers_done: Mapped[int] = mapped_column(Integer, default=0)
     answers_total: Mapped[int] = mapped_column(Integer, default=0)
@@ -354,6 +401,7 @@ class LiveVerdict(IdMixin, Base):
     reasons."""
 
     __tablename__ = "live_verdicts"
+    __table_args__ = (_judged_under("live_verdicts"),)
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
@@ -380,6 +428,9 @@ class LiveVerdict(IdMixin, Base):
     # The Evaluation Model that judged it (or the Default Model, when none is chosen).
     judge_provider: Mapped[str | None] = mapped_column(String(50))
     judge_model: Mapped[str | None] = mapped_column(String(200))
+    # The Judging guidance version in force when judging started, beside the judge model (its
+    # Judging setup); None before then, or when the Organisation had never saved guidance.
+    judging_guidance_version: Mapped[int | None] = mapped_column(Integer)
     input_tokens: Mapped[int | None] = mapped_column(Integer)
     output_tokens: Mapped[int | None] = mapped_column(Integer)
     # US dollars, frozen with the prices in force when judged; None when a price is unknown.

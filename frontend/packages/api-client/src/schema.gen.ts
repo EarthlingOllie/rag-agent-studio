@@ -858,6 +858,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/judging-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Judging Guidance
+         * @description The Judging guidance every new judgement uses (null until first saved) and its versions,
+         *     newest first. Open to every Member.
+         */
+        get: operations["getJudgingGuidance"];
+        /**
+         * Save Judging Guidance
+         * @description Saves the Judging guidance as a new current version, which new Evaluation Runs and Live
+         *     Verdicts are judged with; empty text removes it (Owners only). Saving the current text again
+         *     changes nothing. Recorded as ``organisation.judging_guidance_changed``.
+         */
+        put: operations["saveJudgingGuidance"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/leave": {
         parameters: {
             query?: never;
@@ -4573,6 +4600,25 @@ export interface components {
              */
             refusal_text: string;
         };
+        /** GuidanceVersionOut */
+        GuidanceVersionOut: {
+            /**
+             * Saved At
+             * Format: date-time
+             */
+            saved_at: string;
+            /** Saved By */
+            saved_by: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "written" | "drafted";
+            /** Text */
+            text: string;
+            /** Version */
+            version: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -4783,6 +4829,12 @@ export interface components {
             link: string;
         };
         JsonValue: unknown;
+        /** JudgingGuidanceOut */
+        JudgingGuidanceOut: {
+            current: components["schemas"]["GuidanceVersionOut"] | null;
+            /** Versions */
+            versions: components["schemas"]["GuidanceVersionOut"][];
+        };
         /** KnowledgeBaseGapOut */
         KnowledgeBaseGapOut: {
             /** Evidence Ids */
@@ -4938,6 +4990,8 @@ export interface components {
             judge_provider: string | null;
             /** Judged At */
             judged_at: string | null;
+            /** Judging Guidance Version */
+            judging_guidance_version: number | null;
             /** Output Tokens */
             output_tokens: number | null;
             /** Passed */
@@ -5894,6 +5948,8 @@ export interface components {
             judge_model: string;
             /** Judge Provider */
             judge_provider: string;
+            /** Judging Guidance Version */
+            judging_guidance_version: number | null;
             /** Kind */
             kind: string;
             progress: components["schemas"]["ProgressOut"];
@@ -5975,6 +6031,14 @@ export interface components {
              * Format: uuid
              */
             verdict_id: string;
+        };
+        /**
+         * SaveJudgingGuidanceRequest
+         * @description The new guidance, up to 2,000 characters; empty (or only spaces) removes it.
+         */
+        SaveJudgingGuidanceRequest: {
+            /** Text */
+            text: string;
         };
         /**
          * ScopedAgentOut
@@ -9252,6 +9316,97 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    getJudgingGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JudgingGuidanceOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    saveJudgingGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveJudgingGuidanceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JudgingGuidanceOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Longer than 2,000 characters */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

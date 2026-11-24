@@ -4443,6 +4443,51 @@
         "title": "Guardrails",
         "type": "object"
       },
+      "GuidanceVersionOut": {
+        "properties": {
+          "saved_at": {
+            "format": "date-time",
+            "title": "Saved At",
+            "type": "string"
+          },
+          "saved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved By"
+          },
+          "source": {
+            "enum": [
+              "written",
+              "drafted"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "text",
+          "source",
+          "saved_by",
+          "saved_at"
+        ],
+        "title": "GuidanceVersionOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -5009,6 +5054,33 @@
         "type": "object"
       },
       "JsonValue": {},
+      "JudgingGuidanceOut": {
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceVersionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/GuidanceVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "current",
+          "versions"
+        ],
+        "title": "JudgingGuidanceOut",
+        "type": "object"
+      },
       "KnowledgeBaseGapOut": {
         "properties": {
           "evidence_ids": {
@@ -5438,6 +5510,17 @@
             ],
             "title": "Judged At"
           },
+          "judging_guidance_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judging Guidance Version"
+          },
           "output_tokens": {
             "anyOf": [
               {
@@ -5492,6 +5575,7 @@
           "agent_version_id",
           "judge_provider",
           "judge_model",
+          "judging_guidance_version",
           "input_tokens",
           "output_tokens",
           "cost_usd",
@@ -8047,6 +8131,17 @@
             "title": "Judge Provider",
             "type": "string"
           },
+          "judging_guidance_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judging Guidance Version"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
@@ -8083,6 +8178,7 @@
           "progress",
           "judge_provider",
           "judge_model",
+          "judging_guidance_version",
           "repeats",
           "error_message",
           "stale",
@@ -8298,6 +8394,21 @@
           "outcome"
         ],
         "title": "SampleReviewRequest",
+        "type": "object"
+      },
+      "SaveJudgingGuidanceRequest": {
+        "description": "The new guidance, up to 2,000 characters; empty (or only spaces) removes it.",
+        "properties": {
+          "text": {
+            "maxLength": 2000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "SaveJudgingGuidanceRequest",
         "type": "object"
       },
       "ScopedAgentOut": {
@@ -14470,6 +14581,125 @@
         "summary": "Renew Invite",
         "tags": [
           "invites"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/judging-guidance": {
+      "get": {
+        "description": "The Judging guidance every new judgement uses (null until first saved) and its versions,\nnewest first. Open to every Member.",
+        "operationId": "getJudgingGuidance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JudgingGuidanceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Judging Guidance",
+        "tags": [
+          "models"
+        ]
+      },
+      "put": {
+        "description": "Saves the Judging guidance as a new current version, which new Evaluation Runs and Live\nVerdicts are judged with; empty text removes it (Owners only). Saving the current text again\nchanges nothing. Recorded as ``organisation.judging_guidance_changed``.",
+        "operationId": "saveJudgingGuidance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveJudgingGuidanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JudgingGuidanceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Longer than 2,000 characters"
+          }
+        },
+        "summary": "Save Judging Guidance",
+        "tags": [
+          "models"
         ]
       }
     },

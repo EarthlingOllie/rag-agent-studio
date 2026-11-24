@@ -366,6 +366,9 @@ class LiveVerdictOut(BaseModel):
     # The model that judged it: the Evaluation Model, or else the Default Model.
     judge_provider: str | None
     judge_model: str | None
+    # The Judging guidance version it was judged under, beside the judge model (its Judging
+    # setup); null before judging, or when the Organisation had never saved guidance.
+    judging_guidance_version: int | None
     input_tokens: int | None
     output_tokens: int | None
     # What judging cost, frozen when judged; null when a price is unknown.
@@ -399,6 +402,7 @@ def _live_verdict_out(verdict: LiveVerdict | None) -> LiveVerdictOut | None:
         agent_version_id=verdict.agent_version_id,
         judge_provider=verdict.judge_provider,
         judge_model=verdict.judge_model,
+        judging_guidance_version=verdict.judging_guidance_version,
         input_tokens=verdict.input_tokens,
         output_tokens=verdict.output_tokens,
         cost_usd=verdict.cost_usd,

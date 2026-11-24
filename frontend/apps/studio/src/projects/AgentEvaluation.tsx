@@ -317,6 +317,11 @@ function changesSummary(cases: { change: string | null }[]): string {
  * A Run: its status and progress while it runs (with Cancel), then each side's Evaluation score and
  * each case, Regressions first, then improvements, then the rest, with every side's answers.
  */
+/** The guidance half of a Run's Judging setup, beside its judge model. */
+function judgingGuidance(version: number | null): string {
+  return version === null ? "with no guidance" : `with guidance version ${String(version)}`;
+}
+
 function RunDetail({ path, runId, readOnly, focusCase }: { path: AgentPath; runId: string; readOnly: boolean; focusCase: string | undefined }) {
   const headingId = useId();
   const focused = useRef<HTMLLIElement>(null);
@@ -340,7 +345,8 @@ function RunDetail({ path, runId, readOnly, focusCase }: { path: AgentPath; runI
             Run of {formatTime(run.created_at)}
           </h3>
           <p className={text.muted}>
-            <RunStatus run={run} /> · {sideSummary(run)} · judged by {run.judge_provider} {run.judge_model} · {repeatsWord(run.repeats)}
+            <RunStatus run={run} /> · {sideSummary(run)} · judged by {run.judge_provider} {run.judge_model}{" "}
+            {judgingGuidance(run.judging_guidance_version)} · {repeatsWord(run.repeats)}
           </p>
           <p className={text.muted}>{costSummary(run)}</p>
         </div>

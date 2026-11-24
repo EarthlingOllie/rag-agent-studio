@@ -470,6 +470,16 @@ test("the set shows each case's latest result: pass, fail, Unsteady or Error", a
   expect(latestResults).toEqual(["Pass3/3", "PassUnsteady2/3", "Fail0/3", "Error", "Not run yet"]);
 });
 
+test("Run detail shows the Judging setup it was judged under in its header", async () => {
+  const runId = "r5000000-0000-4000-8000-000000000015";
+  const guided = results(run(runId, "completed", 1, 1, { judging_guidance_version: 2 }), [[leaveCase, [repeat(passed, 1)], caseSide("pass", 1, 1, 1)]]);
+  setUp({ cases: [leaveCase], runs: [guided] });
+  renderStudio(agentPage(hrHelper.id));
+
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" }, { timeout: 5000 });
+  expect(detail).toHaveTextContent("judged by openai gpt-4.1-mini with guidance version 2 · 1 repeat");
+});
+
 test("Run detail combines each case's repeats: the majority with its count, Unsteady, Error, and the score", async () => {
   const runId = "r5000000-0000-4000-8000-000000000005";
   const combined = results(
@@ -491,7 +501,8 @@ test("Run detail combines each case's repeats: the majority with its count, Unst
   renderStudio(agentPage(hrHelper.id));
 
   const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" }, { timeout: 5000 });
-  expect(detail).toHaveTextContent("judged by openai gpt-4.1-mini · 3 repeats");
+  // Its Judging setup: the judge model, and no Judging guidance.
+  expect(detail).toHaveTextContent("judged by openai gpt-4.1-mini with no guidance · 3 repeats");
   expect(within(detail).getByText("Evaluation score: 50%")).toBeInTheDocument();
   expect(detail).toHaveTextContent("1 passed, 1 failed, 1 Error left out of the score");
   const cases = within(detail).getByRole("list", { name: "Cases" });
