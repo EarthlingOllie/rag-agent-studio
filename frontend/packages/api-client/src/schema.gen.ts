@@ -798,6 +798,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/guidance-jobs/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Latest Guidance Job
+         * @description The most recently started draft or check, with its progress and result; null before the
+         *     first (Owners only).
+         */
+        get: operations["getLatestGuidanceJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/guidance-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Guidance Job
+         * @description A draft or check, with its progress and result (Owners only).
+         */
+        get: operations["getGuidanceJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/guidance-jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Guidance Job
+         * @description Cancels a draft or check in progress, keeping what it counted and spent (Owners only).
+         */
+        post: operations["cancelGuidanceJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/invites": {
         parameters: {
             query?: never;
@@ -883,6 +944,29 @@ export interface paths {
          */
         put: operations["saveJudgingGuidance"];
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/judging-guidance/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Guidance Check
+         * @description Starts checking guidance text: the Evaluation Model re-judges the held-out half of the
+         *     current Judging setup's Review sample reviews with it, in the background (Owners only). At
+         *     most one draft or check is in progress per Organisation. Its Cost counts in Organisation
+         *     cost, never against the Evaluation budget.
+         */
+        post: operations["startGuidanceCheck"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4680,8 +4764,80 @@ export interface components {
              */
             refusal_text: string;
         };
+        /**
+         * GuidanceCheckOut
+         * @description The latest check of a version's text before it was saved: held-out reviews counted, how
+         *     many it would agree on, its false passes and false fails, how many the Judging setup it
+         *     replaced agreed on, and whether that is a Low sample (under 30 reviews).
+         */
+        GuidanceCheckOut: {
+            /** Agreed */
+            agreed: number;
+            /** Agreed Before */
+            agreed_before: number;
+            /** False Fails */
+            false_fails: number;
+            /** False Passes */
+            false_passes: number;
+            /** Low Sample */
+            low_sample: boolean;
+            /** Reviews */
+            reviews: number;
+        };
+        /** GuidanceJobOut */
+        GuidanceJobOut: {
+            /** Agreed */
+            agreed: number;
+            /** Agreed Before */
+            agreed_before: number;
+            /** Cost Usd */
+            cost_usd: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Error Reason */
+            error_reason: string | null;
+            /** False Fails */
+            false_fails: number;
+            /** False Passes */
+            false_passes: number;
+            /** Finished At */
+            finished_at: string | null;
+            /** Held Out */
+            held_out: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Judged */
+            judged: number;
+            /**
+             * Kind
+             * @constant
+             */
+            kind: "check";
+            /** Left Out */
+            left_out: number;
+            /** Low Sample */
+            low_sample: boolean;
+            /** Requested By */
+            requested_by: string | null;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed" | "cancelled";
+            /** Text */
+            text: string;
+        };
         /** GuidanceVersionOut */
         GuidanceVersionOut: {
+            check: components["schemas"]["GuidanceCheckOut"] | null;
             /**
              * Saved At
              * Format: date-time
@@ -6292,6 +6448,14 @@ export interface components {
             organisation_name: string;
             /** Password */
             password: string;
+        };
+        /**
+         * StartCheckRequest
+         * @description The guidance text to check, up to 2,000 characters; it needn't be saved.
+         */
+        StartCheckRequest: {
+            /** Text */
+            text: string;
         };
         /** StartConversationRequest */
         StartConversationRequest: {
@@ -9263,6 +9427,164 @@ export interface operations {
             };
         };
     };
+    getLatestGuidanceJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidanceJobOut"] | null;
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getGuidanceJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidanceJobOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancelGuidanceJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidanceJobOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Only a draft or check in progress can be cancelled. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listInvites: {
         parameters: {
             query?: never;
@@ -9564,6 +9886,68 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    startGuidanceCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidanceJobOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A draft or check is already in progress in the Organisation. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No model to judge with, too few reviews, or too long */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
             };
         };
     };

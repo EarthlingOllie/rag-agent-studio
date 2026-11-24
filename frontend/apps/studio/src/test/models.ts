@@ -194,8 +194,71 @@ type GuidanceVersion = Schemas["GuidanceVersionOut"];
 
 export const PARTIAL_GUIDANCE = "Partial answers that say what they don't cover pass.";
 
-export function guidanceVersion(version: number, text: string, savedBy: string | null = "Ada Lovelace"): GuidanceVersion {
-  return { version, text, source: "written", saved_by: savedBy, saved_at: `2026-11-${String(10 + version)}T09:30:00Z` };
+export function guidanceVersion(
+  version: number,
+  text: string,
+  savedBy: string | null = "Ada Lovelace",
+  check: GuidanceVersion["check"] = null,
+): GuidanceVersion {
+  return { version, text, source: "written", saved_by: savedBy, saved_at: `2026-11-${String(10 + version)}T09:30:00Z`, check };
+}
+
+export type GuidanceJob = Schemas["GuidanceJobOut"];
+
+/** A finished check of `text` on 12 held-out reviews: it would agree on 10, against 7 now. */
+export function guidanceCheck(text: string, overrides: Partial<GuidanceJob> = {}): GuidanceJob {
+  return {
+    id: "job-1",
+    kind: "check",
+    status: "completed",
+    text,
+    held_out: 12,
+    judged: 12,
+    left_out: 0,
+    agreed: 10,
+    false_passes: 1,
+    false_fails: 1,
+    agreed_before: 7,
+    low_sample: true,
+    cost_usd: "0.0034",
+    error_reason: null,
+    requested_by: "Ada Lovelace",
+    created_at: "2026-11-24T09:00:00Z",
+    started_at: "2026-11-24T09:00:01Z",
+    finished_at: "2026-11-24T09:00:30Z",
+    ...overrides,
+  };
+}
+
+/**
+ * Guidance jobs as `GET …/guidance-jobs/latest` answers them (`latest`, null before the first).
+ * Starting a check answers it running on 12 held-out reviews; each later read answers the next of
+ * `then` (the last one stays). Cancelling answers the job cancelled.
+ */
+export function fakeGuidanceJobApi(options: { latest?: GuidanceJob | null; then?: Partial<GuidanceJob>[] } = {}) {
+  let latest = options.latest ?? null;
+  const steps = [...(options.then ?? [])];
+  const started: string[] = [];
+  const cancelled: string[] = [];
+  server.use(
+    http.get("*/api/organisations/:organisationId/guidance-jobs/latest", () => {
+      if (latest !== null && steps.length > 0) latest = { ...latest, ...(steps.length > 1 ? steps.shift() : steps[0]) };
+      return HttpResponse.json(latest);
+    }),
+    http.post("*/api/organisations/:organisationId/judging-guidance/checks", async ({ request }) => {
+      const text = ((await request.json()) as Schemas["StartCheckRequest"]).text.trim();
+      started.push(text);
+      latest = guidanceCheck(text, { id: `job-${String(started.length + 1)}`, status: "running", judged: 0, agreed: 0, false_passes: 0, false_fails: 0, agreed_before: 0, finished_at: null });
+      return HttpResponse.json(latest, { status: 202 });
+    }),
+    http.post("*/api/organisations/:organisationId/guidance-jobs/:jobId/cancel", ({ params }) => {
+      cancelled.push(String(params.jobId));
+      steps.length = 0;
+      latest = { ...(latest as GuidanceJob), status: "cancelled" };
+      return HttpResponse.json(latest);
+    }),
+  );
+  return { started, cancelled };
 }
 
 /** Judging guidance as `GET …/judging-guidance` answers it; an Owner's save adds a version unless the text is already current. */

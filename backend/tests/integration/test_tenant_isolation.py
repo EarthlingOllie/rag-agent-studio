@@ -31,6 +31,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from app.core.db import Base
 from app.evaluation import api as evaluation_api
+from app.evaluation import guidance_check_api
 from app.guardrails.fake import FakeRule
 from app.main import ROUTERS, create_app
 from app.suggestions import api as suggestions_api
@@ -859,6 +860,28 @@ async def _judging_guidance(owner: SignedUpMember, add_member: MemberFactory) ->
     return {}, {"text": "Partial answers that say what they don't cover pass."}
 
 
+async def _reviews_to_check(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A finished Run's two judged Verdicts, both reviewed on the Review sample.
+    _, review = await _a_review_sample_item(owner, add_member)
+    sample = f"/api/organisations/{owner.organisation_id}/review-sample"
+    while review is not None:
+        reviewed = await owner.client.post(f"{sample}/reviews", json=review)
+        assert reviewed.status_code == 200, reviewed.text
+        item = (await owner.client.get(f"{sample}/next")).json()["item"]
+        review = None if item is None else {"verdict_id": item["verdict_id"], "outcome": "pass"}
+    return {}, {"text": "Partial answers that say what they don't cover pass."}
+
+
+async def _a_queued_guidance_check(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    _, body = await _reviews_to_check(owner, add_member)
+    with patch.object(guidance_check_api, "enqueue_guidance_job", AsyncMock()):
+        started = await owner.client.post(
+            f"/api/organisations/{owner.organisation_id}/judging-guidance/checks", json=body
+        )
+    assert started.status_code == 202, started.text
+    return {"job_id": started.json()["id"]}, None
+
+
 ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", PROJECTS, EDITOR),
     ScopedRoute("POST", PROJECTS, EDITOR, _new_project_body),
@@ -926,6 +949,25 @@ ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", "/api/organisations/{organisation_id}/judging-guidance", EDITOR),
     ScopedRoute(
         "PUT", "/api/organisations/{organisation_id}/judging-guidance", OWNER, _judging_guidance
+    ),
+    ScopedRoute(
+        "POST",
+        "/api/organisations/{organisation_id}/judging-guidance/checks",
+        OWNER,
+        _reviews_to_check,
+    ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/guidance-jobs/latest", OWNER),
+    ScopedRoute(
+        "GET",
+        "/api/organisations/{organisation_id}/guidance-jobs/{job_id}",
+        OWNER,
+        _a_queued_guidance_check,
+    ),
+    ScopedRoute(
+        "POST",
+        "/api/organisations/{organisation_id}/guidance-jobs/{job_id}/cancel",
+        OWNER,
+        _a_queued_guidance_check,
     ),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/review-sample/next", EDITOR),
     ScopedRoute(
