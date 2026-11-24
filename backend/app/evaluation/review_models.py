@@ -2,8 +2,9 @@
 
 One row per reviewed target: an Evaluation Run Verdict (Reference answer or grounding), or a Live
 Verdict plus its check (grounding or answers the question); reviewing it again replaces the row.
-The Evaluation Model's outcome, the check and the Evaluation Model that judged are copied when it
-is reviewed, so Evaluation Model agreement is counted from this table alone. A review never
+The Evaluation Model's outcome, the check and the Judging setup it was judged under (the
+Evaluation Model and the Judging guidance version) are copied when it is reviewed, so Evaluation
+Model agreement is counted per Judging setup from this table alone. A review never
 changes the Verdict, or anything counted from Verdicts (ADR-0018). It goes with its Verdict or
 Live Verdict, and so with its Run or Message and its Agent (``ON DELETE CASCADE``). The Purge of
 a Live Verdict's reply clears the reason on its reviews, which can quote the Visitor, and stamps
@@ -18,6 +19,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    Integer,
     String,
     Text,
     UniqueConstraint,
@@ -26,7 +28,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.agents.models import Agent
 from app.core.db import Base, IdMixin
-from app.evaluation.models import EvaluationVerdict, LiveVerdict
+from app.evaluation.models import EvaluationVerdict, LiveVerdict, judged_under
 from app.tenancy.models import Member, Organisation
 
 # The longest reason an Editor may give.
@@ -39,6 +41,7 @@ class VerdictReview(IdMixin, Base):
         # A Live Verdict has one review per check.
         UniqueConstraint("live_verdict_id", "check"),
         CheckConstraint("(verdict_id IS NULL) <> (live_verdict_id IS NULL)", name="one_target"),
+        judged_under("verdict_reviews"),
     )
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
@@ -63,6 +66,9 @@ class VerdictReview(IdMixin, Base):
     # The Evaluation Model that judged (or the Default Model, when none was chosen), copied.
     judge_provider: Mapped[str] = mapped_column(String(50))
     judge_model: Mapped[str] = mapped_column(String(200))
+    # The Judging guidance version it was judged under, copied: with the judge model, its
+    # Judging setup. None when the Organisation had never saved guidance.
+    judging_guidance_version: Mapped[int | None] = mapped_column(Integer)
     # Given on the Review sample, blind: only these count towards agreement.
     from_sample: Mapped[bool] = mapped_column(Boolean)
     reason: Mapped[str | None] = mapped_column(Text)
@@ -75,11 +81,12 @@ class VerdictReview(IdMixin, Base):
 
 
 class ReviewSampleSkip(IdMixin, Base):
-    """An item an Editor skipped on the Review sample, counted against the Evaluation Model
-    judging then so the skip count is shown beside agreement. It stores no review and names no
-    item: the item stays in the pool."""
+    """An item an Editor skipped on the Review sample, counted against the Judging setup judging
+    then so the skip count is shown beside agreement. It stores no review and names no item: the
+    item stays in the pool."""
 
     __tablename__ = "review_sample_skips"
+    __table_args__ = (judged_under("review_sample_skips"),)
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
@@ -87,6 +94,8 @@ class ReviewSampleSkip(IdMixin, Base):
     # The Evaluation Model judging when the item was skipped (or the Default Model), copied.
     judge_provider: Mapped[str] = mapped_column(String(50))
     judge_model: Mapped[str] = mapped_column(String(200))
+    # The Judging guidance version current then (None before guidance was first saved).
+    judging_guidance_version: Mapped[int | None] = mapped_column(Integer)
     skipped_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(Member.id, ondelete="SET NULL"), index=True
     )

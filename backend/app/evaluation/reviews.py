@@ -1,7 +1,8 @@
 """Verdict reviews, the Review sample and Evaluation Model agreement (spec 18).
 
-The Review sample's pool is, in the Organisation and judged by its current Evaluation Model (or
-the Default Model, when none is chosen), with no review:
+The Review sample's pool is, in the Organisation and judged under its current Judging setup (its
+current Evaluation Model, or the Default Model when none is chosen, and its current Judging
+guidance version; ``app.evaluation.guidance``), with no review:
 
 - every judged Reference answer and grounding Verdict of an answered Run result (outcome pass or
   fail). Expected source and Expect Fallback Text Verdicts aren't judged by the Evaluation Model,
@@ -14,15 +15,15 @@ the Default Model, when none is chosen), with no review:
 ``next_item`` draws one uniformly at random from the pool, from the one module-level random
 source seeded with ``Settings.review_sample_seed`` (tests set it), and returns what the
 Evaluation Model was given (``app.evaluation.judge_input``), never its outcome or reason.
-Submitting stores the review with ``from_sample`` true, replacing any earlier review of the
-target, and returns the Evaluation Model's outcome and reason for the reveal. Skipping stores
-no review, so the item stays in the pool; it is only counted, against the current Evaluation
-Model, so the skip count can be shown beside agreement.
+Submitting stores the review with ``from_sample`` true and the Judging setup of the judgement it
+reviews, replacing any earlier review of the target, and returns the Evaluation Model's outcome
+and reason for the reveal. Skipping stores no review, so the item stays in the pool; it is only
+counted, against the current Judging setup, so the skip count can be shown beside agreement.
 
-Agreement is counted when read, over the sample reviews of each Evaluation Model, from the
-outcomes copied onto each review: agreed, false passes and false fails, overall and per check,
-with the rate's Wilson interval. Changing the Evaluation Model starts new figures; the earlier
-ones stay listed. Nothing that counts Verdicts reads reviews (ADR-0018).
+Agreement is counted when read, over the sample reviews of each Judging setup, from the outcomes
+copied onto each review: agreed, false passes and false fails, overall and per check, with the
+rate's Wilson interval. Changing the Evaluation Model or the guidance starts new figures; the
+earlier ones stay listed. Nothing that counts Verdicts reads reviews (ADR-0018).
 """
 
 import random
@@ -39,6 +40,7 @@ from sqlalchemy.orm import InstrumentedAttribute, aliased
 from app.agents.models import Agent
 from app.analytics.stats import Interval, wilson
 from app.conversations.models import Message
+from app.evaluation.guidance import JudgingSetup, current_setup
 from app.evaluation.judge import CitedExcerpt, JudgeRequest
 from app.evaluation.judge_input import judge_input
 from app.evaluation.models import (
@@ -51,7 +53,6 @@ from app.evaluation.models import (
     VerdictOutcome,
 )
 from app.evaluation.review_models import ReviewSampleSkip, VerdictReview
-from app.evaluation.settings import judge_model
 from app.runtime.prompt import Turn
 from app.tenancy.repository import OrganisationScope
 
@@ -73,14 +74,6 @@ _draws = random.Random()  # noqa: S311 (sampling, not security)
 def seed_draws(seed: int | None) -> None:
     """Seeds the draws: the API does at start, with ``Settings.review_sample_seed``."""
     _draws.seed(seed)
-
-
-@dataclass(frozen=True)
-class Judge:
-    """An Evaluation Model, as Runs copy it."""
-
-    provider: str
-    model: str
 
 
 @dataclass(frozen=True)
@@ -122,7 +115,7 @@ class SampleItem:
 @dataclass(frozen=True)
 class SampleNext:
     item: SampleItem | None
-    # Sample reviews of the current Evaluation Model, in the Organisation and by the Editor.
+    # Sample reviews under the current Judging setup, in the Organisation and by the Editor.
     reviewed: int
     reviewed_by_you: int
 
@@ -149,8 +142,8 @@ class Figures:
 
 
 @dataclass(frozen=True)
-class JudgeAgreement:
-    judge: Judge
+class SetupAgreement:
+    setup: JudgingSetup
     overall: Figures
     # Per check that has reviews, in ``CHECK_ORDER``.
     checks: list[tuple[str, Figures]]
@@ -158,9 +151,9 @@ class JudgeAgreement:
 
 @dataclass(frozen=True)
 class AgreementRead:
-    current: JudgeAgreement | None
-    earlier: list[JudgeAgreement]
-    # The current Evaluation Model's sample reviews by the reader, and items skipped.
+    current: SetupAgreement | None
+    earlier: list[SetupAgreement]
+    # The current Judging setup's sample reviews by the reader, and items skipped.
     reviewed_by_you: int
     skipped: int
 
@@ -179,12 +172,6 @@ class NotReviewableError(Exception):
     still there, of the Organisation has that ID."""
 
 
-async def current_judge(session: AsyncSession, organisation_id: uuid.UUID) -> Judge | None:
-    """The model judging now: the Evaluation Model, or else the Default Model."""
-    chosen = await judge_model(session, organisation_id)
-    return None if chosen is None else Judge(chosen.credential.provider, chosen.model)
-
-
 def _reviewable(organisation_id: uuid.UUID) -> Select[EvaluationVerdict, EvaluationRun]:
     return (
         select(EvaluationVerdict, EvaluationRun)
@@ -199,13 +186,31 @@ def _reviewable(organisation_id: uuid.UUID) -> Select[EvaluationVerdict, Evaluat
     )
 
 
-def _of(judge: Judge, organisation_id: uuid.UUID) -> list[ColumnElement[bool]]:
-    """The Organisation's Review sample reviews of ``judge``."""
+def _under(
+    setup: JudgingSetup,
+    provider: InstrumentedAttribute[Any],
+    model: InstrumentedAttribute[Any],
+    version: InstrumentedAttribute[Any],
+) -> list[ColumnElement[bool]]:
+    """Judged under ``setup``, by a row's copied judge model and guidance version columns."""
+    return [
+        provider == setup.judge_provider,
+        model == setup.judge_model,
+        version.is_not_distinct_from(setup.guidance_version),
+    ]
+
+
+def _of(setup: JudgingSetup, organisation_id: uuid.UUID) -> list[ColumnElement[bool]]:
+    """The Organisation's Review sample reviews under ``setup``."""
     return [
         VerdictReview.organisation_id == organisation_id,
         VerdictReview.from_sample.is_(True),
-        VerdictReview.judge_provider == judge.provider,
-        VerdictReview.judge_model == judge.model,
+        *_under(
+            setup,
+            VerdictReview.judge_provider,
+            VerdictReview.judge_model,
+            VerdictReview.judging_guidance_version,
+        ),
     ]
 
 
@@ -231,15 +236,19 @@ def _live_reviewable(organisation_id: uuid.UUID) -> Select[LiveVerdict]:
 
 async def next_item(session: AsyncSession, scope: OrganisationScope) -> SampleNext:
     """One item drawn at random from the pool, or None when it is empty, with review counts."""
-    judge = await current_judge(session, scope.organisation_id)
-    if judge is None:
+    setup = await current_setup(session, scope.organisation_id)
+    if setup is None:
         return SampleNext(None, 0, 0)
     runs = (
         _reviewable(scope.organisation_id)
         .outerjoin(VerdictReview, VerdictReview.verdict_id == EvaluationVerdict.id)
         .where(
-            EvaluationRun.judge_provider == judge.provider,
-            EvaluationRun.judge_model == judge.model,
+            *_under(
+                setup,
+                EvaluationRun.judge_provider,
+                EvaluationRun.judge_model,
+                EvaluationRun.judging_guidance_version,
+            ),
             VerdictReview.id.is_(None),
         )
         .with_only_columns(
@@ -255,8 +264,12 @@ async def next_item(session: AsyncSession, scope: OrganisationScope) -> SampleNe
             and_(VerdictReview.live_verdict_id == LiveVerdict.id, VerdictReview.check == check),
         )
         .where(
-            LiveVerdict.judge_provider == judge.provider,
-            LiveVerdict.judge_model == judge.model,
+            *_under(
+                setup,
+                LiveVerdict.judge_provider,
+                LiveVerdict.judge_model,
+                LiveVerdict.judging_guidance_version,
+            ),
             VerdictReview.id.is_(None),
         )
         .with_only_columns(
@@ -270,7 +283,7 @@ async def next_item(session: AsyncSession, scope: OrganisationScope) -> SampleNe
     reviewed, reviewed_by_you = (
         await session.execute(
             select(func.count(), func.coalesce(func.sum(by_you), 0)).where(
-                *_of(judge, scope.organisation_id)
+                *_of(setup, scope.organisation_id)
             )
         )
     ).one()
@@ -340,7 +353,7 @@ class _Reviewed:
     check: str
     evaluation_model_outcome: str
     evaluation_model_reason: str | None
-    judge: Judge
+    setup: JudgingSetup
 
 
 async def _run_target(
@@ -359,7 +372,7 @@ async def _run_target(
         verdict.kind,
         verdict.outcome,
         verdict.reason,
-        Judge(run.judge_provider, run.judge_model),
+        JudgingSetup(run.judge_provider, run.judge_model, run.judging_guidance_version),
     )
 
 
@@ -372,13 +385,17 @@ async def _live_target(
     if verdict is None:
         raise NotReviewableError
     grounding = target.check == VerdictKind.GROUNDING
-    # A judged Live Verdict has both outcomes and its judge.
+    # A judged Live Verdict has both outcomes and its Judging setup.
     return _Reviewed(
         verdict.agent_id,
         target.check,
         cast(str, verdict.grounded if grounding else verdict.answers_question),
         verdict.grounded_reason if grounding else verdict.answers_question_reason,
-        Judge(cast(str, verdict.judge_provider), cast(str, verdict.judge_model)),
+        JudgingSetup(
+            cast(str, verdict.judge_provider),
+            cast(str, verdict.judge_model),
+            verdict.judging_guidance_version,
+        ),
     )
 
 
@@ -406,8 +423,9 @@ async def submit_sample_review(
         "outcome": outcome.value,
         "evaluation_model_outcome": found.evaluation_model_outcome,
         "check": found.check,
-        "judge_provider": found.judge.provider,
-        "judge_model": found.judge.model,
+        "judge_provider": found.setup.judge_provider,
+        "judge_model": found.setup.judge_model,
+        "judging_guidance_version": found.setup.guidance_version,
         "from_sample": True,
         "reason": reason,
         "reviewed_by": scope.member_id,
@@ -431,17 +449,18 @@ async def submit_sample_review(
 async def skip_sample_item(
     session: AsyncSession, scope: OrganisationScope, *, now: datetime
 ) -> None:
-    """Counts a skipped Review sample item against the current Evaluation Model; stores no
-    review, so the item stays in the pool. Raises ``NotReviewableError`` when the Organisation
-    has no model to judge with, and so nothing to skip."""
-    judge = await current_judge(session, scope.organisation_id)
-    if judge is None:
+    """Counts a skipped Review sample item against the current Judging setup; stores no review,
+    so the item stays in the pool. Raises ``NotReviewableError`` when the Organisation has no
+    model to judge with, and so nothing to skip."""
+    setup = await current_setup(session, scope.organisation_id)
+    if setup is None:
         raise NotReviewableError
     session.add(
         ReviewSampleSkip(
             organisation_id=scope.organisation_id,
-            judge_provider=judge.provider,
-            judge_model=judge.model,
+            judge_provider=setup.judge_provider,
+            judge_model=setup.judge_model,
+            judging_guidance_version=setup.guidance_version,
             skipped_by=scope.member_id,
             skipped_at=now,
         )
@@ -462,10 +481,10 @@ def _figures(rows: list[_CheckRow]) -> Figures:
     )
 
 
-def _judge_agreement(judge: Judge, rows: list[_CheckRow]) -> JudgeAgreement:
+def _setup_agreement(setup: JudgingSetup, rows: list[_CheckRow]) -> SetupAgreement:
     by_check = sorted(rows, key=lambda r: CHECK_ORDER.index(r.check))
-    return JudgeAgreement(
-        judge=judge,
+    return SetupAgreement(
+        setup=setup,
         overall=_figures(rows),
         checks=[(r.check, _figures([r])) for r in by_check],
     )
@@ -473,10 +492,10 @@ def _judge_agreement(judge: Judge, rows: list[_CheckRow]) -> JudgeAgreement:
 
 async def read_agreement(session: AsyncSession, scope: OrganisationScope) -> AgreementRead:
     """Evaluation Model agreement, counted now over the Organisation's Review sample reviews:
-    the current Evaluation Model's figures (None when there is no model to judge with), each
+    the current Judging setup's figures (None when there is no model to judge with), each
     earlier one that has reviews (most recently reviewed first), and the current one's review
     counts in the Organisation and by the reader, and its skips."""
-    judge = await current_judge(session, scope.organisation_id)
+    setup = await current_setup(session, scope.organisation_id)
     editor, model = VerdictReview.outcome, VerdictReview.evaluation_model_outcome
     pass_, fail = VerdictOutcome.PASS.value, VerdictOutcome.FAIL.value
 
@@ -487,6 +506,7 @@ async def read_agreement(session: AsyncSession, scope: OrganisationScope) -> Agr
         select(
             VerdictReview.judge_provider,
             VerdictReview.judge_model,
+            VerdictReview.judging_guidance_version,
             VerdictReview.check,
             func.count(),
             counted(editor == model),
@@ -499,34 +519,43 @@ async def read_agreement(session: AsyncSession, scope: OrganisationScope) -> Agr
             VerdictReview.organisation_id == scope.organisation_id,
             VerdictReview.from_sample.is_(True),
         )
-        .group_by(VerdictReview.judge_provider, VerdictReview.judge_model, VerdictReview.check)
+        .group_by(
+            VerdictReview.judge_provider,
+            VerdictReview.judge_model,
+            VerdictReview.judging_guidance_version,
+            VerdictReview.check,
+        )
     )
-    rows: dict[Judge, list[_CheckRow]] = {}
-    latest: dict[Judge, datetime] = {}
+    rows: dict[JudgingSetup, list[_CheckRow]] = {}
+    latest: dict[JudgingSetup, datetime] = {}
     by_you = 0
-    for provider, model_name, check, *counts, yours, last in found.all():
-        key = Judge(provider, model_name)
+    for provider, model_name, version, check, *counts, yours, last in found.all():
+        key = JudgingSetup(provider, model_name, version)
         rows.setdefault(key, []).append(_CheckRow(check, *counts))
         latest[key] = max(latest.get(key, last), last)
-        if key == judge:
+        if key == setup:
             by_you += yours
-    earlier = sorted((j for j in rows if j != judge), key=lambda j: latest[j], reverse=True)
+    earlier = sorted((s for s in rows if s != setup), key=lambda s: latest[s], reverse=True)
     skipped = 0
-    if judge is not None:
+    if setup is not None:
         skipped = (
             await session.scalar(
                 select(func.count()).where(
                     ReviewSampleSkip.organisation_id == scope.organisation_id,
-                    ReviewSampleSkip.judge_provider == judge.provider,
-                    ReviewSampleSkip.judge_model == judge.model,
+                    *_under(
+                        setup,
+                        ReviewSampleSkip.judge_provider,
+                        ReviewSampleSkip.judge_model,
+                        ReviewSampleSkip.judging_guidance_version,
+                    ),
                 )
             )
             or 0
         )
-    current = None if judge is None else _judge_agreement(judge, rows.get(judge, []))
+    current = None if setup is None else _setup_agreement(setup, rows.get(setup, []))
     return AgreementRead(
         current=current,
-        earlier=[_judge_agreement(j, rows[j]) for j in earlier],
+        earlier=[_setup_agreement(s, rows[s]) for s in earlier],
         reviewed_by_you=by_you,
         skipped=skipped,
     )

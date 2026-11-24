@@ -20,6 +20,16 @@ export const PROVIDER_NAMES: Record<Schemas["CredentialOut"]["provider"], string
 export function modelLabel(name: string, provider: string): string {
   return `${name} (${PROVIDER_NAMES[provider as keyof typeof PROVIDER_NAMES]})`;
 }
+
+/** The guidance half of a Judging setup, beside its judge model: "with guidance version 2", "with no guidance". */
+export function judgingGuidance(version: number | null): string {
+  return version === null ? "with no guidance" : `with guidance version ${String(version)}`;
+}
+
+/** A Judging setup: its Evaluation Model and guidance version, "gpt-4.1-mini (OpenAI) with guidance version 2". */
+export function judgingSetupLabel(setup: { provider: string; model: string; guidance_version: number | null }): string {
+  return `${modelLabel(setup.model, setup.provider)} ${judgingGuidance(setup.guidance_version)}`;
+}
 export type ModelInfo = Schemas["ModelOut"];
 
 const defaultModelKey = (organisationId: string) => ["default-model", organisationId] as const;

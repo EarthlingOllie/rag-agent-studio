@@ -243,7 +243,7 @@ function Sample({ organisationId }: { organisationId: string }) {
         <EmptyState
           icon="check"
           title="Nothing to review"
-          description="Every judged Verdict and Live Verdict check by the current Evaluation Model has been reviewed. New ones come with each Evaluation Run and judged Live reply."
+          description="Every judged Verdict and Live Verdict check under the current Judging setup has been reviewed. New ones come with each Evaluation Run and judged Live reply."
           action={
             <Link to="/organisations/$organisationId/settings/models" params={{ organisationId }} className={text.link}>
               Back to Models settings
@@ -265,7 +265,7 @@ function Sample({ organisationId }: { organisationId: string }) {
 }
 
 /**
- * The Review sample: one judged Verdict or Live Verdict check at a time, drawn at random from those by the current Evaluation Model
+ * The Review sample: one judged Verdict or Live Verdict check at a time, drawn at random from those judged under the current Judging setup
  * not yet reviewed. The Editor gives their own pass or fail before the Evaluation Model's is revealed, so
  * Evaluation Model agreement isn't skewed towards the Verdicts people already doubted.
  */

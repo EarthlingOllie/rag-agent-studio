@@ -9,12 +9,12 @@
 - [18-03: Live Verdict checks in the Review sample, and retention](../18-verdict-review/03-live-verdicts-in-sample-retention.md)
 - [18-05: Evaluation Model agreement card](../18-verdict-review/05-agreement-card.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Verdict reviews record the Judging setup of the judgement they review
-- [ ] The Review sample pool holds only judgements under the current Judging setup
-- [ ] The agreement card shows the current Judging setup's figures and lists earlier Judging setups (Evaluation Model and guidance version) that have reviews
-- [ ] Changing either the Evaluation Model or the guidance starts new figures
-- [ ] New Studio UI uses the design system ([docs/design/README.md](../../design/README.md), `frontend/apps/studio/src/design`): its tokens, recipes and shared patterns (dialogs, toasts, badges, code blocks, meters, diffs, empty and loading states, bulk bar, segmented control, pagination, editable list), never Tailwind palette classes or `dark:`; the palette ratchet passes
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Verdict reviews record the Judging setup of the judgement they review
+- [x] The Review sample pool holds only judgements under the current Judging setup
+- [x] The agreement card shows the current Judging setup's figures and lists earlier Judging setups (Evaluation Model and guidance version) that have reviews
+- [x] Changing either the Evaluation Model or the guidance starts new figures
+- [x] New Studio UI uses the design system ([docs/design/README.md](../../design/README.md), `frontend/apps/studio/src/design`): its tokens, recipes and shared patterns (dialogs, toasts, badges, code blocks, meters, diffs, empty and loading states, bulk bar, segmented control, pagination, editable list), never Tailwind palette classes or `dark:`; the palette ratchet passes
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

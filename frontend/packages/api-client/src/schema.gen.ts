@@ -692,10 +692,11 @@ export interface paths {
         };
         /**
          * Get Evaluation Agreement
-         * @description Evaluation Model agreement over Review sample reviews: the current Evaluation Model's
+         * @description Evaluation Model agreement over Review sample reviews: the current Judging setup's
          *     figures (rate with its Wilson interval, Low sample, false passes and false fails, overall
-         *     and per check), the earlier Evaluation Models that have reviews, and how many sample reviews
-         *     the Organisation and you have given and items were skipped.
+         *     and per check), the earlier Judging setups (Evaluation Model and guidance version) that have
+         *     reviews, and how many sample reviews the Organisation and you have given and items were
+         *     skipped.
          */
         get: operations["getEvaluationAgreement"];
         put?: never;
@@ -2712,10 +2713,10 @@ export interface paths {
         };
         /**
          * Get Review Sample Item
-         * @description One judged Verdict or Live Verdict check drawn at random from those of the current
-         *     Evaluation Model not yet reviewed whose text is still there (null when there are none),
-         *     without the Evaluation Model's outcome or reason, and how many Review sample reviews the
-         *     Organisation and you have given.
+         * @description One judged Verdict or Live Verdict check drawn at random from those under the current
+         *     Judging setup (Evaluation Model and Judging guidance version) not yet reviewed whose text
+         *     is still there (null when there are none), without the Evaluation Model's outcome or
+         *     reason, and how many Review sample reviews the Organisation and you have given.
          */
         get: operations["getReviewSampleItem"];
         put?: never;
@@ -2760,7 +2761,7 @@ export interface paths {
         put?: never;
         /**
          * Skip Review Sample Item
-         * @description Counts an item you skipped on the Review sample against the current Evaluation Model.
+         * @description Counts an item you skipped on the Review sample against the current Judging setup.
          *     No review is stored, so the item stays in the sample. Not found while the Organisation has
          *     no model to judge with.
          */
@@ -3133,7 +3134,7 @@ export interface components {
         };
         /**
          * AgreementOut
-         * @description One Evaluation Model's agreement: overall, then per check that has reviews (grounding,
+         * @description One Judging setup's agreement: overall, then per check that has reviews (grounding,
          *     answers the question, Reference answer).
          */
         AgreementOut: {
@@ -3145,6 +3146,8 @@ export interface components {
             false_fails: number;
             /** False Passes */
             false_passes: number;
+            /** Guidance Version */
+            guidance_version: number | null;
             /** High */
             high: number | null;
             /** Low */
