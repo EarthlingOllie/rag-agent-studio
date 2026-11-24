@@ -269,7 +269,7 @@
         "type": "object"
       },
       "AgreementOut": {
-        "description": "One Evaluation Model's agreement: overall, then per check that has reviews (grounding,\nanswers the question, Reference answer).",
+        "description": "One Judging setup's agreement: overall, then per check that has reviews (grounding,\nanswers the question, Reference answer).",
         "properties": {
           "agreed": {
             "title": "Agreed",
@@ -289,6 +289,17 @@
           "false_passes": {
             "title": "False Passes",
             "type": "integer"
+          },
+          "guidance_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Version"
           },
           "high": {
             "anyOf": [
@@ -351,6 +362,7 @@
           "low_sample",
           "provider",
           "model",
+          "guidance_version",
           "checks"
         ],
         "title": "AgreementOut",
@@ -14439,7 +14451,7 @@
     },
     "/api/organisations/{organisation_id}/evaluation-agreement": {
       "get": {
-        "description": "Evaluation Model agreement over Review sample reviews: the current Evaluation Model's\nfigures (rate with its Wilson interval, Low sample, false passes and false fails, overall\nand per check), the earlier Evaluation Models that have reviews, and how many sample reviews\nthe Organisation and you have given and items were skipped.",
+        "description": "Evaluation Model agreement over Review sample reviews: the current Judging setup's\nfigures (rate with its Wilson interval, Low sample, false passes and false fails, overall\nand per check), the earlier Judging setups (Evaluation Model and guidance version) that have\nreviews, and how many sample reviews the Organisation and you have given and items were\nskipped.",
         "operationId": "getEvaluationAgreement",
         "parameters": [
           {
@@ -24865,7 +24877,7 @@
     },
     "/api/organisations/{organisation_id}/review-sample/next": {
       "get": {
-        "description": "One judged Verdict or Live Verdict check drawn at random from those of the current\nEvaluation Model not yet reviewed whose text is still there (null when there are none),\nwithout the Evaluation Model's outcome or reason, and how many Review sample reviews the\nOrganisation and you have given.",
+        "description": "One judged Verdict or Live Verdict check drawn at random from those under the current\nJudging setup (Evaluation Model and Judging guidance version) not yet reviewed whose text\nis still there (null when there are none), without the Evaluation Model's outcome or\nreason, and how many Review sample reviews the Organisation and you have given.",
         "operationId": "getReviewSampleItem",
         "parameters": [
           {
@@ -24976,7 +24988,7 @@
     },
     "/api/organisations/{organisation_id}/review-sample/skips": {
       "post": {
-        "description": "Counts an item you skipped on the Review sample against the current Evaluation Model.\nNo review is stored, so the item stays in the sample. Not found while the Organisation has\nno model to judge with.",
+        "description": "Counts an item you skipped on the Review sample against the current Judging setup.\nNo review is stored, so the item stays in the sample. Not found while the Organisation has\nno model to judge with.",
         "operationId": "skipReviewSampleItem",
         "parameters": [
           {

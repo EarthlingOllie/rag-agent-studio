@@ -233,7 +233,7 @@ test("an empty sample says there is nothing to review and links back to Models s
   const empty = await screen.findByRole("heading", { name: "Nothing to review" });
 
   expect(empty.parentElement).toHaveTextContent(
-    "Every judged Verdict and Live Verdict check by the current Evaluation Model has been reviewed.",
+    "Every judged Verdict and Live Verdict check under the current Judging setup has been reviewed.",
   );
   expect(screen.getByText("12 sample reviews so far, 0 of them yours.")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("link", { name: "Back to Models settings" }));

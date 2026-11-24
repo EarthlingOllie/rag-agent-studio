@@ -4,7 +4,7 @@ import { useId } from "react";
 
 import { Badge, table, text } from "../design";
 import { useEvaluationAgreement } from "../reviews/reviews";
-import { modelLabel } from "./models";
+import { judgingSetupLabel } from "./models";
 
 type Figures = Omit<Schemas["CheckAgreementOut"], "check">;
 type Agreement = Schemas["AgreementOut"];
@@ -34,7 +34,7 @@ function Rate({ figures }: { figures: Figures }) {
   );
 }
 
-/** A table of agreement rows: per check of one Evaluation Model, or one row per earlier Evaluation Model. */
+/** A table of agreement rows: per check of one Judging setup, or one row per earlier Judging setup. */
 function FiguresTable({ caption, first, rows }: { caption: string; first: string; rows: { name: string; figures: Figures }[] }) {
   return (
     <div className={table.wrap}>
@@ -73,9 +73,9 @@ function FiguresTable({ caption, first, rows }: { caption: string; first: string
   );
 }
 
-/** The current Evaluation Model's figures: the rate and its interval, false passes and false fails, then per check. */
+/** The current Judging setup's figures: the rate and its interval, false passes and false fails, then per check. */
 function Current({ current }: { current: Agreement }) {
-  if (current.reviews === 0) return <p className={text.muted}>No sample reviews of this Evaluation Model yet.</p>;
+  if (current.reviews === 0) return <p className={text.muted}>No sample reviews under this Judging setup yet.</p>;
   return (
     <div className="flex flex-col gap-3">
       <div
@@ -102,10 +102,10 @@ function Current({ current }: { current: Agreement }) {
 }
 
 /**
- * The Evaluation Model agreement card, read by every Member: the current Evaluation Model's agreement with Review sample reviews
- * (rate with its Wilson interval, Low sample under 30, false passes and false fails, overall and per check), how many sample
- * reviews the Organisation and you gave and items were skipped, the earlier Evaluation Models that have reviews, and the way
- * to the Review sample.
+ * The Evaluation Model agreement card, read by every Member: the current Judging setup's (Evaluation Model and guidance version)
+ * agreement with Review sample reviews (rate with its Wilson interval, Low sample under 30, false passes and false fails, overall
+ * and per check), how many sample reviews the Organisation and you gave and items were skipped under it, the earlier Judging
+ * setups that have reviews, and the way to the Review sample.
  */
 export function EvaluationAgreementCard({ organisationId }: { organisationId: string }) {
   const agreement = useEvaluationAgreement(organisationId);
@@ -125,13 +125,13 @@ export function EvaluationAgreementCard({ organisationId }: { organisationId: st
       </div>
       <p className={text.muted}>
         How often Editors, reviewing blind on the Review sample, agree with the Evaluation Model's pass or fail. A false pass is one it
-        passed and the Editor failed.
+        passed and the Editor failed. Changing the Evaluation Model or the guidance starts a new Judging setup, with new figures.
       </p>
       {current === null ? (
         <p className={text.muted}>No model to judge with yet, so there is no agreement to count.</p>
       ) : (
         <>
-          <p className="text-sm text-ink">{modelLabel(current.model, current.provider)}</p>
+          <p className="text-sm text-ink">{judgingSetupLabel(current)}</p>
           <Current current={current} />
           <p className={text.muted}>
             {`${plural(reviewed, "sample review")} in this Organisation, ${String(byYou)} of them yours. ${plural(skipped, "item")} skipped.`}
@@ -140,11 +140,11 @@ export function EvaluationAgreementCard({ organisationId }: { organisationId: st
       )}
       {earlier.length > 0 && (
         <div className="flex flex-col gap-2">
-          <h4 className="text-sm font-medium text-ink-2">Earlier Evaluation Models</h4>
+          <h4 className="text-sm font-medium text-ink-2">Earlier Judging setups</h4>
           <FiguresTable
-            caption="Earlier Evaluation Models"
-            first="Evaluation Model"
-            rows={earlier.map((model) => ({ name: modelLabel(model.model, model.provider), figures: model }))}
+            caption="Earlier Judging setups"
+            first="Judging setup"
+            rows={earlier.map((setup) => ({ name: judgingSetupLabel(setup), figures: setup }))}
           />
         </div>
       )}

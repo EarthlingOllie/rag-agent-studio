@@ -98,10 +98,11 @@ function figures(reviews: number, agreed: number, falsePasses: number, falseFail
 
 const check = (name: Check, ...rest: Parameters<typeof figures>) => ({ check: name, ...figures(...rest) });
 
-/** The current Evaluation Model's agreement: 34 of 40, a few false passes, every check below 30 reviews. */
+/** The current Judging setup's agreement (guidance version 2): 34 of 40, a few false passes, every check below 30 reviews. */
 export const gptAgreement: Agreement = {
   provider: "openai",
   model: "gpt-4.1-mini",
+  guidance_version: 2,
   ...figures(40, 34, 4, 2, 0.709, 0.929),
   checks: [
     check("grounding", 20, 18, 1, 1, 0.699, 0.972),
@@ -110,17 +111,18 @@ export const gptAgreement: Agreement = {
   ],
 };
 
-/** An earlier Evaluation Model with a handful of reviews. */
+/** An earlier Judging setup, before any guidance, with a handful of reviews. */
 export const claudeAgreement: Agreement = {
   provider: "anthropic",
   model: "claude-haiku-4-5",
+  guidance_version: null,
   ...figures(6, 3, 3, 0, 0.188, 0.812),
   checks: [check("grounding", 6, 3, 3, 0, 0.188, 0.812)],
 };
 
-/** An Evaluation Model nobody has reviewed yet. */
-export function unreviewed(provider: Agreement["provider"], model: string): Agreement {
-  return { provider, model, reviews: 0, agreed: 0, false_passes: 0, false_fails: 0, rate: null, low: null, high: null, low_sample: true, checks: [] };
+/** A Judging setup nobody has reviewed under yet. */
+export function unreviewed(provider: Agreement["provider"], model: string, guidanceVersion: number | null = null): Agreement {
+  return { provider, model, guidance_version: guidanceVersion, reviews: 0, agreed: 0, false_passes: 0, false_fails: 0, rate: null, low: null, high: null, low_sample: true, checks: [] };
 }
 
 /** Serves Evaluation Model agreement as given. */

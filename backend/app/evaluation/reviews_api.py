@@ -69,7 +69,7 @@ class ReviewSampleItemOut(BaseModel):
 class ReviewSampleNextOut(BaseModel):
     # Null when there is nothing left to review.
     item: ReviewSampleItemOut | None
-    # Review sample reviews of the current Evaluation Model: the Organisation's and yours.
+    # Review sample reviews under the current Judging setup: the Organisation's and yours.
     reviewed: int
     reviewed_by_you: int
 
@@ -129,22 +129,24 @@ class CheckAgreementOut(AgreementFiguresOut):
 
 
 class AgreementOut(AgreementFiguresOut):
-    """One Evaluation Model's agreement: overall, then per check that has reviews (grounding,
+    """One Judging setup's agreement: overall, then per check that has reviews (grounding,
     answers the question, Reference answer)."""
 
-    # The Evaluation Model (or the Default Model, while none is chosen).
+    # The Judging setup: the Evaluation Model (or the Default Model, while none is chosen) and
+    # the Judging guidance version (null when the Organisation had never saved guidance).
     provider: str
     model: str
+    guidance_version: int | None
     checks: list[CheckAgreementOut]
 
 
 class EvaluationAgreementOut(BaseModel):
-    # The current Evaluation Model's; null while the Organisation has no model to judge with.
+    # The current Judging setup's; null while the Organisation has no model to judge with.
     current: AgreementOut | None
-    # Earlier Evaluation Models that have Review sample reviews, most recently reviewed first.
+    # Earlier Judging setups that have Review sample reviews, most recently reviewed first.
     earlier: list[AgreementOut]
-    # The current Evaluation Model's Review sample reviews: the Organisation's and yours; and
-    # the items skipped on the Review sample while it judged.
+    # The current Judging setup's Review sample reviews: the Organisation's and yours; and the
+    # items skipped on the Review sample under it.
     reviewed: int
     reviewed_by_you: int
     skipped: int
@@ -164,10 +166,11 @@ def _figures(figures: reviews.Figures) -> dict[str, Any]:
     }
 
 
-def _agreement(found: reviews.JudgeAgreement) -> AgreementOut:
+def _agreement(found: reviews.SetupAgreement) -> AgreementOut:
     return AgreementOut(
-        provider=found.judge.provider,
-        model=found.judge.model,
+        provider=found.setup.judge_provider,
+        model=found.setup.judge_model,
+        guidance_version=found.setup.guidance_version,
         **_figures(found.overall),
         checks=[
             CheckAgreementOut(check=cast(Check, check), **_figures(figures))
@@ -204,10 +207,10 @@ def _item(item: reviews.SampleItem) -> ReviewSampleItemOut:
 
 @router.get("/review-sample/next", responses=_NOT_FOUND, operation_id="getReviewSampleItem")
 async def get_review_sample_item(scope: Scope, db: Db) -> ReviewSampleNextOut:
-    """One judged Verdict or Live Verdict check drawn at random from those of the current
-    Evaluation Model not yet reviewed whose text is still there (null when there are none),
-    without the Evaluation Model's outcome or reason, and how many Review sample reviews the
-    Organisation and you have given."""
+    """One judged Verdict or Live Verdict check drawn at random from those under the current
+    Judging setup (Evaluation Model and Judging guidance version) not yet reviewed whose text
+    is still there (null when there are none), without the Evaluation Model's outcome or
+    reason, and how many Review sample reviews the Organisation and you have given."""
     found = await reviews.next_item(db, scope)
     return ReviewSampleNextOut(
         item=None if found.item is None else _item(found.item),
@@ -255,7 +258,7 @@ async def submit_sample_review(
     operation_id="skipReviewSampleItem",
 )
 async def skip_review_sample_item(scope: Scope, db: Db, clock: ClockDep) -> None:
-    """Counts an item you skipped on the Review sample against the current Evaluation Model.
+    """Counts an item you skipped on the Review sample against the current Judging setup.
     No review is stored, so the item stays in the sample. Not found while the Organisation has
     no model to judge with."""
     try:
@@ -266,10 +269,11 @@ async def skip_review_sample_item(scope: Scope, db: Db, clock: ClockDep) -> None
 
 @router.get("/evaluation-agreement", responses=_NOT_FOUND, operation_id="getEvaluationAgreement")
 async def get_evaluation_agreement(scope: Scope, db: Db) -> EvaluationAgreementOut:
-    """Evaluation Model agreement over Review sample reviews: the current Evaluation Model's
+    """Evaluation Model agreement over Review sample reviews: the current Judging setup's
     figures (rate with its Wilson interval, Low sample, false passes and false fails, overall
-    and per check), the earlier Evaluation Models that have reviews, and how many sample reviews
-    the Organisation and you have given and items were skipped."""
+    and per check), the earlier Judging setups (Evaluation Model and guidance version) that have
+    reviews, and how many sample reviews the Organisation and you have given and items were
+    skipped."""
     found = await reviews.read_agreement(db, scope)
     current = None if found.current is None else _agreement(found.current)
     return EvaluationAgreementOut(
