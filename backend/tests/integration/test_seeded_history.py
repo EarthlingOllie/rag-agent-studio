@@ -666,3 +666,113 @@ async def test_the_seed_stops_when_the_suggestion_run_does_not_complete(
 
     assert isinstance(app.state.clock, SystemClock)
     await erase_demo(app)
+
+
+async def sample_reviews_shown(
+    owner: SignedUpMember, project: str, agent: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Every Review sample review of the Agent's Verdicts, as Run results and Traces show it,
+    with the check it reviews, the Evaluation Model's outcome and where the Verdict is from."""
+    found = []
+    evaluation = ("projects", project, "agents", agent["id"], "evaluation")
+    for run in await get(owner, *evaluation, "runs"):
+        results = await get(owner, *evaluation, "runs", run["id"], "results")
+        for case in results["cases"]:
+            for result in case["results"]:
+                for verdict in result["verdicts"]:
+                    review = verdict.get("review")
+                    if review is not None and review["from_sample"]:
+                        found.append(
+                            {
+                                **review,
+                                "check": verdict["kind"],
+                                "judged": verdict["outcome"],
+                                "from": "run",
+                            }
+                        )
+    for verdict in await live_verdicts_of(owner, project, agent):
+        for key, check in (("grounded", "grounding"), ("answers_question", "answers_question")):
+            review = verdict[key]["review"]
+            if review is not None and review["from_sample"]:
+                found.append(
+                    {**review, "check": check, "judged": verdict[key]["outcome"], "from": "live"}
+                )
+    return found
+
+
+async def test_the_agreement_card_shows_about_40_seeded_sample_reviews_with_a_few_false_passes(
+    app: FastAPI, new_client: ClientFactory
+) -> None:
+    """Spec 18's demo: the Owner and the Editor worked through the Review sample after the
+    history, reviewing about 40 of the HR helper's Run Verdicts and Live Verdict checks, and
+    failed a few the Demo model passed, saying why. So the agreement card shows them under the
+    current Judging setup, with its false passes, and each review is shown on its Verdict."""
+    await erase_demo(app)
+    await seed(app, ASSETS, history=LIGHT)
+
+    owner = await signed_in(new_client, content.OWNER)
+    agreement = await get(owner, "evaluation-agreement")
+    current = agreement["current"]
+    assert (current["provider"], current["model"]) == ("demo", "demo-chat")
+    assert current["reviews"] == agreement["reviewed"] == 40
+    assert current["false_passes"] == 4
+    assert current["false_fails"] == 0
+    assert current["agreed"] == 36
+    assert current["low_sample"] is False
+    assert current["low"] < current["rate"] == 0.9 < current["high"]
+    # Run Verdicts (the Reference answer is only theirs) and Live Verdicts (answering the question
+    # is only theirs) were both reviewed.
+    checks = {c["check"]: c for c in current["checks"]}
+    assert {"reference_answer", "answers_question"} <= set(checks)
+    assert sum(c["reviews"] for c in checks.values()) == 40
+    assert sum(c["false_passes"] for c in checks.values()) == 4
+    assert agreement["earlier"] == []
+    # The Owner and the Editor shared the work.
+    assert agreement["reviewed_by_you"] == 20
+    editor = await signed_in(new_client, content.EDITOR)
+    assert (await get(editor, "evaluation-agreement"))["reviewed_by_you"] == 20
+
+    # Each review is shown on its Verdict, from the Review sample; the false passes with why.
+    project, agents = await demo_agents(owner)
+    shown = await sample_reviews_shown(owner, project, agents["HR helper"])
+    assert len(shown) == 40
+    assert {r["from"] for r in shown} == {"run", "live"}
+    assert {r["reviewed_by"] for r in shown} == {content.OWNER.name, content.EDITOR.name}
+    false_passes = [r for r in shown if r["judged"] == "pass" and r["outcome"] == "fail"]
+    assert len(false_passes) == 4
+    for review in false_passes:
+        assert review["reason"] == content.FALSE_PASS_REASONS[review["check"]]
+    assert all(r["reason"] is None for r in shown if r["judged"] == r["outcome"])
+    # Given after the history's nightly Purge, so no review's reason has been cleared.
+    assert all(r["purged_at"] is None for r in shown)
+    purge_at = datetime.combine(datetime.now(UTC).date(), time(0, 10), tzinfo=UTC)
+    assert all(datetime.fromisoformat(r["reviewed_at"]) >= purge_at for r in shown)
+
+    # Nothing is left half reviewed: the Review sample still has items.
+    sample = await get(owner, "review-sample", "next")
+    assert sample["item"] is not None
+    assert sample["reviewed"] == 40
+
+
+async def test_the_seeded_reviewers_stop_when_the_review_sample_runs_out(
+    app: FastAPI,
+    new_client: ClientFactory,
+    monkeypatch: pytest.MonkeyPatch,
+    quiet_seed_history: None,
+) -> None:
+    """Without Visitor Conversations there are no Live Verdicts, only the Runs' Verdicts: asked
+    for more reviews than that, the reviewers review every one, a few as false passes, and stop."""
+    monkeypatch.setattr(content, "SAMPLE_REVIEWS", 10_000)
+    await erase_demo(app)
+    await seed(app, ASSETS)
+
+    owner = await signed_in(new_client, content.OWNER)
+    sample = await get(owner, "review-sample", "next")
+    assert sample["item"] is None
+    agreement = await get(owner, "evaluation-agreement")
+    current = agreement["current"]
+    assert 40 < current["reviews"] < 10_000
+    assert current["false_passes"] == content.FALSE_PASSES
+    assert current["false_fails"] == 0
+    assert "answers_question" not in {c["check"] for c in current["checks"]}
+    await erase_demo(app)
