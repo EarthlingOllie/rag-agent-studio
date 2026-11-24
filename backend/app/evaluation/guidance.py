@@ -104,12 +104,9 @@ async def current_setup(session: AsyncSession, organisation_id: uuid.UUID) -> Ju
     """The Judging setup a judgement started now would record; None when the Organisation has
     no model to judge with."""
     chosen = await judge_model(session, organisation_id)
-    if chosen is None:
-        return None
-    return JudgingSetup(
-        chosen.credential.provider,
-        chosen.model,
-        await current_version(session, organisation_id),
+    version = await current_version(session, organisation_id)
+    return (
+        None if chosen is None else JudgingSetup(chosen.credential.provider, chosen.model, version)
     )
 
 

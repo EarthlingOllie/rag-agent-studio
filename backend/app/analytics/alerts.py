@@ -21,28 +21,16 @@ Version also clears it (``app.agents.versions``)."""
 import uuid
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
+from typing import Any, cast
 
-from sqlalchemy import (
-    ColumnElement,
-    Integer,
-    Select,
-    String,
-    Uuid,
-    and_,
-    case,
-    column,
-    func,
-    select,
-    update,
-    values,
-)
+from sqlalchemy import ColumnElement, Select, and_, case, func, select, update
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent, AgentVersion, LiveHistoryEntry
 from app.analytics.stats import clearly_lower
 from app.conversations.models import Conversation, Message, MessageRole
-from app.evaluation.guidance import current_setup
+from app.evaluation.guidance import JudgingSetup, current_setup
 from app.evaluation.models import LiveStatus, LiveVerdict
 from app.mail import templates
 from app.mail.port import Mailer
@@ -228,50 +216,46 @@ async def _scores(session: AsyncSession, at: datetime) -> dict[uuid.UUID, Scores
         .order_by(LiveHistoryEntry.agent_id, LiveHistoryEntry.seq.desc())
         .subquery()
     )
-    organisation_ids = await session.scalars(select(became.c.organisation_id).distinct())
-    current = [
-        (organisation_id, setup.judge_provider, setup.judge_model, setup.guidance_version)
-        for organisation_id in organisation_ids
-        if (setup := await current_setup(session, organisation_id)) is not None
-    ]
-    if not current:
-        return {}
-    setups = values(
-        column("organisation_id", Uuid),
-        column("judge_provider", String),
-        column("judge_model", String),
-        column("guidance_version", Integer),
-        name="setups",
-    ).data(current)
+    setups: dict[uuid.UUID, JudgingSetup | None] = {}
 
-    def counts(
-        version: ColumnElement[uuid.UUID], *window: ColumnElement[bool]
-    ) -> Select[uuid.UUID, uuid.UUID, uuid.UUID, int, int]:
+    async def under_current(
+        organisation_id: uuid.UUID, provider: str | None, model: str | None, version: int | None
+    ) -> bool:
+        """Whether Live Verdicts judged under this Judging setup were judged under the
+        Organisation's current one."""
+        if organisation_id not in setups:
+            setups[organisation_id] = await current_setup(session, organisation_id)
+        return setups[organisation_id] == JudgingSetup(
+            cast(str, provider), cast(str, model), version
+        )
+
+    def counts(version: ColumnElement[uuid.UUID], *window: ColumnElement[bool]) -> Select[Any]:
         """Each Agent's judged and passed Live Verdicts of ``version`` on replies in ``window``,
-        with its Live Version and the previous one, under the current Judging setup."""
+        per Judging setup, with its Organisation, its Live Version and the previous one."""
         return (
             select(
                 became.c.agent_id,
+                became.c.organisation_id,
                 became.c.to_version_id,
                 became.c.from_version_id,
+                LiveVerdict.judge_provider,
+                LiveVerdict.judge_model,
+                LiveVerdict.judging_guidance_version,
                 func.count(),
                 _count(LiveVerdict.passed.is_(True)),
             )
             .join(LiveVerdict, LiveVerdict.agent_version_id == version)
-            .join(
-                setups,
-                and_(
-                    setups.c.organisation_id == LiveVerdict.organisation_id,
-                    setups.c.judge_provider == LiveVerdict.judge_provider,
-                    setups.c.judge_model == LiveVerdict.judge_model,
-                    LiveVerdict.judging_guidance_version.is_not_distinct_from(
-                        setups.c.guidance_version
-                    ),
-                ),
-            )
             .join(Message, Message.id == LiveVerdict.message_id)
             .where(LiveVerdict.status == LiveStatus.JUDGED, *window)
-            .group_by(became.c.agent_id, became.c.to_version_id, became.c.from_version_id)
+            .group_by(
+                became.c.agent_id,
+                became.c.organisation_id,
+                became.c.to_version_id,
+                became.c.from_version_id,
+                LiveVerdict.judge_provider,
+                LiveVerdict.judge_model,
+                LiveVerdict.judging_guidance_version,
+            )
         )
 
     latest = await session.execute(
@@ -281,10 +265,10 @@ async def _scores(session: AsyncSession, at: datetime) -> dict[uuid.UUID, Scores
             Message.created_at <= at,
         ).having(func.count() >= DROP_MIN_JUDGED)
     )
-    found = {
-        agent_id: Scores(to_id, judged, passed, from_id, 0, 0)
-        for agent_id, to_id, from_id, judged, passed in latest
-    }
+    found: dict[uuid.UUID, Scores] = {}
+    for agent_id, organisation_id, to_id, from_id, *setup, judged, passed in latest:
+        if await under_current(organisation_id, *setup):
+            found[agent_id] = Scores(to_id, judged, passed, from_id, 0, 0)
     previous = await session.execute(
         counts(
             became.c.from_version_id,
@@ -292,8 +276,11 @@ async def _scores(session: AsyncSession, at: datetime) -> dict[uuid.UUID, Scores
             Message.created_at < became.c.occurred_at,
         ).where(became.c.agent_id.in_(found))
     )
-    for agent_id, _, _, judged, passed in previous:
-        found[agent_id] = replace(found[agent_id], previous_judged=judged, previous_passed=passed)
+    for agent_id, organisation_id, _, _, *setup, judged, passed in previous:
+        if await under_current(organisation_id, *setup):
+            found[agent_id] = replace(
+                found[agent_id], previous_judged=judged, previous_passed=passed
+            )
     return found
 
 
