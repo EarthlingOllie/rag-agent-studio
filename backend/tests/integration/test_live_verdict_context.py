@@ -276,12 +276,20 @@ def iso(at: Any) -> str:
     return str(at.isoformat()).replace("+00:00", "Z")
 
 
+def cleared(check: dict[str, Any]) -> dict[str, Any]:
+    return {"outcome": check["outcome"], "reason": None, "review": None}
+
+
 def kept(verdict: dict[str, Any]) -> dict[str, Any]:
     """What a Live Verdict keeps after the Purge: everything but its reasons and purged-at."""
     return {
         **verdict,
-        "grounded": {"outcome": verdict["grounded"]["outcome"], "reason": None},
-        "answers_question": {"outcome": verdict["answers_question"]["outcome"], "reason": None},
+        "grounded": {"outcome": verdict["grounded"]["outcome"], "reason": None, "review": None},
+        "answers_question": {
+            "outcome": verdict["answers_question"]["outcome"],
+            "reason": None,
+            "review": None,
+        },
         "purged_at": None,
     }
 
@@ -310,8 +318,8 @@ async def test_the_purge_clears_a_live_verdicts_reasons_and_keeps_its_outcomes_a
 
     after = await live_verdict(owner, agent, old)
     assert after is not None
-    assert after["grounded"] == {"outcome": "fail", "reason": None}
-    assert after["answers_question"] == {"outcome": "pass", "reason": None}
+    assert after["grounded"] == {"outcome": "fail", "reason": None, "review": None}
+    assert after["answers_question"] == {"outcome": "pass", "reason": None, "review": None}
     assert after["purged_at"] == iso(clock.now())
     # Its status, overall pass, judge, tokens, Cost and times stay.
     assert kept(after) == kept(before_old)
@@ -341,15 +349,15 @@ async def test_deleting_a_conversation_clears_its_live_verdicts_reasons_at_once(
     for events in (first, second):
         verdict = await live_verdict(owner, agent, events)
         assert verdict is not None
-        assert verdict["grounded"] == {"outcome": "pass", "reason": None}
-        assert verdict["answers_question"] == {"outcome": "pass", "reason": None}
+        assert verdict["grounded"] == {"outcome": "pass", "reason": None, "review": None}
+        assert verdict["answers_question"] == {"outcome": "pass", "reason": None, "review": None}
         assert (verdict["passed"], verdict["purged_at"]) == (True, iso(clock.now()))
     after = await live_verdict(owner, agent, first)
     assert after is not None
     assert kept(after) == kept(before)
     untouched = await live_verdict(owner, agent, kept_events)
     assert untouched is not None
-    assert untouched["grounded"] == {"outcome": "pass", "reason": "Fine."}
+    assert untouched["grounded"] == {"outcome": "pass", "reason": "Fine.", "review": None}
     assert untouched["purged_at"] is None
 
 
@@ -379,7 +387,7 @@ async def test_a_reply_purged_while_it_is_being_judged_keeps_no_reasons(
     verdict = await live_verdict(owner, agent, events)
     assert verdict is not None
     assert verdict["status"] == "judged"
-    assert verdict["grounded"] == {"outcome": "pass", "reason": None}
-    assert verdict["answers_question"] == {"outcome": "fail", "reason": None}
+    assert verdict["grounded"] == {"outcome": "pass", "reason": None, "review": None}
+    assert verdict["answers_question"] == {"outcome": "fail", "reason": None, "review": None}
     assert (verdict["passed"], verdict["purged_at"]) == (False, iso(clock.now()))
     assert verdict["cost_usd"] is not None

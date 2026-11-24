@@ -1,10 +1,12 @@
-"""Review sample and Evaluation Model agreement routes (spec 18). Every Member (Owners and
-Editors) uses the Review sample and reads agreement; another Organisation's are not found."""
+"""Verdict review routes (spec 18): the Review sample, reviews given where Verdicts are shown (Run
+results and the Trace) and Evaluation Model agreement. Every Member (Owners and Editors) reviews
+and reads agreement; another Organisation's are not found."""
 
 import uuid
+from datetime import datetime
 from typing import Annotated, Any, Literal, cast
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from pydantic import BaseModel, Field, model_validator
 
 from app.auth.api import Db, ErrorResponse
@@ -277,3 +279,129 @@ async def get_evaluation_agreement(scope: Scope, db: Db) -> EvaluationAgreementO
         reviewed_by_you=found.reviewed_by_you,
         skipped=found.skipped,
     )
+
+
+class VerdictReviewOut(BaseModel):
+    """An Editor's review of a judged Verdict or Live Verdict check, as shown on it."""
+
+    outcome: Outcome
+    # Why the Editor differs, when they said; null without one, or once the Purge cleared it
+    # with the Live Verdict's reply ("Text purged", with ``purged_at``).
+    reason: str | None
+    # The name of the Member who gave it; null once they are deleted.
+    reviewed_by: str | None
+    reviewed_at: datetime
+    # Given blind on the Review sample: only these count towards agreement.
+    from_sample: bool
+    purged_at: datetime | None
+
+
+def review_out(found: reviews.ShownReview | None) -> VerdictReviewOut | None:
+    if found is None:
+        return None
+    return VerdictReviewOut(
+        outcome=cast(Outcome, found.outcome),
+        reason=found.reason,
+        reviewed_by=found.reviewed_by,
+        reviewed_at=found.reviewed_at,
+        from_sample=found.from_sample,
+        purged_at=found.purged_at,
+    )
+
+
+class ReviewRequest(BaseModel):
+    """An Editor's agree or disagree with the shown pass or fail, as their own pass or fail."""
+
+    outcome: Outcome
+    # Why the Editor differs from the Evaluation Model, when they do.
+    reason: Annotated[str, Field(max_length=REVIEW_REASON_MAX)] | None = None
+
+
+_PUT_RESPONSES: dict[int | str, dict[str, Any]] = {
+    **_NOT_FOUND,
+    422: {"description": "Not pass or fail, or a reason over 1,000 characters"},
+}
+
+
+async def _put(
+    target: reviews.RunTarget | reviews.LiveTarget,
+    body: ReviewRequest,
+    scope: Scope,
+    db: Db,
+    clock: Clock,
+) -> VerdictReviewOut:
+    try:
+        found = await reviews.put_review(
+            db, scope, target, VerdictOutcome(body.outcome), body.reason, now=clock.now()
+        )
+    except reviews.NotReviewableError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    return cast(VerdictReviewOut, review_out(found))
+
+
+async def _delete(target: reviews.RunTarget | reviews.LiveTarget, scope: Scope, db: Db) -> Response:
+    try:
+        await reviews.delete_review(db, scope, target)
+    except reviews.NotReviewableError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+
+@router.put(
+    "/verdicts/{verdict_id}/review", responses=_PUT_RESPONSES, operation_id="putVerdictReview"
+)
+async def put_verdict_review(
+    verdict_id: uuid.UUID, body: ReviewRequest, scope: Scope, db: Db, clock: ClockDep
+) -> VerdictReviewOut:
+    """Stores your review of a judged Reference answer or grounding Verdict in Run results,
+    replacing any earlier review of it (one from the Review sample then stops counting towards
+    agreement). It takes the Verdict out of the Review sample and never changes the Verdict.
+    Any other Verdict, or another Organisation's, is not found."""
+    return await _put(reviews.RunTarget(verdict_id), body, scope, db, clock)
+
+
+@router.delete(
+    "/verdicts/{verdict_id}/review",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_NOT_FOUND,
+    operation_id="deleteVerdictReview",
+)
+async def delete_verdict_review(verdict_id: uuid.UUID, scope: Scope, db: Db) -> Response:
+    """Removes the Verdict's review, which puts it back in the Review sample. Not found when it
+    has none."""
+    return await _delete(reviews.RunTarget(verdict_id), scope, db)
+
+
+@router.put(
+    "/live-verdicts/{live_verdict_id}/checks/{check}/review",
+    responses=_PUT_RESPONSES,
+    operation_id="putLiveVerdictReview",
+)
+async def put_live_verdict_review(
+    live_verdict_id: uuid.UUID,
+    check: LiveCheck,
+    body: ReviewRequest,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+) -> VerdictReviewOut:
+    """Stores your review of one check of a judged Live Verdict in the Trace, replacing any
+    earlier review of it (one from the Review sample then stops counting towards agreement).
+    It takes the check out of the Review sample and never changes the Live Verdict. A Live
+    Verdict that isn't judged or whose text is gone, or another Organisation's, is not
+    found."""
+    return await _put(reviews.LiveTarget(live_verdict_id, check), body, scope, db, clock)
+
+
+@router.delete(
+    "/live-verdicts/{live_verdict_id}/checks/{check}/review",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_NOT_FOUND,
+    operation_id="deleteLiveVerdictReview",
+)
+async def delete_live_verdict_review(
+    live_verdict_id: uuid.UUID, check: LiveCheck, scope: Scope, db: Db
+) -> Response:
+    """Removes the review of the Live Verdict's check, which puts it back in the Review sample
+    while its text is still there. Not found when it has none."""
+    return await _delete(reviews.LiveTarget(live_verdict_id, check), scope, db)

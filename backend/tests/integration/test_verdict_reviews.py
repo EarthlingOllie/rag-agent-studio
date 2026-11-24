@@ -12,10 +12,8 @@ from typing import Any
 
 import httpx
 from fastapi import FastAPI
-from sqlalchemy import select
 
 from app.agents.config import DEFAULT_FALLBACK_TEXT
-from app.evaluation.models import EvaluationVerdict, VerdictKind
 from tests.agents import create_automatic_agent
 from tests.conftest import MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import create_project
@@ -101,6 +99,17 @@ async def judged_once(
     await add_case(owner, project_id, agent_id, QUESTION)
     await set_repeats(owner, 1)
     return project_id, agent_id, await evaluated(owner, project_id, agent_id)
+
+
+def verdicts_in(results: dict[str, Any]) -> list[dict[str, Any]]:
+    return [v for case in results["cases"] for r in case["results"] for v in r["verdicts"]]
+
+
+def without_reviews(results: dict[str, Any]) -> dict[str, Any]:
+    """The results with every Verdict's review left out."""
+    for verdict in verdicts_in(results):
+        verdict.pop("review")
+    return results
 
 
 def results_path(member: SignedUpMember, project_id: str, agent_id: str, run_id: str) -> str:
@@ -294,19 +303,12 @@ async def test_a_verdict_outside_the_sample_cannot_be_reviewed(
         owner, project_id, agent_id, expected_sources=[source(document["id"], LEAVE)]
     )
     await add_case(owner, project_id, agent_id, QUESTION)
-    await evaluated(owner, project_id, agent_id)
-    # Run results don't carry Verdict IDs (ticket 18-04 adds reviews there), so the Expected
-    # source Verdict's is read directly.
-    async with app.state.sessionmaker() as session:
-        expected = await session.scalar(
-            select(EvaluationVerdict.id).where(
-                EvaluationVerdict.kind == VerdictKind.EXPECTED_SOURCE
-            )
-        )
+    results = await evaluated(owner, project_id, agent_id)
+    (expected,) = [v["id"] for v in verdicts_in(results) if v["kind"] == "expected_source"]
     item = (await next_item(owner))["item"]
     other = await tenant_factory()
 
-    assert (await review(owner, str(expected), "pass")).status_code == 404
+    assert (await review(owner, expected, "pass")).status_code == 404
     assert (await review(other, item["verdict_id"], "pass")).status_code == 404
     assert (await next_item(other))["item"] is None
     assert (await agreement(other))["current"] is None
@@ -326,5 +328,8 @@ async def test_reviews_never_change_a_verdict_a_score_regressions_or_the_publish
         assert item["verdict_id"]
 
     assert (await agreement(owner))["current"]["agreed"] == 0
-    assert (await owner.client.get(path)).json() == results
+    after = (await owner.client.get(path)).json()
+    # The Verdicts now show their reviews, and are otherwise just as they were.
+    assert [v["review"]["outcome"] for v in verdicts_in(after)] == ["pass", "pass"]
+    assert without_reviews(after) == without_reviews(results)
     assert await summary(owner, project_id, agent_id) == before
