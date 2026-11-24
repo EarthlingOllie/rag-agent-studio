@@ -199,7 +199,7 @@ test("saving a reason can fail", async () => {
   expect(await reveal.findByRole("alert")).toHaveTextContent("Something went wrong. Try again.");
 });
 
-test("Skip stores nothing and draws again", async () => {
+test("Skip stores no review, is counted, and draws again", async () => {
   const api = fakeReviewSampleApi();
   open(adaSession);
   await item();
@@ -209,7 +209,20 @@ test("Skip stores nothing and draws again", async () => {
 
   await item();
   expect(api.draws.count).toBe(2);
+  expect(api.skips.count).toBe(1);
   expect(api.reviews).toEqual([]);
+});
+
+test("a skip that can't be counted still draws again", async () => {
+  const api = fakeReviewSampleApi();
+  server.use(http.post("*/api/organisations/:organisationId/review-sample/skips", () => HttpResponse.json({ detail: "Not found" }, { status: 404 })));
+  open(adaSession);
+  await item();
+
+  await userEvent.click(screen.getByRole("button", { name: "Skip" }));
+
+  await item();
+  expect(api.draws.count).toBe(2);
 });
 
 test("an empty sample says there is nothing to review and links back to Models settings", async () => {

@@ -692,7 +692,10 @@ export interface paths {
         };
         /**
          * Get Evaluation Agreement
-         * @description How many Review sample reviews of the current Evaluation Model agreed with it.
+         * @description Evaluation Model agreement over Review sample reviews: the current Evaluation Model's
+         *     figures (rate with its Wilson interval, Low sample, false passes and false fails, overall
+         *     and per check), the earlier Evaluation Models that have reviews, and how many sample reviews
+         *     the Organisation and you have given and items were skipped.
          */
         get: operations["getEvaluationAgreement"];
         put?: never;
@@ -2746,6 +2749,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/review-sample/skips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Skip Review Sample Item
+         * @description Counts an item you skipped on the Review sample against the current Evaluation Model.
+         *     No review is stored, so the item stays in the sample. Not found while the Organisation has
+         *     no model to judge with.
+         */
+        post: operations["skipReviewSampleItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/theme": {
         parameters: {
             query?: never;
@@ -3106,14 +3131,32 @@ export interface components {
             /** Versions */
             versions: components["schemas"]["AgentVersionOut"][];
         };
-        /** AgreementOut */
+        /**
+         * AgreementOut
+         * @description One Evaluation Model's agreement: overall, then per check that has reviews (grounding,
+         *     answers the question, Reference answer).
+         */
         AgreementOut: {
             /** Agreed */
             agreed: number;
+            /** Checks */
+            checks: components["schemas"]["CheckAgreementOut"][];
+            /** False Fails */
+            false_fails: number;
+            /** False Passes */
+            false_passes: number;
+            /** High */
+            high: number | null;
+            /** Low */
+            low: number | null;
+            /** Low Sample */
+            low_sample: boolean;
             /** Model */
             model: string;
             /** Provider */
             provider: string;
+            /** Rate */
+            rate: number | null;
             /** Reviews */
             reviews: number;
         };
@@ -3439,6 +3482,30 @@ export interface components {
          * @enum {string}
          */
         ChangeState: "clean" | "applied" | "clash";
+        /** CheckAgreementOut */
+        CheckAgreementOut: {
+            /** Agreed */
+            agreed: number;
+            /**
+             * Check
+             * @enum {string}
+             */
+            check: "reference_answer" | "grounding" | "answers_question";
+            /** False Fails */
+            false_fails: number;
+            /** False Passes */
+            false_passes: number;
+            /** High */
+            high: number | null;
+            /** Low */
+            low: number | null;
+            /** Low Sample */
+            low_sample: boolean;
+            /** Rate */
+            rate: number | null;
+            /** Reviews */
+            reviews: number;
+        };
         /** CheckFailedResponse */
         CheckFailedResponse: {
             /** Detail */
@@ -4268,6 +4335,14 @@ export interface components {
         /** EvaluationAgreementOut */
         EvaluationAgreementOut: {
             current: components["schemas"]["AgreementOut"] | null;
+            /** Earlier */
+            earlier: components["schemas"]["AgreementOut"][];
+            /** Reviewed */
+            reviewed: number;
+            /** Reviewed By You */
+            reviewed_by_you: number;
+            /** Skipped */
+            skipped: number;
         };
         /** EvaluationBudgetOut */
         EvaluationBudgetOut: {
@@ -14923,6 +14998,44 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    skipReviewSampleItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No model to judge with */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
             };
         };
     };

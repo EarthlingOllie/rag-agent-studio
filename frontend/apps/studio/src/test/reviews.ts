@@ -79,15 +79,69 @@ function keyOf(target: { verdict_id?: string | null; live_verdict_id?: string | 
   return target.verdict_id ?? `${target.live_verdict_id ?? ""}:${target.check ?? ""}`;
 }
 
+type Agreement = Schemas["AgreementOut"];
+type Check = Schemas["CheckAgreementOut"]["check"];
+
+/** Agreement figures as the API sends them; the rate is worked out, the interval is given. */
+function figures(reviews: number, agreed: number, falsePasses: number, falseFails: number, low: number, high: number) {
+  return {
+    reviews,
+    agreed,
+    false_passes: falsePasses,
+    false_fails: falseFails,
+    rate: agreed / reviews,
+    low,
+    high,
+    low_sample: reviews < 30,
+  };
+}
+
+const check = (name: Check, ...rest: Parameters<typeof figures>) => ({ check: name, ...figures(...rest) });
+
+/** The current Evaluation Model's agreement: 34 of 40, a few false passes, every check below 30 reviews. */
+export const gptAgreement: Agreement = {
+  provider: "openai",
+  model: "gpt-4.1-mini",
+  ...figures(40, 34, 4, 2, 0.709, 0.929),
+  checks: [
+    check("grounding", 20, 18, 1, 1, 0.699, 0.972),
+    check("answers_question", 8, 6, 2, 0, 0.409, 0.929),
+    check("reference_answer", 12, 10, 1, 1, 0.552, 0.953),
+  ],
+};
+
+/** An earlier Evaluation Model with a handful of reviews. */
+export const claudeAgreement: Agreement = {
+  provider: "anthropic",
+  model: "claude-haiku-4-5",
+  ...figures(6, 3, 3, 0, 0.188, 0.812),
+  checks: [check("grounding", 6, 3, 3, 0, 0.188, 0.812)],
+};
+
+/** An Evaluation Model nobody has reviewed yet. */
+export function unreviewed(provider: Agreement["provider"], model: string): Agreement {
+  return { provider, model, reviews: 0, agreed: 0, false_passes: 0, false_fails: 0, rate: null, low: null, high: null, low_sample: true, checks: [] };
+}
+
+/** Serves Evaluation Model agreement as given. */
+export function fakeAgreementApi(agreement: Partial<Schemas["EvaluationAgreementOut"]>) {
+  server.use(
+    http.get("*/api/organisations/:organisationId/evaluation-agreement", () =>
+      HttpResponse.json({ current: null, earlier: [], reviewed: 0, reviewed_by_you: 0, skipped: 0, ...agreement }),
+    ),
+  );
+}
+
 /**
  * A stateful stand-in for the Review sample: serves the first item not yet reviewed (each GET counted as a
- * draw), records each review, and reveals the Evaluation Model's outcome and reason. Agreement is counted
- * from the reviews.
+ * draw), records each review and each skip, and reveals the Evaluation Model's outcome and reason. Agreement
+ * is counted from the reviews.
  */
 export function fakeReviewSampleApi(options: { items?: Judged[]; reviewed?: number } = {}) {
   const items = options.items ?? [leaveReference, leaveGrounding];
   const reviews: Schemas["SampleReviewRequest"][] = [];
   const draws = { count: 0 };
+  const skips = { count: 0 };
   const reviewed = new Map<string, Outcome>();
   const before = options.reviewed ?? 0;
   server.use(
@@ -108,10 +162,30 @@ export function fakeReviewSampleApi(options: { items?: Judged[]; reviewed?: numb
         agreed: body.outcome === judged.outcome,
       });
     }),
+    http.post("*/api/organisations/:organisationId/review-sample/skips", () => {
+      skips.count += 1;
+      return new HttpResponse(null, { status: 204 });
+    }),
     http.get("*/api/organisations/:organisationId/evaluation-agreement", () => {
-      const agreed = items.filter((judged) => reviewed.get(keyOf(judged.item)) === judged.outcome).length;
-      return HttpResponse.json({ current: { provider: "openai", model: "gpt-4.1-mini", reviews: before + reviewed.size, agreed: before + agreed } });
+      const judged = items.filter((candidate) => reviewed.has(keyOf(candidate.item)));
+      const agreed = judged.filter((candidate) => reviewed.get(keyOf(candidate.item)) === candidate.outcome).length;
+      const falsePasses = judged.filter((candidate) => candidate.outcome === "pass" && reviewed.get(keyOf(candidate.item)) === "fail").length;
+      const total = before + reviewed.size;
+      return HttpResponse.json({
+        current: {
+          ...unreviewed("openai", "gpt-4.1-mini"),
+          reviews: total,
+          agreed: before + agreed,
+          false_passes: falsePasses,
+          false_fails: judged.length - agreed - falsePasses,
+          low_sample: total < 30,
+        },
+        earlier: [],
+        reviewed: total,
+        reviewed_by_you: reviewed.size,
+        skipped: skips.count,
+      });
     }),
   );
-  return { reviews, draws };
+  return { reviews, draws, skips };
 }

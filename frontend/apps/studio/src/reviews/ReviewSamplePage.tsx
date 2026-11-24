@@ -12,6 +12,7 @@ import {
   type SampleReview,
   targetOf,
   useReviewSampleItem,
+  useSkipSampleItem,
   useSubmitSampleReview,
 } from "./reviews";
 
@@ -194,6 +195,7 @@ function Decide({
   onSkip: () => void;
 }) {
   const submit = useSubmitSampleReview(organisationId);
+  const skip = useSkipSampleItem(organisationId);
   const decide = (outcome: ReviewOutcome) => {
     submit.mutate({ ...targetOf(item), outcome }, { onSuccess: onReviewed });
   };
@@ -208,7 +210,12 @@ function Decide({
         <button type="button" className={button.secondary} disabled={submit.isPending} onClick={() => { decide("fail"); }}>
           Fail
         </button>
-        <button type="button" className={button.ghost} disabled={submit.isPending} onClick={onSkip}>
+        <button type="button" className={button.ghost} disabled={submit.isPending || skip.isPending}
+          onClick={() => {
+            // Counted for the agreement card; the next item is drawn whether or not the count was kept.
+            skip.mutate(undefined, { onSettled: onSkip });
+          }}
+        >
           Skip
         </button>
       </div>

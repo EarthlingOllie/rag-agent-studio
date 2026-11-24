@@ -17,7 +17,6 @@ import {
 } from "../test/models";
 import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
-import { fakeReviewSampleApi } from "../test/reviews";
 import { server } from "../test/server";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
@@ -466,41 +465,4 @@ test("an Evaluation budget that can't be loaded says so", async () => {
 
   expect(await section.findByText("The Evaluation budget could not be loaded. Try again shortly.")).toBeInTheDocument();
   expect(section.queryByRole("form", { name: "Set the Evaluation budget" })).not.toBeInTheDocument();
-});
-
-test("the Evaluation section shows how many sample reviews agreed with the Evaluation Model, and links to the Review sample", async () => {
-  fakeModelsApi();
-  fakeReviewSampleApi({ items: [], reviewed: 0 });
-  server.use(
-    http.get("*/api/organisations/:organisationId/evaluation-agreement", () =>
-      HttpResponse.json({ current: { provider: "openai", model: "gpt-4.1-mini", reviews: 12, agreed: 9 } }),
-    ),
-  );
-  openAs(editorSession);
-
-  const section = within(await screen.findByRole("region", { name: "Evaluation" }));
-
-  expect(await section.findByText("9 of 12 sample reviews agreed")).toBeInTheDocument();
-  await userEvent.click(section.getByRole("link", { name: "Review sample" }));
-  expect(await screen.findByRole("heading", { level: 1, name: "Review sample" })).toBeInTheDocument();
-});
-
-test("without a model to judge with there is no agreement to show, only the link", async () => {
-  fakeModelsApi();
-  openAs();
-
-  const section = within(await screen.findByRole("region", { name: "Evaluation" }));
-
-  expect(await section.findByRole("link", { name: "Review sample" })).toBeInTheDocument();
-  expect(section.queryByText(/sample reviews agreed/)).not.toBeInTheDocument();
-});
-
-test("agreement that can't be loaded says so", async () => {
-  fakeModelsApi();
-  server.use(
-    http.get("*/api/organisations/:organisationId/evaluation-agreement", () => HttpResponse.json({ detail: "Down" }, { status: 503 })),
-  );
-  openAs();
-
-  expect(await screen.findByText("The Evaluation Model agreement could not be loaded. Try again shortly.")).toHaveAttribute("role", "alert");
 });

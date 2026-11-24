@@ -16,10 +16,13 @@ source seeded with ``Settings.review_sample_seed`` (tests set it), and returns w
 Evaluation Model was given (``app.evaluation.judge_input``), never its outcome or reason.
 Submitting stores the review with ``from_sample`` true, replacing any earlier review of the
 target, and returns the Evaluation Model's outcome and reason for the reveal. Skipping stores
-nothing.
+no review, so the item stays in the pool; it is only counted, against the current Evaluation
+Model, so the skip count can be shown beside agreement.
 
-Agreement is counted when read, over the sample reviews of a given Evaluation Model, from the
-outcomes copied onto each review. Nothing that counts Verdicts reads reviews (ADR-0018).
+Agreement is counted when read, over the sample reviews of each Evaluation Model, from the
+outcomes copied onto each review: agreed, false passes and false fails, overall and per check,
+with the rate's Wilson interval. Changing the Evaluation Model starts new figures; the earlier
+ones stay listed. Nothing that counts Verdicts reads reviews (ADR-0018).
 """
 
 import random
@@ -34,6 +37,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute, aliased
 
 from app.agents.models import Agent
+from app.analytics.stats import Interval, wilson
 from app.conversations.models import Message
 from app.evaluation.judge import CitedExcerpt, JudgeRequest
 from app.evaluation.judge_input import judge_input
@@ -46,7 +50,7 @@ from app.evaluation.models import (
     VerdictKind,
     VerdictOutcome,
 )
-from app.evaluation.review_models import VerdictReview
+from app.evaluation.review_models import ReviewSampleSkip, VerdictReview
 from app.evaluation.settings import judge_model
 from app.runtime.prompt import Turn
 from app.tenancy.repository import OrganisationScope
@@ -57,6 +61,10 @@ JUDGED = (VerdictOutcome.PASS, VerdictOutcome.FAIL)
 # A Live Verdict's checks, as reviews name them.
 ANSWERS_QUESTION = "answers_question"
 LIVE_CHECKS = (VerdictKind.GROUNDING.value, ANSWERS_QUESTION)
+# Agreement's checks, in the order they are listed.
+CHECK_ORDER = (VerdictKind.GROUNDING.value, ANSWERS_QUESTION, VerdictKind.REFERENCE_ANSWER.value)
+# Fewer sample reviews than this are a Low sample, as for the Version KPIs.
+LOW_SAMPLE_BELOW = 30
 
 # The one random source the Review sample draws from.
 _draws = random.Random()  # noqa: S311 (sampling, not security)
@@ -127,10 +135,43 @@ class Reveal:
 
 
 @dataclass(frozen=True)
-class Agreement:
-    judge: Judge
+class Figures:
+    """Agreement over some sample reviews: how many agreed, false passes (the Evaluation Model
+    passed, the Editor said fail) and false fails, and the rate's Wilson interval (None without
+    reviews); Low sample under ``LOW_SAMPLE_BELOW`` reviews."""
+
     reviews: int
     agreed: int
+    false_passes: int
+    false_fails: int
+    interval: Interval | None
+    low_sample: bool
+
+
+@dataclass(frozen=True)
+class JudgeAgreement:
+    judge: Judge
+    overall: Figures
+    # Per check that has reviews, in ``CHECK_ORDER``.
+    checks: list[tuple[str, Figures]]
+
+
+@dataclass(frozen=True)
+class AgreementRead:
+    current: JudgeAgreement | None
+    earlier: list[JudgeAgreement]
+    # The current Evaluation Model's sample reviews by the reader, and items skipped.
+    reviewed_by_you: int
+    skipped: int
+
+
+@dataclass(frozen=True)
+class _CheckRow:
+    check: str
+    reviews: int
+    agreed: int
+    false_passes: int
+    false_fails: int
 
 
 class NotReviewableError(Exception):
@@ -387,18 +428,105 @@ async def submit_sample_review(
     return Reveal(outcome.value, found.evaluation_model_outcome, found.evaluation_model_reason)
 
 
-async def read_agreement(session: AsyncSession, organisation_id: uuid.UUID) -> Agreement | None:
-    """How many sample reviews of the current Evaluation Model agreed with it; None when the
-    Organisation has no model to judge with."""
-    judge = await current_judge(session, organisation_id)
+async def skip_sample_item(
+    session: AsyncSession, scope: OrganisationScope, *, now: datetime
+) -> None:
+    """Counts a skipped Review sample item against the current Evaluation Model; stores no
+    review, so the item stays in the pool. Raises ``NotReviewableError`` when the Organisation
+    has no model to judge with, and so nothing to skip."""
+    judge = await current_judge(session, scope.organisation_id)
     if judge is None:
-        return None
-    agreed = case((VerdictReview.outcome == VerdictReview.evaluation_model_outcome, 1), else_=0)
-    reviews, agreeing = (
-        await session.execute(
-            select(func.count(), func.coalesce(func.sum(agreed), 0)).where(
-                *_of(judge, organisation_id)
-            )
+        raise NotReviewableError
+    session.add(
+        ReviewSampleSkip(
+            organisation_id=scope.organisation_id,
+            judge_provider=judge.provider,
+            judge_model=judge.model,
+            skipped_by=scope.member_id,
+            skipped_at=now,
         )
-    ).one()
-    return Agreement(judge, reviews, agreeing)
+    )
+    await session.commit()
+
+
+def _figures(rows: list[_CheckRow]) -> Figures:
+    reviews = sum(r.reviews for r in rows)
+    agreed = sum(r.agreed for r in rows)
+    return Figures(
+        reviews=reviews,
+        agreed=agreed,
+        false_passes=sum(r.false_passes for r in rows),
+        false_fails=sum(r.false_fails for r in rows),
+        interval=wilson(agreed, reviews),
+        low_sample=reviews < LOW_SAMPLE_BELOW,
+    )
+
+
+def _judge_agreement(judge: Judge, rows: list[_CheckRow]) -> JudgeAgreement:
+    by_check = sorted(rows, key=lambda r: CHECK_ORDER.index(r.check))
+    return JudgeAgreement(
+        judge=judge,
+        overall=_figures(rows),
+        checks=[(r.check, _figures([r])) for r in by_check],
+    )
+
+
+async def read_agreement(session: AsyncSession, scope: OrganisationScope) -> AgreementRead:
+    """Evaluation Model agreement, counted now over the Organisation's Review sample reviews:
+    the current Evaluation Model's figures (None when there is no model to judge with), each
+    earlier one that has reviews (most recently reviewed first), and the current one's review
+    counts in the Organisation and by the reader, and its skips."""
+    judge = await current_judge(session, scope.organisation_id)
+    editor, model = VerdictReview.outcome, VerdictReview.evaluation_model_outcome
+    pass_, fail = VerdictOutcome.PASS.value, VerdictOutcome.FAIL.value
+
+    def counted(condition: ColumnElement[bool]) -> ColumnElement[int]:
+        return func.coalesce(func.sum(case((condition, 1), else_=0)), 0)
+
+    found = await session.execute(
+        select(
+            VerdictReview.judge_provider,
+            VerdictReview.judge_model,
+            VerdictReview.check,
+            func.count(),
+            counted(editor == model),
+            counted(and_(model == pass_, editor == fail)),
+            counted(and_(model == fail, editor == pass_)),
+            counted(VerdictReview.reviewed_by == scope.member_id),
+            func.max(VerdictReview.reviewed_at),
+        )
+        .where(
+            VerdictReview.organisation_id == scope.organisation_id,
+            VerdictReview.from_sample.is_(True),
+        )
+        .group_by(VerdictReview.judge_provider, VerdictReview.judge_model, VerdictReview.check)
+    )
+    rows: dict[Judge, list[_CheckRow]] = {}
+    latest: dict[Judge, datetime] = {}
+    by_you = 0
+    for provider, model_name, check, *counts, yours, last in found.all():
+        key = Judge(provider, model_name)
+        rows.setdefault(key, []).append(_CheckRow(check, *counts))
+        latest[key] = max(latest.get(key, last), last)
+        if key == judge:
+            by_you += yours
+    earlier = sorted((j for j in rows if j != judge), key=lambda j: latest[j], reverse=True)
+    skipped = 0
+    if judge is not None:
+        skipped = (
+            await session.scalar(
+                select(func.count()).where(
+                    ReviewSampleSkip.organisation_id == scope.organisation_id,
+                    ReviewSampleSkip.judge_provider == judge.provider,
+                    ReviewSampleSkip.judge_model == judge.model,
+                )
+            )
+            or 0
+        )
+    current = None if judge is None else _judge_agreement(judge, rows.get(judge, []))
+    return AgreementRead(
+        current=current,
+        earlier=[_judge_agreement(j, rows[j]) for j in earlier],
+        reviewed_by_you=by_you,
+        skipped=skipped,
+    )

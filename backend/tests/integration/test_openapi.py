@@ -90,6 +90,10 @@ def test_openapi_document_describes_every_endpoint() -> None:
             "/api/organisations/{organisation_id}/review-sample/reviews",
             "post",
         ),
+        "skipReviewSampleItem": (
+            "/api/organisations/{organisation_id}/review-sample/skips",
+            "post",
+        ),
         "getEvaluationAgreement": (
             "/api/organisations/{organisation_id}/evaluation-agreement",
             "get",
