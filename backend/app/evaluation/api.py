@@ -1028,6 +1028,10 @@ class PublishSummaryOut(BaseModel):
     # The Instructions Version being published: the one chosen, else the Current one; null
     # when the Project has none.
     publishing_instructions_version_number: int | None
+    # The Draft's latest completed Run was judged under an earlier Judging setup (another
+    # Evaluation Model or Judging guidance version than now), so its scores may read differently
+    # now. A notice beside the state; it never blocks.
+    earlier_judging_setup: bool
 
 
 def _reasons(case: service.CaseResults, second: uuid.UUID) -> list[RegressionReasonOut]:
@@ -1089,6 +1093,7 @@ async def get_publish_summary(
         lower_score=found.lower_score,
         evaluated_live_version_number=found.evaluated_live_version_number,
         publishing_instructions_version_number=found.publishing_instructions_version_number,
+        earlier_judging_setup=found.earlier_judging_setup,
     )
 
 

@@ -2,7 +2,8 @@
 Agent's Live sample rate at 100%, so every reply gets a Live Verdict, judged eagerly in the
 background by a scripted judge; the ``usage_daily`` rollup and the purge Beat tasks are called
 directly as tasks; Editors read each Version's Live score from the Version metrics, the Version
-comparison (and its CSV) and the Time series.
+comparison (and its CSV) and the Time series, which also list the Judging setup changes in their
+range and whether its Live Verdicts were judged under more than one Judging setup (spec 19).
 
 The scripted judge decides by the Visitor's question: a question with ``WRONG`` in it fails the
 grounding check, one with ``OUTAGE`` in it can't be judged (an error), and any other passes.
@@ -25,6 +26,8 @@ from app.evaluation.tasks import judge_live_verdict_task
 from tests.conftest import ClientFactory, SignedUpMember
 from tests.fakes.clock import ControllableClock
 from tests.integration.test_conversations import playground_chat
+from tests.integration.test_evaluation_settings import set_evaluation_model
+from tests.integration.test_judging_guidance import saved
 from tests.integration.test_live_verdicts import (
     PASSED,
     judged,
@@ -33,6 +36,7 @@ from tests.integration.test_live_verdicts import (
 )
 from tests.integration.test_live_verdicts import live_agent as served_agent
 from tests.integration.test_live_verdicts import reply as ask
+from tests.integration.test_provider_credentials import added
 from tests.integration.test_retention import purge, set_window
 from tests.integration.test_version_comparison import comparison, get_comparison, rows
 from tests.integration.test_version_metrics import metrics, publish_next, roll_up, version_kpis
@@ -341,4 +345,125 @@ async def test_the_time_series_has_the_live_score_with_gaps_and_live_history_mar
     assert [(m["day"], m["to_version"]["number"]) for m in body["markers"]] == [
         ("2026-11-05", 1),
         ("2026-11-07", 2),
+    ]
+
+
+# Judging setups (spec 19)
+
+
+async def time_series(member: SignedUpMember, agent: dict[str, Any], **params: Any) -> Any:
+    response = await member.client.get(
+        f"/api/organisations/{member.organisation_id}/projects/{agent['project_id']}"
+        f"/agents/{agent['id']}/time-series",
+        params={"metric": "live_score", **params},
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def guidance_change(occurred_at: str, version: int, removed: bool = False) -> dict[str, Any]:
+    return {
+        "occurred_at": occurred_at,
+        "kind": "guidance",
+        "guidance_version": version,
+        "guidance_removed": removed,
+        "evaluation_model": None,
+    }
+
+
+async def test_a_range_under_one_judging_setup_lists_no_change(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+) -> None:
+    agent, v1, v2 = await two_judged_versions(app, owner, visitor, clock)
+
+    body = await comparison(owner, agent, v1, v2, **DAY)
+    series = await time_series(owner, agent, **DAY)
+
+    assert (body["judging_setup_changes"], body["mixed_judging_setups"]) == ([], False)
+    assert (series["judging_setup_changes"], series["mixed_judging_setups"]) == ([], False)
+
+
+async def test_the_comparison_lists_judging_setup_changes_and_notes_mixed_setups(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+) -> None:
+    agent = await judged_agent(app, owner)
+    await chat(visitor, clock, agent, "one", "two")
+    saved_at = clock.now().isoformat().replace("+00:00", "Z")
+    await saved(owner, "Be strict about grounding.")
+    v2 = await publish_next(owner, agent, "Answer in one sentence.")
+    await chat(visitor, clock, agent, "three")
+
+    body = await comparison(owner, agent, agent["v1"], v2, **DAY)
+
+    assert body["judging_setup_changes"] == [guidance_change(saved_at, 1)]
+    assert body["mixed_judging_setups"] is True
+    # Each Version alone was judged under one setup, but the comparison mixes them.
+    assert (body["a"]["live_score"]["n"], body["b"]["live_score"]["n"]) == (2, 1)
+
+
+async def test_a_change_outside_the_range_is_not_listed(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+) -> None:
+    agent = await judged_agent(app, owner)
+    await saved(owner, "Be strict about grounding.")
+    clock.advance(timedelta(days=1))
+    await chat(visitor, clock, agent, "one")
+
+    series = await time_series(owner, agent, start="2026-11-06", end="2026-11-06")
+
+    assert (series["judging_setup_changes"], series["mixed_judging_setups"]) == ([], False)
+
+
+async def test_the_time_series_marks_each_judging_setup_change(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+) -> None:
+    agent = await judged_agent(app, owner)
+    await chat(visitor, clock, agent, "one")
+    clock.advance(timedelta(days=1))
+    first = clock.now().isoformat().replace("+00:00", "Z")
+    await saved(owner, "Be strict about grounding.")
+    await chat(visitor, clock, agent, "two")
+    clock.advance(timedelta(days=1))
+    second = clock.now().isoformat().replace("+00:00", "Z")
+    await saved(owner, "")
+    claude = await added(owner, name="Claude")
+    chose = clock.now().isoformat().replace("+00:00", "Z")
+    response = await set_evaluation_model(owner, claude["id"], "claude-haiku-4-5")
+    assert response.status_code == 200, response.text
+    await chat(visitor, clock, agent, "three")
+    back = clock.now().isoformat().replace("+00:00", "Z")
+    await set_evaluation_model(owner, None, None)
+
+    series = await time_series(
+        owner, agent, start="2026-11-05", end="2026-11-07", granularity="week"
+    )
+
+    assert series["mixed_judging_setups"] is True
+    assert [
+        {k: v for k, v in change.items() if k not in ("day", "point_start")}
+        for change in series["judging_setup_changes"]
+    ] == [
+        guidance_change(first, 1),
+        guidance_change(second, 2, removed=True),
+        {
+            "occurred_at": chose,
+            "kind": "evaluation_model",
+            "guidance_version": None,
+            "guidance_removed": False,
+            "evaluation_model": "claude-haiku-4-5",
+        },
+        {
+            "occurred_at": back,
+            "kind": "evaluation_model",
+            "guidance_version": None,
+            "guidance_removed": False,
+            "evaluation_model": None,
+        },
+    ]
+    # 5 November is a Thursday: the ISO week's point starts there, clipped to the range.
+    assert [(c["day"], c["point_start"]) for c in series["judging_setup_changes"]] == [
+        ("2026-11-06", "2026-11-05"),
+        ("2026-11-07", "2026-11-05"),
+        ("2026-11-07", "2026-11-05"),
+        ("2026-11-07", "2026-11-05"),
     ]

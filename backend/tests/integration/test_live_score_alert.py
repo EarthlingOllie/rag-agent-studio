@@ -28,6 +28,7 @@ from tests.fakes.clock import ControllableClock
 from tests.integration.test_agent_revert import reverted
 from tests.integration.test_bulk_versions import bulk_reverted
 from tests.integration.test_guardrail_analytics import get_agent, listed_agents
+from tests.integration.test_judging_guidance import saved
 from tests.integration.test_live_score import chat, judged_agent
 from tests.integration.test_version_metrics import publish_next, roll_up
 
@@ -229,6 +230,97 @@ async def test_a_significant_drop_of_under_5_points_does_not_alert(
     clock.advance(timedelta(days=1))
     await next_live(owner, agent, "Answer briefly.")
     await replies(visitor, clock, agent, 72, 3)
+
+    await roll_up(clock.now())
+
+    assert await alerted(owner, agent) is False
+
+
+# Under the current Judging setup only (spec 19)
+
+
+async def test_saving_guidance_mid_way_never_raises_the_alert(
+    app: FastAPI,
+    owner: SignedUpMember,
+    visitor: httpx.AsyncClient,
+    clock: ControllableClock,
+    task_outbox: OutboxMailer,
+) -> None:
+    # v1 passed all of 30 under the Evaluation Model alone; then guidance is saved half way
+    # through v2's replies. v2's 20 of 30 under the new Judging setup would be a clear drop
+    # against v1's 30 of 30, but v1 has no Live Verdict under it: no alert, however many follow.
+    agent = await judged_agent(app, owner)
+    await replies(visitor, clock, agent, 30)
+    clock.advance(timedelta(days=1))
+    await next_live(owner, agent, "Answer briefly.")
+    await replies(visitor, clock, agent, 15)
+    await saved(owner, "Be strict about grounding.")
+    await replies(visitor, clock, agent, 20, 10)
+
+    await roll_up(clock.now())
+    clock.advance(timedelta(hours=1))
+    await replies(visitor, clock, agent, 0, 30)
+    await roll_up(clock.now())
+
+    assert await alerted(owner, agent) is False
+    assert drop_emails(task_outbox, owner) == []
+
+
+async def test_saving_guidance_quiets_a_raised_alert(
+    app: FastAPI,
+    owner: SignedUpMember,
+    visitor: httpx.AsyncClient,
+    clock: ControllableClock,
+    task_outbox: OutboxMailer,
+) -> None:
+    agent = await dropped(owner, visitor, clock, app)
+    assert await alerted(owner, agent) is True
+
+    await saved(owner, "Be strict about grounding.")
+    clock.advance(timedelta(hours=1))
+    await replies(visitor, clock, agent, 0, 30)
+    await roll_up(clock.now())
+
+    # v2's 30 failures are under the new Judging setup, v1's 30 passes under the old one.
+    assert await alerted(owner, agent) is False
+
+
+async def test_only_the_previous_versions_live_verdicts_under_the_current_setup_count(
+    app: FastAPI,
+    owner: SignedUpMember,
+    visitor: httpx.AsyncClient,
+    clock: ControllableClock,
+    task_outbox: OutboxMailer,
+) -> None:
+    # v1 failed 30 replies before guidance was saved and passed 30 after: only those 30 count,
+    # so v2's 80% is a clear drop (counting all of v1's, 50%, it would be a rise).
+    agent = await judged_agent(app, owner)
+    await replies(visitor, clock, agent, 0, 30)
+    await saved(owner, "Be strict about grounding.")
+    await replies(visitor, clock, agent, 30)
+    clock.advance(timedelta(days=1))
+    await next_live(owner, agent, "Answer briefly.")
+    await replies(visitor, clock, agent, 24, 6)
+
+    await roll_up(clock.now())
+
+    assert await alerted(owner, agent) is True
+
+
+async def test_no_alert_when_the_previous_version_has_under_30_under_the_current_setup(
+    app: FastAPI,
+    owner: SignedUpMember,
+    visitor: httpx.AsyncClient,
+    clock: ControllableClock,
+    task_outbox: OutboxMailer,
+) -> None:
+    agent = await judged_agent(app, owner)
+    await replies(visitor, clock, agent, 30)
+    await saved(owner, "Be strict about grounding.")
+    await replies(visitor, clock, agent, 29)
+    clock.advance(timedelta(days=1))
+    await next_live(owner, agent, "Answer briefly.")
+    await replies(visitor, clock, agent, 0, 30)
 
     await roll_up(clock.now())
 

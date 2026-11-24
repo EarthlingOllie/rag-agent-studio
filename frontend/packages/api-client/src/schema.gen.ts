@@ -1154,8 +1154,8 @@ export interface paths {
          * Compare Versions
          * @description Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at
          *     most 366 days, today's so far included): each Version's KPIs, every metric's difference and
-         *     the Version it favours, and the configuration diff from `a` to `b`. Only Visitor
-         *     Conversations count.
+         *     the Version it favours, the configuration diff from `a` to `b`, and the Judging setup
+         *     changes during the range. Only Visitor Conversations count.
          */
         get: operations["compareVersions"];
         put?: never;
@@ -1944,8 +1944,8 @@ export interface paths {
          * Get Time Series
          * @description One metric of the Agent (every Version together) per period of the UTC days `start` to
          *     `end` (both inclusive, at most 366 days), including today's so far; with markers where the
-         *     Live Version changed and the Project's Document changes during the range. Only Visitor
-         *     Conversations count.
+         *     Live Version changed, the Project's Document changes and the Judging setup changes during
+         *     the range. Only Visitor Conversations count.
          */
         get: operations["getTimeSeries"];
         put?: never;
@@ -4835,6 +4835,30 @@ export interface components {
             /** Versions */
             versions: components["schemas"]["GuidanceVersionOut"][];
         };
+        /**
+         * JudgingSetupChangeOut
+         * @description A change of the Organisation's Judging setup during the range: Judging guidance saved or
+         *     removed, or the Evaluation Model changed. Live Verdicts judged before and after it don't
+         *     compare like with like.
+         */
+        JudgingSetupChangeOut: {
+            /** Evaluation Model */
+            evaluation_model: string | null;
+            /** Guidance Removed */
+            guidance_removed: boolean;
+            /** Guidance Version */
+            guidance_version: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "guidance" | "evaluation_model";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+        };
         /** KnowledgeBaseGapOut */
         KnowledgeBaseGapOut: {
             /** Evidence Ids */
@@ -5542,6 +5566,8 @@ export interface components {
          *     Instructions being published. Advisory: Publishing never depends on it.
          */
         PublishSummaryOut: {
+            /** Earlier Judging Setup */
+            earlier_judging_setup: boolean;
             /** Evaluated Live Version Number */
             evaluated_live_version_number: number | null;
             /** Lower Score */
@@ -6681,6 +6707,35 @@ export interface components {
          * @enum {string}
          */
         TimeSeriesGranularity: "day" | "week" | "month";
+        /** TimeSeriesJudgingSetupChangeOut */
+        TimeSeriesJudgingSetupChangeOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Evaluation Model */
+            evaluation_model: string | null;
+            /** Guidance Removed */
+            guidance_removed: boolean;
+            /** Guidance Version */
+            guidance_version: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "guidance" | "evaluation_model";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Point Start
+             * Format: date
+             */
+            point_start: string;
+        };
         /**
          * TimeSeriesMetric
          * @description What a time series measures, over each of its periods.
@@ -6701,9 +6756,13 @@ export interface components {
              */
             end: string;
             granularity: components["schemas"]["TimeSeriesGranularity"];
+            /** Judging Setup Changes */
+            judging_setup_changes: components["schemas"]["TimeSeriesJudgingSetupChangeOut"][];
             /** Markers */
             markers: components["schemas"]["LiveHistoryMarkerOut"][];
             metric: components["schemas"]["TimeSeriesMetric"];
+            /** Mixed Judging Setups */
+            mixed_judging_setups: boolean;
             /** Points */
             points: components["schemas"]["TimeSeriesPointOut"][];
             /**
@@ -6943,8 +7002,12 @@ export interface components {
              * Format: date
              */
             end: string;
+            /** Judging Setup Changes */
+            judging_setup_changes: components["schemas"]["JudgingSetupChangeOut"][];
             /** Metrics */
             metrics: components["schemas"]["MetricRowOut"][];
+            /** Mixed Judging Setups */
+            mixed_judging_setups: boolean;
             /**
              * Start
              * Format: date

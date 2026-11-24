@@ -8,18 +8,28 @@ and records nothing. Saving locks the Organisation's row, so two saves can't tak
 Only Owners save, which the routes enforce; every Member reads.
 
 A judgement records the version current when it starts, beside its judge model: its Judging
-setup. ``guidance_text`` reads a recorded version's text back for judging.
+setup. ``guidance_text`` reads a recorded version's text back for judging; ``current_setup`` is
+the Judging setup a judgement started now would record, which comparisons (the Live score drop
+alert, the Publish summary) hold earlier judgements against. ``judging_setup_changes`` lists
+when the Organisation's Judging setup changed (guidance saved or removed, the Evaluation Model
+chosen or dropped) and ``mixed_judging_setups`` whether an Agent's Live Verdicts in a range were
+judged under more than one, for the Version comparison and the Time series.
 """
 
 import uuid
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any, Literal
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import audit
-from app.evaluation.models import GuidanceSource, JudgingGuidanceVersion
+from app.audit.models import AuditEvent
+from app.conversations.models import Message
+from app.evaluation.models import GuidanceSource, JudgingGuidanceVersion, LiveStatus, LiveVerdict
+from app.evaluation.settings import EVALUATION_MODEL_CHANGED, judge_model
 from app.tenancy.models import Member, Organisation
 from app.tenancy.repository import OrganisationScope
 
@@ -78,6 +88,102 @@ async def guidance_text(
         )
     )
     return text or ""
+
+
+@dataclass(frozen=True)
+class JudgingSetup:
+    """The Evaluation Model (its provider and model) and the Judging guidance version it judges
+    with; None for the version when the Organisation had never saved guidance."""
+
+    judge_provider: str
+    judge_model: str
+    guidance_version: int | None
+
+
+async def current_setup(session: AsyncSession, organisation_id: uuid.UUID) -> JudgingSetup | None:
+    """The Judging setup a judgement started now would record; None when the Organisation has
+    no model to judge with."""
+    chosen = await judge_model(session, organisation_id)
+    if chosen is None:
+        return None
+    return JudgingSetup(
+        chosen.credential.provider,
+        chosen.model,
+        await current_version(session, organisation_id),
+    )
+
+
+@dataclass(frozen=True)
+class JudgingSetupChange:
+    """One change of the Organisation's Judging setup: guidance saved (``guidance_version``, or
+    removed), or the Evaluation Model chosen (``evaluation_model``, the model's ID) or dropped
+    for the Default Model (None)."""
+
+    occurred_at: datetime
+    kind: Literal["guidance", "evaluation_model"]
+    guidance_version: int | None
+    guidance_removed: bool
+    evaluation_model: str | None
+
+
+def _change(event: AuditEvent) -> JudgingSetupChange:
+    if event.action == JUDGING_GUIDANCE_CHANGED:
+        # A guidance save always has an after: removing saves an empty version.
+        saved: dict[str, Any] = event.after or {}
+        return JudgingSetupChange(
+            event.occurred_at, "guidance", saved["version"], saved["text"] == "", None
+        )
+    model = None if event.after is None else event.after["model"]
+    return JudgingSetupChange(event.occurred_at, "evaluation_model", None, False, model)
+
+
+async def judging_setup_changes(
+    session: AsyncSession, organisation_id: uuid.UUID, since: datetime, until: datetime
+) -> list[JudgingSetupChange]:
+    """The Organisation's Judging setup changes from ``since`` until before ``until``, oldest
+    first, read from their Audit Events."""
+    events = await session.scalars(
+        select(AuditEvent)
+        .where(
+            AuditEvent.organisation_id == organisation_id,
+            AuditEvent.action.in_([JUDGING_GUIDANCE_CHANGED, EVALUATION_MODEL_CHANGED]),
+            AuditEvent.occurred_at >= since,
+            AuditEvent.occurred_at < until,
+        )
+        .order_by(AuditEvent.occurred_at, AuditEvent.sequence)
+    )
+    return [_change(event) for event in events]
+
+
+async def mixed_judging_setups(
+    session: AsyncSession,
+    agent_id: uuid.UUID,
+    version_ids: Sequence[uuid.UUID] | None,
+    since: datetime,
+    until: datetime,
+) -> bool:
+    """Whether the Agent's judged Live Verdicts on replies from ``since`` until before
+    ``until`` (of ``version_ids`` only, when given) were judged under more than one Judging
+    setup."""
+    query = (
+        select(
+            LiveVerdict.judge_provider,
+            LiveVerdict.judge_model,
+            LiveVerdict.judging_guidance_version,
+        )
+        .join(Message, Message.id == LiveVerdict.message_id)
+        .where(
+            LiveVerdict.agent_id == agent_id,
+            LiveVerdict.status == LiveStatus.JUDGED,
+            Message.created_at >= since,
+            Message.created_at < until,
+        )
+        .distinct()
+    )
+    if version_ids is not None:
+        query = query.where(LiveVerdict.agent_version_id.in_(version_ids))
+    setups = await session.scalar(select(func.count()).select_from(query.subquery()))
+    return (setups or 0) > 1
 
 
 def _summary(version: JudgingGuidanceVersion | None) -> dict[str, object] | None:
