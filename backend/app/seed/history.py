@@ -8,8 +8,9 @@ Editor and Owner publish, revert and roll out Instructions; Visitors open the wi
 Agents questions through the real runtime (answered by the demo provider's ``FunctionModel``),
 give thumbs and rate Conversations, with choices drawn from a fixed random seed and each
 Version's ``Reception``. The history ends with the nightly Purge of text older than the Retention
-Window. What the database stamps itself (Conversations and Messages, and the
-foundation's rows) is backfilled to the clock's time, the only direct writes. Finally the usage
+Window, then the Owner and the Editor review Review sample items (``app.seed.reviews``). What the
+database stamps itself (Conversations and Messages, and the foundation's rows) is backfilled to
+the clock's time, the only direct writes. Finally the usage
 rollup runs for every historical day, as Beat would have.
 """
 
@@ -23,6 +24,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any, cast
 
+import httpx
 from fastapi import FastAPI
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,7 +36,7 @@ from app.credentials.models import ProviderCredential
 from app.documents.models import Document, DocumentStatus
 from app.feedback.models import ConversationRating, ConversationRatingChange, MessageFeedback
 from app.projects.models import Project
-from app.seed import content, evaluation, live_evaluation, suggestions
+from app.seed import content, evaluation, live_evaluation, reviews, suggestions
 from app.seed.client import SeedApi, SeedError, new_client
 from app.tags.models import Tag
 from app.tenancy.models import Organisation
@@ -310,6 +312,18 @@ async def _backfill_foundation(
         )
 
 
+async def _signed_in_editor(client: httpx.AsyncClient, owner: SeedApi) -> SeedApi:
+    """The demo Editor, signed in on ``client``, in the demo Organisation."""
+    editor = SeedApi(client)
+    await editor.call(
+        "POST",
+        "/api/auth/sign-in",
+        body={"email": content.EDITOR.email, "password": content.EDITOR.password},
+    )
+    editor.organisation = owner.organisation
+    return editor
+
+
 async def generate(
     app: FastAPI,
     owner: SeedApi,
@@ -319,18 +333,13 @@ async def generate(
     agents: dict[str, Any],
     history: content.History,
 ) -> None:
-    """Plays the story from its first day to yesterday, rolls usage up for every day, and
-    backfills the foundation's timestamps to ``start``."""
+    """Plays the story from its first day to yesterday, rolls usage up for every day, purges,
+    gives the Review sample reviews (``app.seed.reviews``) and backfills the foundation's
+    timestamps to ``start``."""
     today = (start + timedelta(days=content.HISTORY_DAYS)).date()
     await wait_for_documents(owner, project)
     async with new_client(app) as client:
-        editor = SeedApi(client)
-        await editor.call(
-            "POST",
-            "/api/auth/sign-in",
-            body={"email": content.EDITOR.email, "password": content.EDITOR.password},
-        )
-        editor.organisation = owner.organisation
+        editor = await _signed_in_editor(client, owner)
         story = _Story(
             app,
             clock,
@@ -362,5 +371,10 @@ async def generate(
         )
     # Then the nightly Purge, as Beat runs it after the rollup: the oldest replies lose their text.
     await suggestions.purge(app, _at(today, time(0, 10)))
+    # Then, that morning, the Owner and the Editor work through the Review sample.
+    clock.travel_to(_at(today, time(0, 15)))
+    async with new_client(app) as client:
+        editor = await _signed_in_editor(client, owner)
+        await reviews.review_sample([owner, editor], history.random_seed)
     async with app.state.sessionmaker() as session, session.begin():
         await _backfill_foundation(session, uuid.UUID(owner.organisation), start)
