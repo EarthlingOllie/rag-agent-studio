@@ -833,6 +833,17 @@ async def _evaluation_repeats(owner: SignedUpMember, add_member: MemberFactory) 
     return {}, {"repeats": 5}
 
 
+async def _a_review_sample_item(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A finished Run's judged Verdict, served by the Review sample.
+    await _an_evaluation_run(owner, add_member)
+    served = await owner.client.get(
+        f"/api/organisations/{owner.organisation_id}/review-sample/next"
+    )
+    item = served.json()["item"]
+    assert item is not None, served.text
+    return {}, {"verdict_id": item["verdict_id"], "outcome": "pass"}
+
+
 async def _an_evaluation_budget(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     return {}, {"evaluation_budget_usd": "25"}
 
@@ -901,6 +912,14 @@ ORGANISATION_SCOPED_ROUTES = [
         OWNER,
         _an_evaluation_budget,
     ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/review-sample/next", EDITOR),
+    ScopedRoute(
+        "POST",
+        "/api/organisations/{organisation_id}/review-sample/reviews",
+        EDITOR,
+        _a_review_sample_item,
+    ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/evaluation-agreement", EDITOR),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/embedding-models", EDITOR),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/theme", EDITOR),
     ScopedRoute("PUT", "/api/organisations/{organisation_id}/theme", OWNER, _a_theme),

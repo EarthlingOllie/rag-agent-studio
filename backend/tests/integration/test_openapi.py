@@ -83,6 +83,15 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "setEvaluationRepeats": ("/api/organisations/{organisation_id}/evaluation-repeats", "put"),
         "getEvaluationBudget": ("/api/organisations/{organisation_id}/evaluation-budget", "get"),
         "setEvaluationBudget": ("/api/organisations/{organisation_id}/evaluation-budget", "put"),
+        "getReviewSampleItem": ("/api/organisations/{organisation_id}/review-sample/next", "get"),
+        "submitSampleReview": (
+            "/api/organisations/{organisation_id}/review-sample/reviews",
+            "post",
+        ),
+        "getEvaluationAgreement": (
+            "/api/organisations/{organisation_id}/evaluation-agreement",
+            "get",
+        ),
         "getTheme": ("/api/organisations/{organisation_id}/theme", "get"),
         "saveTheme": ("/api/organisations/{organisation_id}/theme", "put"),
         "startThemeImageUpload": (f"{_THEME_IMAGE}/uploads", "post"),

@@ -683,6 +683,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/evaluation-agreement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Evaluation Agreement
+         * @description How many Review sample reviews of the current Evaluation Model agreed with it.
+         */
+        get: operations["getEvaluationAgreement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/evaluation-budget": {
         parameters: {
             query?: never;
@@ -2653,6 +2673,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/review-sample/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Review Sample Item
+         * @description One judged Verdict drawn at random from those of the current Evaluation Model not yet
+         *     reviewed (null when there are none), without the Evaluation Model's outcome or reason, and
+         *     how many Review sample reviews the Organisation and you have given.
+         */
+        get: operations["getReviewSampleItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/review-sample/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Sample Review
+         * @description Stores your pass or fail on a Review sample item, replacing any earlier review of the
+         *     Verdict, and reveals the Evaluation Model's outcome and reason. A Verdict that isn't a judged
+         *     Reference answer or grounding Verdict of this Organisation is not found.
+         */
+        post: operations["submitSampleReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/theme": {
         parameters: {
             query?: never;
@@ -3012,6 +3076,17 @@ export interface components {
             live_version_id: string | null;
             /** Versions */
             versions: components["schemas"]["AgentVersionOut"][];
+        };
+        /** AgreementOut */
+        AgreementOut: {
+            /** Agreed */
+            agreed: number;
+            /** Model */
+            model: string;
+            /** Provider */
+            provider: string;
+            /** Reviews */
+            reviews: number;
         };
         /** AppliedSuggestionOut */
         AppliedSuggestionOut: {
@@ -4160,6 +4235,10 @@ export interface components {
             sides: number;
             /** Total Usd */
             total_usd: string | null;
+        };
+        /** EvaluationAgreementOut */
+        EvaluationAgreementOut: {
+            current: components["schemas"]["AgreementOut"] | null;
         };
         /** EvaluationBudgetOut */
         EvaluationBudgetOut: {
@@ -5608,6 +5687,56 @@ export interface components {
          * @enum {string}
          */
         RetrievalMode: "automatic" | "agentic";
+        /** ReviewChunkOut */
+        ReviewChunkOut: {
+            /** Cited */
+            cited: boolean;
+            /** Document Name */
+            document_name: string;
+            /** Label */
+            label: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * ReviewSampleItemOut
+         * @description A judged Verdict, as the Evaluation Model was given it, without its outcome or reason.
+         */
+        ReviewSampleItemOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Agent Name */
+            agent_name: string;
+            /** Answer */
+            answer: string;
+            /**
+             * Check
+             * @enum {string}
+             */
+            check: "reference_answer" | "grounding";
+            /** Chunks */
+            chunks: components["schemas"]["ReviewChunkOut"][];
+            /** Question */
+            question: string;
+            /** Reference Answer */
+            reference_answer: string | null;
+            /**
+             * Verdict Id
+             * Format: uuid
+             */
+            verdict_id: string;
+        };
+        /** ReviewSampleNextOut */
+        ReviewSampleNextOut: {
+            item: components["schemas"]["ReviewSampleItemOut"] | null;
+            /** Reviewed */
+            reviewed: number;
+            /** Reviewed By You */
+            reviewed_by_you: number;
+        };
         /**
          * Role
          * @enum {string}
@@ -5811,6 +5940,41 @@ export interface components {
             score: number | null;
             /** Version Number */
             version_number: number | null;
+        };
+        /**
+         * SampleReviewOut
+         * @description The reveal: the Editor's outcome beside the Evaluation Model's, and its reason.
+         */
+        SampleReviewOut: {
+            /** Agreed */
+            agreed: boolean;
+            /**
+             * Evaluation Model Outcome
+             * @enum {string}
+             */
+            evaluation_model_outcome: "pass" | "fail";
+            /** Evaluation Model Reason */
+            evaluation_model_reason: string | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "pass" | "fail";
+        };
+        /** SampleReviewRequest */
+        SampleReviewRequest: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "pass" | "fail";
+            /** Reason */
+            reason?: string | null;
+            /**
+             * Verdict Id
+             * Format: uuid
+             */
+            verdict_id: string;
         };
         /**
          * ScopedAgentOut
@@ -8590,6 +8754,46 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EmbeddingModelChoiceOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getEvaluationAgreement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationAgreementOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
             /** @description Validation Error */
@@ -14403,6 +14607,88 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    getReviewSampleItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewSampleNextOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submitSampleReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SampleReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SampleReviewOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not pass or fail, or a reason over 1,000 characters */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

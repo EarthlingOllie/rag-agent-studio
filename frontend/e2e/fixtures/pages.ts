@@ -31,6 +31,7 @@ export const SIGNED_IN_PAGES: SignedInPage[] = [
   { name: "analytics", route: `${PROJECT}/analytics` },
   { name: "project-settings", route: `${PROJECT}/settings` },
   { name: "cost", route: `${ORGANISATION}/cost` },
+  { name: "review-sample", route: `${ORGANISATION}/review-sample` },
   { name: "settings-general", route: `${ORGANISATION}/settings` },
   { name: "settings-members", route: `${ORGANISATION}/settings/members` },
   { name: "settings-credentials", route: `${ORGANISATION}/settings/credentials` },
