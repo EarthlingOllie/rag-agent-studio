@@ -19,7 +19,8 @@ export function targetOf(item: ReviewSampleItem): Pick<Schemas["SampleReviewRequ
 export const REASON_MAX = 1000;
 
 const nextKey = (organisationId: string) => ["review-sample", organisationId] as const;
-const agreementKey = (organisationId: string) => ["evaluation-agreement", organisationId] as const;
+/** The Evaluation Model agreement's query: read again whenever the Judging setup changes (Evaluation Model or guidance). */
+export const agreementKey = (organisationId: string) => ["evaluation-agreement", organisationId] as const;
 
 /**
  * One judged Verdict or Live Verdict check drawn at random from those not yet reviewed (null when there are none), without the

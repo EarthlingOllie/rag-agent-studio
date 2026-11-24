@@ -2,6 +2,7 @@ import type { Schemas } from "@studio/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api";
+import { agreementKey } from "../reviews/reviews";
 import { failed } from "./credentials";
 
 export type JudgingGuidance = Schemas["JudgingGuidanceOut"];
@@ -45,6 +46,8 @@ export function useSaveJudgingGuidance(organisationId: string) {
       queryClient.setQueryData(guidanceKey(organisationId), saved);
       // Drafting counts disagreements under the current Judging setup, which a save replaces.
       void queryClient.invalidateQueries({ queryKey: draftingKey(organisationId) });
+      // A save starts a new Judging setup, so agreement starts again under it.
+      void queryClient.invalidateQueries({ queryKey: agreementKey(organisationId) });
     },
   });
 }

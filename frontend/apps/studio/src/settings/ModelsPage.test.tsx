@@ -17,6 +17,7 @@ import {
 } from "../test/models";
 import { openSection } from "../test/navigation";
 import { renderStudio } from "../test/render";
+import { claudeAgreement, unreviewed } from "../test/reviews";
 import { server } from "../test/server";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
@@ -266,6 +267,32 @@ test("an Owner chooses the Evaluation Model, then goes back to the Default Model
     { credential_id: legalClaude.id, model: "claude-haiku-4-5" },
     { credential_id: null, model: null },
   ]);
+});
+
+test("choosing the Evaluation Model reads the Evaluation Model agreement again, under the new Judging setup", async () => {
+  const user = userEvent.setup();
+  const { evaluation } = fakeModelsApi();
+  server.use(
+    http.get("*/api/organisations/:organisationId/evaluation-agreement", () =>
+      HttpResponse.json(
+        evaluation.models.length === 0
+          ? { current: claudeAgreement, earlier: [], reviewed: 6, reviewed_by_you: 6, skipped: 0 }
+          : { current: unreviewed("anthropic", "claude-sonnet-4-5"), earlier: [claudeAgreement], reviewed: 6, reviewed_by_you: 6, skipped: 0 },
+      ),
+    ),
+  );
+  openAs();
+  const agreement = within(await screen.findByRole("region", { name: "Evaluation Model agreement" }));
+  expect(await agreement.findByText("claude-haiku-4-5 (Anthropic) with no guidance")).toBeInTheDocument();
+  const form = within(await (await evaluationSection()).findByRole("form", { name: "Choose the Evaluation Model" }));
+
+  await user.selectOptions(form.getByRole("combobox", { name: "Judge with" }), "Legal Claude (Anthropic)");
+  await form.findByRole("option", { name: "Claude Sonnet 4.5" });
+  await user.selectOptions(form.getByRole("combobox", { name: "Model" }), "Claude Sonnet 4.5");
+  await user.click(form.getByRole("button", { name: "Save Evaluation Model" }));
+
+  expect(await agreement.findByText("claude-sonnet-4-5 (Anthropic) with no guidance")).toBeInTheDocument();
+  expect(agreement.getByText("No sample reviews under this Judging setup yet.")).toBeInTheDocument();
 });
 
 test("the chosen Evaluation Model is shown and chosen in the picker", async () => {

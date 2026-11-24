@@ -15,6 +15,7 @@ import {
   PARTIAL_GUIDANCE,
 } from "../test/models";
 import { renderStudio } from "../test/render";
+import { claudeAgreement, unreviewed } from "../test/reviews";
 import { server } from "../test/server";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
@@ -93,6 +94,33 @@ test("an Owner writes and saves guidance as a new version", async () => {
   expect(within(await section.findByRole("group", { name: "Current guidance" })).getByText(PARTIAL_GUIDANCE)).toBeInTheDocument();
   expect(section.queryByRole("form", { name: "Edit the Judging guidance" })).not.toBeInTheDocument();
   expect(api.saved).toEqual([PARTIAL_GUIDANCE]);
+});
+
+test("saving guidance reads the Evaluation Model agreement again, under the new Judging setup", async () => {
+  const user = userEvent.setup();
+  fakeModelsApi();
+  const api = fakeJudgingGuidanceApi();
+  server.use(
+    http.get("*/api/organisations/:organisationId/evaluation-agreement", () =>
+      HttpResponse.json(
+        api.saved.length === 0
+          ? { current: claudeAgreement, earlier: [], reviewed: 6, reviewed_by_you: 6, skipped: 0 }
+          : { current: unreviewed("anthropic", "claude-haiku-4-5", 1), earlier: [claudeAgreement], reviewed: 6, reviewed_by_you: 6, skipped: 0 },
+      ),
+    ),
+  );
+  openAs();
+  const section = await card();
+  const agreement = within(await screen.findByRole("region", { name: "Evaluation Model agreement" }));
+  expect(await agreement.findByText("claude-haiku-4-5 (Anthropic) with no guidance")).toBeInTheDocument();
+
+  await user.click(await section.findByRole("button", { name: "Edit guidance" }));
+  await user.type(section.getByRole("textbox", { name: "Judging guidance" }), PARTIAL_GUIDANCE);
+  await user.click(section.getByRole("button", { name: "Save guidance" }));
+  await confirmSave(user);
+
+  expect(await agreement.findByText("claude-haiku-4-5 (Anthropic) with guidance version 1")).toBeInTheDocument();
+  expect(agreement.getByText("No sample reviews under this Judging setup yet.")).toBeInTheDocument();
 });
 
 test("an Owner cancels an edit without saving", async () => {
