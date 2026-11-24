@@ -939,8 +939,9 @@ export interface paths {
         /**
          * Save Judging Guidance
          * @description Saves the Judging guidance as a new current version, which new Evaluation Runs and Live
-         *     Verdicts are judged with; empty text removes it (Owners only). Saving the current text again
-         *     changes nothing. Recorded as ``organisation.judging_guidance_changed``.
+         *     Verdicts are judged with; empty text removes it (Owners only). Text from a completed draft
+         *     is saved as ``drafted``. Saving the current text again changes nothing. Recorded as
+         *     ``organisation.judging_guidance_changed``.
          */
         put: operations["saveJudgingGuidance"];
         post?: never;
@@ -967,6 +968,51 @@ export interface paths {
          *     cost, never against the Evaluation budget.
          */
         post: operations["startGuidanceCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/judging-guidance/drafting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Guidance Drafting
+         * @description Whether drafting guidance from Editors' disagreements is offered under the current
+         *     Judging setup, what is missing if not, and the estimated Cost (Owners only).
+         */
+        get: operations["getGuidanceDrafting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/judging-guidance/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Guidance Draft
+         * @description Starts drafting guidance: the Evaluation Model reads the current Judging setup's
+         *     disagreeing reviews outside the held-out half and the current guidance, in the background,
+         *     and proposes guidance with an explanation (Owners only). At most one draft or check is in
+         *     progress per Organisation. Its Cost counts in Organisation cost, never against the
+         *     Evaluation budget.
+         */
+        post: operations["startGuidanceDraft"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4346,6 +4392,38 @@ export interface components {
             latest?: components["schemas"]["AgentOut"] | null;
         };
         /**
+         * DraftPartOut
+         * @description A part of a draft's explanation: a rule in a short sentence, and the reviews it answers.
+         */
+        DraftPartOut: {
+            /** Part */
+            part: string;
+            /** Reviews */
+            reviews: string[];
+        };
+        /**
+         * DraftingOut
+         * @description Whether drafting guidance is offered under the current Judging setup, and its estimate.
+         */
+        DraftingOut: {
+            /** Disagreements */
+            disagreements: number;
+            /** Estimated Cost Usd */
+            estimated_cost_usd: string | null;
+            /** Missing */
+            missing: string | null;
+            /** Needs Disagreements */
+            needs_disagreements: number;
+            /** Needs Sample Reviews */
+            needs_sample_reviews: number;
+            /** Offered */
+            offered: boolean;
+            /** Reviews Read */
+            reviews_read: number;
+            /** Sample Reviews */
+            sample_reviews: number;
+        };
+        /**
          * EmbeddingModelChoiceOut
          * @description An Embedding Model the Organisation can choose, and the credential it is called
          *     through (none for the built-in local model).
@@ -4784,6 +4862,17 @@ export interface components {
             /** Reviews */
             reviews: number;
         };
+        /**
+         * GuidanceDraftOut
+         * @description What a completed draft proposes: guidance text, up to 2,000 characters, and its
+         *     explanation.
+         */
+        GuidanceDraftOut: {
+            /** Explanation */
+            explanation: components["schemas"]["DraftPartOut"][];
+            /** Text */
+            text: string;
+        };
         /** GuidanceJobOut */
         GuidanceJobOut: {
             /** Agreed */
@@ -4797,6 +4886,7 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            draft: components["schemas"]["GuidanceDraftOut"] | null;
             /** Error Reason */
             error_reason: string | null;
             /** False Fails */
@@ -4816,15 +4906,17 @@ export interface components {
             judged: number;
             /**
              * Kind
-             * @constant
+             * @enum {string}
              */
-            kind: "check";
+            kind: "check" | "draft";
             /** Left Out */
             left_out: number;
             /** Low Sample */
             low_sample: boolean;
             /** Requested By */
             requested_by: string | null;
+            /** Reviews Read */
+            reviews_read: number;
             /** Started At */
             started_at: string | null;
             /**
@@ -6313,6 +6405,8 @@ export interface components {
          * @description The new guidance, up to 2,000 characters; empty (or only spaces) removes it.
          */
         SaveJudgingGuidanceRequest: {
+            /** Draft Id */
+            draft_id?: string | null;
             /** Text */
             text: string;
         };
@@ -9880,7 +9974,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description Longer than 2,000 characters */
+            /** @description Longer than 2,000 characters, or not a completed draft */
             422: {
                 headers: {
                     [name: string]: unknown;
@@ -9941,6 +10035,113 @@ export interface operations {
                 };
             };
             /** @description No model to judge with, too few reviews, or too long */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGuidanceDrafting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftingOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No model to judge with */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startGuidanceDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidanceJobOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A draft or check is already in progress in the Organisation. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No model to judge with, or drafting isn't offered yet */
             422: {
                 headers: {
                     [name: string]: unknown;

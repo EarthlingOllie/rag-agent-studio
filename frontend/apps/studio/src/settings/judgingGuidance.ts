@@ -26,25 +26,31 @@ export function useJudgingGuidance(organisationId: string) {
   });
 }
 
-/** Saves the Judging guidance as a new current version; empty text removes it (Owners only). */
+/**
+ * Saves the Judging guidance as a new current version; empty text removes it (Owners only). Text
+ * from a completed draft (`draftId`), edited or not, is saved as `drafted`.
+ */
 export function useSaveJudgingGuidance(organisationId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (text: string): Promise<JudgingGuidance> => {
+    mutationFn: async ({ text, draftId = null }: { text: string; draftId?: string | null }): Promise<JudgingGuidance> => {
       const { data, error, response } = await api.PUT("/api/organisations/{organisation_id}/judging-guidance", {
         params: { path: { organisation_id: organisationId } },
-        body: { text },
+        body: { text, draft_id: draftId },
       });
       if (!data) throw failed(response, error);
       return data;
     },
     onSuccess: (saved) => {
       queryClient.setQueryData(guidanceKey(organisationId), saved);
+      // Drafting counts disagreements under the current Judging setup, which a save replaces.
+      void queryClient.invalidateQueries({ queryKey: draftingKey(organisationId) });
     },
   });
 }
 
 export type GuidanceJob = Schemas["GuidanceJobOut"];
+export type GuidanceDrafting = Schemas["DraftingOut"];
 export type GuidanceCheck = Schemas["GuidanceCheckOut"];
 
 /** How often a draft or check in progress is read again, in milliseconds. */
@@ -98,6 +104,40 @@ export function useCancelGuidanceJob(organisationId: string) {
     mutationFn: async (jobId: string): Promise<GuidanceJob> => {
       const { data, error, response } = await api.POST("/api/organisations/{organisation_id}/guidance-jobs/{job_id}/cancel", {
         params: { path: { organisation_id: organisationId, job_id: jobId } },
+      });
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: (job) => {
+      queryClient.setQueryData(jobKey(organisationId), job);
+    },
+  });
+}
+
+const draftingKey = (organisationId: string) => ["guidance-drafting", organisationId] as const;
+
+/** Whether drafting guidance is offered under the current Judging setup, what is missing, and the estimated Cost (Owners only). */
+export function useGuidanceDrafting(organisationId: string) {
+  return useQuery({
+    queryKey: draftingKey(organisationId),
+    queryFn: async (): Promise<GuidanceDrafting> => {
+      const { data, error, response } = await api.GET("/api/organisations/{organisation_id}/judging-guidance/drafting", {
+        params: { path: { organisation_id: organisationId } },
+      });
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    retry: false,
+  });
+}
+
+/** Starts drafting guidance from the current Judging setup's disagreements (Owners only). */
+export function useStartGuidanceDraft(organisationId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (): Promise<GuidanceJob> => {
+      const { data, error, response } = await api.POST("/api/organisations/{organisation_id}/judging-guidance/drafts", {
+        params: { path: { organisation_id: organisationId } },
       });
       if (!data) throw failed(response, error);
       return data;

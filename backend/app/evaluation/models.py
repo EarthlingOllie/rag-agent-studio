@@ -184,6 +184,8 @@ def judged_under(table: str) -> ForeignKeyConstraint:
 class GuidanceJobKind(enum.StrEnum):
     # Re-judges the held-out half of the Review sample reviews with some guidance text.
     CHECK = "check"
+    # Drafts guidance from the disagreeing reviews outside the held-out half (ticket 19-05).
+    DRAFT = "draft"
 
 
 class GuidanceJobStatus(enum.StrEnum):
@@ -203,7 +205,9 @@ GUIDANCE_JOB_IN_PROGRESS = (GuidanceJobStatus.QUEUED, GuidanceJobStatus.RUNNING)
 
 class GuidanceJob(IdMixin, Base):
     """One Owner's request to check guidance text (spec 19, ticket 19-04): the Evaluation Model
-    re-judges the held-out half of the current Judging setup's Review sample reviews with it.
+    re-judges the held-out half of the current Judging setup's Review sample reviews with it; or
+    to draft guidance (ticket 19-05): the Evaluation Model reads the disagreeing reviews outside
+    the held-out half and proposes guidance text with an explanation.
 
     The Judging setup whose reviews it splits is copied when it starts, with the split: review
     IDs in the held-out half and in the other half, which the next job under the same Judging
@@ -229,7 +233,7 @@ class GuidanceJob(IdMixin, Base):
     # A ``GuidanceJobKind`` and a ``GuidanceJobStatus``.
     kind: Mapped[str] = mapped_column(String(10))
     status: Mapped[str] = mapped_column(String(20))
-    # The guidance text checked.
+    # The guidance text checked; a draft's, the current guidance it revises.
     text: Mapped[str] = mapped_column(String(GUIDANCE_MAX))
     # The Judging setup whose Review sample reviews it splits, copied.
     judge_provider: Mapped[str] = mapped_column(String(50))
@@ -247,6 +251,12 @@ class GuidanceJob(IdMixin, Base):
     false_passes: Mapped[int] = mapped_column(Integer, server_default="0")
     false_fails: Mapped[int] = mapped_column(Integer, server_default="0")
     agreed_before: Mapped[int] = mapped_column(Integer, server_default="0")
+    # A draft's: the disagreeing reviews it gave the Evaluation Model, and what it drafted (None
+    # until it completes): the guidance text and its explanation, parts each with the IDs of the
+    # reviews it answers, as ``{"part": str, "reviews": [str]}``.
+    reviews_read: Mapped[int] = mapped_column(Integer, server_default="0")
+    draft_text: Mapped[str | None] = mapped_column(Text)
+    draft_explanation: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
     error_reason: Mapped[str | None] = mapped_column(Text)
     requested_by: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(Member.id, ondelete="SET NULL"), index=True
@@ -258,7 +268,8 @@ class GuidanceJob(IdMixin, Base):
 
 class GuidanceJudgement(IdMixin, Base):
     """One Evaluation Model call a guidance job made, re-judging one target (a Run's case result
-    or a Live Verdict) of its Agent: its tokens and its Cost, frozen when it was made, counted in
+    or a Live Verdict) of its Agent, or an Agent's share of a draft's one call (split by the
+    reviews of the Agent it read): its tokens and its Cost, frozen when it was made, counted in
     Organisation cost's Evaluation column and never against the Evaluation budget."""
 
     __tablename__ = "guidance_judgements"

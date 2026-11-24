@@ -872,6 +872,28 @@ async def _reviews_to_check(owner: SignedUpMember, add_member: MemberFactory) ->
     return {}, {"text": "Partial answers that say what they don't cover pass."}
 
 
+async def _disagreements_to_draft(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A finished Run of 15 cases: 30 judged Verdicts, all reviewed pass on the Review sample. The
+    # fake judge fails every Reference answer (the fake reply lacks it): 15 disagreements.
+    params, _ = await _an_evaluation_to_start(owner, add_member)
+    cases = _EVALUATION.format(organisation_id=owner.organisation_id, **params) + "/cases"
+    for n in range(14):
+        created = await owner.client.post(
+            cases, json={**_EVALUATION_CASE, "question": f"How much leave, {n}?"}
+        )
+        assert created.status_code == 201, created.text
+    started = await owner.client.post(
+        _EVALUATION.format(organisation_id=owner.organisation_id, **params) + "/runs"
+    )
+    assert started.status_code == 202, started.text
+    sample = f"/api/organisations/{owner.organisation_id}/review-sample"
+    while (item := (await owner.client.get(f"{sample}/next")).json()["item"]) is not None:
+        review = {"verdict_id": item["verdict_id"], "outcome": "pass"}
+        reviewed = await owner.client.post(f"{sample}/reviews", json=review)
+        assert reviewed.status_code == 200, reviewed.text
+    return {}, None
+
+
 async def _a_queued_guidance_check(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     _, body = await _reviews_to_check(owner, add_member)
     with patch.object(guidance_check_api, "enqueue_guidance_job", AsyncMock()):
@@ -955,6 +977,18 @@ ORGANISATION_SCOPED_ROUTES = [
         "/api/organisations/{organisation_id}/judging-guidance/checks",
         OWNER,
         _reviews_to_check,
+    ),
+    ScopedRoute(
+        "GET",
+        "/api/organisations/{organisation_id}/judging-guidance/drafting",
+        OWNER,
+        _a_model_to_judge_with,
+    ),
+    ScopedRoute(
+        "POST",
+        "/api/organisations/{organisation_id}/judging-guidance/drafts",
+        OWNER,
+        _disagreements_to_draft,
     ),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/guidance-jobs/latest", OWNER),
     ScopedRoute(

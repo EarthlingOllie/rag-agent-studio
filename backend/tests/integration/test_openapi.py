@@ -89,6 +89,14 @@ def test_openapi_document_describes_every_endpoint() -> None:
             "/api/organisations/{organisation_id}/judging-guidance/checks",
             "post",
         ),
+        "getGuidanceDrafting": (
+            "/api/organisations/{organisation_id}/judging-guidance/drafting",
+            "get",
+        ),
+        "startGuidanceDraft": (
+            "/api/organisations/{organisation_id}/judging-guidance/drafts",
+            "post",
+        ),
         "getLatestGuidanceJob": (
             "/api/organisations/{organisation_id}/guidance-jobs/latest",
             "get",
