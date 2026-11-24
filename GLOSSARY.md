@@ -740,7 +740,7 @@ The 95% Wilson score interval of a rate (the thumbs-up rate, the Live score), wo
 _Avoid_: Error bars, margin
 
 **Purge**:
-Clearing a Message's text, the reasons in its Guardrail outcomes, the queries of its Searches (the model writes them from the Visitor's words), the comment of any Message Feedback on it and the reasons of its Live Verdict, and stamping it (and its Live Verdict) purged-at, while every number and attribution (tokens, Cost, latency, Agent Version, thumbs, Conversation Rating, Message retrievals, its Searches and their count, each Guardrail outcome's verdict, the Live Verdict's outcomes and Cost) stays, so the Version KPIs read the same before and after. A daily Beat task (00:35 UTC) purges the Messages older than each Organisation's Retention Window, but a Visitor reply only once the Usage rollup of its day is final (rollups come before purges). Deleting a Conversation purges its Messages at once, through the same path. The Conversations viewer shows a purged Message as "Text purged" with when and why.
+Clearing a Message's text, the reasons in its Guardrail outcomes, the queries of its Searches (the model writes them from the Visitor's words), the comment of any Message Feedback on it, the reasons of its Live Verdict and the reasons on that Live Verdict's Verdict reviews, and stamping it (and its Live Verdict and those reviews) purged-at, while every number and attribution (tokens, Cost, latency, Agent Version, thumbs, Conversation Rating, Message retrievals, its Searches and their count, each Guardrail outcome's verdict, the Live Verdict's outcomes and Cost, the reviews' pass or fail) stays, so the Version KPIs read the same before and after. A daily Beat task (00:35 UTC) purges the Messages older than each Organisation's Retention Window, but a Visitor reply only once the Usage rollup of its day is final (rollups come before purges). Deleting a Conversation purges its Messages at once, through the same path. The Conversations viewer shows a purged Message as "Text purged" with when and why.
 _Avoid_: Deletion, cleanup, expiry
 
 **Deleting a Conversation**:
@@ -902,7 +902,7 @@ How often the Evaluation Model's judgements match Editors' Verdict reviews made 
 _Avoid_: Judge calibration, judge accuracy, calibration (the Evaluation Model gives pass or fail, not probabilities)
 
 **Review sample**:
-The Organisation's queue of judged Verdicts and Live Verdict checks, drawn at random from those by the current Evaluation Model that are not yet reviewed and whose text is not Purged, which Editors review blind so that Evaluation Model agreement isn't skewed towards the ones they doubted. Verdict reviews made anywhere else are kept and shown on the Verdict, but don't count.
+The Organisation's queue of judged Verdicts and Live Verdict checks, drawn at random from those by the current Evaluation Model that are not yet reviewed and whose text is not Purged (for a Live Verdict check, neither its reply, its question nor a Remembered turn), which Editors review blind so that Evaluation Model agreement isn't skewed towards the ones they doubted. Verdict reviews made anywhere else are kept and shown on the Verdict, but don't count.
 _Avoid_: Labelling queue, review queue, audit sample
 
 **Judging guidance**:

@@ -5,7 +5,7 @@ import { delay, http, HttpResponse } from "msw";
 import { adaSession, fakeAuthApi, type Session } from "../test/auth";
 import { fakeModelsApi } from "../test/models";
 import { renderStudio } from "../test/render";
-import { fakeReviewSampleApi, leaveGrounding, leaveReference } from "../test/reviews";
+import { fakeReviewSampleApi, leaveGrounding, leaveReference, liveAnswers, liveGrounding } from "../test/reviews";
 import { server } from "../test/server";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
@@ -48,6 +48,57 @@ test("an Editor is shown an item blind: the question, Reference answer, answer a
   expect(screen.queryByText("Pass", { selector: "span" })).not.toBeInTheDocument();
   const verdict = within(screen.getByRole("group", { name: "Your verdict" }));
   expect(verdict.getAllByRole("button").map((button) => button.textContent)).toEqual(["Pass", "Fail", "Skip"]);
+});
+
+test("a Live Verdict check is shown blind with the reply's Remembered turns, and its review names the Live Verdict and check", async () => {
+  const api = fakeReviewSampleApi({ items: [liveAnswers, liveGrounding] });
+  open();
+
+  const shown = await item();
+
+  expect(shown.getByRole("heading", { name: "Does the reply answer the question it was asked?" })).toBeInTheDocument();
+  expect(shown.getByText("HR helper · Live reply")).toBeInTheDocument();
+  const earlier = within(shown.getByRole("list", { name: "Earlier in the Conversation" }));
+  expect(earlier.getAllByRole("listitem").map((turn) => turn.textContent)).toEqual([
+    "Visitor: How much annual leave do I get?Reply: Twenty-five days a year.",
+  ]);
+  expect(shown.getByText(liveAnswers.item.question)).toBeInTheDocument();
+  expect(shown.getByText("Reply")).toBeInTheDocument();
+  expect(shown.queryByText("Reference answer")).not.toBeInTheDocument();
+  const excerpts = within(shown.getByRole("list", { name: "Excerpts it was given" }));
+  expect(excerpts.getAllByRole("listitem").map((excerpt) => excerpt.textContent)).toEqual([
+    "C1leave.txtCitedEveryone gets 25 days of annual leave a year.",
+    "C2part-time.txtPart-timers get leave pro rata.",
+  ]);
+  expect(screen.queryByText(liveAnswers.reason)).not.toBeInTheDocument();
+
+  await userEvent.click(screen.getByRole("button", { name: "Pass" }));
+
+  const reveal = within(await screen.findByRole("region", { name: "You differed from the Evaluation Model" }));
+  expect(reveal.getByText(liveAnswers.reason)).toBeInTheDocument();
+  await userEvent.type(reveal.getByRole("textbox"), "Pro rata is still twenty-five days.");
+  await userEvent.click(reveal.getByRole("button", { name: "Save reason" }));
+  await screen.findByText("Your reason is saved.");
+  const target = { live_verdict_id: liveAnswers.item.live_verdict_id, check: "answers_question" };
+  expect(api.reviews).toEqual([
+    { ...target, outcome: "pass" },
+    { ...target, outcome: "pass", reason: "Pro rata is still twenty-five days." },
+  ]);
+
+  await userEvent.click(reveal.getByRole("button", { name: "Next" }));
+
+  const next = await item();
+  expect(next.getByRole("heading", { name: "Is every claim in the reply supported by the excerpts it cited?" })).toBeInTheDocument();
+});
+
+test("a Live reply without Remembered turns or excerpts says so", async () => {
+  fakeReviewSampleApi({ items: [{ ...liveGrounding, item: { ...liveGrounding.item, remembered_turns: [], chunks: [] } }] });
+  open();
+
+  const shown = await item();
+
+  expect(shown.queryByRole("list", { name: "Earlier in the Conversation" })).not.toBeInTheDocument();
+  expect(shown.getByText("None: it was given no excerpts.")).toBeInTheDocument();
 });
 
 test("after agreeing, the Evaluation Model's pass and reason are revealed without a reason field, and Next serves the next item", async () => {
@@ -168,7 +219,9 @@ test("an empty sample says there is nothing to review and links back to Models s
 
   const empty = await screen.findByRole("heading", { name: "Nothing to review" });
 
-  expect(empty.parentElement).toHaveTextContent("Every judged Verdict by the current Evaluation Model has been reviewed.");
+  expect(empty.parentElement).toHaveTextContent(
+    "Every judged Verdict and Live Verdict check by the current Evaluation Model has been reviewed.",
+  );
   expect(screen.getByText("12 sample reviews so far, 0 of them yours.")).toBeInTheDocument();
   await userEvent.click(screen.getByRole("link", { name: "Back to Models settings" }));
   expect(await screen.findByRole("heading", { name: "Default Model" })).toBeInTheDocument();
