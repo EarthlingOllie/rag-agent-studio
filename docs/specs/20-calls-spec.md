@@ -1,6 +1,6 @@
 # Spec 20: Calls
 
-**Status:** draft, awaiting review · **Builds on:** [Spec 02](./02-provider-credentials-theme-spec.md), [Spec 04](./04-agents-retrieval-playground-spec.md), [Spec 06](./06-embed-widget-operational-settings-spec.md), [Spec 07](./07-feedback-logging-comparison-spec.md), [Spec 13](./13-agentic-retrieval-spec.md) · **Decisions:** [ADR-0019](../adr/0019-calls-through-a-custom-llm.md), [ADR-0009](../adr/0009-operational-settings-outside-versions.md)
+**Status:** ready-for-agent · **Builds on:** [Spec 02](./02-provider-credentials-theme-spec.md), [Spec 04](./04-agents-retrieval-playground-spec.md), [Spec 06](./06-embed-widget-operational-settings-spec.md), [Spec 07](./07-feedback-logging-comparison-spec.md), [Spec 13](./13-agentic-retrieval-spec.md) · **Decisions:** [ADR-0019](../adr/0019-calls-through-a-custom-llm.md), [ADR-0009](../adr/0009-operational-settings-outside-versions.md)
 
 ## Problem Statement
 
