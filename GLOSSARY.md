@@ -689,8 +689,16 @@ One Visitor's thread of Messages with an Agent, whether typed or spoken in a Cal
 _Avoid_: Session, chat, thread
 
 **Call**:
-A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. The Agent is asked exactly what it would be asked for a typed Message; only formatting and citation markers are left out of what is spoken (ADR-0019). Only a Visitor in the widget, or a Member in the Playground, starts one; the Conversation log shows it as text while it is spoken, and its audio is never stored. A Conversation has one Call at a time. While an Agentic Agent searches, the Searching status is spoken; a Guardrail refusal is spoken and the Call goes on; anything that makes the Agent unavailable speaks the Unavailable text, ends the Call and returns the Visitor to messaging.
+A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. The Agent is asked exactly what it would be asked for a typed Message; only formatting and citation markers are left out of what is spoken (ADR-0019). Only a Visitor in the widget, or a Member in the Playground, starts one; the Conversation log shows it as text while it is spoken, and its audio is never stored. A Conversation has one Call at a time and may have several over its life: a reload ends the Call, and the resumed widget offers to continue with a new one. The spoken greeting opens only a Call that starts an empty Conversation, and the Visitor ends the Call to type. While an Agentic Agent searches, the Searching status is spoken; a Guardrail refusal is spoken and the Call goes on; anything that makes the Agent unavailable speaks the Unavailable text, ends the Call and returns the Visitor to messaging.
 _Avoid_: Voice chat, voice session, phone call
+
+**Call token**:
+A short-lived, signed token the widget is given when a Call starts, bound to its Conversation. The voice layer presents it with every spoken turn, together with a secret only it holds; a turn is answered only when both are good.
+_Avoid_: Voice token, session key
+
+**Calls failing alert**:
+An Agent's alert that Visitors' Calls can't start because the voice layer refuses them (its agent is gone, the key was revoked, the provider is down). Visitors get the Unavailable text and messaging keeps working; saving the Call settings sets the voice layer up again.
+_Avoid_: Voice error, call outage
 
 **Spoken Message**:
 A Message said in a Call rather than typed: the Visitor's words as transcribed, or the Agent's reply as the model wrote it. An Agent's Spoken Message the Visitor talked over is marked interrupted and still holds the whole reply, so it matches its Trace. It takes Message Feedback, counts in a Version's metrics and is judged like a typed one.
@@ -701,11 +709,11 @@ Whether an Agent takes Calls (off by default), the voice-capable Provider Creden
 _Avoid_: Voice config, calling options
 
 **Maximum Call length**:
-How long one Call may last before the widget ends it. Part of the Operational Settings.
+How long one Call may last before it is ended (10 minutes by default), timed by the platform. Part of the Operational Settings.
 _Avoid_: Call timeout, session limit
 
 **Call minutes budget**:
-The most minutes of Calls an Agent's Visitors may use per UTC date; once spent, Calls are refused with the Unavailable text and the Visitor is offered messaging. Part of the Operational Settings, beside the Token Budget, which spoken replies also count toward.
+The most minutes of Calls an Agent's Visitors may use per UTC date (60 by default), timed by the platform; once spent, the Agent gets its Budget alert, the Owners are emailed once, and Calls are refused with the Unavailable text and the Visitor is offered messaging. Part of the Operational Settings, beside the Token Budget, which spoken replies also count toward.
 _Avoid_: Call quota, voice limit
 
 **Voice Cost**:
