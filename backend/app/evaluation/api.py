@@ -61,7 +61,7 @@ from app.agents.service import AgentArchivedError, AgentNotFoundError
 from app.auth.api import Db, ErrorResponse
 from app.core.clock import Clock, get_clock
 from app.documents.service import DocumentNotFoundError
-from app.evaluation import from_message, service, summary
+from app.evaluation import from_message, reviews, service, summary
 from app.evaluation.combining import Repeat, SideResult
 from app.evaluation.models import (
     PASSAGE_MAX,
@@ -73,6 +73,7 @@ from app.evaluation.models import (
     SideKind,
     VerdictOutcome,
 )
+from app.evaluation.reviews_api import VerdictReviewOut, review_out
 from app.evaluation.tasks import enqueue_run
 from app.playground.api import CREDENTIAL_GONE, NO_DEFAULT_MODEL, Dollars, TraceOut
 from app.projects.instructions import InstructionsVersionNotFoundError
@@ -401,6 +402,9 @@ class RunOut(BaseModel):
     # the Evaluation repeats, as they were when it started.
     judge_provider: str
     judge_model: str
+    # The Judging guidance version it was judged under, beside its judge model (its Judging
+    # setup); null when the Organisation had never saved guidance.
+    judging_guidance_version: int | None
     repeats: int
     error_message: str | None
     # Whether it has a Draft side and the Draft has a newer Draft revision since.
@@ -410,12 +414,16 @@ class RunOut(BaseModel):
 
 
 class VerdictOut(BaseModel):
+    # Where its review is put and removed.
+    id: uuid.UUID
     # ``expected_source``, ``fallback``, ``reference_answer`` or ``grounding``.
     kind: str
     # ``pass`` or ``fail``, or ``stale`` for a Stale expectation (skipped: neither).
     outcome: str
     # Why: the judge's one-sentence reason, or what the check found.
     reason: str | None
+    # An Editor's review of a judged Reference answer or grounding Verdict; null without one.
+    review: VerdictReviewOut | None
 
 
 class CaseResultOut(BaseModel):
@@ -522,6 +530,7 @@ def _run_out(detail: service.RunDetail) -> RunOut:
         progress=ProgressOut(done=run.answers_done, total=run.answers_total),
         judge_provider=run.judge_provider,
         judge_model=run.judge_model,
+        judging_guidance_version=run.judging_guidance_version,
         repeats=run.repeats,
         error_message=run.error_message,
         stale=detail.stale,
@@ -943,6 +952,8 @@ async def get_run_results(
     except _NOT_FOUND:
         raise not_found() from None
     positions = {side.id: side.position for side in detail.sides}
+    verdict_ids = [v.id for case in cases for judged in case.results for v in judged.verdicts]
+    shown = await reviews.shown_reviews(db, scope.organisation_id, verdict_ids=verdict_ids)
     return RunResultsOut(
         run=_run_out(detail),
         cases=[
@@ -974,7 +985,13 @@ async def get_run_results(
                         answer=judged.result.answer,
                         passed=_passed(judged),
                         verdicts=[
-                            VerdictOut(kind=v.kind, outcome=v.outcome, reason=v.reason)
+                            VerdictOut(
+                                id=v.id,
+                                kind=v.kind,
+                                outcome=v.outcome,
+                                reason=v.reason,
+                                review=review_out(shown.get(reviews.RunTarget(v.id))),
+                            )
                             for v in judged.verdicts
                         ],
                         trace=None
@@ -1024,6 +1041,10 @@ class PublishSummaryOut(BaseModel):
     # The Instructions Version being published: the one chosen, else the Current one; null
     # when the Project has none.
     publishing_instructions_version_number: int | None
+    # The Draft's latest completed Run was judged under an earlier Judging setup (another
+    # Evaluation Model or Judging guidance version than now), so its scores may read differently
+    # now. A notice beside the state; it never blocks.
+    earlier_judging_setup: bool
 
 
 def _reasons(case: service.CaseResults, second: uuid.UUID) -> list[RegressionReasonOut]:
@@ -1085,6 +1106,7 @@ async def get_publish_summary(
         lower_score=found.lower_score,
         evaluated_live_version_number=found.evaluated_live_version_number,
         publishing_instructions_version_number=found.publishing_instructions_version_number,
+        earlier_judging_setup=found.earlier_judging_setup,
     )
 
 

@@ -31,6 +31,7 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from app.core.db import Base
 from app.evaluation import api as evaluation_api
+from app.evaluation import guidance_check_api
 from app.guardrails.fake import FakeRule
 from app.main import ROUTERS, create_app
 from app.suggestions import api as suggestions_api
@@ -39,7 +40,9 @@ from app.suggestions.proposer import propose
 from app.tenancy.models import PLATFORM_TABLES, Role
 from app.tenancy.policy import RequireRole
 from tests import documents, theme_images
+from tests.agents import parse_sse, use_default_model
 from tests.conftest import MemberFactory, SignedUpMember, TenantFactory, join_organisation
+from tests.integration.test_embed import conversation_token, send
 
 Prepared = tuple[dict[str, str], dict[str, Any] | None]
 Prepare = Callable[[SignedUpMember, MemberFactory], Awaitable[Prepared]]
@@ -833,8 +836,150 @@ async def _evaluation_repeats(owner: SignedUpMember, add_member: MemberFactory) 
     return {}, {"repeats": 5}
 
 
+async def _a_review_sample_item(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A finished Run's judged Verdict, served by the Review sample.
+    await _an_evaluation_run(owner, add_member)
+    served = await owner.client.get(
+        f"/api/organisations/{owner.organisation_id}/review-sample/next"
+    )
+    item = served.json()["item"]
+    assert item is not None, served.text
+    return {}, {"verdict_id": item["verdict_id"], "outcome": "pass"}
+
+
+async def _a_judged_verdict(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A finished Run's judged Verdict, reviewed in Run results.
+    params, _ = await _an_evaluation_run(owner, add_member)
+    results = await owner.client.get(
+        _EVALUATION.format(organisation_id=owner.organisation_id, **params)
+        + f"/runs/{params['run_id']}/results"
+    )
+    (judged, *_) = [
+        v
+        for case in results.json()["cases"]
+        for result in case["results"]
+        for v in result["verdicts"]
+        if v["kind"] in ("reference_answer", "grounding")
+    ]
+    return {"verdict_id": judged["id"]}, {"outcome": "fail", "reason": "It never says a year."}
+
+
+async def _a_verdict_review(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _a_judged_verdict(owner, add_member)
+    put = await owner.client.put(
+        f"/api/organisations/{owner.organisation_id}/verdicts/{params['verdict_id']}/review",
+        json=body,
+    )
+    assert put.status_code == 200, put.text
+    return params, None
+
+
+async def _a_judged_live_check(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A Visitor reply chosen for a Live Verdict and judged, reviewed in its Trace; the gateway's
+    # fake chat model answers and judges.
+    await use_default_model(owner)
+    params, _ = await _a_live_agent(owner, add_member)
+    # Something to answer from: a reply in the Fallback Text is never judged.
+    leave = b"Everyone gets 25 days of annual leave a year."
+    await documents.upload(documents.app_of(owner), owner, params["project_id"], "leave.txt", leave)
+    agent_path = _AGENT.format(organisation_id=owner.organisation_id, **params)
+    budget = await owner.client.put(
+        f"/api/organisations/{owner.organisation_id}/evaluation-budget",
+        json={"evaluation_budget_usd": "100"},
+    )
+    assert budget.status_code == 200, budget.text
+    rate = await owner.client.patch(
+        agent_path + "/operational-settings", json={"live_sample_rate": 100}
+    )
+    assert rate.status_code == 200, rate.text
+    public_id = (await owner.client.get(agent_path)).json()["public_id"]
+    token = await conversation_token(owner.client, public_id)
+    replied = await send(owner.client, public_id, token, "How much annual leave do I get?")
+    assert replied.status_code == 200, replied.text
+    (done,) = [data for event, data in parse_sse(replied.text) if event == "done"]
+    conversations = _CONVERSATIONS.format(organisation_id=owner.organisation_id, **params)
+    (row,) = (await owner.client.get(conversations)).json()["items"]
+    traced = await owner.client.get(
+        f"{conversations}/{row['id']}/messages/{done['message_id']}/trace"
+    )
+    verdict = traced.json()["live_verdict"]
+    assert verdict["status"] == "judged", traced.text
+    return {"live_verdict_id": verdict["id"], "check": "grounding"}, {"outcome": "pass"}
+
+
+async def _a_live_check_review(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, body = await _a_judged_live_check(owner, add_member)
+    put = await owner.client.put(
+        f"/api/organisations/{owner.organisation_id}/live-verdicts/"
+        f"{params['live_verdict_id']}/checks/{params['check']}/review",
+        json=body,
+    )
+    assert put.status_code == 200, put.text
+    return params, None
+
+
+async def _a_model_to_judge_with(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A Review sample item can be skipped once the Organisation has a model to judge with.
+    await use_default_model(owner)
+    return {}, None
+
+
 async def _an_evaluation_budget(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     return {}, {"evaluation_budget_usd": "25"}
+
+
+async def _judging_guidance(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    return {}, {"text": "Partial answers that say what they don't cover pass."}
+
+
+_VERDICT_REVIEW = "/api/organisations/{organisation_id}/verdicts/{verdict_id}/review"
+_LIVE_CHECK_REVIEW = (
+    "/api/organisations/{organisation_id}/live-verdicts/{live_verdict_id}/checks/{check}/review"
+)
+
+
+async def _reviews_to_check(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A finished Run's two judged Verdicts, both reviewed on the Review sample.
+    _, review = await _a_review_sample_item(owner, add_member)
+    sample = f"/api/organisations/{owner.organisation_id}/review-sample"
+    while review is not None:
+        reviewed = await owner.client.post(f"{sample}/reviews", json=review)
+        assert reviewed.status_code == 200, reviewed.text
+        item = (await owner.client.get(f"{sample}/next")).json()["item"]
+        review = None if item is None else {"verdict_id": item["verdict_id"], "outcome": "pass"}
+    return {}, {"text": "Partial answers that say what they don't cover pass."}
+
+
+async def _disagreements_to_draft(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    # A finished Run of 15 cases: 30 judged Verdicts, all reviewed pass on the Review sample. The
+    # fake judge fails every Reference answer (the fake reply lacks it): 15 disagreements.
+    params, _ = await _an_evaluation_to_start(owner, add_member)
+    cases = _EVALUATION.format(organisation_id=owner.organisation_id, **params) + "/cases"
+    for n in range(14):
+        created = await owner.client.post(
+            cases, json={**_EVALUATION_CASE, "question": f"How much leave, {n}?"}
+        )
+        assert created.status_code == 201, created.text
+    started = await owner.client.post(
+        _EVALUATION.format(organisation_id=owner.organisation_id, **params) + "/runs"
+    )
+    assert started.status_code == 202, started.text
+    sample = f"/api/organisations/{owner.organisation_id}/review-sample"
+    while (item := (await owner.client.get(f"{sample}/next")).json()["item"]) is not None:
+        review = {"verdict_id": item["verdict_id"], "outcome": "pass"}
+        reviewed = await owner.client.post(f"{sample}/reviews", json=review)
+        assert reviewed.status_code == 200, reviewed.text
+    return {}, None
+
+
+async def _a_queued_guidance_check(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    _, body = await _reviews_to_check(owner, add_member)
+    with patch.object(guidance_check_api, "enqueue_guidance_job", AsyncMock()):
+        started = await owner.client.post(
+            f"/api/organisations/{owner.organisation_id}/judging-guidance/checks", json=body
+        )
+    assert started.status_code == 202, started.text
+    return {"job_id": started.json()["id"]}, None
 
 
 ORGANISATION_SCOPED_ROUTES = [
@@ -901,6 +1046,59 @@ ORGANISATION_SCOPED_ROUTES = [
         OWNER,
         _an_evaluation_budget,
     ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/judging-guidance", EDITOR),
+    ScopedRoute(
+        "PUT", "/api/organisations/{organisation_id}/judging-guidance", OWNER, _judging_guidance
+    ),
+    ScopedRoute(
+        "POST",
+        "/api/organisations/{organisation_id}/judging-guidance/checks",
+        OWNER,
+        _reviews_to_check,
+    ),
+    ScopedRoute(
+        "GET",
+        "/api/organisations/{organisation_id}/judging-guidance/drafting",
+        OWNER,
+        _a_model_to_judge_with,
+    ),
+    ScopedRoute(
+        "POST",
+        "/api/organisations/{organisation_id}/judging-guidance/drafts",
+        OWNER,
+        _disagreements_to_draft,
+    ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/guidance-jobs/latest", OWNER),
+    ScopedRoute(
+        "GET",
+        "/api/organisations/{organisation_id}/guidance-jobs/{job_id}",
+        OWNER,
+        _a_queued_guidance_check,
+    ),
+    ScopedRoute(
+        "POST",
+        "/api/organisations/{organisation_id}/guidance-jobs/{job_id}/cancel",
+        OWNER,
+        _a_queued_guidance_check,
+    ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/review-sample/next", EDITOR),
+    ScopedRoute(
+        "POST",
+        "/api/organisations/{organisation_id}/review-sample/reviews",
+        EDITOR,
+        _a_review_sample_item,
+    ),
+    ScopedRoute(
+        "POST",
+        "/api/organisations/{organisation_id}/review-sample/skips",
+        EDITOR,
+        _a_model_to_judge_with,
+    ),
+    ScopedRoute("GET", "/api/organisations/{organisation_id}/evaluation-agreement", EDITOR),
+    ScopedRoute("PUT", _VERDICT_REVIEW, EDITOR, _a_judged_verdict),
+    ScopedRoute("DELETE", _VERDICT_REVIEW, EDITOR, _a_verdict_review),
+    ScopedRoute("PUT", _LIVE_CHECK_REVIEW, EDITOR, _a_judged_live_check),
+    ScopedRoute("DELETE", _LIVE_CHECK_REVIEW, EDITOR, _a_live_check_review),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/embedding-models", EDITOR),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/theme", EDITOR),
     ScopedRoute("PUT", "/api/organisations/{organisation_id}/theme", OWNER, _a_theme),

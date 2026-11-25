@@ -115,8 +115,17 @@ async def evaluated(member: SignedUpMember, project_id: str, agent_id: str) -> d
     return body
 
 
+def judgements(result: dict[str, Any]) -> list[dict[str, Any]]:
+    """The answer's Verdicts as judged: without the ID each answer's own Verdict has, and without
+    its review, which there is none of until an Editor gives one."""
+    assert [v["review"] for v in result["verdicts"]] == [None] * len(result["verdicts"])
+    return [
+        {k: v for k, v in each.items() if k not in ("id", "review")} for each in result["verdicts"]
+    ]
+
+
 def alike(result: dict[str, Any]) -> tuple[Any, ...]:
-    return (result["status"], result["error_reason"], result["answer"], result["verdicts"])
+    return (result["status"], result["error_reason"], result["answer"], judgements(result))
 
 
 def only_result(results: dict[str, Any]) -> dict[str, Any]:
@@ -132,8 +141,7 @@ def only_result(results: dict[str, Any]) -> dict[str, Any]:
         for position in positions
     ]
     assert [alike(other) for other in others] == [alike(first)] * len(others)
-    found: dict[str, Any] = first
-    return found
+    return {**first, "verdicts": judgements(first)}
 
 
 def outcomes(result: dict[str, Any]) -> list[tuple[str, str]]:

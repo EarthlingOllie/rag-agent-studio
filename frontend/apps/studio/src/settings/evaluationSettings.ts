@@ -2,6 +2,7 @@ import type { Schemas } from "@studio/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../api";
+import { agreementKey } from "../reviews/reviews";
 import { failed } from "./credentials";
 
 export type EvaluationSettings = Schemas["EvaluationSettingsOut"];
@@ -39,6 +40,8 @@ export function useSetEvaluationModel(organisationId: string) {
     },
     onSuccess: (saved) => {
       queryClient.setQueryData(settingsKey(organisationId), saved);
+      // A new Evaluation Model starts a new Judging setup, so agreement starts again under it.
+      void queryClient.invalidateQueries({ queryKey: agreementKey(organisationId) });
     },
   });
 }

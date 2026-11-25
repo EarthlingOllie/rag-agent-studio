@@ -18,6 +18,7 @@ import {
   repeat,
   results,
   run,
+  verdict,
 } from "../test/evaluation";
 import { aChunk, aDocument, fakeDocumentViewerApi } from "../test/documents";
 import { openSection } from "../test/navigation";
@@ -316,9 +317,11 @@ test("Run detail shows the sides, failing Verdicts with reasons, and each answer
   const parking = within(cases).getAllByRole("listitem").filter((item) => item.parentElement === cases)[1] as HTMLElement;
   expect(parking).toHaveTextContent("Repeat 1: Fail");
   expect(parking).toHaveTextContent("Reference answer: In the north car park.");
-  expect(within(parking).getByRole("list", { name: "Verdicts" })).toHaveTextContent(
-    "Reference answer: Fail. The answer doesn't name the north car park.Grounding: Fail. Nothing cited supports it.",
-  );
+  expect(
+    within(within(parking).getByRole("list", { name: "Verdicts" }))
+      .getAllByRole("listitem")
+      .map((item) => item.firstElementChild?.textContent),
+  ).toEqual(["Reference answer: Fail. The answer doesn't name the north car park.", "Grounding: Fail. Nothing cited supports it."]);
 
   const trace = within(parking).getByRole("group", { name: "Trace" });
   await user.click(within(trace).getByText("Trace"));
@@ -470,6 +473,16 @@ test("the set shows each case's latest result: pass, fail, Unsteady or Error", a
   expect(latestResults).toEqual(["Pass3/3", "PassUnsteady2/3", "Fail0/3", "Error", "Not run yet"]);
 });
 
+test("Run detail shows the Judging setup it was judged under in its header", async () => {
+  const runId = "r5000000-0000-4000-8000-000000000015";
+  const guided = results(run(runId, "completed", 1, 1, { judging_guidance_version: 2 }), [[leaveCase, [repeat(passed, 1)], caseSide("pass", 1, 1, 1)]]);
+  setUp({ cases: [leaveCase], runs: [guided] });
+  renderStudio(agentPage(hrHelper.id));
+
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" }, { timeout: 5000 });
+  expect(detail).toHaveTextContent("judged by openai gpt-4.1-mini with guidance version 2 · 1 repeat");
+});
+
 test("Run detail combines each case's repeats: the majority with its count, Unsteady, Error, and the score", async () => {
   const runId = "r5000000-0000-4000-8000-000000000005";
   const combined = results(
@@ -491,7 +504,8 @@ test("Run detail combines each case's repeats: the majority with its count, Unst
   renderStudio(agentPage(hrHelper.id));
 
   const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" }, { timeout: 5000 });
-  expect(detail).toHaveTextContent("judged by openai gpt-4.1-mini · 3 repeats");
+  // Its Judging setup: the judge model, and no Judging guidance.
+  expect(detail).toHaveTextContent("judged by openai gpt-4.1-mini with no guidance · 3 repeats");
   expect(within(detail).getByText("Evaluation score: 50%")).toBeInTheDocument();
   expect(detail).toHaveTextContent("1 passed, 1 failed, 1 Error left out of the score");
   const cases = within(detail).getByRole("list", { name: "Cases" });
@@ -938,15 +952,15 @@ test("Run detail shows Expected source and fallback Verdicts, Stale ones skipped
   const checked: typeof passed = {
     ...passed,
     verdicts: [
-      { kind: "expected_source", outcome: "pass", reason: "The answer cited the passage of leave.txt." },
-      { kind: "expected_source", outcome: "stale", reason: "parking.txt has been deleted, so this was skipped." },
-      { kind: "grounding", outcome: "pass", reason: "Every claim is in the cited excerpt." },
+      verdict("expected_source", "pass", "The answer cited the passage of leave.txt."),
+      verdict("expected_source", "stale", "parking.txt has been deleted, so this was skipped."),
+      verdict("grounding", "pass", "Every claim is in the cited excerpt."),
     ],
   };
   const fallbackCase = { ...parkingCase, reference_answer: null, expect_fallback: true };
   const fallbackResult: typeof passed = {
     ...failedResult,
-    verdicts: [{ kind: "fallback", outcome: "fail", reason: "The answer wasn't the Fallback Text or the Refusal text." }],
+    verdicts: [verdict("fallback", "fail", "The answer wasn't the Fallback Text or the Refusal text.")],
   };
   setUp({
     cases: [staleCase, fallbackCase],

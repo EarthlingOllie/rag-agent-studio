@@ -9,11 +9,11 @@
 - [19-02: Comparisons by Judging setup](./02-comparisons-by-judging-setup.md)
 - [19-05: Draft guidance from disagreements](./05-draft-guidance.md)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] End-to-end on the seeded stack with enough sample reviews: draft guidance with the fake judge, check it and see agreement rise, save it, and see the new Judging setup in the next Run's header
-- [ ] The axe checks cover the guidance card and the draft and check states
-- [ ] Live suite: one real-provider draft and check over a small seeded set of reviews, run nightly outside the coverage gate
-- [ ] New Studio UI uses the design system ([docs/design/README.md](../../design/README.md), `frontend/apps/studio/src/design`): its tokens, recipes and shared patterns (dialogs, toasts, badges, code blocks, meters, diffs, empty and loading states, bulk bar, segmented control, pagination, editable list), never Tailwind palette classes or `dark:`; the palette ratchet passes
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] End-to-end on the seeded stack with enough sample reviews: draft guidance with the fake judge, check it and see agreement rise, save it, and see the new Judging setup in the next Run's header
+- [x] The axe checks cover the guidance card and the draft and check states
+- [x] Live suite: one real-provider draft and check over a small seeded set of reviews, run nightly outside the coverage gate
+- [x] New Studio UI uses the design system ([docs/design/README.md](../../design/README.md), `frontend/apps/studio/src/design`): its tokens, recipes and shared patterns (dialogs, toasts, badges, code blocks, meters, diffs, empty and loading states, bulk bar, segmented control, pagination, editable list), never Tailwind palette classes or `dark:`; the palette ratchet passes
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

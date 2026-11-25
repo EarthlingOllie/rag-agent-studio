@@ -2,7 +2,9 @@
 Live Version with the Instructions being published, and what that Run found.
 
 Only completed Runs of the Draft against the current Live Version qualify (the Draft alone while
-the Agent has never been Published). The summary is advisory: the Publish dialog reads it, and
+the Agent has never been Published). Beside its state, it notes when the Draft's latest completed
+Run was judged under an earlier Judging setup than the current one (spec 19): its scores may read
+differently now. The summary is advisory: the Publish dialog reads it, and
 Publishing never depends on it.
 """
 
@@ -15,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import AgentVersion
 from app.agents.service import get_agent
+from app.evaluation.guidance import JudgingSetup, current_setup
 from app.evaluation.models import (
     EvaluationCase,
     EvaluationRun,
@@ -58,6 +61,13 @@ class PublishSummary:
     # The Instructions Version being published: the one chosen, else the Current one (None when
     # the Project has none).
     publishing_instructions_version_number: int | None
+    # The Draft's latest completed Run was judged under another Judging setup than the current
+    # one. A notice, never a warning.
+    earlier_judging_setup: bool = False
+
+
+def _setup(run: EvaluationRun) -> JudgingSetup:
+    return JudgingSetup(run.judge_provider, run.judge_model, run.judging_guidance_version)
 
 
 def _draft_last(sides: list[EvaluationRunSide]) -> bool:
@@ -108,11 +118,13 @@ async def publish_summary(
             lower_score,
             evaluated_live,
             None if publishing is None else publishing.number,
+            earlier_setup,
         )
 
     has_case = await session.scalar(
         select(EvaluationCase.id).where(EvaluationCase.agent_id == found.agent.id).limit(1)
     )
+    earlier_setup = False
     if has_case is None:
         return summary(SummaryState.NO_SET)
     runs = list(
@@ -133,6 +145,8 @@ async def publish_summary(
     ):
         sides.setdefault(side.run_id, []).append(side)
     of_draft = [run for run in runs if _draft_last(sides[run.id])]
+    current = await current_setup(session, scope.organisation_id)
+    earlier_setup = bool(of_draft) and _setup(of_draft[0]) != current
     live = found.agent.live_version_id
     qualifying = [run for run in of_draft if _against(sides[run.id]) == live]
     if not qualifying:

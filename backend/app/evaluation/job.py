@@ -28,6 +28,7 @@ import uuid
 from collections import Counter
 from dataclasses import dataclass
 from decimal import Decimal
+from typing import cast
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -39,14 +40,8 @@ from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
 from app.documents.service import current_chunks
 from app.evaluation.expectations import Check, check_expected_source, check_fallback
-from app.evaluation.judge import (
-    CitedExcerpt,
-    Judged,
-    JudgedVerdict,
-    JudgeError,
-    JudgeRequest,
-    judge,
-)
+from app.evaluation.judge import Judged, JudgedVerdict, JudgeError, JudgeRequest, judge
+from app.evaluation.judge_input import judge_input
 from app.evaluation.models import (
     EvaluationCaseResult,
     EvaluationExpectedSource,
@@ -300,16 +295,8 @@ async def _answer_and_judge(
     result.trace = _trace(result.id, answering, answered, result.cost_usd, latency_ms).model_dump(
         mode="json"
     )
-    request = JudgeRequest(
-        question=case.question,
-        answer=answered.answer,
-        cited=[
-            CitedExcerpt(f"C{chunk.rank}", chunk.document_name, chunk.text)
-            for chunk in answered.cited
-        ],
-        reference_answer=case.reference_answer,
-        grounding=not answered.fallback,
-    )
+    # Judged on what was just stored, so the same request can be rebuilt later.
+    request = cast(JudgeRequest, await judge_input(session, result))
     checks = await _checks(session, case, answered, resolved.config)
     verdicts: dict[Judged, JudgedVerdict] = {}
     if request.asked:

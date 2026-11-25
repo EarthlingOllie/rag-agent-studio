@@ -3,7 +3,8 @@ import { type SubmitEvent, useEffect, useId, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { Segmented, button, field, surface, text, useToast } from "../design";
-import { type Credential, credentialFailure, type ProviderId, useCredentials } from "./credentials";
+import { type Credential, credentialFailure, useCredentials } from "./credentials";
+import { EvaluationAgreementCard } from "./EvaluationAgreement";
 import { EvaluationBudgetSettings } from "./EvaluationBudget";
 import {
   type EvaluationSettings,
@@ -12,20 +13,12 @@ import {
   useSetEvaluationModel,
   useSetEvaluationRepeats,
 } from "./evaluationSettings";
+import { JudgingGuidanceSection } from "./JudgingGuidance";
 import { ChatModelOptions, withoutTools } from "./ModelOptions";
-import { type DefaultModel, useChatModels, useDefaultModel, useSetDefaultModel } from "./models";
+import { type DefaultModel, modelLabel, useChatModels, useDefaultModel, useSetDefaultModel } from "./models";
 import { PriceTable } from "./PriceTable";
 
-const PROVIDER_NAMES: Record<ProviderId, string> = {
-  anthropic: "Anthropic",
-  openai: "OpenAI",
-  bedrock: "Amazon Bedrock",
-  voyage: "Voyage AI",
-  // The seeded demo provider: canned answers from the Knowledge Base, never a real model.
-  demo: "Demo: canned answers, not a real model",
-};
-
-const label = (name: string, provider: ProviderId) => `${name} (${PROVIDER_NAMES[provider]})`;
+const label = modelLabel;
 
 function Current({ organisationId }: { organisationId: string }) {
   const current = useDefaultModel(organisationId);
@@ -321,6 +314,7 @@ function EvaluationSection({ organisationId, isOwner }: { organisationId: string
             </p>
             <p>{`Each side of a Run answers every case ${String(settings.data.repeats)} times.`}</p>
           </div>
+          <EvaluationAgreementCard organisationId={organisationId} />
           {isOwner ? (
             <EvaluationOwnerControls organisationId={organisationId} settings={settings.data} />
           ) : (
@@ -334,8 +328,8 @@ function EvaluationSection({ organisationId, isOwner }: { organisationId: string
 }
 
 /**
- * Models settings: the Organisation's Default Model, the Evaluation Model, Evaluation repeats and
- * Evaluation budget with this month's meter, and the price table. Every Member sees them; Owners choose the Default Model and the evaluation
+ * Models settings: the Organisation's Default Model, the Evaluation Model with its agreement card, Evaluation repeats and
+ * Evaluation budget with this month's meter, the Judging guidance, and the price table. Every Member sees them; Owners choose the Default Model and the evaluation
  * settings (confirmed by a toast) and override prices.
  */
 export function ModelsPage({ organisationId, isOwner }: { organisationId: string; isOwner: boolean }) {
@@ -343,6 +337,7 @@ export function ModelsPage({ organisationId, isOwner }: { organisationId: string
     <div className="flex flex-col gap-10">
       <DefaultModelSection organisationId={organisationId} isOwner={isOwner} />
       <EvaluationSection organisationId={organisationId} isOwner={isOwner} />
+      <JudgingGuidanceSection organisationId={organisationId} isOwner={isOwner} />
       <PriceTable organisationId={organisationId} isOwner={isOwner} />
     </div>
   );

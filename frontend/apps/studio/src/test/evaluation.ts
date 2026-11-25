@@ -56,6 +56,7 @@ export function run(
     progress: { done, total },
     judge_provider: "openai",
     judge_model: "gpt-4.1-mini",
+    judging_guidance_version: null,
     repeats: 1,
     error_message: null,
     stale: false,
@@ -86,6 +87,14 @@ export function run(
   };
 }
 
+let verdicts = 0;
+
+/** A Verdict with a fresh ID and no review. */
+export function verdict(kind: string, outcome: string, reason: string): CaseResult["verdicts"][number] {
+  verdicts += 1;
+  return { id: `7e1d0000-0000-4000-8000-${String(verdicts).padStart(12, "0")}`, kind, outcome, reason, review: null };
+}
+
 export const passed: CaseResult = {
   position: "first",
   repeat: 1,
@@ -94,16 +103,8 @@ export const passed: CaseResult = {
   answer: "Everyone gets 25 days of annual leave a year [C1].",
   passed: true,
   verdicts: [
-    {
-      kind: "reference_answer",
-      outcome: "pass",
-      reason: "The answer gives the 25 days the reference names.",
-    },
-    {
-      kind: "grounding",
-      outcome: "pass",
-      reason: "Every claim is in the cited excerpt.",
-    },
+    verdict("reference_answer", "pass", "The answer gives the 25 days the reference names."),
+    verdict("grounding", "pass", "Every claim is in the cited excerpt."),
   ],
   trace: {
     ...hrTrace,
@@ -117,16 +118,8 @@ export const failedResult: CaseResult = {
   answer: "Visitors can park anywhere.",
   passed: false,
   verdicts: [
-    {
-      kind: "reference_answer",
-      outcome: "fail",
-      reason: "The answer doesn't name the north car park.",
-    },
-    {
-      kind: "grounding",
-      outcome: "fail",
-      reason: "Nothing cited supports it.",
-    },
+    verdict("reference_answer", "fail", "The answer doesn't name the north car park."),
+    verdict("grounding", "fail", "Nothing cited supports it."),
   ],
 };
 
@@ -250,6 +243,7 @@ export function publishSummary(
     lower_score: false,
     evaluated_live_version_number: null,
     publishing_instructions_version_number: 2,
+    earlier_judging_setup: false,
     ...overrides,
   };
 }

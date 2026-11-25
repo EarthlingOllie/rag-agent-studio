@@ -148,7 +148,7 @@ export function versionComparison(
   metrics: MetricRow[],
   config_diff: AgentDiff,
 ): Omit<VersionComparison, "agent_id" | "start" | "end"> {
-  return { a, b, metrics, config_diff };
+  return { a, b, metrics, config_diff, judging_setup_changes: [], mixed_judging_setups: false };
 }
 
 /**
@@ -221,6 +221,8 @@ export function fakeTimeSeriesApi(
         ),
         markers: [],
         document_changes: { changed: 0, deleted: 0 },
+        judging_setup_changes: [],
+        mixed_judging_setups: false,
         ...options.respond?.(query),
       };
       return HttpResponse.json(series);

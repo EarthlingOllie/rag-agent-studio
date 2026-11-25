@@ -137,9 +137,13 @@ export function useConversation(path: ConversationPath) {
   });
 }
 
+/** Where a reply's Trace is kept: read again once a review of its Live Verdict changes. */
+export const traceKey = (path: { organisation_id: string; message_id: string }) =>
+  ["conversation-trace", path.organisation_id, path.message_id] as const;
+
 export function useConversationTrace(path: ConversationPath & { message_id: string }) {
   return useQuery({
-    queryKey: ["conversation-trace", path.organisation_id, path.message_id],
+    queryKey: traceKey(path),
     queryFn: async (): Promise<ConversationTrace> => {
       const { data, response } = await api.GET(
         "/api/organisations/{organisation_id}/projects/{project_id}/conversations/{conversation_id}/messages/{message_id}/trace",

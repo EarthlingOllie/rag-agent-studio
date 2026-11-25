@@ -265,6 +265,12 @@ export function PublishEvaluation({
         Evaluation
       </h3>
       {body}
+      {summary.data?.earlier_judging_setup === true && (
+        <Notice tone="info">
+          The Draft&apos;s latest Run was judged under an earlier Judging setup (another Evaluation Model or Judging guidance
+          version), so its scores may read differently now. You can still Publish.
+        </Notice>
+      )}
       {summary.data !== undefined && summary.data.state !== "no_set" && (
         <>
           <div>

@@ -62,6 +62,10 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("MODEL_GATEWAY", "fake")
     # The Live sample rate's draws are seeded, so a sampled subset is the same every run.
     monkeypatch.setenv("LIVE_SAMPLE_SEED", "15")
+    # So is the Review sample's draw, so the item served is the same every run.
+    monkeypatch.setenv("REVIEW_SAMPLE_SEED", "18")
+    # And the guidance check's split, so the held-out half is the same every run.
+    monkeypatch.setenv("GUIDANCE_SPLIT_SEED", "19")
 
 
 @pytest.fixture(scope="session")

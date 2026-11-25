@@ -17,7 +17,7 @@ export const notSignedIn: Schemas["ErrorResponse"] = {
 };
 
 /** Default handlers describe a healthy stack, a visitor who is not signed in, no Projects, Documents, Tags, Agents or
- * Conversations (so no Instructions rollout), no Evaluation Sets or Rollout evaluations, no Evaluation budget, and the default Retention Window. */
+ * Conversations (so no Instructions rollout), no Evaluation Sets or Rollout evaluations, no Evaluation budget or Judging guidance, and the default Retention Window. */
 export const server = setupServer(
   http.get("*/api/health", () => HttpResponse.json(healthy)),
   http.get("*/api/organisations/:organisationId/projects", () =>
@@ -71,6 +71,16 @@ export const server = setupServer(
       retention_days: 90,
     }),
   ),
+  // No Organisation has saved Judging guidance.
+  http.get("*/api/organisations/:organisationId/judging-guidance", () => HttpResponse.json({ current: null, versions: [] })),
+  // Nor has a model to draft it with.
+  http.get("*/api/organisations/:organisationId/judging-guidance/drafting", () =>
+    HttpResponse.json({ detail: "The Organisation has neither an Evaluation Model nor a Default Model to judge with." }, { status: 422 }),
+  ),
+  // Nor started a draft or check of it.
+  http.get("*/api/organisations/:organisationId/guidance-jobs/latest", () => HttpResponse.json(null)),
+  // No Organisation has a model to judge with, so there is no Evaluation Model agreement.
+  http.get("*/api/organisations/:organisationId/evaluation-agreement", () => HttpResponse.json({ current: null, earlier: [], reviewed: 0, reviewed_by_you: 0, skipped: 0 })),
   // No Organisation has an Evaluation budget, so no Visitor reply is judged.
   http.get("*/api/organisations/:organisationId/evaluation-budget", () =>
     HttpResponse.json({

@@ -683,6 +683,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/evaluation-agreement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Evaluation Agreement
+         * @description Evaluation Model agreement over Review sample reviews: the current Judging setup's
+         *     figures (rate with its Wilson interval, Low sample, false passes and false fails, overall
+         *     and per check), the earlier Judging setups (Evaluation Model and guidance version) that have
+         *     reviews, and how many sample reviews the Organisation and you have given and items were
+         *     skipped.
+         */
+        get: operations["getEvaluationAgreement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/evaluation-budget": {
         parameters: {
             query?: never;
@@ -774,6 +798,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/guidance-jobs/latest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Latest Guidance Job
+         * @description The most recently started draft or check, with its progress and result; null before the
+         *     first (Owners only).
+         */
+        get: operations["getLatestGuidanceJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/guidance-jobs/{job_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Guidance Job
+         * @description A draft or check, with its progress and result (Owners only).
+         */
+        get: operations["getGuidanceJob"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/guidance-jobs/{job_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel Guidance Job
+         * @description Cancels a draft or check in progress, keeping what it counted and spent (Owners only).
+         */
+        post: operations["cancelGuidanceJob"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/invites": {
         parameters: {
             query?: never;
@@ -838,6 +923,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/judging-guidance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Judging Guidance
+         * @description The Judging guidance every new judgement uses (null until first saved) and its versions,
+         *     newest first. Open to every Member.
+         */
+        get: operations["getJudgingGuidance"];
+        /**
+         * Save Judging Guidance
+         * @description Saves the Judging guidance as a new current version, which new Evaluation Runs and Live
+         *     Verdicts are judged with; empty text removes it (Owners only). Text from a completed draft
+         *     is saved as ``drafted``. Saving the current text again changes nothing. Recorded as
+         *     ``organisation.judging_guidance_changed``.
+         */
+        put: operations["saveJudgingGuidance"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/judging-guidance/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Guidance Check
+         * @description Starts checking guidance text: the Evaluation Model re-judges the held-out half of the
+         *     current Judging setup's Review sample reviews with it, in the background (Owners only). At
+         *     most one draft or check is in progress per Organisation. Its Cost counts in Organisation
+         *     cost, never against the Evaluation budget.
+         */
+        post: operations["startGuidanceCheck"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/judging-guidance/drafting": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Guidance Drafting
+         * @description Whether drafting guidance from Editors' disagreements is offered under the current
+         *     Judging setup, what is missing if not, and the estimated Cost (Owners only).
+         */
+        get: operations["getGuidanceDrafting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/judging-guidance/drafts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Guidance Draft
+         * @description Starts drafting guidance: the Evaluation Model reads the current Judging setup's
+         *     disagreeing reviews outside the held-out half and the current guidance, in the background,
+         *     and proposes guidance with an explanation (Owners only). At most one draft or check is in
+         *     progress per Organisation. Its Cost counts in Organisation cost, never against the
+         *     Evaluation budget.
+         */
+        post: operations["startGuidanceDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/leave": {
         parameters: {
             query?: never;
@@ -853,6 +1034,35 @@ export interface paths {
          */
         post: operations["leaveOrganisation"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/live-verdicts/{live_verdict_id}/checks/{check}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Live Verdict Review
+         * @description Stores your review of one check of a judged Live Verdict in the Trace, replacing any
+         *     earlier review of it (one from the Review sample then stops counting towards agreement).
+         *     It takes the check out of the Review sample and never changes the Live Verdict. A Live
+         *     Verdict that isn't judged or whose text is gone, or another Organisation's, is not
+         *     found.
+         */
+        put: operations["putLiveVerdictReview"];
+        post?: never;
+        /**
+         * Delete Live Verdict Review
+         * @description Removes the review of the Live Verdict's check, which puts it back in the Review sample
+         *     while its text is still there. Not found when it has none.
+         */
+        delete: operations["deleteLiveVerdictReview"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1107,8 +1317,8 @@ export interface paths {
          * Compare Versions
          * @description Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at
          *     most 366 days, today's so far included): each Version's KPIs, every metric's difference and
-         *     the Version it favours, and the configuration diff from `a` to `b`. Only Visitor
-         *     Conversations count.
+         *     the Version it favours, the configuration diff from `a` to `b`, and the Judging setup
+         *     changes during the range. Only Visitor Conversations count.
          */
         get: operations["compareVersions"];
         put?: never;
@@ -1897,8 +2107,8 @@ export interface paths {
          * Get Time Series
          * @description One metric of the Agent (every Version together) per period of the UTC days `start` to
          *     `end` (both inclusive, at most 366 days), including today's so far; with markers where the
-         *     Live Version changed and the Project's Document changes during the range. Only Visitor
-         *     Conversations count.
+         *     Live Version changed, the Project's Document changes and the Judging setup changes during
+         *     the range. Only Visitor Conversations count.
          */
         get: operations["getTimeSeries"];
         put?: never;
@@ -2653,6 +2863,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/review-sample/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Review Sample Item
+         * @description One judged Verdict or Live Verdict check drawn at random from those under the current
+         *     Judging setup (Evaluation Model and Judging guidance version) not yet reviewed whose text
+         *     is still there (null when there are none), without the Evaluation Model's outcome or
+         *     reason, and how many Review sample reviews the Organisation and you have given.
+         */
+        get: operations["getReviewSampleItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/review-sample/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Submit Sample Review
+         * @description Stores your pass or fail on a Review sample item, replacing any earlier review of it,
+         *     and reveals the Evaluation Model's outcome and reason. A Verdict that isn't a judged
+         *     Reference answer or grounding Verdict of this Organisation, or a Live Verdict that isn't
+         *     judged or whose text is gone, is not found.
+         */
+        post: operations["submitSampleReview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/review-sample/skips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Skip Review Sample Item
+         * @description Counts an item you skipped on the Review sample against the current Judging setup.
+         *     No review is stored, so the item stays in the sample. Not found while the Organisation has
+         *     no model to judge with.
+         */
+        post: operations["skipReviewSampleItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/theme": {
         parameters: {
             query?: never;
@@ -2724,6 +3002,34 @@ export interface paths {
          */
         post: operations["startThemeImageUpload"];
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/verdicts/{verdict_id}/review": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Put Verdict Review
+         * @description Stores your review of a judged Reference answer or grounding Verdict in Run results,
+         *     replacing any earlier review of it (one from the Review sample then stops counting towards
+         *     agreement). It takes the Verdict out of the Review sample and never changes the Verdict.
+         *     Any other Verdict, or another Organisation's, is not found.
+         */
+        put: operations["putVerdictReview"];
+        post?: never;
+        /**
+         * Delete Verdict Review
+         * @description Removes the Verdict's review, which puts it back in the Review sample. Not found when it
+         *     has none.
+         */
+        delete: operations["deleteVerdictReview"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3012,6 +3318,37 @@ export interface components {
             live_version_id: string | null;
             /** Versions */
             versions: components["schemas"]["AgentVersionOut"][];
+        };
+        /**
+         * AgreementOut
+         * @description One Judging setup's agreement: overall, then per check that has reviews (grounding,
+         *     answers the question, Reference answer).
+         */
+        AgreementOut: {
+            /** Agreed */
+            agreed: number;
+            /** Checks */
+            checks: components["schemas"]["CheckAgreementOut"][];
+            /** False Fails */
+            false_fails: number;
+            /** False Passes */
+            false_passes: number;
+            /** Guidance Version */
+            guidance_version: number | null;
+            /** High */
+            high: number | null;
+            /** Low */
+            low: number | null;
+            /** Low Sample */
+            low_sample: boolean;
+            /** Model */
+            model: string;
+            /** Provider */
+            provider: string;
+            /** Rate */
+            rate: number | null;
+            /** Reviews */
+            reviews: number;
         };
         /** AppliedSuggestionOut */
         AppliedSuggestionOut: {
@@ -3335,6 +3672,30 @@ export interface components {
          * @enum {string}
          */
         ChangeState: "clean" | "applied" | "clash";
+        /** CheckAgreementOut */
+        CheckAgreementOut: {
+            /** Agreed */
+            agreed: number;
+            /**
+             * Check
+             * @enum {string}
+             */
+            check: "reference_answer" | "grounding" | "answers_question";
+            /** False Fails */
+            false_fails: number;
+            /** False Passes */
+            false_passes: number;
+            /** High */
+            high: number | null;
+            /** Low */
+            low: number | null;
+            /** Low Sample */
+            low_sample: boolean;
+            /** Rate */
+            rate: number | null;
+            /** Reviews */
+            reviews: number;
+        };
         /** CheckFailedResponse */
         CheckFailedResponse: {
             /** Detail */
@@ -4088,6 +4449,38 @@ export interface components {
             latest?: components["schemas"]["AgentOut"] | null;
         };
         /**
+         * DraftPartOut
+         * @description A part of a draft's explanation: a rule in a short sentence, and the reviews it answers.
+         */
+        DraftPartOut: {
+            /** Part */
+            part: string;
+            /** Reviews */
+            reviews: string[];
+        };
+        /**
+         * DraftingOut
+         * @description Whether drafting guidance is offered under the current Judging setup, and its estimate.
+         */
+        DraftingOut: {
+            /** Disagreements */
+            disagreements: number;
+            /** Estimated Cost Usd */
+            estimated_cost_usd: string | null;
+            /** Missing */
+            missing: string | null;
+            /** Needs Disagreements */
+            needs_disagreements: number;
+            /** Needs Sample Reviews */
+            needs_sample_reviews: number;
+            /** Offered */
+            offered: boolean;
+            /** Reviews Read */
+            reviews_read: number;
+            /** Sample Reviews */
+            sample_reviews: number;
+        };
+        /**
          * EmbeddingModelChoiceOut
          * @description An Embedding Model the Organisation can choose, and the credential it is called
          *     through (none for the built-in local model).
@@ -4160,6 +4553,18 @@ export interface components {
             sides: number;
             /** Total Usd */
             total_usd: string | null;
+        };
+        /** EvaluationAgreementOut */
+        EvaluationAgreementOut: {
+            current: components["schemas"]["AgreementOut"] | null;
+            /** Earlier */
+            earlier: components["schemas"]["AgreementOut"][];
+            /** Reviewed */
+            reviewed: number;
+            /** Reviewed By You */
+            reviewed_by_you: number;
+            /** Skipped */
+            skipped: number;
         };
         /** EvaluationBudgetOut */
         EvaluationBudgetOut: {
@@ -4494,6 +4899,111 @@ export interface components {
              */
             refusal_text: string;
         };
+        /**
+         * GuidanceCheckOut
+         * @description The latest check of a version's text before it was saved: held-out reviews counted, how
+         *     many it would agree on, its false passes and false fails, how many the Judging setup it
+         *     replaced agreed on, and whether that is a Low sample (under 30 reviews).
+         */
+        GuidanceCheckOut: {
+            /** Agreed */
+            agreed: number;
+            /** Agreed Before */
+            agreed_before: number;
+            /** False Fails */
+            false_fails: number;
+            /** False Passes */
+            false_passes: number;
+            /** Low Sample */
+            low_sample: boolean;
+            /** Reviews */
+            reviews: number;
+        };
+        /**
+         * GuidanceDraftOut
+         * @description What a completed draft proposes: guidance text, up to 2,000 characters, and its
+         *     explanation.
+         */
+        GuidanceDraftOut: {
+            /** Explanation */
+            explanation: components["schemas"]["DraftPartOut"][];
+            /** Text */
+            text: string;
+        };
+        /** GuidanceJobOut */
+        GuidanceJobOut: {
+            /** Agreed */
+            agreed: number;
+            /** Agreed Before */
+            agreed_before: number;
+            /** Cost Usd */
+            cost_usd: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            draft: components["schemas"]["GuidanceDraftOut"] | null;
+            /** Error Reason */
+            error_reason: string | null;
+            /** False Fails */
+            false_fails: number;
+            /** False Passes */
+            false_passes: number;
+            /** Finished At */
+            finished_at: string | null;
+            /** Held Out */
+            held_out: number;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Judged */
+            judged: number;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "check" | "draft";
+            /** Left Out */
+            left_out: number;
+            /** Low Sample */
+            low_sample: boolean;
+            /** Requested By */
+            requested_by: string | null;
+            /** Reviews Read */
+            reviews_read: number;
+            /** Started At */
+            started_at: string | null;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "queued" | "running" | "completed" | "failed" | "cancelled";
+            /** Text */
+            text: string;
+        };
+        /** GuidanceVersionOut */
+        GuidanceVersionOut: {
+            check: components["schemas"]["GuidanceCheckOut"] | null;
+            /**
+             * Saved At
+             * Format: date-time
+             */
+            saved_at: string;
+            /** Saved By */
+            saved_by: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "written" | "drafted";
+            /** Text */
+            text: string;
+            /** Version */
+            version: number;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -4704,6 +5214,36 @@ export interface components {
             link: string;
         };
         JsonValue: unknown;
+        /** JudgingGuidanceOut */
+        JudgingGuidanceOut: {
+            current: components["schemas"]["GuidanceVersionOut"] | null;
+            /** Versions */
+            versions: components["schemas"]["GuidanceVersionOut"][];
+        };
+        /**
+         * JudgingSetupChangeOut
+         * @description A change of the Organisation's Judging setup during the range: Judging guidance saved or
+         *     removed, or the Evaluation Model changed. Live Verdicts judged before and after it don't
+         *     compare like with like.
+         */
+        JudgingSetupChangeOut: {
+            /** Evaluation Model */
+            evaluation_model: string | null;
+            /** Guidance Removed */
+            guidance_removed: boolean;
+            /** Guidance Version */
+            guidance_version: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "guidance" | "evaluation_model";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+        };
         /** KnowledgeBaseGapOut */
         KnowledgeBaseGapOut: {
             /** Evidence Ids */
@@ -4770,6 +5310,7 @@ export interface components {
             outcome: "pass" | "fail";
             /** Reason */
             reason: string | null;
+            review: components["schemas"]["VerdictReviewOut"] | null;
         };
         /** LiveHistoryEntryOut */
         LiveHistoryEntryOut: {
@@ -4851,6 +5392,11 @@ export interface components {
             /** Error Reason */
             error_reason: string | null;
             grounded: components["schemas"]["LiveCheckOut"] | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /** Input Tokens */
             input_tokens: number | null;
             /** Judge Model */
@@ -4859,6 +5405,8 @@ export interface components {
             judge_provider: string | null;
             /** Judged At */
             judged_at: string | null;
+            /** Judging Guidance Version */
+            judging_guidance_version: number | null;
             /** Output Tokens */
             output_tokens: number | null;
             /** Passed */
@@ -5409,6 +5957,8 @@ export interface components {
          *     Instructions being published. Advisory: Publishing never depends on it.
          */
         PublishSummaryOut: {
+            /** Earlier Judging Setup */
+            earlier_judging_setup: boolean;
             /** Evaluated Live Version Number */
             evaluated_live_version_number: number | null;
             /** Lower Score */
@@ -5501,6 +6051,13 @@ export interface components {
             kind: string;
             /** Reason */
             reason: string | null;
+        };
+        /** RememberedTurnOut */
+        RememberedTurnOut: {
+            /** Answer */
+            answer: string;
+            /** Question */
+            question: string;
         };
         /** RenewInviteRequest */
         RenewInviteRequest: {
@@ -5608,6 +6165,71 @@ export interface components {
          * @enum {string}
          */
         RetrievalMode: "automatic" | "agentic";
+        /** ReviewChunkOut */
+        ReviewChunkOut: {
+            /** Cited */
+            cited: boolean;
+            /** Document Name */
+            document_name: string;
+            /** Label */
+            label: string;
+            /** Text */
+            text: string;
+        };
+        /**
+         * ReviewRequest
+         * @description An Editor's agree or disagree with the shown pass or fail, as their own pass or fail.
+         */
+        ReviewRequest: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "pass" | "fail";
+            /** Reason */
+            reason?: string | null;
+        };
+        /**
+         * ReviewSampleItemOut
+         * @description A judged Verdict or Live Verdict check, as the Evaluation Model was given it, without its
+         *     outcome or reason. Exactly one of ``verdict_id`` and ``live_verdict_id`` is set.
+         */
+        ReviewSampleItemOut: {
+            /**
+             * Agent Id
+             * Format: uuid
+             */
+            agent_id: string;
+            /** Agent Name */
+            agent_name: string;
+            /** Answer */
+            answer: string;
+            /**
+             * Check
+             * @enum {string}
+             */
+            check: "reference_answer" | "grounding" | "answers_question";
+            /** Chunks */
+            chunks: components["schemas"]["ReviewChunkOut"][];
+            /** Live Verdict Id */
+            live_verdict_id: string | null;
+            /** Question */
+            question: string;
+            /** Reference Answer */
+            reference_answer: string | null;
+            /** Remembered Turns */
+            remembered_turns: components["schemas"]["RememberedTurnOut"][];
+            /** Verdict Id */
+            verdict_id: string | null;
+        };
+        /** ReviewSampleNextOut */
+        ReviewSampleNextOut: {
+            item: components["schemas"]["ReviewSampleItemOut"] | null;
+            /** Reviewed */
+            reviewed: number;
+            /** Reviewed By You */
+            reviewed_by_you: number;
+        };
         /**
          * Role
          * @enum {string}
@@ -5765,6 +6387,8 @@ export interface components {
             judge_model: string;
             /** Judge Provider */
             judge_provider: string;
+            /** Judging Guidance Version */
+            judging_guidance_version: number | null;
             /** Kind */
             kind: string;
             progress: components["schemas"]["ProgressOut"];
@@ -5811,6 +6435,56 @@ export interface components {
             score: number | null;
             /** Version Number */
             version_number: number | null;
+        };
+        /**
+         * SampleReviewOut
+         * @description The reveal: the Editor's outcome beside the Evaluation Model's, and its reason.
+         */
+        SampleReviewOut: {
+            /** Agreed */
+            agreed: boolean;
+            /**
+             * Evaluation Model Outcome
+             * @enum {string}
+             */
+            evaluation_model_outcome: "pass" | "fail";
+            /** Evaluation Model Reason */
+            evaluation_model_reason: string | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "pass" | "fail";
+        };
+        /**
+         * SampleReviewRequest
+         * @description A review of a Run Verdict (``verdict_id``) or of one check of a Live Verdict
+         *     (``live_verdict_id`` and ``check``): exactly one of the two IDs.
+         */
+        SampleReviewRequest: {
+            /** Check */
+            check?: ("reference_answer" | "grounding" | "answers_question") | null;
+            /** Live Verdict Id */
+            live_verdict_id?: string | null;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "pass" | "fail";
+            /** Reason */
+            reason?: string | null;
+            /** Verdict Id */
+            verdict_id?: string | null;
+        };
+        /**
+         * SaveJudgingGuidanceRequest
+         * @description The new guidance, up to 2,000 characters; empty (or only spaces) removes it.
+         */
+        SaveJudgingGuidanceRequest: {
+            /** Draft Id */
+            draft_id?: string | null;
+            /** Text */
+            text: string;
         };
         /**
          * ScopedAgentOut
@@ -5944,6 +6618,14 @@ export interface components {
             organisation_name: string;
             /** Password */
             password: string;
+        };
+        /**
+         * StartCheckRequest
+         * @description The guidance text to check, up to 2,000 characters; it needn't be saved.
+         */
+        StartCheckRequest: {
+            /** Text */
+            text: string;
         };
         /** StartConversationRequest */
         StartConversationRequest: {
@@ -6453,6 +7135,35 @@ export interface components {
          * @enum {string}
          */
         TimeSeriesGranularity: "day" | "week" | "month";
+        /** TimeSeriesJudgingSetupChangeOut */
+        TimeSeriesJudgingSetupChangeOut: {
+            /**
+             * Day
+             * Format: date
+             */
+            day: string;
+            /** Evaluation Model */
+            evaluation_model: string | null;
+            /** Guidance Removed */
+            guidance_removed: boolean;
+            /** Guidance Version */
+            guidance_version: number | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "guidance" | "evaluation_model";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /**
+             * Point Start
+             * Format: date
+             */
+            point_start: string;
+        };
         /**
          * TimeSeriesMetric
          * @description What a time series measures, over each of its periods.
@@ -6473,9 +7184,13 @@ export interface components {
              */
             end: string;
             granularity: components["schemas"]["TimeSeriesGranularity"];
+            /** Judging Setup Changes */
+            judging_setup_changes: components["schemas"]["TimeSeriesJudgingSetupChangeOut"][];
             /** Markers */
             markers: components["schemas"]["LiveHistoryMarkerOut"][];
             metric: components["schemas"]["TimeSeriesMetric"];
+            /** Mixed Judging Setups */
+            mixed_judging_setups: boolean;
             /** Points */
             points: components["schemas"]["TimeSeriesPointOut"][];
             /**
@@ -6683,12 +7398,42 @@ export interface components {
         };
         /** VerdictOut */
         VerdictOut: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
             /** Kind */
             kind: string;
             /** Outcome */
             outcome: string;
             /** Reason */
             reason: string | null;
+            review: components["schemas"]["VerdictReviewOut"] | null;
+        };
+        /**
+         * VerdictReviewOut
+         * @description An Editor's review of a judged Verdict or Live Verdict check, as shown on it.
+         */
+        VerdictReviewOut: {
+            /** From Sample */
+            from_sample: boolean;
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "pass" | "fail";
+            /** Purged At */
+            purged_at: string | null;
+            /** Reason */
+            reason: string | null;
+            /**
+             * Reviewed At
+             * Format: date-time
+             */
+            reviewed_at: string;
+            /** Reviewed By */
+            reviewed_by: string | null;
         };
         /** VersionAuthor */
         VersionAuthor: {
@@ -6715,8 +7460,12 @@ export interface components {
              * Format: date
              */
             end: string;
+            /** Judging Setup Changes */
+            judging_setup_changes: components["schemas"]["JudgingSetupChangeOut"][];
             /** Metrics */
             metrics: components["schemas"]["MetricRowOut"][];
+            /** Mixed Judging Setups */
+            mixed_judging_setups: boolean;
             /**
              * Start
              * Format: date
@@ -8603,6 +9352,46 @@ export interface operations {
             };
         };
     };
+    getEvaluationAgreement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvaluationAgreementOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     getEvaluationBudget: {
         parameters: {
             query?: never;
@@ -8838,6 +9627,164 @@ export interface operations {
             };
         };
     };
+    getLatestGuidanceJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidanceJobOut"] | null;
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getGuidanceJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidanceJobOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancelGuidanceJob: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                job_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidanceJobOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Only a draft or check in progress can be cancelled. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     listInvites: {
         parameters: {
             query?: never;
@@ -9051,6 +9998,266 @@ export interface operations {
             };
         };
     };
+    getJudgingGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JudgingGuidanceOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    saveJudgingGuidance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveJudgingGuidanceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JudgingGuidanceOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Longer than 2,000 characters, or not a completed draft */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    startGuidanceCheck: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StartCheckRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidanceJobOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A draft or check is already in progress in the Organisation. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No model to judge with, too few reviews, or too long */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGuidanceDrafting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DraftingOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No model to judge with */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    startGuidanceDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GuidanceJobOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description A draft or check is already in progress in the Organisation. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description No model to judge with, or drafting isn't offered yet */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     leaveOrganisation: {
         parameters: {
             query?: never;
@@ -9080,6 +10287,90 @@ export interface operations {
             };
             /** @description An Organisation needs at least one Owner. Make someone else an Owner first. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    putLiveVerdictReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                live_verdict_id: string;
+                check: "grounding" | "answers_question";
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerdictReviewOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not pass or fail, or a reason over 1,000 characters */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteLiveVerdictReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                live_verdict_id: string;
+                check: "grounding" | "answers_question";
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -14406,6 +15697,126 @@ export interface operations {
             };
         };
     };
+    getReviewSampleItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewSampleNextOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    submitSampleReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SampleReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SampleReviewOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not pass or fail, a reason over 1,000 characters, or not exactly one target (a Live Verdict needs its check) */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    skipReviewSampleItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description No model to judge with */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     getTheme: {
         parameters: {
             query?: never;
@@ -14709,6 +16120,88 @@ export interface operations {
             };
             /** @description Upload a PNG, JPEG or WebP image. */
             415: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    putVerdictReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                verdict_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerdictReviewOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not pass or fail, or a reason over 1,000 characters */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    deleteVerdictReview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                verdict_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

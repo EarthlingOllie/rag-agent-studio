@@ -23,6 +23,7 @@ import {
   text,
 } from "../design";
 import { formatTime } from "../settings/AuditPage";
+import { judgingGuidance } from "../settings/models";
 import { type Agent, useAgents, useAgentVersions } from "./agents";
 import {
   CASES_MAX,
@@ -41,6 +42,7 @@ import {
   useCopyEvaluationCases,
   useDeleteEvaluationCase,
   useEvaluationCases,
+  runResultsKey,
   useEvaluationRunResults,
   useEvaluationRuns,
   useStartEvaluationRun,
@@ -51,6 +53,8 @@ import { type AgentPath, CaseEditor } from "./EvaluationCaseEditor";
 import { ExpectationSummary, StaleBadge } from "./EvaluationExpectations";
 import { AgentSuggestions } from "./AgentSuggestions";
 import { TraceBody, TraceFold } from "./Trace";
+import type { ReviewOutcome } from "../reviews/reviews";
+import { VerdictReviewControls } from "../reviews/VerdictReview";
 
 const OUTCOME_BADGES = { pass: "evaluationPass", fail: "evaluationFail", error: "evaluationError" } as const;
 
@@ -266,8 +270,39 @@ function SideOutcome({ side, unsteady }: { side: EvaluationCaseSide; unsteady: b
   return <ResultBadges result={side} unsteady={unsteady} count={`${String(side.passed)}/${String(side.answered)} repeats passed`} />;
 }
 
-/** One answer of a case: its repeat's outcome, Verdicts with the judge's reasons, and its Trace. */
-function CaseAnswer({ result }: { result: EvaluationCaseResult }) {
+/** The Verdicts the Evaluation Model judged, and so the ones an Editor can review. */
+const REVIEWED_KINDS: readonly string[] = ["reference_answer", "grounding"];
+
+type Verdict = EvaluationCaseResult["verdicts"][number];
+
+/** A Verdict with its judge's reason and, when the Evaluation Model judged it, the Editor's review controls. */
+function VerdictItem({ verdict, path, runId }: { verdict: Verdict; path: AgentPath; runId: string }) {
+  const outcome = VERDICT_OUTCOMES[verdict.outcome as keyof typeof VERDICT_OUTCOMES];
+  const name = VERDICTS[verdict.kind as keyof typeof VERDICTS];
+  const judged = REVIEWED_KINDS.includes(verdict.kind) && verdict.outcome !== "stale";
+  return (
+    <li className="flex flex-col gap-2">
+      <p>
+        <span className="font-medium">{name}: </span>
+        <span className={outcome.className}>{outcome.word}</span>
+        <span className="text-ink-2">. {verdict.reason}</span>
+      </p>
+      {judged && (
+        <VerdictReviewControls
+          organisationId={path.organisation_id}
+          target={{ verdict_id: verdict.id }}
+          judged={verdict.outcome as ReviewOutcome}
+          review={verdict.review}
+          shownKey={runResultsKey(path, runId)}
+          label={`the ${name} Verdict`}
+        />
+      )}
+    </li>
+  );
+}
+
+/** One answer of a case: its repeat's outcome, Verdicts with the judge's reasons and reviews, and its Trace. */
+function CaseAnswer({ result, path, runId }: { result: EvaluationCaseResult; path: AgentPath; runId: string }) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm">
@@ -282,17 +317,10 @@ function CaseAnswer({ result }: { result: EvaluationCaseResult }) {
       )}
       {result.error_reason !== null && <Notice tone="error">{result.error_reason}</Notice>}
       {result.verdicts.length > 0 && (
-        <ul aria-label="Verdicts" className="flex flex-col gap-1 text-sm">
-          {result.verdicts.map((verdict, index) => {
-            const outcome = VERDICT_OUTCOMES[verdict.outcome as keyof typeof VERDICT_OUTCOMES];
-            return (
-              <li key={index}>
-                <span className="font-medium">{VERDICTS[verdict.kind as keyof typeof VERDICTS]}: </span>
-                <span className={outcome.className}>{outcome.word}</span>
-                <span className="text-ink-2">. {verdict.reason}</span>
-              </li>
-            );
-          })}
+        <ul aria-label="Verdicts" className="flex flex-col gap-3 text-sm">
+          {result.verdicts.map((verdict) => (
+            <VerdictItem key={verdict.id} verdict={verdict} path={path} runId={runId} />
+          ))}
         </ul>
       )}
       {result.trace !== null && (
@@ -340,7 +368,8 @@ function RunDetail({ path, runId, readOnly, focusCase }: { path: AgentPath; runI
             Run of {formatTime(run.created_at)}
           </h3>
           <p className={text.muted}>
-            <RunStatus run={run} /> · {sideSummary(run)} · judged by {run.judge_provider} {run.judge_model} · {repeatsWord(run.repeats)}
+            <RunStatus run={run} /> · {sideSummary(run)} · judged by {run.judge_provider} {run.judge_model}{" "}
+            {judgingGuidance(run.judging_guidance_version)} · {repeatsWord(run.repeats)}
           </p>
           <p className={text.muted}>{costSummary(run)}</p>
         </div>
@@ -403,14 +432,14 @@ function RunDetail({ path, runId, readOnly, focusCase }: { path: AgentPath; runI
               )}
               <CaseResultLine evaluationCase={evaluationCase} names={names} />
               {names === null
-                ? evaluationCase.results.map((result) => <CaseAnswer key={`${result.position}-${String(result.repeat)}`} result={result} />)
+                ? evaluationCase.results.map((result) => <CaseAnswer key={`${result.position}-${String(result.repeat)}`} result={result} path={path} runId={runId} />)
                 : run.sides.map((side) => (
                     <div key={side.position} role="group" aria-label={`Answers of ${sideName(side)}`} className="flex flex-col gap-3">
                       <p className={field.label}>{sideName(side)}</p>
                       {evaluationCase.results
                         .filter((result) => result.position === side.position)
                         .map((result) => (
-                          <CaseAnswer key={String(result.repeat)} result={result} />
+                          <CaseAnswer key={String(result.repeat)} result={result} path={path} runId={runId} />
                         ))}
                     </div>
                   ))}

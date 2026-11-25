@@ -18,6 +18,7 @@ from sqlalchemy import (
     Date,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Numeric,
@@ -129,6 +130,166 @@ class EvaluationModel(IdMixin, Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+# The longest Judging guidance (spec 19), in characters.
+GUIDANCE_MAX = 2000
+
+
+class GuidanceSource(enum.StrEnum):
+    # Written by an Owner in the guidance editor.
+    WRITTEN = "written"
+    # Drafted by the Evaluation Model from Editors' disagreements, then saved by an Owner.
+    DRAFTED = "drafted"
+
+
+class JudgingGuidanceVersion(IdMixin, Base):
+    """One saved version of an Organisation's Judging guidance (spec 19): its own instructions to
+    the Evaluation Model, added to every judgement. Versions are numbered from 1 per
+    Organisation and never change; the Organisation points at its current one
+    (``Organisation.judging_guidance_version``). Empty text means none: removing guidance saves
+    an empty version. Evaluation Runs and Live Verdicts name the version they were judged under
+    by its number, beside the Evaluation Model (their Judging setup)."""
+
+    __tablename__ = "judging_guidance_versions"
+    __table_args__ = (UniqueConstraint("organisation_id", "version"),)
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE")
+    )
+    version: Mapped[int] = mapped_column(Integer)
+    text: Mapped[str] = mapped_column(String(GUIDANCE_MAX))
+    # A ``GuidanceSource``.
+    source: Mapped[str] = mapped_column(String(20))
+    saved_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey(Member.id, ondelete="SET NULL"))
+    saved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    # The latest check of this text under the Judging setup it was saved in (ticket 19-04), kept
+    # with the version: the held-out reviews it counted, how many it would agree on, its false
+    # passes and false fails, and how many the Judging setup it replaced agreed on. None when it
+    # was saved without a check.
+    check_reviews: Mapped[int | None] = mapped_column(Integer)
+    check_agreed: Mapped[int | None] = mapped_column(Integer)
+    check_false_passes: Mapped[int | None] = mapped_column(Integer)
+    check_false_fails: Mapped[int | None] = mapped_column(Integer)
+    check_agreed_before: Mapped[int | None] = mapped_column(Integer)
+
+
+def judged_under(table: str) -> ForeignKeyConstraint:
+    """A judgement's guidance version, always its own Organisation's."""
+    return ForeignKeyConstraint(
+        ["organisation_id", "judging_guidance_version"],
+        [JudgingGuidanceVersion.organisation_id, JudgingGuidanceVersion.version],
+        name=f"fk_{table}_judging_guidance_version",
+    )
+
+
+class GuidanceJobKind(enum.StrEnum):
+    # Re-judges the held-out half of the Review sample reviews with some guidance text.
+    CHECK = "check"
+    # Drafts guidance from the disagreeing reviews outside the held-out half (ticket 19-05).
+    DRAFT = "draft"
+
+
+class GuidanceJobStatus(enum.StrEnum):
+    # Started; its task hasn't picked it up yet.
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    # The Evaluation Model failed or timed out; what it spent so far is kept.
+    FAILED = "failed"
+    # Stopped by an Owner; what it spent so far is kept.
+    CANCELLED = "cancelled"
+
+
+# Queued or running: an Organisation has at most one such guidance job.
+GUIDANCE_JOB_IN_PROGRESS = (GuidanceJobStatus.QUEUED, GuidanceJobStatus.RUNNING)
+
+
+class GuidanceJob(IdMixin, Base):
+    """One Owner's request to check guidance text (spec 19, ticket 19-04): the Evaluation Model
+    re-judges the held-out half of the current Judging setup's Review sample reviews with it; or
+    to draft guidance (ticket 19-05): the Evaluation Model reads the disagreeing reviews outside
+    the held-out half and proposes guidance text with an explanation.
+
+    The Judging setup whose reviews it splits is copied when it starts, with the split: review
+    IDs in the held-out half and in the other half, which the next job under the same Judging
+    setup keeps (``app.evaluation.guidance_check``). A job never creates or changes a Verdict or
+    Live Verdict; its result is counted on the row as it goes. Its Cost is in its
+    ``GuidanceJudgement`` rows."""
+
+    __tablename__ = "guidance_jobs"
+    __table_args__ = (
+        judged_under("guidance_jobs"),
+        # At most one in progress per Organisation, which the start's lock also ensures.
+        Index(
+            "uq_guidance_jobs_in_progress",
+            "organisation_id",
+            unique=True,
+            postgresql_where=text("status IN ('queued', 'running')"),
+        ),
+    )
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
+    )
+    # A ``GuidanceJobKind`` and a ``GuidanceJobStatus``.
+    kind: Mapped[str] = mapped_column(String(10))
+    status: Mapped[str] = mapped_column(String(20))
+    # The guidance text checked; a draft's, the current guidance it revises.
+    text: Mapped[str] = mapped_column(String(GUIDANCE_MAX))
+    # The Judging setup whose Review sample reviews it splits, copied.
+    judge_provider: Mapped[str] = mapped_column(String(50))
+    judge_model: Mapped[str] = mapped_column(String(200))
+    judging_guidance_version: Mapped[int | None] = mapped_column(Integer)
+    # The split, as review IDs: the held-out half, re-judged, and the other half.
+    held_out: Mapped[list[str]] = mapped_column(JSONB)
+    other_half: Mapped[list[str]] = mapped_column(JSONB)
+    # Held-out reviews whose target was re-judged so far, and those left out (Purged).
+    judged: Mapped[int] = mapped_column(Integer, server_default="0")
+    left_out: Mapped[int] = mapped_column(Integer, server_default="0")
+    # With the guidance text, over the judged reviews: agreed with the Editor, false passes and
+    # false fails; and how many the Judging setup's own outcomes agreed on.
+    agreed: Mapped[int] = mapped_column(Integer, server_default="0")
+    false_passes: Mapped[int] = mapped_column(Integer, server_default="0")
+    false_fails: Mapped[int] = mapped_column(Integer, server_default="0")
+    agreed_before: Mapped[int] = mapped_column(Integer, server_default="0")
+    # A draft's: the disagreeing reviews it gave the Evaluation Model, and what it drafted (None
+    # until it completes): the guidance text and its explanation, parts each with the IDs of the
+    # reviews it answers, as ``{"part": str, "reviews": [str]}``.
+    reviews_read: Mapped[int] = mapped_column(Integer, server_default="0")
+    draft_text: Mapped[str | None] = mapped_column(Text)
+    draft_explanation: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
+    error_reason: Mapped[str | None] = mapped_column(Text)
+    requested_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(Member.id, ondelete="SET NULL"), index=True
+    )
+    # Started (``created_at``, set from the clock), picked up by its task, and finished.
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class GuidanceJudgement(IdMixin, Base):
+    """One Evaluation Model call a guidance job made, re-judging one target (a Run's case result
+    or a Live Verdict) of its Agent, or an Agent's share of a draft's one call (split by the
+    reviews of the Agent it read): its tokens and its Cost, frozen when it was made, counted in
+    Organisation cost's Evaluation column and never against the Evaluation budget."""
+
+    __tablename__ = "guidance_judgements"
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
+    )
+    job_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(GuidanceJob.id, ondelete="CASCADE"), index=True
+    )
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Agent.id, ondelete="CASCADE"), index=True
+    )
+    input_tokens: Mapped[int] = mapped_column(Integer)
+    output_tokens: Mapped[int] = mapped_column(Integer)
+    # None when the model has no known price.
+    cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
+    judged_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class EvaluationCase(IdMixin, Base):
     """One standalone question in an Agent's Evaluation Set, with what a good answer does."""
 
@@ -187,6 +348,7 @@ class EvaluationRun(IdMixin, Base):
 
     __tablename__ = "evaluation_runs"
     __table_args__ = (
+        judged_under("evaluation_runs"),
         Index(
             "uq_evaluation_runs_in_progress_agent",
             "agent_id",
@@ -214,6 +376,9 @@ class EvaluationRun(IdMixin, Base):
     judge_provider: Mapped[str] = mapped_column(String(50))
     judge_model: Mapped[str] = mapped_column(String(200))
     repeats: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    # The Judging guidance version in force when it started, beside its judge model (its
+    # Judging setup); None when the Organisation had never saved guidance.
+    judging_guidance_version: Mapped[int | None] = mapped_column(Integer)
     # Answers done (answered or errored) out of every answer the Run gives.
     answers_done: Mapped[int] = mapped_column(Integer, default=0)
     answers_total: Mapped[int] = mapped_column(Integer, default=0)
@@ -330,7 +495,7 @@ class EvaluationVerdict(IdMixin, Base):
     kind: Mapped[str] = mapped_column(String(30))
     # Its order among the result's Verdicts: Expected sources (in the case's order), Expect
     # Fallback Text, the Reference answer, then grounding.
-    position: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    position: Mapped[int] = mapped_column(Integer, server_default="0")
     outcome: Mapped[str] = mapped_column(String(10))
     reason: Mapped[str | None] = mapped_column(Text)
 
@@ -354,6 +519,7 @@ class LiveVerdict(IdMixin, Base):
     reasons."""
 
     __tablename__ = "live_verdicts"
+    __table_args__ = (judged_under("live_verdicts"),)
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey(Organisation.id, ondelete="CASCADE"), index=True
@@ -380,6 +546,9 @@ class LiveVerdict(IdMixin, Base):
     # The Evaluation Model that judged it (or the Default Model, when none is chosen).
     judge_provider: Mapped[str | None] = mapped_column(String(50))
     judge_model: Mapped[str | None] = mapped_column(String(200))
+    # The Judging guidance version in force when judging started, beside the judge model (its
+    # Judging setup); None before then, or when the Organisation had never saved guidance.
+    judging_guidance_version: Mapped[int | None] = mapped_column(Integer)
     input_tokens: Mapped[int | None] = mapped_column(Integer)
     output_tokens: Mapped[int | None] = mapped_column(Integer)
     # US dollars, frozen with the prices in force when judged; None when a price is unknown.
@@ -404,6 +573,6 @@ class EvaluationSpend(IdMixin, Base):
     # The first day of the month.
     month: Mapped[date] = mapped_column(Date)
     # US dollars, the sum of the month's Live Verdicts' frozen Costs.
-    spent_usd: Mapped[Decimal] = mapped_column(Numeric(18, 9), server_default=text("0"))
+    spent_usd: Mapped[Decimal] = mapped_column(Numeric(18, 9), server_default="0")
     # Set by the judgement that took the spend to or past the budget, which emailed the Owners.
     budget_spent_emailed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

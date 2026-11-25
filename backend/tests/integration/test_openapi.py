@@ -7,6 +7,10 @@ from app.openapi import render_openapi
 _CREDENTIAL = "/api/organisations/{organisation_id}/credentials/{credential_id}"
 _PROJECT = "/api/organisations/{organisation_id}/projects/{project_id}"
 _THEME_IMAGE = "/api/organisations/{organisation_id}/theme/images/{kind}"
+_VERDICT_REVIEW = "/api/organisations/{organisation_id}/verdicts/{verdict_id}/review"
+_LIVE_CHECK_REVIEW = (
+    "/api/organisations/{organisation_id}/live-verdicts/{live_verdict_id}/checks/{check}/review"
+)
 _AGENT = f"{_PROJECT}/agents/{{agent_id}}"
 _PLAYGROUND = f"{_AGENT}/playground/conversations"
 _EVALUATION = f"{_AGENT}/evaluation"
@@ -83,6 +87,46 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "setEvaluationRepeats": ("/api/organisations/{organisation_id}/evaluation-repeats", "put"),
         "getEvaluationBudget": ("/api/organisations/{organisation_id}/evaluation-budget", "get"),
         "setEvaluationBudget": ("/api/organisations/{organisation_id}/evaluation-budget", "put"),
+        "getJudgingGuidance": ("/api/organisations/{organisation_id}/judging-guidance", "get"),
+        "saveJudgingGuidance": ("/api/organisations/{organisation_id}/judging-guidance", "put"),
+        "startGuidanceCheck": (
+            "/api/organisations/{organisation_id}/judging-guidance/checks",
+            "post",
+        ),
+        "getGuidanceDrafting": (
+            "/api/organisations/{organisation_id}/judging-guidance/drafting",
+            "get",
+        ),
+        "startGuidanceDraft": (
+            "/api/organisations/{organisation_id}/judging-guidance/drafts",
+            "post",
+        ),
+        "getLatestGuidanceJob": (
+            "/api/organisations/{organisation_id}/guidance-jobs/latest",
+            "get",
+        ),
+        "getGuidanceJob": ("/api/organisations/{organisation_id}/guidance-jobs/{job_id}", "get"),
+        "cancelGuidanceJob": (
+            "/api/organisations/{organisation_id}/guidance-jobs/{job_id}/cancel",
+            "post",
+        ),
+        "getReviewSampleItem": ("/api/organisations/{organisation_id}/review-sample/next", "get"),
+        "submitSampleReview": (
+            "/api/organisations/{organisation_id}/review-sample/reviews",
+            "post",
+        ),
+        "skipReviewSampleItem": (
+            "/api/organisations/{organisation_id}/review-sample/skips",
+            "post",
+        ),
+        "getEvaluationAgreement": (
+            "/api/organisations/{organisation_id}/evaluation-agreement",
+            "get",
+        ),
+        "putVerdictReview": (_VERDICT_REVIEW, "put"),
+        "deleteVerdictReview": (_VERDICT_REVIEW, "delete"),
+        "putLiveVerdictReview": (_LIVE_CHECK_REVIEW, "put"),
+        "deleteLiveVerdictReview": (_LIVE_CHECK_REVIEW, "delete"),
         "getTheme": ("/api/organisations/{organisation_id}/theme", "get"),
         "saveTheme": ("/api/organisations/{organisation_id}/theme", "put"),
         "startThemeImageUpload": (f"{_THEME_IMAGE}/uploads", "post"),

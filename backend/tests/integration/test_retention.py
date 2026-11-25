@@ -18,9 +18,12 @@ import pytest
 from fastapi import FastAPI
 from pydantic_ai.messages import ModelMessage
 from pydantic_ai.models.function import AgentInfo
+from sqlalchemy import update
 
+from app.retention.service import MAX_RETENTION_DAYS
 from app.retention.tasks import purge_expired
 from app.seed.runner import erase_demo
+from app.tenancy.models import Organisation
 from app.worker.celery_app import PURGE_TASK, ROLL_UP_TASK, celery_app
 from tests.agents import answer_text, answer_with, ask, parse_sse
 from tests.conftest import ClientFactory, MemberFactory, SignedUpMember, TenantFactory
@@ -323,9 +326,14 @@ async def test_without_a_time_the_purge_runs_as_of_now(app: FastAPI, owner: Sign
     # A seed test earlier in this worker may have left the demo Organisation, whose Retention
     # Window of two weeks its Seeded history outlives.
     await erase_demo(app)
+    # Earlier tests in this worker leave Messages on the test clock (from 2026-11-05) under
+    # seven-day windows, which the real clock may have passed: every Organisation keeps its
+    # Messages for the longest window, so only "as of now" is under test.
+    async with app.state.sessionmaker() as session, session.begin():
+        await session.execute(update(Organisation).values(retention_days=MAX_RETENTION_DAYS))
     result = await asyncio.to_thread(purge_expired.apply)
 
-    # An Organisation with no Messages has nothing to purge.
+    # Nothing is older than the window.
     # disable_sync_subtasks=False: this test isn't inside a task, but Celery's "inside a task" guard
     # is a process-wide flag that eager tasks run concurrently in other threads (by earlier tests
     # in the same xdist worker) can leave set.

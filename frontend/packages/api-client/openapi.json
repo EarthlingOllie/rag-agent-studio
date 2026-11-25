@@ -268,6 +268,106 @@
         "title": "AgentVersionsOut",
         "type": "object"
       },
+      "AgreementOut": {
+        "description": "One Judging setup's agreement: overall, then per check that has reviews (grounding,\nanswers the question, Reference answer).",
+        "properties": {
+          "agreed": {
+            "title": "Agreed",
+            "type": "integer"
+          },
+          "checks": {
+            "items": {
+              "$ref": "#/components/schemas/CheckAgreementOut"
+            },
+            "title": "Checks",
+            "type": "array"
+          },
+          "false_fails": {
+            "title": "False Fails",
+            "type": "integer"
+          },
+          "false_passes": {
+            "title": "False Passes",
+            "type": "integer"
+          },
+          "guidance_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Version"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "low_sample": {
+            "title": "Low Sample",
+            "type": "boolean"
+          },
+          "model": {
+            "title": "Model",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
+          "reviews": {
+            "title": "Reviews",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reviews",
+          "agreed",
+          "false_passes",
+          "false_fails",
+          "rate",
+          "low",
+          "high",
+          "low_sample",
+          "provider",
+          "model",
+          "guidance_version",
+          "checks"
+        ],
+        "title": "AgreementOut",
+        "type": "object"
+      },
       "AppliedSuggestionOut": {
         "properties": {
           "agent": {
@@ -1142,6 +1242,85 @@
         ],
         "title": "ChangeState",
         "type": "string"
+      },
+      "CheckAgreementOut": {
+        "properties": {
+          "agreed": {
+            "title": "Agreed",
+            "type": "integer"
+          },
+          "check": {
+            "enum": [
+              "reference_answer",
+              "grounding",
+              "answers_question"
+            ],
+            "title": "Check",
+            "type": "string"
+          },
+          "false_fails": {
+            "title": "False Fails",
+            "type": "integer"
+          },
+          "false_passes": {
+            "title": "False Passes",
+            "type": "integer"
+          },
+          "high": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "High"
+          },
+          "low": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Low"
+          },
+          "low_sample": {
+            "title": "Low Sample",
+            "type": "boolean"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rate"
+          },
+          "reviews": {
+            "title": "Reviews",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reviews",
+          "agreed",
+          "false_passes",
+          "false_fails",
+          "rate",
+          "low",
+          "high",
+          "low_sample",
+          "check"
+        ],
+        "title": "CheckAgreementOut",
+        "type": "object"
       },
       "CheckFailedResponse": {
         "properties": {
@@ -3312,6 +3491,92 @@
         "title": "DraftConflictOut",
         "type": "object"
       },
+      "DraftPartOut": {
+        "description": "A part of a draft's explanation: a rule in a short sentence, and the reviews it answers.",
+        "properties": {
+          "part": {
+            "title": "Part",
+            "type": "string"
+          },
+          "reviews": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Reviews",
+            "type": "array"
+          }
+        },
+        "required": [
+          "part",
+          "reviews"
+        ],
+        "title": "DraftPartOut",
+        "type": "object"
+      },
+      "DraftingOut": {
+        "description": "Whether drafting guidance is offered under the current Judging setup, and its estimate.",
+        "properties": {
+          "disagreements": {
+            "title": "Disagreements",
+            "type": "integer"
+          },
+          "estimated_cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Estimated Cost Usd"
+          },
+          "missing": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Missing"
+          },
+          "needs_disagreements": {
+            "title": "Needs Disagreements",
+            "type": "integer"
+          },
+          "needs_sample_reviews": {
+            "title": "Needs Sample Reviews",
+            "type": "integer"
+          },
+          "offered": {
+            "title": "Offered",
+            "type": "boolean"
+          },
+          "reviews_read": {
+            "title": "Reviews Read",
+            "type": "integer"
+          },
+          "sample_reviews": {
+            "title": "Sample Reviews",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "disagreements",
+          "sample_reviews",
+          "needs_disagreements",
+          "needs_sample_reviews",
+          "offered",
+          "missing",
+          "reviews_read",
+          "estimated_cost_usd"
+        ],
+        "title": "DraftingOut",
+        "type": "object"
+      },
       "EmbeddingModelChoiceOut": {
         "description": "An Embedding Model the Organisation can choose, and the credential it is called\nthrough (none for the built-in local model).",
         "properties": {
@@ -3533,6 +3798,48 @@
           "total_usd"
         ],
         "title": "EstimateOut",
+        "type": "object"
+      },
+      "EvaluationAgreementOut": {
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AgreementOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "earlier": {
+            "items": {
+              "$ref": "#/components/schemas/AgreementOut"
+            },
+            "title": "Earlier",
+            "type": "array"
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "integer"
+          },
+          "reviewed_by_you": {
+            "title": "Reviewed By You",
+            "type": "integer"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "current",
+          "earlier",
+          "reviewed",
+          "reviewed_by_you",
+          "skipped"
+        ],
+        "title": "EvaluationAgreementOut",
         "type": "object"
       },
       "EvaluationBudgetOut": {
@@ -4396,6 +4703,280 @@
         "title": "Guardrails",
         "type": "object"
       },
+      "GuidanceCheckOut": {
+        "description": "The latest check of a version's text before it was saved: held-out reviews counted, how\nmany it would agree on, its false passes and false fails, how many the Judging setup it\nreplaced agreed on, and whether that is a Low sample (under 30 reviews).",
+        "properties": {
+          "agreed": {
+            "title": "Agreed",
+            "type": "integer"
+          },
+          "agreed_before": {
+            "title": "Agreed Before",
+            "type": "integer"
+          },
+          "false_fails": {
+            "title": "False Fails",
+            "type": "integer"
+          },
+          "false_passes": {
+            "title": "False Passes",
+            "type": "integer"
+          },
+          "low_sample": {
+            "title": "Low Sample",
+            "type": "boolean"
+          },
+          "reviews": {
+            "title": "Reviews",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "reviews",
+          "agreed",
+          "false_passes",
+          "false_fails",
+          "agreed_before",
+          "low_sample"
+        ],
+        "title": "GuidanceCheckOut",
+        "type": "object"
+      },
+      "GuidanceDraftOut": {
+        "description": "What a completed draft proposes: guidance text, up to 2,000 characters, and its\nexplanation.",
+        "properties": {
+          "explanation": {
+            "items": {
+              "$ref": "#/components/schemas/DraftPartOut"
+            },
+            "title": "Explanation",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "explanation"
+        ],
+        "title": "GuidanceDraftOut",
+        "type": "object"
+      },
+      "GuidanceJobOut": {
+        "properties": {
+          "agreed": {
+            "title": "Agreed",
+            "type": "integer"
+          },
+          "agreed_before": {
+            "title": "Agreed Before",
+            "type": "integer"
+          },
+          "cost_usd": {
+            "title": "Cost Usd",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "draft": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceDraftOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "error_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Error Reason"
+          },
+          "false_fails": {
+            "title": "False Fails",
+            "type": "integer"
+          },
+          "false_passes": {
+            "title": "False Passes",
+            "type": "integer"
+          },
+          "finished_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Finished At"
+          },
+          "held_out": {
+            "title": "Held Out",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "judged": {
+            "title": "Judged",
+            "type": "integer"
+          },
+          "kind": {
+            "enum": [
+              "check",
+              "draft"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "left_out": {
+            "title": "Left Out",
+            "type": "integer"
+          },
+          "low_sample": {
+            "title": "Low Sample",
+            "type": "boolean"
+          },
+          "requested_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requested By"
+          },
+          "reviews_read": {
+            "title": "Reviews Read",
+            "type": "integer"
+          },
+          "started_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Started At"
+          },
+          "status": {
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed",
+              "cancelled"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "status",
+          "text",
+          "held_out",
+          "judged",
+          "left_out",
+          "agreed",
+          "false_passes",
+          "false_fails",
+          "agreed_before",
+          "low_sample",
+          "reviews_read",
+          "draft",
+          "cost_usd",
+          "error_reason",
+          "requested_by",
+          "created_at",
+          "started_at",
+          "finished_at"
+        ],
+        "title": "GuidanceJobOut",
+        "type": "object"
+      },
+      "GuidanceVersionOut": {
+        "properties": {
+          "check": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceCheckOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "saved_at": {
+            "format": "date-time",
+            "title": "Saved At",
+            "type": "string"
+          },
+          "saved_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Saved By"
+          },
+          "source": {
+            "enum": [
+              "written",
+              "drafted"
+            ],
+            "title": "Source",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "text",
+          "source",
+          "saved_by",
+          "saved_at",
+          "check"
+        ],
+        "title": "GuidanceVersionOut",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -4962,6 +5543,86 @@
         "type": "object"
       },
       "JsonValue": {},
+      "JudgingGuidanceOut": {
+        "properties": {
+          "current": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceVersionOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "versions": {
+            "items": {
+              "$ref": "#/components/schemas/GuidanceVersionOut"
+            },
+            "title": "Versions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "current",
+          "versions"
+        ],
+        "title": "JudgingGuidanceOut",
+        "type": "object"
+      },
+      "JudgingSetupChangeOut": {
+        "description": "A change of the Organisation's Judging setup during the range: Judging guidance saved or\nremoved, or the Evaluation Model changed. Live Verdicts judged before and after it don't\ncompare like with like.",
+        "properties": {
+          "evaluation_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Model"
+          },
+          "guidance_removed": {
+            "title": "Guidance Removed",
+            "type": "boolean"
+          },
+          "guidance_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Version"
+          },
+          "kind": {
+            "enum": [
+              "guidance",
+              "evaluation_model"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "kind",
+          "guidance_version",
+          "guidance_removed",
+          "evaluation_model"
+        ],
+        "title": "JudgingSetupChangeOut",
+        "type": "object"
+      },
       "KnowledgeBaseGapOut": {
         "properties": {
           "evidence_ids": {
@@ -5119,11 +5780,22 @@
               }
             ],
             "title": "Reason"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VerdictReviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "outcome",
-          "reason"
+          "reason",
+          "review"
         ],
         "title": "LiveCheckOut",
         "type": "object"
@@ -5346,6 +6018,11 @@
               }
             ]
           },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
           "input_tokens": {
             "anyOf": [
               {
@@ -5390,6 +6067,17 @@
               }
             ],
             "title": "Judged At"
+          },
+          "judging_guidance_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judging Guidance Version"
           },
           "output_tokens": {
             "anyOf": [
@@ -5437,6 +6125,7 @@
           }
         },
         "required": [
+          "id",
           "status",
           "grounded",
           "answers_question",
@@ -5445,6 +6134,7 @@
           "agent_version_id",
           "judge_provider",
           "judge_model",
+          "judging_guidance_version",
           "input_tokens",
           "output_tokens",
           "cost_usd",
@@ -6937,6 +7627,10 @@
       "PublishSummaryOut": {
         "description": "Whether the Draft has been evaluated against the current Live Version with the\nInstructions being published. Advisory: Publishing never depends on it.",
         "properties": {
+          "earlier_judging_setup": {
+            "title": "Earlier Judging Setup",
+            "type": "boolean"
+          },
           "evaluated_live_version_number": {
             "anyOf": [
               {
@@ -7000,7 +7694,8 @@
           "regressions",
           "lower_score",
           "evaluated_live_version_number",
-          "publishing_instructions_version_number"
+          "publishing_instructions_version_number",
+          "earlier_judging_setup"
         ],
         "title": "PublishSummaryOut",
         "type": "object"
@@ -7226,6 +7921,24 @@
         "title": "RegressionReasonOut",
         "type": "object"
       },
+      "RememberedTurnOut": {
+        "properties": {
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          }
+        },
+        "required": [
+          "question",
+          "answer"
+        ],
+        "title": "RememberedTurnOut",
+        "type": "object"
+      },
       "RenewInviteRequest": {
         "properties": {
           "send_email": {
@@ -7443,6 +8156,187 @@
         ],
         "title": "RetrievalMode",
         "type": "string"
+      },
+      "ReviewChunkOut": {
+        "properties": {
+          "cited": {
+            "title": "Cited",
+            "type": "boolean"
+          },
+          "document_name": {
+            "title": "Document Name",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "label",
+          "document_name",
+          "text",
+          "cited"
+        ],
+        "title": "ReviewChunkOut",
+        "type": "object"
+      },
+      "ReviewRequest": {
+        "description": "An Editor's agree or disagree with the shown pass or fail, as their own pass or fail.",
+        "properties": {
+          "outcome": {
+            "enum": [
+              "pass",
+              "fail"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "required": [
+          "outcome"
+        ],
+        "title": "ReviewRequest",
+        "type": "object"
+      },
+      "ReviewSampleItemOut": {
+        "description": "A judged Verdict or Live Verdict check, as the Evaluation Model was given it, without its\noutcome or reason. Exactly one of ``verdict_id`` and ``live_verdict_id`` is set.",
+        "properties": {
+          "agent_id": {
+            "format": "uuid",
+            "title": "Agent Id",
+            "type": "string"
+          },
+          "agent_name": {
+            "title": "Agent Name",
+            "type": "string"
+          },
+          "answer": {
+            "title": "Answer",
+            "type": "string"
+          },
+          "check": {
+            "enum": [
+              "reference_answer",
+              "grounding",
+              "answers_question"
+            ],
+            "title": "Check",
+            "type": "string"
+          },
+          "chunks": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewChunkOut"
+            },
+            "title": "Chunks",
+            "type": "array"
+          },
+          "live_verdict_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Verdict Id"
+          },
+          "question": {
+            "title": "Question",
+            "type": "string"
+          },
+          "reference_answer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Answer"
+          },
+          "remembered_turns": {
+            "items": {
+              "$ref": "#/components/schemas/RememberedTurnOut"
+            },
+            "title": "Remembered Turns",
+            "type": "array"
+          },
+          "verdict_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict Id"
+          }
+        },
+        "required": [
+          "verdict_id",
+          "live_verdict_id",
+          "check",
+          "agent_id",
+          "agent_name",
+          "question",
+          "reference_answer",
+          "answer",
+          "chunks",
+          "remembered_turns"
+        ],
+        "title": "ReviewSampleItemOut",
+        "type": "object"
+      },
+      "ReviewSampleNextOut": {
+        "properties": {
+          "item": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReviewSampleItemOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reviewed": {
+            "title": "Reviewed",
+            "type": "integer"
+          },
+          "reviewed_by_you": {
+            "title": "Reviewed By You",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "item",
+          "reviewed",
+          "reviewed_by_you"
+        ],
+        "title": "ReviewSampleNextOut",
+        "type": "object"
       },
       "Role": {
         "enum": [
@@ -7878,6 +8772,17 @@
             "title": "Judge Provider",
             "type": "string"
           },
+          "judging_guidance_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Judging Guidance Version"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
@@ -7914,6 +8819,7 @@
           "progress",
           "judge_provider",
           "judge_model",
+          "judging_guidance_version",
           "repeats",
           "error_message",
           "stale",
@@ -8050,6 +8956,147 @@
           "score"
         ],
         "title": "RunSideOut",
+        "type": "object"
+      },
+      "SampleReviewOut": {
+        "description": "The reveal: the Editor's outcome beside the Evaluation Model's, and its reason.",
+        "properties": {
+          "agreed": {
+            "title": "Agreed",
+            "type": "boolean"
+          },
+          "evaluation_model_outcome": {
+            "enum": [
+              "pass",
+              "fail"
+            ],
+            "title": "Evaluation Model Outcome",
+            "type": "string"
+          },
+          "evaluation_model_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Model Reason"
+          },
+          "outcome": {
+            "enum": [
+              "pass",
+              "fail"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome",
+          "evaluation_model_outcome",
+          "evaluation_model_reason",
+          "agreed"
+        ],
+        "title": "SampleReviewOut",
+        "type": "object"
+      },
+      "SampleReviewRequest": {
+        "description": "A review of a Run Verdict (``verdict_id``) or of one check of a Live Verdict\n(``live_verdict_id`` and ``check``): exactly one of the two IDs.",
+        "properties": {
+          "check": {
+            "anyOf": [
+              {
+                "enum": [
+                  "reference_answer",
+                  "grounding",
+                  "answers_question"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Check"
+          },
+          "live_verdict_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Live Verdict Id"
+          },
+          "outcome": {
+            "enum": [
+              "pass",
+              "fail"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "maxLength": 1000,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "verdict_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict Id"
+          }
+        },
+        "required": [
+          "outcome"
+        ],
+        "title": "SampleReviewRequest",
+        "type": "object"
+      },
+      "SaveJudgingGuidanceRequest": {
+        "description": "The new guidance, up to 2,000 characters; empty (or only spaces) removes it.",
+        "properties": {
+          "draft_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Draft Id"
+          },
+          "text": {
+            "maxLength": 2000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "SaveJudgingGuidanceRequest",
         "type": "object"
       },
       "ScopedAgentOut": {
@@ -8420,6 +9467,21 @@
           "organisation_name"
         ],
         "title": "SignUpRequest",
+        "type": "object"
+      },
+      "StartCheckRequest": {
+        "description": "The guidance text to check, up to 2,000 characters; it needn't be saved.",
+        "properties": {
+          "text": {
+            "maxLength": 2000,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "StartCheckRequest",
         "type": "object"
       },
       "StartConversationRequest": {
@@ -9917,6 +10979,70 @@
         "title": "TimeSeriesGranularity",
         "type": "string"
       },
+      "TimeSeriesJudgingSetupChangeOut": {
+        "properties": {
+          "day": {
+            "format": "date",
+            "title": "Day",
+            "type": "string"
+          },
+          "evaluation_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Evaluation Model"
+          },
+          "guidance_removed": {
+            "title": "Guidance Removed",
+            "type": "boolean"
+          },
+          "guidance_version": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Guidance Version"
+          },
+          "kind": {
+            "enum": [
+              "guidance",
+              "evaluation_model"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "point_start": {
+            "format": "date",
+            "title": "Point Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "occurred_at",
+          "kind",
+          "guidance_version",
+          "guidance_removed",
+          "evaluation_model",
+          "day",
+          "point_start"
+        ],
+        "title": "TimeSeriesJudgingSetupChangeOut",
+        "type": "object"
+      },
       "TimeSeriesMetric": {
         "description": "What a time series measures, over each of its periods.",
         "enum": [
@@ -9951,6 +11077,13 @@
           "granularity": {
             "$ref": "#/components/schemas/TimeSeriesGranularity"
           },
+          "judging_setup_changes": {
+            "items": {
+              "$ref": "#/components/schemas/TimeSeriesJudgingSetupChangeOut"
+            },
+            "title": "Judging Setup Changes",
+            "type": "array"
+          },
           "markers": {
             "items": {
               "$ref": "#/components/schemas/LiveHistoryMarkerOut"
@@ -9960,6 +11093,10 @@
           },
           "metric": {
             "$ref": "#/components/schemas/TimeSeriesMetric"
+          },
+          "mixed_judging_setups": {
+            "title": "Mixed Judging Setups",
+            "type": "boolean"
           },
           "points": {
             "items": {
@@ -9982,7 +11119,9 @@
           "end",
           "points",
           "markers",
-          "document_changes"
+          "document_changes",
+          "judging_setup_changes",
+          "mixed_judging_setups"
         ],
         "title": "TimeSeriesOut",
         "type": "object"
@@ -10723,6 +11862,11 @@
       },
       "VerdictOut": {
         "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
           "kind": {
             "title": "Kind",
             "type": "string"
@@ -10741,14 +11885,92 @@
               }
             ],
             "title": "Reason"
+          },
+          "review": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VerdictReviewOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
+          "id",
           "kind",
           "outcome",
-          "reason"
+          "reason",
+          "review"
         ],
         "title": "VerdictOut",
+        "type": "object"
+      },
+      "VerdictReviewOut": {
+        "description": "An Editor's review of a judged Verdict or Live Verdict check, as shown on it.",
+        "properties": {
+          "from_sample": {
+            "title": "From Sample",
+            "type": "boolean"
+          },
+          "outcome": {
+            "enum": [
+              "pass",
+              "fail"
+            ],
+            "title": "Outcome",
+            "type": "string"
+          },
+          "purged_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purged At"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "reviewed_at": {
+            "format": "date-time",
+            "title": "Reviewed At",
+            "type": "string"
+          },
+          "reviewed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reviewed By"
+          }
+        },
+        "required": [
+          "outcome",
+          "reason",
+          "reviewed_by",
+          "reviewed_at",
+          "from_sample",
+          "purged_at"
+        ],
+        "title": "VerdictReviewOut",
         "type": "object"
       },
       "VersionAuthor": {
@@ -10791,12 +12013,23 @@
             "title": "End",
             "type": "string"
           },
+          "judging_setup_changes": {
+            "items": {
+              "$ref": "#/components/schemas/JudgingSetupChangeOut"
+            },
+            "title": "Judging Setup Changes",
+            "type": "array"
+          },
           "metrics": {
             "items": {
               "$ref": "#/components/schemas/MetricRowOut"
             },
             "title": "Metrics",
             "type": "array"
+          },
+          "mixed_judging_setups": {
+            "title": "Mixed Judging Setups",
+            "type": "boolean"
           },
           "start": {
             "format": "date",
@@ -10811,7 +12044,9 @@
           "a",
           "b",
           "metrics",
-          "config_diff"
+          "config_diff",
+          "judging_setup_changes",
+          "mixed_judging_setups"
         ],
         "title": "VersionComparisonOut",
         "type": "object"
@@ -13556,6 +14791,60 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/evaluation-agreement": {
+      "get": {
+        "description": "Evaluation Model agreement over Review sample reviews: the current Judging setup's\nfigures (rate with its Wilson interval, Low sample, false passes and false fails, overall\nand per check), the earlier Judging setups (Evaluation Model and guidance version) that have\nreviews, and how many sample reviews the Organisation and you have given and items were\nskipped.",
+        "operationId": "getEvaluationAgreement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EvaluationAgreementOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Evaluation Agreement",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/evaluation-budget": {
       "get": {
         "description": "The Evaluation budget (null while there is none) and this month's spend against it, for\nthe meter. Open to every Member.",
@@ -13870,6 +15159,236 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/guidance-jobs/latest": {
+      "get": {
+        "description": "The most recently started draft or check, with its progress and result; null before the\nfirst (Owners only).",
+        "operationId": "getLatestGuidanceJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/GuidanceJobOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Getlatestguidancejob"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Latest Guidance Job",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/guidance-jobs/{job_id}": {
+      "get": {
+        "description": "A draft or check, with its progress and result (Owners only).",
+        "operationId": "getGuidanceJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Guidance Job",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/guidance-jobs/{job_id}/cancel": {
+      "post": {
+        "description": "Cancels a draft or check in progress, keeping what it counted and spent (Owners only).",
+        "operationId": "cancelGuidanceJob",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "job_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Job Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only a draft or check in progress can be cancelled."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel Guidance Job",
+        "tags": [
+          "models"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/invites": {
       "get": {
         "description": "Pending Invites (not accepted or revoked), newest first, including expired ones.",
@@ -14171,6 +15690,347 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/judging-guidance": {
+      "get": {
+        "description": "The Judging guidance every new judgement uses (null until first saved) and its versions,\nnewest first. Open to every Member.",
+        "operationId": "getJudgingGuidance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JudgingGuidanceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Judging Guidance",
+        "tags": [
+          "models"
+        ]
+      },
+      "put": {
+        "description": "Saves the Judging guidance as a new current version, which new Evaluation Runs and Live\nVerdicts are judged with; empty text removes it (Owners only). Text from a completed draft\nis saved as ``drafted``. Saving the current text again changes nothing. Recorded as\n``organisation.judging_guidance_changed``.",
+        "operationId": "saveJudgingGuidance",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveJudgingGuidanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JudgingGuidanceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Longer than 2,000 characters, or not a completed draft"
+          }
+        },
+        "summary": "Save Judging Guidance",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/judging-guidance/checks": {
+      "post": {
+        "description": "Starts checking guidance text: the Evaluation Model re-judges the held-out half of the\ncurrent Judging setup's Review sample reviews with it, in the background (Owners only). At\nmost one draft or check is in progress per Organisation. Its Cost counts in Organisation\ncost, never against the Evaluation budget.",
+        "operationId": "startGuidanceCheck",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StartCheckRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A draft or check is already in progress in the Organisation."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No model to judge with, too few reviews, or too long"
+          }
+        },
+        "summary": "Start Guidance Check",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/judging-guidance/drafting": {
+      "get": {
+        "description": "Whether drafting guidance from Editors' disagreements is offered under the current\nJudging setup, what is missing if not, and the estimated Cost (Owners only).",
+        "operationId": "getGuidanceDrafting",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DraftingOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No model to judge with"
+          }
+        },
+        "summary": "Get Guidance Drafting",
+        "tags": [
+          "models"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/judging-guidance/drafts": {
+      "post": {
+        "description": "Starts drafting guidance: the Evaluation Model reads the current Judging setup's\ndisagreeing reviews outside the held-out half and the current guidance, in the background,\nand proposes guidance with an explanation (Owners only). At most one draft or check is in\nprogress per Organisation. Its Cost counts in Organisation cost, never against the\nEvaluation budget.",
+        "operationId": "startGuidanceDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceJobOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "A draft or check is already in progress in the Organisation."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No model to judge with, or drafting isn't offered yet"
+          }
+        },
+        "summary": "Start Guidance Draft",
+        "tags": [
+          "models"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/leave": {
       "post": {
         "description": "The signed-in Member leaves the Organisation. Its last Owner can't.",
@@ -14225,6 +16085,154 @@
         "summary": "Leave Organisation",
         "tags": [
           "members"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/live-verdicts/{live_verdict_id}/checks/{check}/review": {
+      "delete": {
+        "description": "Removes the review of the Live Verdict's check, which puts it back in the Review sample\nwhile its text is still there. Not found when it has none.",
+        "operationId": "deleteLiveVerdictReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "live_verdict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Live Verdict Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "check",
+            "required": true,
+            "schema": {
+              "enum": [
+                "grounding",
+                "answers_question"
+              ],
+              "title": "Check",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Live Verdict Review",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "put": {
+        "description": "Stores your review of one check of a judged Live Verdict in the Trace, replacing any\nearlier review of it (one from the Review sample then stops counting towards agreement).\nIt takes the check out of the Review sample and never changes the Live Verdict. A Live\nVerdict that isn't judged or whose text is gone, or another Organisation's, is not\nfound.",
+        "operationId": "putLiveVerdictReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "live_verdict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Live Verdict Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "check",
+            "required": true,
+            "schema": {
+              "enum": [
+                "grounding",
+                "answers_question"
+              ],
+              "title": "Check",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerdictReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Not pass or fail, or a reason over 1,000 characters"
+          }
+        },
+        "summary": "Put Live Verdict Review",
+        "tags": [
+          "evaluation"
         ]
       }
     },
@@ -15517,7 +17525,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison": {
       "get": {
-        "description": "Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at\nmost 366 days, today's so far included): each Version's KPIs, every metric's difference and\nthe Version it favours, and the configuration diff from `a` to `b`. Only Visitor\nConversations count.",
+        "description": "Versions `a` and `b` side by side over the UTC days `start` to `end` (both inclusive, at\nmost 366 days, today's so far included): each Version's KPIs, every metric's difference and\nthe Version it favours, the configuration diff from `a` to `b`, and the Judging setup\nchanges during the range. Only Visitor Conversations count.",
         "operationId": "compareVersions",
         "parameters": [
           {
@@ -19805,7 +21813,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/time-series": {
       "get": {
-        "description": "One metric of the Agent (every Version together) per period of the UTC days `start` to\n`end` (both inclusive, at most 366 days), including today's so far; with markers where the\nLive Version changed and the Project's Document changes during the range. Only Visitor\nConversations count.",
+        "description": "One metric of the Agent (every Version together) per period of the UTC days `start` to\n`end` (both inclusive, at most 366 days), including today's so far; with markers where the\nLive Version changed, the Project's Document changes and the Judging setup changes during\nthe range. Only Visitor Conversations count.",
         "operationId": "getTimeSeries",
         "parameters": [
           {
@@ -23661,6 +25669,164 @@
         ]
       }
     },
+    "/api/organisations/{organisation_id}/review-sample/next": {
+      "get": {
+        "description": "One judged Verdict or Live Verdict check drawn at random from those under the current\nJudging setup (Evaluation Model and Judging guidance version) not yet reviewed whose text\nis still there (null when there are none), without the Evaluation Model's outcome or\nreason, and how many Review sample reviews the Organisation and you have given.",
+        "operationId": "getReviewSampleItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewSampleNextOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Review Sample Item",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/review-sample/reviews": {
+      "post": {
+        "description": "Stores your pass or fail on a Review sample item, replacing any earlier review of it,\nand reveals the Evaluation Model's outcome and reason. A Verdict that isn't a judged\nReference answer or grounding Verdict of this Organisation, or a Live Verdict that isn't\njudged or whose text is gone, is not found.",
+        "operationId": "submitSampleReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SampleReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SampleReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Not pass or fail, a reason over 1,000 characters, or not exactly one target (a Live Verdict needs its check)"
+          }
+        },
+        "summary": "Submit Sample Review",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/review-sample/skips": {
+      "post": {
+        "description": "Counts an item you skipped on the Review sample against the current Judging setup.\nNo review is stored, so the item stays in the sample. Not found while the Organisation has\nno model to judge with.",
+        "operationId": "skipReviewSampleItem",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "No model to judge with"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Skip Review Sample Item",
+        "tags": [
+          "evaluation"
+        ]
+      }
+    },
     "/api/organisations/{organisation_id}/theme": {
       "get": {
         "description": "The Organisation's Theme; the default until an Owner saves one. Any Member can read it.",
@@ -24106,6 +26272,128 @@
         "summary": "Start Image Upload",
         "tags": [
           "theme"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/verdicts/{verdict_id}/review": {
+      "delete": {
+        "description": "Removes the Verdict's review, which puts it back in the Review sample. Not found when it\nhas none.",
+        "operationId": "deleteVerdictReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "verdict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Verdict Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Verdict Review",
+        "tags": [
+          "evaluation"
+        ]
+      },
+      "put": {
+        "description": "Stores your review of a judged Reference answer or grounding Verdict in Run results,\nreplacing any earlier review of it (one from the Review sample then stops counting towards\nagreement). It takes the Verdict out of the Review sample and never changes the Verdict.\nAny other Verdict, or another Organisation's, is not found.",
+        "operationId": "putVerdictReview",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "verdict_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Verdict Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VerdictReviewOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "description": "Not pass or fail, or a reason over 1,000 characters"
+          }
+        },
+        "summary": "Put Verdict Review",
+        "tags": [
+          "evaluation"
         ]
       }
     },

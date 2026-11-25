@@ -49,6 +49,7 @@ export function useVersionMetrics(organisationId: string, projectId: string, age
 
 export type VersionComparison = Schemas["VersionComparisonOut"];
 export type MetricRow = VersionComparison["metrics"][number];
+export type JudgingSetupChange = Schemas["JudgingSetupChangeOut"];
 
 const COMPARISON_PATH = "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison" as const;
 

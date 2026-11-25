@@ -255,10 +255,12 @@ async def test_at_100_percent_a_visitor_reply_is_judged_and_shown_in_its_trace(
     assert verdict["grounded"] == {
         "outcome": "pass",
         "reason": "Fake judge: the answer cites the knowledge base.",
+        "review": None,
     }
     assert verdict["answers_question"] == {
         "outcome": "pass",
         "reason": "Fake judge: the answer shares “annual” with the question.",
+        "review": None,
     }
     assert verdict["passed"] is True
     assert verdict["error_reason"] is None
@@ -314,10 +316,12 @@ async def test_a_reply_passes_only_when_both_checks_pass_and_the_reasons_are_kep
     assert verdict["grounded"] == {
         "outcome": outcome[grounding["passed"]],
         "reason": grounding["reason"],
+        "review": None,
     }
     assert verdict["answers_question"] == {
         "outcome": outcome[answers["passed"]],
         "reason": answers["reason"],
+        "review": None,
     }
     assert verdict["passed"] is passed
 

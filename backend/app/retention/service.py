@@ -3,9 +3,10 @@ comments older than it, and Conversations an Owner deletes on request.
 
 Purging clears a Message's ``content``, the reasons in its Guardrail outcomes, the queries of its
 Searches (Agentic Retrieval Mode: the model writes them from the Visitor's text), the comment
-of any Message Feedback on it and the reasons of its Live Verdict, and sets ``purged_at``;
+of any Message Feedback on it, the reasons of its Live Verdict and the reasons on that Live
+Verdict's reviews, and sets ``purged_at``;
 every number and attribution (tokens, cost, latency, Agent Version, thumbs, ratings, retrievals,
-Searches made, verdicts, Live Verdict outcomes and Cost) stays, so
+Searches made, verdicts, Live Verdict outcomes and Cost, review outcomes) stays, so
 the metrics are the same before and after. The daily purge and a deletion go through the same
 ``purge_messages``.
 
@@ -26,6 +27,7 @@ from app.analytics.usage import day_bounds
 from app.conversations.models import Conversation, Message, Search
 from app.conversations.service import ConversationNotFoundError
 from app.evaluation.models import LiveVerdict
+from app.evaluation.review_models import VerdictReview
 from app.feedback.models import MessageFeedback
 from app.projects.service import get_project
 from app.tenancy.models import Organisation
@@ -41,12 +43,21 @@ async def purge_messages(
     session: AsyncSession, *conditions: ColumnElement[bool], now: datetime
 ) -> int:
     """Purges the Messages matching ``conditions`` that aren't purged yet: their text, their
-    Guardrail outcomes' reasons, their Search queries, the comments of their feedback and the
-    reasons of their Live Verdicts are cleared, and ``purged_at`` set to ``now`` on the Messages
-    and Live Verdicts. Returns how many Messages were purged."""
+    Guardrail outcomes' reasons, their Search queries, the comments of their feedback, the
+    reasons of their Live Verdicts and the reasons on those Live Verdicts' reviews are cleared,
+    and ``purged_at`` set to ``now`` on the Messages, Live Verdicts and reviews. Returns how many
+    Messages were purged."""
     found = select(Message.id).where(Message.purged_at.is_(None), *conditions)
     # A query can repeat or reword what the Visitor wrote; the Search itself stays.
     await session.execute(update(Search).where(Search.message_id.in_(found)).values(query=""))
+    # An Editor's reason on a Live Verdict's review can quote the Visitor too; the review's
+    # outcomes stay, so Evaluation Model agreement is unchanged.
+    live_verdicts = select(LiveVerdict.id).where(LiveVerdict.message_id.in_(found))
+    await session.execute(
+        update(VerdictReview)
+        .where(VerdictReview.live_verdict_id.in_(live_verdicts))
+        .values(reason=None, purged_at=now)
+    )
     # A Live Verdict's reasons can quote the Visitor; its outcomes, Cost and counts stay.
     await session.execute(
         update(LiveVerdict)

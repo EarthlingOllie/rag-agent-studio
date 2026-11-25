@@ -44,6 +44,7 @@ import { InstructionsTab } from "./projects/InstructionsTab";
 import { ProjectsPage } from "./projects/ProjectsPage";
 import { HomeRedirect, OrganisationShell, SignedInShell } from "./shell/SignedInShell";
 import { ProfilePage } from "./profile/ProfilePage";
+import { ReviewSamplePage } from "./reviews/ReviewSamplePage";
 import { SecurityPage } from "./security/SecurityPage";
 import { StatusPage } from "./status/StatusPage";
 
@@ -178,6 +179,7 @@ const analyticsTabRoute = createRoute({
 });
 const projectSettingsTabRoute = createRoute({ getParentRoute: () => projectRoute, path: "/settings", component: ProjectSettingsTab });
 const costRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/cost", component: CostPage });
+const reviewSampleRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/review-sample", component: ReviewSamplePage });
 const profileRoute = createRoute({ getParentRoute: () => organisationRoute, path: "/profile", component: ProfilePage });
 const settingsRoute = createRoute({
   getParentRoute: () => organisationRoute,
@@ -234,6 +236,7 @@ const routeTree = rootRoute.addChildren([
         projectSettingsTabRoute,
       ]),
       costRoute,
+      reviewSampleRoute,
       settingsRoute.addChildren([generalSettingsRoute, credentialsSettingsRoute, modelsSettingsRoute, themeSettingsRoute, membersSettingsRoute, auditSettingsRoute]),
       profileRoute,
       securityRoute,

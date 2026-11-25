@@ -46,7 +46,7 @@ from app.evaluation.estimate import NANO
 from app.evaluation.failed_cases import FailedCase, failed_cases, run_cases_of
 from app.evaluation.from_message import question_of
 from app.evaluation.job import run_evaluation
-from app.evaluation.live import remembered_turns
+from app.evaluation.judge_input import remembered_turns
 from app.evaluation.live_reads import failed_replies, live_verdicts_of
 from app.evaluation.models import (
     EvaluationRun,

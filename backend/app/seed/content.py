@@ -336,6 +336,20 @@ LIVE_SAMPLE_RATES = {HR_AGENT: 90}
 # and they read "Text purged" while its change and explanation stay.
 RETENTION_DAYS = 14
 
+# Verdict review (spec 18): after the history the Owner and the Editor take turns on the Review
+# sample, so the agreement card has figures. They review this many items, and fail a few the Demo
+# model passed (false passes), saying why, about one in every ``FALSE_PASS_EVERY`` reviews; with
+# 40 reviews the card is past Low sample (30) and reads about 90% agreed.
+SAMPLE_REVIEWS = 40
+FALSE_PASSES = 4
+FALSE_PASS_EVERY = 10
+# Why the reviewer failed what the Demo model passed, by the check reviewed.
+FALSE_PASS_REASONS = {
+    "grounding": "It cites the handbook, but the passage it cites doesn't say this.",
+    "answers_question": "It talks about the topic but never answers what was asked.",
+    "reference_answer": "It leaves out the part of the Reference answer that matters.",
+}
+
 
 @dataclass(frozen=True)
 class Attack:

@@ -66,6 +66,8 @@ from app.evaluation.combining import (
 )
 from app.evaluation.estimate import Estimate, EstimateSide, estimate
 from app.evaluation.expectations import refresh_stale
+from app.evaluation.guidance import current_version
+from app.evaluation.guidance_check import guidance_cost
 from app.evaluation.models import (
     IN_PROGRESS,
     CaseSource,
@@ -925,6 +927,7 @@ async def add_run(
         judge_credential_id=judge.credential.id,
         judge_provider=judge.credential.provider,
         judge_model=judge.model,
+        judging_guidance_version=await current_version(session, scope.organisation_id),
         repeats=repeats,
         answers_done=0,
         answers_total=len(cases) * repeats * len(resolved_sides),
@@ -1007,10 +1010,10 @@ async def cancel_run(
 async def evaluation_cost(
     session: AsyncSession, organisation_id: uuid.UUID, start: datetime, before: datetime
 ) -> dict[uuid.UUID, Decimal]:
-    """What each Agent's Evaluation Runs (answers and judging) and Live Verdicts cost from
-    ``start`` until ``before``, by when each answer was given and each Live Verdict judged, at
-    the prices frozen then. Organisation cost reads it; it never counts in Version KPIs or the
-    Token Budget."""
+    """What each Agent's Evaluation Runs (answers and judging), Live Verdicts and guidance checks'
+    re-judging cost from ``start`` until ``before``, by when each answer was given and each Live
+    Verdict or target judged, at the prices frozen then. Organisation cost reads it; it never
+    counts in Version KPIs or the Token Budget."""
     spent = func.coalesce(EvaluationCaseResult.cost_usd, 0) + func.coalesce(
         EvaluationCaseResult.judge_cost_usd, 0
     )
@@ -1038,6 +1041,9 @@ async def evaluation_cost(
     for agent_id, total in live:
         # Only Live Verdicts with a Cost are summed.
         cost[agent_id] = cost.get(agent_id, Decimal(0)) + cast(Decimal, total)
+    # Guidance checks re-judge the Agent's targets (spec 19): counted as evaluation too.
+    for agent_id, total in (await guidance_cost(session, organisation_id, start, before)).items():
+        cost[agent_id] = cost.get(agent_id, Decimal(0)) + total
     return cost
 
 

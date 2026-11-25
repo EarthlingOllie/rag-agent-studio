@@ -110,9 +110,9 @@ export async function json<T>(request: APIRequestContext, method: "GET" | "POST"
 /**
  * Sets up the signed-in Owner's new Organisation to make Suggestions: the demo model answers, the
  * fake Claude judges and proposes, an Evaluation budget lets Live Verdicts be sampled, and a
- * Project holds the Agents, its one Document (`HANDBOOK`) uploaded in the Studio and Ready.
+ * Project holds the Agents, its one Document (`handbook`, by default `HANDBOOK`) uploaded in the Studio and Ready.
  */
-export async function suggestionOrg(page: Page, projectName = "Suggestions HR"): Promise<SuggestionOrg> {
+export async function suggestionOrg(page: Page, projectName = "Suggestions HR", handbook = HANDBOOK): Promise<SuggestionOrg> {
   await page.goto("/");
   const me = await json<{ organisations: { id: string }[] }>(page.request, "GET", "/api/auth/me");
   const organisationId = me.organisations[0]?.id ?? "";
@@ -138,7 +138,7 @@ export async function suggestionOrg(page: Page, projectName = "Suggestions HR"):
   await page.goto(projectPath(org));
   await expect(page.getByText(/No Documents yet/)).toBeVisible({ timeout: 15_000 });
   const name = `handbook-${organisationId.slice(0, 8)}.md`;
-  await page.getByLabel("Upload", { exact: true }).setInputFiles({ name, mimeType: "text/markdown", buffer: Buffer.from(`# Leave\n\n${HANDBOOK}\n`) });
+  await page.getByLabel("Upload", { exact: true }).setInputFiles({ name, mimeType: "text/markdown", buffer: Buffer.from(`# Leave\n\n${handbook}\n`) });
   const row = page.getByRole("table", { name: "Documents" }).getByRole("row", { name: new RegExp(name.replace(/\./g, "\\.")) });
   await expect(row.getByRole("cell", { name: "Ready" })).toBeVisible({ timeout: 90_000 });
   return org;

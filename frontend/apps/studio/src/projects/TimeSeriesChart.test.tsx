@@ -207,3 +207,67 @@ test("a range the API refuses is explained in the time series too", async () => 
     "Check the dates: From can't be after To, and the range can be at most 366 days.",
   );
 });
+
+const guidanceSaved = {
+  occurred_at: "2026-11-05T09:00:00Z",
+  day: "2026-11-05",
+  point_start: "2026-11-05",
+  kind: "guidance" as const,
+  guidance_version: 1,
+  guidance_removed: false,
+  evaluation_model: null,
+};
+
+const modelChanged = {
+  ...guidanceSaved,
+  occurred_at: "2026-11-05T11:00:00Z",
+  kind: "evaluation_model" as const,
+  guidance_version: null,
+  evaluation_model: "gpt-4.1",
+};
+
+test("the Live score marks where the Judging setup changed and notes a mix of Judging setups", async () => {
+  setUp({ respond: () => ({ ...threeDays, judging_setup_changes: [guidanceSaved, modelChanged], mixed_judging_setups: true }) });
+  const { container } = renderStudio(analyticsTab);
+  const section = await screen.findByRole("region", { name: "Over time" });
+  await within(section).findByRole("figure");
+
+  await userEvent.selectOptions(within(section).getByLabelText("Metric"), "Live score");
+
+  expect(await screen.findByText(/dotted ones where the Judging setup changed/)).toBeInTheDocument();
+  expect(within(screen.getByRole("list", { name: "Judging setup changes" })).getAllByRole("listitem").map((li) => li.textContent)).toEqual([
+    "2026-11-05: Judging guidance v1 saved",
+    "2026-11-05: Evaluation Model changed to gpt-4.1",
+  ]);
+  expect(screen.getByRole("note")).toHaveTextContent(
+    "Live Verdicts in this period were judged under more than one Judging setup (5 Nov: Judging guidance v1 saved; 5 Nov: Evaluation Model changed to gpt-4.1).",
+  );
+  // One marker for the day's two changes, beside the Live Version markers.
+  const lines = [...container.querySelectorAll(".recharts-reference-line")].map((line) => line.textContent);
+  expect(lines).toEqual(["v1", "v2, v1", "Judging setup"]);
+});
+
+test("other metrics aren't judged, so they show no Judging setup marker or note", async () => {
+  setUp({ respond: () => ({ ...threeDays, judging_setup_changes: [guidanceSaved], mixed_judging_setups: true }) });
+  const { container } = renderStudio(analyticsTab);
+  const section = await screen.findByRole("region", { name: "Over time" });
+  await within(section).findByRole("figure");
+
+  expect(screen.queryByRole("list", { name: "Judging setup changes" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  expect([...container.querySelectorAll(".recharts-reference-line")].map((line) => line.textContent)).toEqual(["v1", "v2, v1"]);
+  expect(screen.queryByText(/Judging setup changed/)).not.toBeInTheDocument();
+});
+
+test("a Live score under one Judging setup has no Judging setup marker or note", async () => {
+  setUp({ respond: () => threeDays });
+  renderStudio(analyticsTab);
+  const section = await screen.findByRole("region", { name: "Over time" });
+  await within(section).findByRole("figure");
+
+  await userEvent.selectOptions(within(section).getByLabelText("Metric"), "Live score");
+
+  await screen.findByText(/Live score per day/);
+  expect(screen.queryByRole("list", { name: "Judging setup changes" })).not.toBeInTheDocument();
+  expect(screen.queryByRole("note")).not.toBeInTheDocument();
+});
