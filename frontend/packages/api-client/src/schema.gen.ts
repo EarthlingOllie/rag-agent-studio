@@ -2824,6 +2824,51 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/widget/agents/{public_id}/conversation/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Call
+         * @description Starts a Call in the token's Conversation with the Agent's Live Version, which the Call
+         *     records. Admission control runs first, as for a message (the rate limits and the Token
+         *     Budget; the start counts against the rate limits): a refusal is a 503 with the Agent's
+         *     unavailable text and the reason, and so is a voice layer that can't start the Call; nothing
+         *     is recorded then. An Agent with calling off refuses with a 409.
+         */
+        post: operations["startWidgetCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/widget/agents/{public_id}/conversation/calls/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * End Call
+         * @description Ends the token's Conversation's open Call and records when it ended; with no Call open,
+         *     nothing changes. What was said stays in the Conversation as Spoken Messages.
+         */
+        delete: operations["endWidgetCall"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/widget/agents/{public_id}/conversation/rating": {
         parameters: {
             query?: never;
@@ -2882,6 +2927,29 @@ export interface paths {
          *     token.
          */
         post: operations["startWidgetConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/widget/agents/{public_id}/llm/v1/chat/completions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Chat Completions
+         * @description Answers one turn of a Call, for the voice layer. The Visitor's words (the last user
+         *     message) are answered by the Agent's Live Version as a typed widget message is, with the
+         *     earlier turns of the Conversation as history, and saved with the reply as Spoken Messages
+         *     of the Call.
+         */
+        post: operations["answerCallTurn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3259,6 +3327,26 @@ export interface components {
             /** Remove */
             remove?: string[];
         };
+        /** CallJoinOut */
+        CallJoinOut: {
+            /** Conversation Token */
+            conversation_token: string;
+            /**
+             * Voice Layer
+             * @enum {string}
+             */
+            voice_layer: "elevenlabs" | "fake";
+        };
+        /** CallRefusedOut */
+        CallRefusedOut: {
+            /** Detail */
+            detail: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "rate_limited" | "budget_exhausted" | "voice_unavailable";
+        };
         /**
          * Capability
          * @enum {string}
@@ -3362,6 +3450,25 @@ export interface components {
          * @enum {string}
          */
         ChangeState: "clean" | "applied" | "clash";
+        /**
+         * ChatCompletionRequest
+         * @description An OpenAI chat completions request. Only the last user message and the Call token count;
+         *     the model, the history and any other options are ignored.
+         */
+        ChatCompletionRequest: {
+            elevenlabs_extra_body?: components["schemas"]["VoiceLayerExtraBody"] | null;
+            /** Messages */
+            messages: components["schemas"]["ChatMessage"][];
+        };
+        /** ChatMessage */
+        ChatMessage: {
+            /** Content */
+            content?: string | {
+                [key: string]: unknown;
+            }[] | null;
+            /** Role */
+            role: string;
+        };
         /** CheckFailedResponse */
         CheckFailedResponse: {
             /** Detail */
@@ -6061,6 +6168,17 @@ export interface components {
             /** Url */
             url: string;
         };
+        /** StartedCallOut */
+        StartedCallOut: {
+            /**
+             * Call Id
+             * Format: uuid
+             */
+            call_id: string;
+            /** Call Token */
+            call_token: string;
+            join: components["schemas"]["CallJoinOut"];
+        };
         /** SuggestedChangeOut */
         SuggestedChangeOut: {
             /** Base Value */
@@ -6824,6 +6942,14 @@ export interface components {
             /** Number */
             number: number;
         };
+        /** VoiceLayerExtraBody */
+        VoiceLayerExtraBody: {
+            /**
+             * Call Token
+             * @default
+             */
+            call_token: string;
+        };
         /** VoiceOut */
         VoiceOut: {
             /** Id */
@@ -6873,6 +6999,8 @@ export interface components {
              * @enum {string}
              */
             role: "user" | "assistant";
+            /** Spoken */
+            spoken: boolean;
         };
         /** WidgetMessageRequest */
         WidgetMessageRequest: {
@@ -14989,6 +15117,117 @@ export interface operations {
             };
         };
     };
+    startWidgetCall: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartedCallOut"];
+                };
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This assistant is no longer available. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This assistant doesn't take Calls. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Admission control refused the Call, or the voice layer couldn't start it */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallRefusedOut"];
+                };
+            };
+        };
+    };
+    endWidgetCall: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rateConversation: {
         parameters: {
             query?: never;
@@ -15135,6 +15374,80 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answerCallTurn: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <the Agent's secret>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatCompletionRequest"];
+            };
+        };
+        responses: {
+            /** @description Server-Sent Events, as OpenAI streams chat completions: `chat.completion.chunk` objects whose `choices[0].delta.content` is the text to speak (the reply, the Agent's refusal or replacement text, or its unavailable text), then one with `finish_reason` `stop`, then `[DONE]`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description The API key isn't this Agent's. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Call token is invalid or expired, or the Call has ended. */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This assistant is no longer available. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The Agent's unavailable text: it has no model to answer with. */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

@@ -1,16 +1,17 @@
 """Serving a Visitor turn: the one path every Visitor message takes, whatever carries it.
 
 ``serve_turn`` takes the Agent, the Visitor's Conversation, the Visitor's words and their IP
-address. It runs admission control (the rate limits and the Token Budget), saves the words
-against the Agent's Live Version and its pinned Instructions, and answers them with the
-runtime, which saves the reply with its Message attribution, Trace and Cost. It then counts the
-reply's usage against the Token Budget and draws whether the reply gets a Live Verdict.
+address, and the Call they were said in when they were spoken. It runs admission control (the
+rate limits and the Token Budget), saves the words against the Agent's Live Version and its
+pinned Instructions, and answers them with the runtime, which saves the reply with its Message
+attribution, Trace and Cost. It then counts the reply's usage against the Token Budget and draws
+whether the reply gets a Live Verdict.
 
 Awaiting it settles admission and the Live Version: a retired Agent, or one with no model to
 answer with, raises there, so callers can still answer with a plain HTTP error. What it returns
 yields ``Unavailable`` when admission control refused the words (nothing is saved), else the
 runtime's events. The caller only turns those into its own wire format (the widget's
-Server-Sent Events).
+Server-Sent Events, or the turn endpoint's OpenAI-compatible chunks for a Call).
 """
 
 import uuid
@@ -68,9 +69,11 @@ async def serve_turn(
     ip: str,
     *,
     ports: ServingPorts,
+    call_id: uuid.UUID | None = None,
 ) -> AsyncIterator[VisitorTurnEvent]:
     """Admits and saves the Visitor's words; returns the stream that answers them with the
-    Agent's Live Version. The first refusal or reply that finds the day's Token Budget spent
+    Agent's Live Version. Words said in a Call (``call_id``) and their answer are saved as
+    Spoken Messages of that Call. The first refusal or reply that finds the day's Token Budget spent
     raises the Agent's alert and emails its Owners, once per day."""
     agent_id = agent.id
     try:
@@ -81,6 +84,7 @@ async def serve_turn(
             words,
             admission=ports.admission,
             ip=ip,
+            call_id=call_id,
             now=ports.clock.now(),
         )
     except service.NotAdmittedError as refused:

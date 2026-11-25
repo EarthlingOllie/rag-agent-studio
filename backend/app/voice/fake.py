@@ -3,10 +3,19 @@
 It keeps remote agents in memory, offers a fixed set of voices, and joins Calls with no audio.
 ``failing`` makes every operation fail until it is turned off, as an outage or a revoked key
 would. Tests read ``remote_agents`` to see what the platform set up.
+
+A joined Call's turns are driven from outside, as speech would drive ElevenLabs: ``hold_turn``
+takes the words "heard" in the Call and does what ElevenLabs does with them, posting them to the
+remote agent's custom LLM (our turn endpoint) with its secret, the Call token the widget handed
+over as extra body, and the transcript so far as history, then returns the reply it would
+speak. The widget's scripted call client drives it through ``app.voice.fake_api``.
 """
 
 import itertools
-from dataclasses import dataclass
+import json
+from dataclasses import dataclass, field
+
+import httpx
 
 from app.voice.port import CallJoin, RemoteAgentSpec, Voice, VoiceLayerError
 
@@ -24,6 +33,13 @@ class FakeRemoteAgent:
     spec: RemoteAgentSpec
 
 
+@dataclass
+class FakeCall:
+    remote_agent_id: str
+    # The turns so far, as ElevenLabs sends them to the custom LLM: {role, content}.
+    transcript: list[dict[str, str]] = field(default_factory=list)
+
+
 class FakeVoiceLayer:
     def __init__(self) -> None:
         self.remote_agents: dict[str, FakeRemoteAgent] = {}
@@ -31,6 +47,7 @@ class FakeVoiceLayer:
         self.calls: list[tuple[str, str]] = []
         self.failing = False
         self._ids = itertools.count(1)
+        self._joined: dict[str, FakeCall] = {}
 
     def _check(self) -> None:
         if self.failing:
@@ -59,4 +76,42 @@ class FakeVoiceLayer:
             raise VoiceLayerError("The fake voice layer has no such remote agent.")
         token = f"fake-call-{next(self._ids)}"
         self.calls.append((remote_agent_id, token))
+        self._joined[token] = FakeCall(remote_agent_id)
         return CallJoin(token)
+
+    async def hold_turn(
+        self, join_token: str, words: str, call_token: str, *, transport: httpx.AsyncBaseTransport
+    ) -> str:
+        """One turn of the Call joined with ``join_token``: posts ``words`` to the remote agent's
+        custom LLM over ``transport`` and returns the reply's text. Raises ``VoiceLayerError``
+        for an unknown Call or a refused turn."""
+        call = self._joined.get(join_token)
+        remote_agent = None if call is None else self.remote_agents.get(call.remote_agent_id)
+        if call is None or remote_agent is None:
+            raise VoiceLayerError("The fake voice layer has no such Call.")
+        spec = remote_agent.spec
+        call.transcript.append({"role": "user", "content": words})
+        async with httpx.AsyncClient(transport=transport) as client:
+            response = await client.post(
+                f"{spec.llm_url}/chat/completions",
+                headers={"Authorization": f"Bearer {spec.llm_secret}"},
+                json={
+                    "model": "custom-llm",
+                    "stream": True,
+                    "messages": [
+                        {"role": "system", "content": "The remote agent has no prompt."},
+                        *call.transcript,
+                    ],
+                    "elevenlabs_extra_body": {"call_token": call_token},
+                },
+            )
+        if response.status_code != httpx.codes.OK:
+            raise VoiceLayerError(f"The custom LLM refused the turn: {response.text}")
+        reply = "".join(
+            choice["delta"].get("content", "")
+            for line in response.text.splitlines()
+            if line.startswith("data: {")
+            for choice in json.loads(line.removeprefix("data: "))["choices"]
+        )
+        call.transcript.append({"role": "assistant", "content": reply})
+        return reply

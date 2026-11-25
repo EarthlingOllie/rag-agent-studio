@@ -231,6 +231,8 @@ class Shell:
     # The public Experience of the Live Version.
     experience: Experience
     citations: bool
+    # Whether the Agent takes Calls: calling is on and its remote agent is set up.
+    calls: bool
     # Where the widget fetches the Agent's avatar and the Theme's logo, or None.
     avatar_url: str | None
     logo_url: str | None
@@ -268,6 +270,7 @@ async def shell(
         theme=with_colours(theme.settings, override.colours),
         experience=experience,
         citations=found.live.config.retrieval.citations,
+        calls=takes_calls(found.agent),
         avatar_url=avatar_url,
         logo_url=None if logo is None else _image_url(public_id, "logo", logo),
     )
@@ -282,6 +285,11 @@ async def widget_image(session: AsyncSession, public_id: str, kind: str) -> Stor
     if kind == "logo":
         return theme.images[ThemeImageKind.LOGO]
     return override_of(found.agent).avatar or theme.images[ThemeImageKind.AVATAR]
+
+
+def takes_calls(agent: Agent) -> bool:
+    """Whether Visitors can call the Agent: calling is on and its remote agent is set up."""
+    return agent.calls_enabled and agent.remote_agent_id is not None
 
 
 class InvalidTokenError(Exception):
@@ -345,6 +353,16 @@ async def agent_of(session: AsyncSession, conversation: Conversation) -> Agent:
     return await session.get_one(Agent, conversation.agent_id)
 
 
+def limits_of(agent: Agent) -> Limits:
+    """The Agent's rate limits and Token Budget, as admission control applies them now."""
+    return Limits(
+        public_id=agent.public_id,
+        conversation_messages_per_minute=agent.conversation_messages_per_minute,
+        ip_messages_per_minute=agent.ip_messages_per_minute,
+        daily_token_budget=agent.daily_token_budget,
+    )
+
+
 async def admit_turn(
     session: AsyncSession,
     agent: Agent,
@@ -353,23 +371,21 @@ async def admit_turn(
     *,
     admission: Admission,
     ip: str,
+    call_id: uuid.UUID | None = None,
     now: datetime,
 ) -> AdmittedTurn:
     """Saves the Visitor's question in their Conversation, to be answered by the Agent's Live
-    Version at this moment. The message first goes through admission control with the Agent's
-    current Token Budget and rate limits; a refused one raises ``NotAdmittedError`` and nothing
-    is saved. A retired Agent raises ``serving.AgentNotServedError`` or
-    ``serving.AgentNotLiveError`` once admitted."""
-    limits = Limits(
-        public_id=agent.public_id,
-        conversation_messages_per_minute=agent.conversation_messages_per_minute,
-        ip_messages_per_minute=agent.ip_messages_per_minute,
-        daily_token_budget=agent.daily_token_budget,
-    )
+    Version at this moment; with ``call_id``, as a Spoken Message of that Call. The message
+    first goes through admission control with the Agent's current Token Budget and rate limits;
+    a refused one raises ``NotAdmittedError`` and nothing is saved. A retired Agent raises
+    ``serving.AgentNotServedError`` or ``serving.AgentNotLiveError`` once admitted."""
+    limits = limits_of(agent)
     refusal = await admission.admit(limits, conversation.id, ip)
     if refusal is not None:
         raise NotAdmittedError(refusal, agent.id)
-    turn = await serving.prepare_turn(session, agent.public_id, conversation.id, question, now=now)
+    turn = await serving.prepare_turn(
+        session, agent.public_id, conversation.id, question, call_id=call_id, now=now
+    )
     return AdmittedTurn(turn, agent.id, limits)
 
 
@@ -515,6 +531,8 @@ class ResumedMessage:
     citations: list[ResumedCitation]
     # The Visitor's Message Feedback on an answer, if they gave some.
     feedback: MessageFeedback | None
+    # Said in a Call rather than typed: a Spoken Message.
+    spoken: bool
 
 
 @dataclass(frozen=True)
@@ -556,7 +574,7 @@ async def resume(
     given = await feedback_on(session, [m.id for m in messages])
     return ResumedConversation(
         [
-            ResumedMessage(m.id, m.role, m.content, cited.get(m.id, []), given.get(m.id))
+            ResumedMessage(m.id, m.role, m.content, cited.get(m.id, []), given.get(m.id), m.spoken)
             for m in messages
         ],
         await rating_state(session, conversation),

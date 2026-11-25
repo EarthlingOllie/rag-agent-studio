@@ -1,4 +1,5 @@
-"""Conversation and Message tables, introduced for the Playground and extended in spec 07.
+"""Conversation and Message tables, introduced for the Playground and extended in spec 07, and
+the Calls of spec 20.
 
 A Playground Conversation has ``is_playground`` set, so metrics (spec 07) can leave it out.
 """
@@ -71,6 +72,30 @@ class Conversation(IdMixin, Base):
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class Call(IdMixin, Base):
+    """A Call (spec 20): a Visitor talking to the Agent inside one of their Conversations, through
+    the voice layer. Its Spoken Messages name it. It is open until ``ended_at`` is set."""
+
+    __tablename__ = "calls"
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+    )
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Conversation.id, ondelete="CASCADE"), index=True
+    )
+    # The Version that was Live when the Call started. Versions only go with their Agent, which
+    # takes its Conversations and Calls with it.
+    agent_version_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("agent_versions.id", ondelete="CASCADE")
+    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The Visitor's IP address when the Call started: the voice layer, not the Visitor, sends
+    # its turns, so their rate limit counts against this address.
+    ip: Mapped[str] = mapped_column(String(64))
+
+
 class Message(IdMixin, Base):
     __tablename__ = "messages"
     __table_args__ = (
@@ -134,6 +159,12 @@ class Message(IdMixin, Base):
     # Conversation deleted on request (``app.retention``); ``content`` is then empty. Every
     # number and attribution stays.
     purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # A Spoken Message: said in a Call (the Visitor's transcribed words, or the reply the voice
+    # layer spoke), rather than typed. ``call_id`` names the Call.
+    spoken: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    call_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(Call.id, ondelete="SET NULL"), index=True
+    )
 
 
 class Search(IdMixin, Base):

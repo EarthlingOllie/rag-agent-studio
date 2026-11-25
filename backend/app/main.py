@@ -35,7 +35,7 @@ from app.default_model.service import default_model_references
 from app.documents import api as documents_api
 from app.documents.ports import build_ports, install_ports
 from app.embed import api as embed_api
-from app.embed import branding_api
+from app.embed import branding_api, calls_api, turn_api
 from app.embed.call_settings import call_settings_references
 from app.embed.tokens import TokenSigner
 from app.evaluation import api as evaluation_api
@@ -61,6 +61,7 @@ from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
 from app.theme import api as theme_api
 from app.voice import api as voice_api
+from app.voice import fake_api as fake_voice_api
 from app.voice.adapters import build_voice_layer
 from app.voice.remote import VoicePorts, install_voice_ports
 from app.worker.celery_app import configure_celery
@@ -107,6 +108,9 @@ ROUTERS: Sequence[APIRouter] = (
     embed_api.settings_router,
     branding_api.router,
     embed_api.widget_router,
+    calls_api.router,
+    turn_api.router,
+    fake_voice_api.router,
     feedback_api.widget_router,
     feedback_api.rating_router,
     embed_api.shell_router,

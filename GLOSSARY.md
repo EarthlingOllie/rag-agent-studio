@@ -693,7 +693,7 @@ A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Age
 _Avoid_: Voice chat, voice session, phone call
 
 **Call token**:
-A short-lived, signed token the widget is given when a Call starts, bound to its Conversation. The voice layer presents it with every spoken turn, together with a secret only it holds; a turn is answered only when both are good.
+A short-lived, signed token the widget is given when a Call starts, bound to the Call and its Conversation and lasting the Maximum Call length. The widget hands it to the Voice layer, which presents it with every spoken turn (as its custom LLM's extra body), together with the Remote agent's secret; a turn is answered only when both are good and the Call is still open.
 _Avoid_: Voice token, session key
 
 **Calls failing alert**:
@@ -715,6 +715,14 @@ _Avoid_: Voice provider, speech engine, TTS
 **Remote agent**:
 An Agent's counterpart in the Voice layer, one per Agent with calling on: it holds the voice, the language, the spoken greeting, our turn endpoint's address (from the platform's public base URL) as its custom LLM, and a per-Agent secret the platform generates and stores encrypted; it has no prompt, tools or knowledge of its own. Saving the Call settings sets it up or updates it, so nobody edits it in ElevenLabs; turning calling off, changing the credential, or archiving or deleting the Agent removes it.
 _Avoid_: ElevenLabs agent, voice agent, voice bot
+
+**Turn endpoint**:
+The OpenAI-compatible chat completions route, under an Agent's public ID, that the Voice layer calls as its Remote agent's custom LLM for every turn of a Call. It takes only the last user message as the Visitor's words, ignoring the history the Voice layer sends, serves them exactly as a typed widget message is served, saves both sides as Spoken Messages, and streams back the text to speak as Server-Sent Events.
+_Avoid_: Custom LLM (for our side), voice webhook
+
+**Call client**:
+The widget's side of a Call: it joins the Call the API started and tells the widget what the Visitor said, when the Agent has spoken, and whether the Agent is speaking or listening, while the reply itself (text, sources, Message ID) comes from our API. Against the fake Voice layer the widget uses its scripted call client, which plays a Call without audio by "saying" the Agent's first starter question.
+_Avoid_: Voice SDK, softphone
 
 **Maximum Call length**:
 How long one Call may last before it is ended (10 minutes by default), timed by the platform. Part of the Operational Settings.

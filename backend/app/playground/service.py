@@ -159,6 +159,9 @@ class PreparedTurn:
     agent_version_id: uuid.UUID | None = None
     # The Agent is Agentic but its chat model can't use tools, so ``config`` is Automatic.
     automatic_fallback: bool = False
+    # The Call the question was said in (spec 20): the question and its answer are Spoken
+    # Messages of that Call. None for a typed question.
+    call_id: uuid.UUID | None = None
 
     @property
     def instructions_source(self) -> InstructionsSource:
@@ -217,6 +220,7 @@ async def save_question(
     *,
     agent_version_id: uuid.UUID | None,
     instructions_version: InstructionsVersion | None = None,
+    call_id: uuid.UUID | None = None,
     now: datetime,
 ) -> PreparedTurn:
     """Resolves ``config``'s models (``NoDefaultModelError`` or ``ProviderCredentialGoneError``
@@ -235,6 +239,8 @@ async def save_question(
             conversation_id=conversation.id,
             role=MessageRole.USER,
             content=question,
+            spoken=call_id is not None,
+            call_id=call_id,
             # By the app's clock, as the answer is: usage rollups (spec 07) go by it.
             created_at=now,
         )
@@ -258,6 +264,7 @@ async def save_question(
         classifier=resolved.classifier,
         agent_version_id=agent_version_id,
         automatic_fallback=resolved.automatic_fallback,
+        call_id=call_id,
     )
 
 
@@ -490,6 +497,8 @@ async def answer(
                 guardrail_outcomes=[o.as_dict() for o in event.guardrail_outcomes],
                 search_count=event.search_count,
                 automatic_fallback=prepared.automatic_fallback,
+                spoken=prepared.call_id is not None,
+                call_id=prepared.call_id,
             )
             session.add(message)
             await session.flush()

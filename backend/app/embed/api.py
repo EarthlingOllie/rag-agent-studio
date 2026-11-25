@@ -167,6 +167,7 @@ async def widget_shell(public_id: str, db: Db, signer: Signer, clock: ClockDep) 
             "ui_text": experience.ui_text.model_dump(mode="json"),
             "rating_prompt_after": experience.rating_prompt_after,
             "citations": found.citations,
+            "calls": found.calls,
         }
     )
     # The Theme's values are validated (hex colours, a whole radius, an allowlisted font), so
@@ -415,6 +416,9 @@ class WidgetMessageOut(BaseModel):
     citations: list[WidgetCitationOut]
     # The Visitor's thumbs on an answer (Message Feedback); null when none was given.
     feedback: WidgetFeedbackOut | None
+    # A Spoken Message: said in a Call (the Visitor's transcribed words or the reply the Agent
+    # spoke) rather than typed.
+    spoken: bool
 
 
 class WidgetRatingOut(BaseModel):
@@ -467,6 +471,7 @@ async def get_conversation(
                         comment=m.feedback.comment,
                     )
                 ),
+                spoken=m.spoken,
             )
             for m in resumed.messages
         ],

@@ -70,19 +70,33 @@ async def test_a_visitor_who_reloads_gets_their_conversation_back(
     # Each Message's ID (an answer's is the stream's `message_id`, for Message Feedback).
     ids = [m.pop("id") for m in messages]
     assert messages == [
-        {"role": "user", "content": "How much leave?", "citations": [], "feedback": None},
         {
-            "role": "assistant",
-            "content": "Leave is 25 days [C1].",
-            "citations": [{"label": "C1", "document_name": "leave.txt"}],
+            "role": "user",
+            "content": "How much leave?",
+            "citations": [],
             "feedback": None,
+            "spoken": False,
         },
-        {"role": "user", "content": "And sick days?", "citations": [], "feedback": None},
         {
             "role": "assistant",
             "content": "Leave is 25 days [C1].",
             "citations": [{"label": "C1", "document_name": "leave.txt"}],
             "feedback": None,
+            "spoken": False,
+        },
+        {
+            "role": "user",
+            "content": "And sick days?",
+            "citations": [],
+            "feedback": None,
+            "spoken": False,
+        },
+        {
+            "role": "assistant",
+            "content": "Leave is 25 days [C1].",
+            "citations": [{"label": "C1", "document_name": "leave.txt"}],
+            "feedback": None,
+            "spoken": False,
         },
     ]
     assert [ids[1], ids[3]] == [first[-1][1]["message_id"], second[-1][1]["message_id"]]

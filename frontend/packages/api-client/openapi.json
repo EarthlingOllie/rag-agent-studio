@@ -844,6 +844,51 @@
         "title": "BulkTagRequest",
         "type": "object"
       },
+      "CallJoinOut": {
+        "properties": {
+          "conversation_token": {
+            "title": "Conversation Token",
+            "type": "string"
+          },
+          "voice_layer": {
+            "enum": [
+              "elevenlabs",
+              "fake"
+            ],
+            "title": "Voice Layer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "voice_layer",
+          "conversation_token"
+        ],
+        "title": "CallJoinOut",
+        "type": "object"
+      },
+      "CallRefusedOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "rate_limited",
+              "budget_exhausted",
+              "voice_unavailable"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail",
+          "reason"
+        ],
+        "title": "CallRefusedOut",
+        "type": "object"
+      },
       "Capability": {
         "enum": [
           "chat",
@@ -1143,6 +1188,64 @@
         ],
         "title": "ChangeState",
         "type": "string"
+      },
+      "ChatCompletionRequest": {
+        "description": "An OpenAI chat completions request. Only the last user message and the Call token count;\nthe model, the history and any other options are ignored.",
+        "properties": {
+          "elevenlabs_extra_body": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VoiceLayerExtraBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "title": "ChatCompletionRequest",
+        "type": "object"
+      },
+      "ChatMessage": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "ChatMessage",
+        "type": "object"
       },
       "CheckFailedResponse": {
         "properties": {
@@ -8661,6 +8764,29 @@
         "title": "StartUploadResponse",
         "type": "object"
       },
+      "StartedCallOut": {
+        "properties": {
+          "call_id": {
+            "format": "uuid",
+            "title": "Call Id",
+            "type": "string"
+          },
+          "call_token": {
+            "title": "Call Token",
+            "type": "string"
+          },
+          "join": {
+            "$ref": "#/components/schemas/CallJoinOut"
+          }
+        },
+        "required": [
+          "call_id",
+          "call_token",
+          "join"
+        ],
+        "title": "StartedCallOut",
+        "type": "object"
+      },
       "SuggestedChangeOut": {
         "properties": {
           "base_value": {
@@ -11034,6 +11160,18 @@
         "title": "VersionNumberOut",
         "type": "object"
       },
+      "VoiceLayerExtraBody": {
+        "properties": {
+          "call_token": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Call Token",
+            "type": "string"
+          }
+        },
+        "title": "VoiceLayerExtraBody",
+        "type": "object"
+      },
       "VoiceOut": {
         "properties": {
           "id": {
@@ -11173,6 +11311,10 @@
             ],
             "title": "Role",
             "type": "string"
+          },
+          "spoken": {
+            "title": "Spoken",
+            "type": "boolean"
           }
         },
         "required": [
@@ -11180,7 +11322,8 @@
           "role",
           "content",
           "citations",
-          "feedback"
+          "feedback",
+          "spoken"
         ],
         "title": "WidgetMessageOut",
         "type": "object"
@@ -24516,6 +24659,159 @@
         ]
       }
     },
+    "/api/widget/agents/{public_id}/conversation/calls": {
+      "post": {
+        "description": "Starts a Call in the token's Conversation with the Agent's Live Version, which the Call\nrecords. Admission control runs first, as for a message (the rate limits and the Token\nBudget; the start counts against the rate limits): a refusal is a 503 with the Agent's\nunavailable text and the reason, and so is a voice layer that can't start the Call; nothing\nis recorded then. An Agent with calling off refuses with a 409.",
+        "operationId": "startWidgetCall",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartedCallOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant is no longer available."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant doesn't take Calls."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallRefusedOut"
+                }
+              }
+            },
+            "description": "Admission control refused the Call, or the voice layer couldn't start it"
+          }
+        },
+        "summary": "Start Call",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/conversation/calls/current": {
+      "delete": {
+        "description": "Ends the token's Conversation's open Call and records when it ended; with no Call open,\nnothing changes. What was said stays in the Conversation as Spoken Messages.",
+        "operationId": "endWidgetCall",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "End Call",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
     "/api/widget/agents/{public_id}/conversation/rating": {
       "put": {
         "description": "Rates the token's Conversation from 1 to 5, or changes its rating; the first rating and\neach change are kept in a change log. The rating belongs to the Agent Version of the last\nreply before it. Refused until the Agent has replied.",
@@ -24727,6 +25023,111 @@
           }
         },
         "summary": "Start Conversation",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/llm/v1/chat/completions": {
+      "post": {
+        "description": "Answers one turn of a Call, for the voice layer. The Visitor's words (the last user\nmessage) are answered by the Agent's Live Version as a typed widget message is, with the\nearlier turns of the Conversation as history, and saved with the reply as Spoken Messages\nof the Call.",
+        "operationId": "answerCallTurn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <the Agent's secret>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <the Agent's secret>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Server-Sent Events, as OpenAI streams chat completions: `chat.completion.chunk` objects whose `choices[0].delta.content` is the text to speak (the reply, the Agent's refusal or replacement text, or its unavailable text), then one with `finish_reason` `stop`, then `[DONE]`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The API key isn't this Agent's."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Call token is invalid or expired, or the Call has ended."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant is no longer available."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Agent's unavailable text: it has no model to answer with."
+          }
+        },
+        "summary": "Chat Completions",
         "tags": [
           "widget"
         ]
