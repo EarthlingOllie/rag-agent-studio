@@ -2,6 +2,16 @@
 
 The AWS demo will serve a handful of clients, but it is also an interview showcase, so it should still *show* that it scales. This document maps what `infra/` deploys today and proposes leaner shapes. The scaling story stays in the code (Terraform variables, autoscaling policies, stateless services); it does not need to be running and billed all the time.
 
+> **Decided.** Sections 3 to 5 below are the proposal as first written. What was decided differs, and is recorded in [ADR-0021](adr/0021-sqs-two-worker-pools-autoscaling.md) and [spec 22](specs/22-lean-scalable-infrastructure-spec.md):
+>
+> - Tasks stay in private subnets behind `fck-nat`; only the four interface endpoints go. Option A's public subnets were not adopted.
+> - SQS replaces Redis as the job broker, so workers scale on queue depth. Redis stays for sessions, limits and budgets.
+> - The worker splits into a general pool on Fargate Spot (1 to 3) and a runs pool on regular Fargate (0 to 2). Beat stays its own service.
+> - Secrets Manager and both KMS keys stay.
+> - Interruptible workers need the application work in [spec 21](specs/21-job-reliability-spec.md) first. The claim below that ingestion is safe on Spot because "Celery acks late" was wrong: it does not, and a job cut short was lost or left stuck.
+> - Expected cost is about 120 USD a month left on, not the 75 to 100 below.
+> - Rehearsing the deployment locally is [spec 23](specs/23-floci-rehearsal-spec.md).
+
 Sources: `infra/envs/demo/main.tf`, `infra/modules/*`, `docker-compose.yml`, [ADR-0010](adr/0010-aws-runtime-shape.md), [ADR-0011](adr/0011-single-cloudfront-origin.md) and the [cost table](deploy-demo.md#expected-cost).
 
 ## 1. Current AWS infrastructure
@@ -128,7 +138,7 @@ flowchart TB
 |---|---|---|
 | Tasks in public subnets with `assign_public_ip`, security groups with no inbound except ALB → api. Remove fck-nat, the EIP and the 4 interface endpoints | ~75 USD | Nothing can reach the tasks from outside. Image pulls go direct to ECR. Keep a `private_networking` variable to restore the current layout. |
 | Run Beat inside one worker (`celery worker -B`), or keep a separate `beat` service of 0.25 vCPU with `desired_count = 1` | ~8 USD | Removes a service. If the worker scales out, `-B` must run on exactly one task, so in practice the separate service is cleaner for the scaling story. |
-| Worker on **Fargate Spot**, with `min = 0` between demos | ~55–78 USD | Ingestion is retryable (Celery acks late). Spot capacity is the textbook answer for batch work. |
+| Worker on **Fargate Spot**, with `min = 0` between demos | ~55–78 USD | Ingestion can be redone, once spec 21 makes an interrupted job restart (it does not today). Spot capacity is the textbook answer for batch work. |
 | **Application Auto Scaling** on `api` (CPU 60% target) and `worker` (backlog per task from a Redis `LLEN` metric) | Cost goes up and down with demand | This replaces fixed `desired_counts`, which `spec 09` scoped out, and it is the visible scaling demo. |
 | Secrets Manager → SSM Parameter Store SecureString; 2 KMS keys → 1 (keep separate *grants*) | ~3 USD | Same encryption, no per-secret fee. Optional: keeping the credentials key separate is a talking point for ADR-0006. |
 

@@ -258,7 +258,7 @@ _Avoid_: Spend, charge, bill
 The model that turns Chunks and queries into vectors for a Project. It is the platform's local model unless the Project chooses a provider model (Voyage, OpenAI or Bedrock) through an embedding-capable Provider Credential, which then becomes a Credential reference. It can change at any time: a Project without Documents switches at once, and one with Documents goes through a Re-embed. The model retrieval uses is the **active** one; the one a running Re-embed moves to is the **pending** one.
 
 **Re-embed**:
-The background job that moves a Project's Knowledge Base to a new Embedding Model. It writes the pending model's vector for every Chunk next to the active model's, with visible progress, while the active model keeps serving; then, in one step, the pending model becomes active and the old vectors are deleted. Uploads during a Re-embed are embedded with both models. A failed Re-embed leaves the active model unchanged and shows why; choosing again while one runs cancels it.
+The background job that moves a Project's Knowledge Base to a new Embedding Model. It writes the pending model's vector for every Chunk next to the active model's, with visible progress, while the active model keeps serving; then, in one step, the pending model becomes active and the old vectors are deleted. Uploads during a Re-embed are embedded with both models. A failed Re-embed leaves the active model unchanged and shows why; choosing again while one runs cancels it. One whose worker stops carries on from the Chunks it had not yet done; interrupted three times with no progress in between, it fails.
 _Avoid_: Migration, re-index, rebuild
 
 **Embedding Model registry**:
@@ -272,7 +272,7 @@ _Avoid_: Search endpoint, retriever
 ## Knowledge
 
 **Project**:
-An isolated container of a Knowledge Base, Project Instructions and Agents. Nothing crosses a Project boundary.
+An isolated container of a Knowledge Base, Project Instructions and Agents. Nothing crosses a Project boundary. An archived Project that an Owner deletes is **Deleting** from that moment: hidden, refusing every change and Visitor message, and impossible to restore, until its rows and stored files are gone.
 _Avoid_: Workspace, context repository, collection
 
 **Project details dialog**:
@@ -288,7 +288,7 @@ A file uploaded into a Project's Knowledge Base.
 _Avoid_: File, upload, source
 
 **Document status**:
-Where a Document is in ingestion: Queued (uploaded, waiting for the worker), Processing (being converted, chunked and embedded), Ready (its Chunks are stored and retrievable) or Failed (with a readable reason).
+Where a Document is in ingestion: Queued (uploaded, waiting for the worker), Processing (being converted, chunked and embedded), Ready (its Chunks are stored and retrievable) or Failed (with a readable reason). A Document whose ingestion is cut short (its worker stopped) goes back to Queued and is ingested again without anyone asking.
 _Avoid_: State, phase, job status
 
 **Ingestion**:
@@ -304,7 +304,7 @@ The SHA-256 of a Document's uploaded bytes, recorded when the upload is confirme
 _Avoid_: Checksum, fingerprint, etag
 
 **Failure category**:
-What kind of failure set a Document to Failed, shown with its readable message: unsupported content (the file isn't what its type says, or has no readable text), conversion error (the converter couldn't convert it, or processing went wrong), provider error (the Embedding Model's provider kept failing after the automatic retries) or quota (the Project's Document quota had no room for it).
+What kind of failure set a Document to Failed, shown with its readable message: unsupported content (the file isn't what its type says, or has no readable text), conversion error (the converter couldn't convert it, or processing went wrong), provider error (the Embedding Model's provider kept failing after the automatic retries), interrupted (ingestion was cut short three times running; Retry starts the count again) or quota (the Project's Document quota had no room for it).
 _Avoid_: Error code, error type, failure reason
 
 **Retry**:
@@ -858,7 +858,7 @@ An Evaluation Case's expectation that the Agent says it doesn't know, for a ques
 _Avoid_: Negative case, unanswerable test
 
 **Evaluation Run**:
-One run of an Agent's Evaluation Set comparing two sides, the first and the second, each the Draft or one of the Agent's Versions, with the Project Instructions it answers with: a Version its pinned ones, the Draft the Instructions Version or Instructions Draft chosen when the Run starts (the Current Instructions Version by default). By default the Live Version is compared with the Draft, or the Draft runs alone while the Agent has none; a Rollout evaluation's second side is the only Version that answers with Instructions other than its pin. Both sides answer every Evaluation Case at the same moment against the same Knowledge Base, through the real Guardrails, as many times as the Evaluation repeats, and the Evaluation Model judges each answer. An Editor starts it, an Agent has at most one in progress (queued or running), which an Editor can cancel (it stops between answers and keeps what it spent), and finished Runs are kept as its history; a Run with a Draft side is stale once the Draft has a newer Draft revision. Before it starts, the Evaluate dialog shows its estimated Cost, which is stored on it: the cases, times the sides, times the Evaluation repeats, times each side's mean Cost per reply over the last 30 days (a Version's from its Usage rollups, the Draft's from its Playground replies; with none, its model's prices for a fixed per-judgement token allowance), plus judging every answer at the judge's prices for the same allowance. Its actual Cost, for the answers and for judging, is frozen when it runs (each answer and judgement at the prices in force then), shown on the Run and in its history, and counts in Organisation cost, never in Version KPIs or the Token Budget. When Publishing, only the latest Run of the Draft against the current Live Version counts, and only if the Draft is published with the Instructions it ran with (otherwise a notice says so): a Regression, or a lower Evaluation score than the Live Version's, is a warning; it never blocks.
+One run of an Agent's Evaluation Set comparing two sides, the first and the second, each the Draft or one of the Agent's Versions, with the Project Instructions it answers with: a Version its pinned ones, the Draft the Instructions Version or Instructions Draft chosen when the Run starts (the Current Instructions Version by default). By default the Live Version is compared with the Draft, or the Draft runs alone while the Agent has none; a Rollout evaluation's second side is the only Version that answers with Instructions other than its pin. Both sides answer every Evaluation Case at the same moment against the same Knowledge Base, through the real Guardrails, as many times as the Evaluation repeats, and the Evaluation Model judges each answer. An Editor starts it, an Agent has at most one in progress (queued or running), which an Editor can cancel (it stops between answers and keeps what it spent), and finished Runs are kept as its history; a Run with a Draft side is stale once the Draft has a newer Draft revision. Before it starts, the Evaluate dialog shows its estimated Cost, which is stored on it: the cases, times the sides, times the Evaluation repeats, times each side's mean Cost per reply over the last 30 days (a Version's from its Usage rollups, the Draft's from its Playground replies; with none, its model's prices for a fixed per-judgement token allowance), plus judging every answer at the judge's prices for the same allowance. Its actual Cost, for the answers and for judging, is frozen when it runs (each answer and judgement at the prices in force then), shown on the Run and in its history, and counts in Organisation cost, never in Version KPIs or the Token Budget. When Publishing, only the latest Run of the Draft against the current Live Version counts, and only if the Draft is published with the Instructions it ran with (otherwise a notice says so): a Regression, or a lower Evaluation score than the Live Version's, is a warning; it never blocks. A Run whose worker stops is **Interrupted**: a finished Run that keeps the answers, Verdicts and Cost it has and, like a cancelled Run, is never the latest result, never counts when Publishing and is never restarted for the Editor, who can run it again.
 _Avoid_: Eval, test run, benchmark run
 
 **Run side**:
@@ -906,7 +906,7 @@ The share of an Agent's Visitor replies the Evaluation Model judges, from 0% (th
 _Avoid_: Sampling percentage, judge rate
 
 **Live Verdict**:
-The Evaluation Model's judgement of one sampled Visitor reply: whether it is grounded (every claim supported by its Citations) and whether it answers the question, each a pass or fail with a one-sentence reason, judged on what the Agent saw (its Remembered turns, the question and the Chunks it was given) but never its system prompt or the Project Instructions. The reply passes when both pass; a reply whose text, its question's or a Remembered turn's is Purged before it is judged is skipped, and nothing is sent to the judge. A reply the Evaluation Model couldn't judge has an Error instead. It belongs to its Message, so the Purge clears its reasons and keeps its pass or fail; the Trace then shows "Text purged". Its Cost counts in Organisation cost's Evaluation column, never in the Token Budget or the Version KPIs.
+The Evaluation Model's judgement of one sampled Visitor reply: whether it is grounded (every claim supported by its Citations) and whether it answers the question, each a pass or fail with a one-sentence reason, judged on what the Agent saw (its Remembered turns, the question and the Chunks it was given) but never its system prompt or the Project Instructions. The reply passes when both pass; a reply whose text, its question's or a Remembered turn's is Purged before it is judged is skipped, and nothing is sent to the judge. A reply the Evaluation Model couldn't judge has an Error instead. It belongs to its Message, so the Purge clears its reasons and keeps its pass or fail; the Trace then shows "Text purged". Its Cost counts in Organisation cost's Evaluation column, never in the Token Budget or the Version KPIs. A reply is judged once however often its job is delivered; one whose worker stops is tried once more, then has an Error.
 _Avoid_: Live judgement, online eval, score
 
 **Live score**:
@@ -946,7 +946,7 @@ A proposed change to an Agent's Draft, drawn from its Live Version's replies tha
 _Avoid_: Agent (that is the assistant being changed), copilot, optimiser, auto-tune, recommendation
 
 **Suggestion run**:
-An Editor's request for a Suggestion for one Agent over a range of UTC days (the last 14 by default), after seeing how much evidence the range holds and its estimated Cost. It gathers the evidence, has the Evaluation Model propose the Suggestion and, when the Suggestion changes the configuration and the Agent has an Evaluation Set, checks it against the Live Version in an Evaluation Run. An Agent has at most one in progress, which an Editor can cancel; its Cost counts in Organisation cost, never against the Evaluation budget.
+An Editor's request for a Suggestion for one Agent over a range of UTC days (the last 14 by default), after seeing how much evidence the range holds and its estimated Cost. It gathers the evidence, has the Evaluation Model propose the Suggestion and, when the Suggestion changes the configuration and the Agent has an Evaluation Set, checks it against the Live Version in an Evaluation Run. An Agent has at most one in progress, which an Editor can cancel; its Cost counts in Organisation cost, never against the Evaluation budget. One whose worker stops before a Suggestion is proposed fails as interrupted; one stopped during its check keeps the Suggestion, not checked, and its Evaluation Run is Interrupted.
 _Avoid_: Tuning run, optimisation
 
 **Suggestion's check**:
