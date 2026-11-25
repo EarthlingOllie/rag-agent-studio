@@ -238,11 +238,23 @@ export function TraceBody({ trace }: { trace: Trace }) {
   );
 }
 
-/** A Trace however it is loaded: loading, failed, or its body. */
-export function TraceContent({ trace }: { trace: UseQueryResult<Trace> }) {
+/** A Trace however it is loaded: loading, failed, or its body, followed by what `after` adds for
+ * the loaded Trace (a Conversation's reply adds its Live Verdict). */
+export function TraceContent<T extends Trace>({
+  trace,
+  after,
+}: {
+  trace: UseQueryResult<T>;
+  after?: ((loaded: T) => ReactNode) | undefined;
+}) {
   if (trace.isError) return <p role="alert">The Trace could not be loaded. Try again shortly.</p>;
   if (trace.data === undefined) return <p role="status">Loading the Trace…</p>;
-  return <TraceBody trace={trace.data} />;
+  return (
+    <div className="space-y-4">
+      <TraceBody trace={trace.data} />
+      {after?.(trace.data)}
+    </div>
+  );
 }
 
 /** A Playground answer's Trace, read through the Agent. */

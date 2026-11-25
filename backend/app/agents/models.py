@@ -34,6 +34,8 @@ IP_RATE_MAX = 10000
 # The Token Budget: tokens an Agent's Visitor replies may use in one UTC day.
 TOKEN_BUDGET_DEFAULT = 1_000_000
 TOKEN_BUDGET_MAX = 1_000_000_000
+# The Live sample rate: the whole percentage of Visitor replies judged (spec 15).
+LIVE_SAMPLE_RATE_MAX = 100
 
 
 def new_public_id() -> str:
@@ -79,6 +81,9 @@ class Agent(IdMixin, Base):
     daily_token_budget: Mapped[int] = mapped_column(
         Integer, server_default=text(str(TOKEN_BUDGET_DEFAULT))
     )
+    # The Live sample rate: the chance, in whole percent, that a Visitor reply is chosen for a
+    # Live Verdict (``app.evaluation.live``). 0, the default, judges nothing.
+    live_sample_rate: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     # The budget alert flag: when the day's Token Budget ran out, shown as the Studio's alert
     # badge. Beat clears it at midnight UTC; None when there is no alert.
     budget_exhausted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -86,6 +91,15 @@ class Agent(IdMixin, Base):
     # spiking, shown as the Studio's alert badge. The first run that finds no spike clears it;
     # None when there is no alert.
     block_rate_alert_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The Live score drop alert flag: when the hourly check found the Live Version's Live score
+    # clearly lower than the previous Live Version's (``app.analytics.alerts``), shown as the
+    # Studio's alert badge, and the Live Version it was raised against. A run that no longer
+    # finds the drop clears both, and so does any change of the Live Version; None when there
+    # is no alert.
+    live_score_drop_alert_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    live_score_drop_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("agent_versions.id", name="fk_agents_live_score_drop_version", use_alter=True)
+    )
     # The Theme override, set by Owners and not versioned: colour tokens replacing the
     # Organisation Theme's ({token: {"light", "dark"}}, only those overridden) and an avatar
     # image (stored as the Theme's images are), or None.

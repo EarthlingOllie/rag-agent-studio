@@ -19,6 +19,7 @@ import {
   useDeleteConversation,
 } from "./conversations";
 import { AddToEvaluationSet } from "./EvaluationCaseEditor";
+import { LiveVerdictSection } from "./LiveVerdict";
 import { useOrganisationRole } from "./ProjectsPage";
 import { TraceContent, TraceFold } from "./Trace";
 
@@ -70,6 +71,12 @@ function previewText(conversation: ConversationSummary): string {
 function guardrailText({ guardrail_events: events }: ConversationSummary): string {
   if (events === 0) return "None";
   return `${String(events)} ${events === 1 ? "event" : "events"}`;
+}
+
+/** How many of a Conversation's replies failed their Live Verdict, such as "2 failed", or "None". */
+function FailedLiveVerdicts({ conversation: { failed_live_verdicts: failed } }: { conversation: ConversationSummary }) {
+  if (failed === 0) return <>None</>;
+  return <span className="font-medium text-danger">{`${String(failed)} failed`}</span>;
 }
 
 const versionsText = (conversation: ConversationSummary) =>
@@ -312,6 +319,20 @@ function Filters({
           set({ guardrail });
         }}
       />
+      <Choice
+        label="Live Verdict"
+        value={filters.live ?? ""}
+        options={[
+          ["", "Any or none"],
+          ["failed", "Failed"],
+          ["passed", "Passed"],
+          ["error", "Error"],
+          ["not_judged", "Not judged"],
+        ]}
+        onChange={(live) => {
+          set({ live });
+        }}
+      />
     </fieldset>
   );
 }
@@ -394,6 +415,9 @@ function Results({ data, filters }: { data: ConversationPageData; filters: Conve
             </Fact>
             <Fact name="Guardrail" label>
               {guardrailText(conversation)}
+            </Fact>
+            <Fact name="Failed Live Verdicts" label>
+              <FailedLiveVerdicts conversation={conversation} />
             </Fact>
           </dl>
         </li>
@@ -610,7 +634,8 @@ function MessageItem({
     );
   }
   return (
-    <li aria-label={agentName} className="flex gap-3">
+    // Its id is the anchor a Suggestion's evidence links to.
+    <li id={`message-${message.id}`} aria-label={agentName} className="flex gap-3">
       <span
         aria-hidden="true"
         className="flex size-8 shrink-0 items-center justify-center rounded-full bg-accent-soft text-sm font-semibold text-accent-ink"
@@ -643,15 +668,21 @@ function MessageItem({
         <MessageText message={message} deletedAt={deletedAt} />
         <FeedbackNote message={message} visitor={asker === "Visitor"} />
         <TraceFold summary={usage(message)}>
-          <ConversationTrace path={{ ...path, message_id: message.id }} />
+          <ConversationTrace path={{ ...path, message_id: message.id }} visitor={asker === "Visitor"} />
         </TraceFold>
       </div>
     </li>
   );
 }
 
-function ConversationTrace({ path }: { path: ConversationPath & { message_id: string } }) {
-  return <TraceContent trace={useConversationTrace(path)} />;
+/** A reply's Trace; a Visitor reply's ends with its Live Verdict (Playground replies are never judged). */
+function ConversationTrace({ path, visitor }: { path: ConversationPath & { message_id: string }; visitor: boolean }) {
+  return (
+    <TraceContent
+      trace={useConversationTrace(path)}
+      after={visitor ? (trace) => <LiveVerdictSection verdict={trace.live_verdict} /> : undefined}
+    />
+  );
 }
 
 /**

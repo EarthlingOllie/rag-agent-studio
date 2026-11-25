@@ -14,7 +14,7 @@ from sqlalchemy import delete, exists, func, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.analytics.alerts import check_block_rates
+from app.analytics.alerts import check_block_rates, check_live_scores
 from app.analytics.models import UsageDaily, UsageRollupState
 from app.analytics.usage import Only, day_bounds, usage_on
 from app.conversations.models import Conversation, Message, MessageRole
@@ -73,8 +73,9 @@ async def roll_up(
     studio_url: str,
 ) -> None:
     """Rolls usage up as of ``at``: finalises the days before its UTC day that aren't final,
-    then recomputes its day. Then checks every Agent's block rate for a spike (the Block rate
-    alert), emailing Owners through ``mailer``."""
+    then recomputes its day. Then runs the alerts (``app.analytics.alerts``): every Agent's block
+    rate is checked for a spike and its Live score for a drop, emailing Owners through
+    ``mailer``."""
     today = at.astimezone(UTC).date()
     yesterday = today - timedelta(days=1)
     async with sessionmaker() as session, session.begin():
@@ -98,3 +99,4 @@ async def roll_up(
         await _recompute(session, today)
     async with sessionmaker() as session:
         await check_block_rates(session, at, mailer=mailer, studio_url=studio_url)
+        await check_live_scores(session, at, mailer=mailer, studio_url=studio_url)

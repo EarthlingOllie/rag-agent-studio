@@ -27,6 +27,7 @@ from app.documents.models import Document
 from app.embed.admission import Admission, Limits, Refusal, utc_date
 from app.embed.branding import override_of
 from app.embed.tokens import TokenSigner, expired, token_hash
+from app.evaluation.budget import has_budget
 from app.feedback.models import MessageFeedback
 from app.feedback.service import RatingState, feedback_on, rating_state
 from app.mail import templates
@@ -42,6 +43,8 @@ from app.theme.service import StoredImage, ThemeImageKind, organisation_theme
 ORIGINS_MAX = 50
 DEFAULT_UNAVAILABLE_TEXT = "This assistant is temporarily unavailable. Please try again later."
 OPERATIONAL_SETTINGS_CHANGED = "agent.operational_settings_changed"
+LIVE_SAMPLE_RATE_CHANGED = "agent.live_sample_rate_changed"
+LIVE_SAMPLE_RATE = "live_sample_rate"
 
 _LABEL = r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?"
 # A host; or a subdomain wildcard over a named site of at least two labels (``*.example.com``,
@@ -95,6 +98,10 @@ def frame_ancestors(origins: list[str]) -> str:
     return "frame-ancestors " + (" ".join(origins) if origins else "'none'")
 
 
+class EvaluationBudgetRequiredError(Exception):
+    """A Live sample rate above 0% was set while the Organisation has no Evaluation budget."""
+
+
 @dataclass(frozen=True)
 class OperationalSettings:
     allowed_origins: list[str]
@@ -105,6 +112,8 @@ class OperationalSettings:
     ip_messages_per_minute: int
     # Tokens the Agent's Visitor replies may use per UTC date.
     daily_token_budget: int
+    # The whole percentage of Visitor replies chosen for a Live Verdict.
+    live_sample_rate: int
 
 
 def _settings_of(agent: Agent) -> OperationalSettings:
@@ -114,6 +123,7 @@ def _settings_of(agent: Agent) -> OperationalSettings:
         conversation_messages_per_minute=agent.conversation_messages_per_minute,
         ip_messages_per_minute=agent.ip_messages_per_minute,
         daily_token_budget=agent.daily_token_budget,
+        live_sample_rate=agent.live_sample_rate,
     )
 
 
@@ -134,12 +144,15 @@ async def change_operational_settings(
     conversation_messages_per_minute: int | None = None,
     ip_messages_per_minute: int | None = None,
     daily_token_budget: int | None = None,
+    live_sample_rate: int | None = None,
     now: datetime,
 ) -> OperationalSettings:
     """Changes the settings given (``None`` leaves one as it is; a blank ``unavailable_text``
     restores the default). The next request uses them. A change is recorded as an
     ``agent.operational_settings_changed`` Audit Event holding the before and after values of
-    the settings that changed; a save that changes nothing records nothing."""
+    the settings that changed, except the Live sample rate's, which is recorded on its own as
+    ``agent.live_sample_rate_changed``, so a jump in evaluation spend can be traced; a save that
+    changes nothing records nothing."""
     origins = None if allowed_origins is None else normalise_origins(allowed_origins)
     agent = (await get_agent(session, scope, project_id, agent_id, lock=True)).agent
     before = asdict(_settings_of(agent))
@@ -153,19 +166,27 @@ async def change_operational_settings(
         agent.ip_messages_per_minute = ip_messages_per_minute
     if daily_token_budget is not None:
         agent.daily_token_budget = daily_token_budget
+    if live_sample_rate is not None:
+        if live_sample_rate > 0 and not await has_budget(session, scope.organisation_id):
+            raise EvaluationBudgetRequiredError
+        agent.live_sample_rate = live_sample_rate
     after = asdict(_settings_of(agent))
     changed = [key for key in before if before[key] != after[key]]
-    if changed:
-        await audit.record(
-            session,
-            organisation_id=scope.organisation_id,
-            actor_id=scope.member_id,
-            action=OPERATIONAL_SETTINGS_CHANGED,
-            target=audit.AuditTarget("agent", agent.id),
-            before={key: before[key] for key in changed},
-            after={key: after[key] for key in changed},
-            occurred_at=now,
-        )
+    for action, keys in (
+        (OPERATIONAL_SETTINGS_CHANGED, [key for key in changed if key != LIVE_SAMPLE_RATE]),
+        (LIVE_SAMPLE_RATE_CHANGED, [key for key in changed if key == LIVE_SAMPLE_RATE]),
+    ):
+        if keys:
+            await audit.record(
+                session,
+                organisation_id=scope.organisation_id,
+                actor_id=scope.member_id,
+                action=action,
+                target=audit.AuditTarget("agent", agent.id),
+                before={key: before[key] for key in keys},
+                after={key: after[key] for key in keys},
+                occurred_at=now,
+            )
     await session.commit()
     return _settings_of(agent)
 

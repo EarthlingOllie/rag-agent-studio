@@ -160,6 +160,35 @@ export function fakeEvaluationSettingsApi(
   return { models, repeats };
 }
 
+export type EvaluationBudget = Schemas["EvaluationBudgetOut"];
+
+/**
+ * A stateful stand-in for the Evaluation budget routes: the budget (null: none) and November 2026's spend against
+ * it, exhausted once the spend reaches the budget. Records each budget set.
+ */
+export function fakeEvaluationBudgetApi(options: { budget?: string | null; spent?: string } = {}) {
+  const spent = options.spent ?? "0";
+  const of = (budget: string | null): EvaluationBudget => ({
+    evaluation_budget_usd: budget,
+    month: "2026-11-01",
+    spent_usd: spent,
+    exhausted: budget !== null && Number(spent) >= Number(budget),
+    resets_at: "2026-12-01T00:00:00Z",
+  });
+  let current = of(options.budget ?? null);
+  const set: (string | number | null)[] = [];
+  server.use(
+    http.get("*/api/organisations/:organisationId/evaluation-budget", () => HttpResponse.json(current)),
+    http.put("*/api/organisations/:organisationId/evaluation-budget", async ({ request }) => {
+      const body = (await request.json()) as Schemas["SetEvaluationBudgetRequest"];
+      set.push(body.evaluation_budget_usd);
+      current = of(body.evaluation_budget_usd === null ? null : Number(body.evaluation_budget_usd).toFixed(2));
+      return HttpResponse.json(current);
+    }),
+  );
+  return { set };
+}
+
 type ModelPrices = Schemas["ModelPricesOut"];
 type PriceOverride = Schemas["OverridePricesRequest"];
 

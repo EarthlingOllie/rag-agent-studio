@@ -18,6 +18,7 @@ from app.documents.ports import build_ports, current_ports, install_ports, warm_
 from app.evaluation.ports import EvaluationPorts, install_evaluation_ports
 from app.gateway.adapters import build_model_gateway
 from app.guardrails.pipeline import build_pipeline
+from app.mail.factory import build_mailer
 from app.worker.celery_app import configure_celery
 
 SERVICE_NAME = "beat" if "beat" in sys.argv else "worker"
@@ -36,7 +37,10 @@ install_evaluation_ports(
         guardrails=build_pipeline(settings),
         embedders=current_ports().embedders,
         judge_timeout_s=settings.evaluation_judge_timeout_s,
+        suggestion_timeout_s=settings.suggestion_timeout_s,
         clock=SystemClock,
+        mailer=build_mailer(settings),
+        studio_url=str(settings.studio_url),
     )
 )
 

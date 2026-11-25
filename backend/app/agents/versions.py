@@ -296,6 +296,10 @@ def _write_history(
     move: Move,
     now: datetime,
 ) -> None:
+    """Records a change of the Agent's Live Version. A Live score drop alert was about the
+    Version that was Live, so the change clears it."""
+    agent.live_score_drop_alert_at = None
+    agent.live_score_drop_version_id = None
     session.add(
         LiveHistoryEntry(
             organisation_id=scope.organisation_id,

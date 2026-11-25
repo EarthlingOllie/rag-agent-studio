@@ -25,11 +25,13 @@ from tests.integration.test_playground_errors import failing
 
 DEFAULT_UNAVAILABLE = "This assistant is temporarily unavailable. Please try again later."
 CHANGED = "agent.operational_settings_changed"
-# The default rate limits (06-05) and Token Budget (06-06), which these tests leave alone.
+# The default rate limits (06-05), Token Budget (06-06) and Live sample rate (15-01), which these
+# tests leave alone.
 LIMITS = {
     "conversation_messages_per_minute": 10,
     "ip_messages_per_minute": 30,
     "daily_token_budget": 1_000_000,
+    "live_sample_rate": 0,
 }
 
 

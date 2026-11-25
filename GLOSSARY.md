@@ -57,7 +57,7 @@ The CI check that counts Tailwind palette classes (`slate-700`, the `dark:` vari
 _Avoid_: Lint rule, colour check
 
 **Launcher**:
-How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat (filling the screen when open on a phone), or an inline container that shows it in place. The Theme sets it; an Embed Snippet's `data-launcher` (with `data-target` naming the inline container) overrides it on that page. While the bubble is open, Tab stays inside the chat (the focus trap); closing it, with its Close button or Escape, returns focus to the Launcher.
+How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat (filling the screen when open on a phone), or an inline container that shows it in place. For an Agent whose Live Version has calling on, it opens on a choice of Message or Call instead. The Theme sets it; an Embed Snippet's `data-launcher` (with `data-target` naming the inline container) overrides it on that page. While the bubble is open, Tab stays inside the chat (the focus trap); closing it, with its Close button or Escape, returns focus to the Launcher.
 _Avoid_: Chat button, trigger
 
 **Reply announcement**:
@@ -145,7 +145,7 @@ The Organisation `make seed` builds for showing the product: Northwind Traders, 
 _Avoid_: Sample org, test tenant, sandbox
 
 **Seeded history**:
-The four weeks the Demo Organisation has lived through by the time `make seed` finishes: Project Instructions v1 and v2 (the Product FAQ left behind on v1, the Low-budget helper and the Guardrail demo Agent rolled out to v2), the HR helper's Versions 1 to 3 with v2 reverted, and Visitor Conversations every day with Message Feedback and Conversation Ratings that make v2 clearly worse and v3 promising on a small sample, rolled up for every day. The HR helper also has an Evaluation Set, some of its cases added from seeded thumbs-down Messages, and two finished Evaluation Runs judged by the fake Evaluation Model: v2 against v1, whose Regressions explain the revert, and the Draft against v3. It is played through the API under a clock set four weeks back, with feedback drawn from a fixed random seed, and is made only when the Demo Organisation is first created.
+The four weeks the Demo Organisation has lived through by the time `make seed` finishes: Project Instructions v1 and v2 (the Product FAQ left behind on v1, the Low-budget helper and the Guardrail demo Agent rolled out to v2), the HR helper's Versions 1 to 3 with v2 reverted, and Visitor Conversations every day with Message Feedback and Conversation Ratings that make v2 clearly worse and v3 promising on a small sample, rolled up for every day. The HR helper also has an Evaluation Set, some of its cases added from seeded thumbs-down Messages, and two finished Evaluation Runs judged by the fake Evaluation Model: v2 against v1, whose Regressions explain the revert, and the Draft against v3. The Organisation has an Evaluation budget and the HR helper a Live sample rate, so its Visitor replies were sampled and judged as they were given: v2's uncited replies failed grounding, so its Live score is clearly below v1's, and no Live score drop alert stands on v3. On the morning of the revert the Owner had a Suggestion made from v2's failures: it asks for citations in the system prompt, names Knowledge Base gaps, was checked against the Evaluation Set, and reads as stale because v1 replaced v2. The Organisation's Retention Window is two weeks and the history ends with the Purge, so replies older than that, the Suggestion's oldest evidence among them, read "Text purged". It is played through the API under a clock set four weeks back, with feedback drawn from a fixed random seed, and is made only when the Demo Organisation is first created.
 _Avoid_: Fake data, sample history, fixtures
 
 **Demo pages**:
@@ -157,7 +157,7 @@ The Demo page (`/demo/attacks.html`) with one button per attack category (instru
 _Avoid_: Red-team page, jailbreak console
 
 **Five-minute demo**:
-The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace for the Automatic HR helper and then the Agentic Product FAQ (one Retrieved Chunks table against a Search the model made, with the Chunks it found), the HR helper's publish and revert in Live History, the HR helper's Evaluation view (its Evaluation Set and the Run of v1 against v2 whose Regressions explain the revert), the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions, the Organisation cost page, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
+The README's scripted tour of the Demo Organisation for someone who has never seen the product, in a fixed order: the Studio, the flagged Chunk in the Document viewer, the Agent editor and a Playground Trace for the Automatic HR helper and then the Agentic Product FAQ (one Retrieved Chunks table against a Search the model made, with the Chunks it found), the HR helper's publish and revert in Live History, the HR helper's Evaluation view (its Evaluation Set and the Run of v1 against v2 whose Regressions explain the revert) and its stale Suggestion from v2 with its check, gaps and purged evidence, the Product FAQ on the shop's Demo page, the disallowed origin, the Attack panel, the spent Token Budget, the analytics comparison of the HR helper's Versions (thumbs-up rate and Live score), the Organisation cost page, and the Audit tab. One Playwright test plays the whole script against a seeded stack, so the tour can't silently break.
 _Avoid_: Walkthrough, showcase script, smoke test
 
 **Demo mode**:
@@ -183,7 +183,7 @@ A secret an Organisation stores so it can call a model provider.
 _Avoid_: API key, token, connection
 
 **Capability**:
-What a Provider Credential can be used for: chat, embeddings or reranking. Each provider offers a fixed set, listed with its models in the capability registry; a credential may be limited to some of them.
+What a Provider Credential can be used for: chat, embeddings, reranking or voice (carrying a Call; ElevenLabs is the only provider that offers it). Each provider offers a fixed set, listed with its models in the capability registry; a credential may be limited to some of them.
 _Avoid_: Feature, scope, permission
 
 **Masked suffix**:
@@ -223,11 +223,11 @@ The chat model an Organisation's Agents use unless an Agent overrides it: one ch
 _Avoid_: Global model, org model
 
 **Evaluation Model**:
-The chat model that judges every Evaluation Run in an Organisation: one chat-capable Provider Credential and one of its chat models, chosen by an Owner, or the Default Model while none is chosen. It is a Credential reference. One per Organisation, so scores stay comparable across Agents and over time; changing it is an Audit Event.
+The chat model that judges every Evaluation Run and Live Verdict in an Organisation: one chat-capable Provider Credential and one of its chat models, chosen by an Owner, or the Default Model while none is chosen. It is a Credential reference. One per Organisation, so scores stay comparable across Agents and over time; changing it is an Audit Event.
 _Avoid_: Judge, grader model, eval model
 
 **Demo model**:
-The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk (unless its system prompt says "Don't quote", as HR helper v2's does: then it gives the Chunk's first sentence, uncited), and every answer starts "Demo model (canned answer, not AI)". Asked to judge an Evaluation Run's answer, it judges by rule, as the fake Evaluation Model does. It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
+The demo provider's main chat model. In Agentic Retrieval Mode it makes one Search with the Visitor's question first, then answers from the first Chunk that Search returned; in Automatic mode, from the first Chunk retrieved up front. It quotes and cites the Chunk (unless its system prompt says "Don't quote", as HR helper v2's does: then it gives the Chunk's first sentence, uncited), and every answer starts "Demo model (canned answer, not AI)". Asked to judge an Evaluation Run's answer or a Live Verdict, it judges by rule, as the fake Evaluation Model does: answering the question passes when the reply shares a key phrase with the question (a phrase in double quotes, or else a word of five letters or more). It needs no key and calls nothing, so the Demo Organisation works without a real Provider Credential. The Studio labels the provider "Demo: canned answers, not a real model".
 _Avoid_: Fake model (that is the test double), mock, stub model
 
 **Naive demo model**:
@@ -422,7 +422,7 @@ A suggested question the widget offers a Visitor before the first message. An Ag
 _Avoid_: Suggested prompt, quick reply
 
 **UI text override**:
-An Agent's replacement for one piece of the widget's built-in text, such as the "Send" button. Empty keeps the built-in text.
+An Agent's replacement for one piece of the widget's built-in text, such as the "Send" button or the Launcher's "Message" and "Call" choices. Empty keeps the built-in text.
 _Avoid_: Translation, label override
 
 **Autosave**:
@@ -600,7 +600,7 @@ What a Visitor sees in place of the chat when the Agent is archived, in an archi
 _Avoid_: Error page, 404
 
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits and Token Budget. Allowed Origins, the Unavailable text, the rate limits and the Token Budget are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`) holding the before and after values of the settings it changed.
+An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits, Token Budget, the Call settings, Maximum Call length, Call minutes budget and Live sample rate. Allowed Origins, the Unavailable text, the rate limits, the Token Budget and the Live sample rate are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`, or `agent.live_sample_rate_changed` for the Live sample rate) holding the before and after values of the settings it changed.
 
 **Unavailable text**:
 What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit or because the day's Token Budget is spent). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
@@ -685,14 +685,46 @@ An anonymous person chatting with an embedded Agent.
 _Avoid_: User, customer, end user
 
 **Conversation**:
-One Visitor's thread of Messages with an Agent.
+One Visitor's thread of Messages with an Agent, whether typed or spoken in a Call.
 _Avoid_: Session, chat, thread
+
+**Call**:
+A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. The Agent is asked exactly what it would be asked for a typed Message; only formatting and citation markers are left out of what is spoken (ADR-0019). Only a Visitor in the widget, or a Member in the Playground, starts one (a Playground Call speaks with the Agent's Call settings and stays out of metrics and the Call minutes budget; its Voice Cost still counts); the Conversation log shows it as text while it is spoken, and its audio is never stored. A Conversation has one Call at a time and may have several over its life: a reload ends the Call, and the resumed widget offers to continue with a new one. The spoken greeting opens only a Call that starts an empty Conversation, and the Visitor ends the Call to type. While an Agentic Agent searches, the Searching status is spoken; a Guardrail refusal is spoken and the Call goes on; anything that makes the Agent unavailable speaks the Unavailable text, ends the Call and returns the Visitor to messaging.
+_Avoid_: Voice chat, voice session, phone call
+
+**Call token**:
+A short-lived, signed token the widget is given when a Call starts, bound to its Conversation. The voice layer presents it with every spoken turn, together with a secret only it holds; a turn is answered only when both are good.
+_Avoid_: Voice token, session key
+
+**Calls failing alert**:
+An Agent's alert that Visitors' Calls can't start because the voice layer refuses them (its agent is gone, the key was revoked, the provider is down). Visitors get the Unavailable text and messaging keeps working; saving the Call settings sets the voice layer up again.
+_Avoid_: Voice error, call outage
+
+**Spoken Message**:
+A Message said in a Call rather than typed: the Visitor's words as transcribed, or the Agent's reply as the model wrote it. An Agent's Spoken Message the Visitor talked over is marked interrupted and still holds the whole reply, so it matches its Trace. It takes Message Feedback, counts in a Version's metrics and is judged like a typed one.
+_Avoid_: Voice message, transcript line, utterance
+
+**Call settings**:
+Whether an Agent takes Calls (off by default), the voice-capable Provider Credential and the voice it speaks with (a Credential reference), and its spoken greeting. Calls are held in English. Part of the Operational Settings, so they apply at once and no Version holds them.
+_Avoid_: Voice config, calling options
+
+**Maximum Call length**:
+How long one Call may last before it is ended (10 minutes by default), timed by the platform. Part of the Operational Settings.
+_Avoid_: Call timeout, session limit
+
+**Call minutes budget**:
+The most minutes of Calls an Agent's Visitors may use per UTC date (60 by default), timed by the platform; once spent, the Agent gets its Budget alert, the Owners are emailed once, and Calls are refused with the Unavailable text and the Visitor is offered messaging. Part of the Operational Settings, beside the Token Budget, which spoken replies also count toward.
+_Avoid_: Call quota, voice limit
+
+**Voice Cost**:
+What a Call's voice layer cost in US dollars: its minutes times the per-minute price in effect when it ended, preferring Price overrides. Kept apart from the Cost of the model calls behind each spoken reply.
+_Avoid_: Call charge, voice spend
 
 **Message**:
 One turn in a Conversation, from either the Visitor or the Agent. An Agent Message records what produced it: the Agent Version that answered, or the Draft marker for a Playground answer (Message attribution). A Playground answer also records the Project Instructions it ran with: an Instructions Version or the Draft marker.
 
 **Conversations viewer**:
-The Project's Conversations section in the Studio, also each Agent's Conversations view (there fixed to the Agent). It lists the Project's Conversations beside the open one's transcript, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, by Visitors, Playground or Both (a segmented choice), by Message Feedback (a reply with a thumbs up, with a thumbs down, any feedback, or none), by Conversation Rating (one score from 1 to 5, rated, or not rated), and by Guardrail outcome (a reply whose Guardrail blocked, flagged, logged, replaced or allowed it, any Guardrail outcome, or none); each listed Conversation shows its thumbs-up and thumbs-down counts, its current Conversation Rating and how many of its replies have a Guardrail outcome, and a long list is paged. Opening one shows its Messages beside the list, each Agent Message with the Agent Version (a Version chip) or Draft that answered, a "Blocked by guardrail" badge when the input Guardrail blocked the question, its Message Feedback (thumb, comment, the Agent Version it counts for, and when) and its Trace folded under it, and for a Visitor Conversation its Conversation Rating (score, the Agent Version it counts for, when, any dismissal of the Rating prompt) with its Rating change log. Any Member can use it.
+The Project's Conversations section in the Studio, also each Agent's Conversations view (there fixed to the Agent). It lists the Project's Conversations beside the open one's transcript, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, by Visitors, Playground or Both (a segmented choice), by Message Feedback (a reply with a thumbs up, with a thumbs down, any feedback, or none), by Conversation Rating (one score from 1 to 5, rated, or not rated), by Guardrail outcome (a reply whose Guardrail blocked, flagged, logged, replaced or allowed it, any Guardrail outcome, or none), and by Live Verdict (a reply whose Live Verdict passed, failed or is an Error, or a reply not judged); each listed Conversation shows its thumbs-up and thumbs-down counts, its current Conversation Rating, how many of its replies have a Guardrail outcome and how many failed their Live Verdict, and a long list is paged. Opening one shows its Messages beside the list, each Agent Message with the Agent Version (a Version chip) or Draft that answered, a "Blocked by guardrail" badge when the input Guardrail blocked the question, its Message Feedback (thumb, comment, the Agent Version it counts for, and when) and its Trace folded under it, and for a Visitor Conversation its Conversation Rating (score, the Agent Version it counts for, when, any dismissal of the Rating prompt) with its Rating change log. Any Member can use it.
 _Avoid_: Chat log, transcript list
 
 **Message Feedback**:
@@ -716,11 +748,11 @@ The append-only record of a Conversation's Conversation Ratings: the first ratin
 _Avoid_: Rating history
 
 **Version KPIs**:
-An Agent Version's key numbers over a range of UTC days (the last 30 by default), shown as KPI cards in the Project's Analytics section (a small sample marked Low sample): volume (Visitor Conversations it replied in, and its replies), mean and p95 tokens per reply (input plus output, over replies that asked a model), cost per Conversation (from each reply's frozen Cost), thumbs-up rate with its Wilson interval and sample size, mean Conversation Rating with its count, fallback rate (replies that were the fallback text), Block rate, Searches per reply (with the Version's Retrieval Mode) and p95 latency (to the first token and to the whole reply). Only Visitor Conversations count: Playground Conversations never do. Days before today come from the Usage rollups; today is counted live from the raw tables (the live partial day).
+An Agent Version's key numbers over a range of UTC days (the last 30 by default), shown as KPI cards in the Project's Analytics section (a small sample marked Low sample): volume (Visitor Conversations it replied in, and its replies), mean and p95 tokens per reply (input plus output, over replies that asked a model), cost per Conversation (from each reply's frozen Cost), thumbs-up rate with its Wilson interval and sample size, mean Conversation Rating with its count, fallback rate (replies that were the fallback text), Block rate, Searches per reply (with the Version's Retrieval Mode), p95 latency (to the first token and to the whole reply) and the Live score with its Wilson interval and sample size. Only Visitor Conversations count: Playground Conversations never do. Days before today come from the Usage rollups; today is counted live from the raw tables (the live partial day).
 _Avoid_: Stats, dashboard numbers
 
 **Usage rollup**:
-The `usage_daily` row for one Agent Version and one UTC day: Conversations, Messages, token sums, cost, thumbs up and down, rating sum and count, fallback count, Guardrail blocks (for the Block rate), Searches (the sum of the replies' Searches, for Searches per reply), and fixed-bucket histograms (10% wide buckets, which add up across days) of tokens per reply, time to first token and latency, from which percentiles are read. A Beat task runs hourly: it recomputes the current day and finalises each earlier day not yet final for the Organisation (normally the previous day; days a stopped Beat missed are caught up). A final day isn't recomputed, so feedback or a rating changed after its day was finalised doesn't move it. Each day's rollup is recomputed in full, so running the task again gives the same rollups. A reply, its tokens, cost, latency, Guardrail block, Searches and Message Feedback belong to the day the reply was made; a Conversation to the day the Version first replied in it; a Conversation Rating to the day of the Conversation's first reply.
+The `usage_daily` row for one Agent Version and one UTC day: Conversations, Messages, token sums, cost, thumbs up and down, rating sum and count, fallback count, Guardrail blocks (for the Block rate), Searches (the sum of the replies' Searches, for Searches per reply), Live Verdicts judged and passed (for the Live score; errors and skipped ones aren't counted), and fixed-bucket histograms (10% wide buckets, which add up across days) of tokens per reply, time to first token and latency, from which percentiles are read. A Beat task runs hourly: it recomputes the current day and finalises each earlier day not yet final for the Organisation (normally the previous day; days a stopped Beat missed are caught up). A final day isn't recomputed, so feedback, a rating or a Live Verdict judged after its day was finalised doesn't move it. Each day's rollup is recomputed in full, so running the task again gives the same rollups. A reply, its tokens, cost, latency, Guardrail block, Searches, Message Feedback and Live Verdict belong to the day the reply was made; a Conversation to the day the Version first replied in it; a Conversation Rating to the day of the Conversation's first reply.
 _Avoid_: Aggregate, summary table
 
 **Searches per reply**:
@@ -736,11 +768,11 @@ The flag an Agent carries while its Block rate spikes, as in an attack. After ea
 _Avoid_: Attack alarm, spike warning
 
 **Wilson interval**:
-The 95% Wilson score interval of a rate (the thumbs-up rate), worked out from its counts when the Version KPIs are read; shown with the sample size so a few lucky votes don't look like a winner.
+The 95% Wilson score interval of a rate (the thumbs-up rate, the Live score), worked out from its counts when the Version KPIs are read; shown with the sample size so a few lucky votes don't look like a winner.
 _Avoid_: Error bars, margin
 
 **Purge**:
-Clearing a Message's text, the reasons in its Guardrail outcomes, the queries of its Searches (the model writes them from the Visitor's words) and the comment of any Message Feedback on it, and stamping it purged-at, while every number and attribution (tokens, Cost, latency, Agent Version, thumbs, Conversation Rating, Message retrievals, its Searches and their count, each Guardrail outcome's verdict) stays, so the Version KPIs read the same before and after. A daily Beat task (00:35 UTC) purges the Messages older than each Organisation's Retention Window, but a Visitor reply only once the Usage rollup of its day is final (rollups come before purges). Deleting a Conversation purges its Messages at once, through the same path. The Conversations viewer shows a purged Message as "Text purged" with when and why.
+Clearing a Message's text, the reasons in its Guardrail outcomes, the queries of its Searches (the model writes them from the Visitor's words), the comment of any Message Feedback on it and the reasons of its Live Verdict, and stamping it (and its Live Verdict) purged-at, while every number and attribution (tokens, Cost, latency, Agent Version, thumbs, Conversation Rating, Message retrievals, its Searches and their count, each Guardrail outcome's verdict, the Live Verdict's outcomes and Cost) stays, so the Version KPIs read the same before and after. A daily Beat task (00:35 UTC) purges the Messages older than each Organisation's Retention Window, but a Visitor reply only once the Usage rollup of its day is final (rollups come before purges). Deleting a Conversation purges its Messages at once, through the same path. The Conversations viewer shows a purged Message as "Text purged" with when and why.
 _Avoid_: Deletion, cleanup, expiry
 
 **Deleting a Conversation**:
@@ -764,7 +796,7 @@ The Version a compared metric favours. A higher thumbs-up rate or mean rating is
 _Avoid_: Winner
 
 **Time series**:
-One metric of an Agent (every Version together: Conversations, replies, cost, mean tokens per reply, thumbs-up rate, mean Conversation Rating, fallback rate or p95 latency) per day, ISO week (Monday to Sunday) or month over a range of UTC days (the last 30 by default; the first and last periods are clipped to the range), shown in the Project's Analytics section as a chart (one line with an area fill, a hover readout of each point's period, value and sample size, and never two y-axes) or as its Table view. Like the Version KPIs it reads the Usage rollups plus the live partial day, and only Visitor Conversations count. A period with no sample has no value (a gap), not zero. Live History markers on it show where the Live Version changed.
+One metric of an Agent (every Version together: Conversations, replies, cost, mean tokens per reply, thumbs-up rate, mean Conversation Rating, fallback rate, p95 latency or Live score) per day, ISO week (Monday to Sunday) or month over a range of UTC days (the last 30 by default; the first and last periods are clipped to the range), shown in the Project's Analytics section as a chart (one line with an area fill, a hover readout of each point's period, value and sample size, and never two y-axes) or as its Table view. Like the Version KPIs it reads the Usage rollups plus the live partial day, and only Visitor Conversations count. A period with no sample has no value (a gap), not zero. Live History markers on it show where the Live Version changed.
 _Avoid_: Trend graph, history chart
 
 **Table view**:
@@ -797,6 +829,26 @@ _Avoid_: Test case, golden question, eval
 A passage of a Document (up to 1,000 characters, picked from its Chunks) that an Evaluation Case's answer should retrieve and cite. It is matched, ignoring case and whitespace, against the Chunks of the Document's current Edition each time it is checked (when the case is saved, each Run, and as soon as a new Edition of the Document is swapped in): its Verdict passes when the answer cited a Chunk holding it and fails when it didn't (a Chunk retrieved but left uncited is a fail too); when the Document is gone or no Chunk holds the passage, the expectation is Stale. A case may hold several.
 _Avoid_: Ground truth chunk, expected chunk
 
+**Found**:
+Of an Expected source in one answer: a Chunk holding it was among those retrieval returned, at any rank, in any Search, whether or not the model was given it. The Found rate is the share of a side's Expected sources that were Found, each Expected source counting once in every answer (every repeat), shown as "x of y"; Stale expectations and answers with an Error are left out.
+_Avoid_: Recall, recall@k, hit
+
+**Given**:
+Of an Expected source in one answer: a Chunk holding it was among those given to the model. An Expected source Found but not Given was left out, for the reason its Trace gives (below the Minimum Score, outside Top-k, outside the Agent's Tags, or flagged by a Guardrail). The Given rate is counted like the Found rate.
+_Avoid_: Recall@k (k differs between sides), in context
+
+**Cited**:
+Of an Expected source in one answer: the answer cited a Chunk holding it, which is what its Verdict passes on. The Cited rate is counted like the Found rate.
+_Avoid_: Used, grounded (that is the grounding Verdict)
+
+**Found rank**:
+An Expected source's best rank in retrieval's own order within any Search of one answer (not the number in its Chunk label), whether or not it was Given. Each side of an Evaluation Run shows its median Found rank over the Expected sources that were Found, next to how many were not Found.
+_Avoid_: MRR, position (the Trace's order)
+
+**Retrieval breakdown**:
+In an Evaluation Run, each side's answers to cases with an Expected source sorted by whether every Expected source was Given and whether its other Verdicts passed: Clean pass (Given, passed), Answer miss (Given, failed), Retrieval miss (not Given, failed) and Passed without source (not Given, passed). Answers blocked before retrieval are left out and counted beside it.
+_Avoid_: Confusion matrix, generation failure, hallucination
+
 **Reference answer**:
 What a good answer to an Evaluation Case says, in the Editor's words; answers are judged against its meaning, not its wording.
 _Avoid_: Gold answer, expected output
@@ -810,7 +862,7 @@ One run of an Agent's Evaluation Set comparing two sides, the first and the seco
 _Avoid_: Eval, test run, benchmark run
 
 **Run side**:
-One of an Evaluation Run's sides, the first or the second: the Draft at its Draft revision, one of the Agent's Versions, or (only in a Suggestion's check) the Suggestion, which is the Live Version's configuration with the Suggestion's changes and is never Published or listed in Live History, with the Project Instructions it answers with. The Run keeps a copy of each side's effective AgentConfig and Instructions text, and of each Evaluation Case's question and expectations, as they were when it started, so editing the Draft or the Evaluation Set later never rewrites a past Run. While the Draft runs alone it is the first side.
+One of an Evaluation Run's sides, the first or the second: the Draft at its Draft revision, one of the Agent's Versions, or (only in a Suggestion's check) the Suggestion, which is the Live Version's configuration with the Suggestion's changes, answers with the Instructions the Live Version pins and is never Published or listed in Live History, with the Project Instructions it answers with. The Run keeps a copy of each side's effective AgentConfig and Instructions text, and of each Evaluation Case's question and expectations, as they were when it started, so editing the Draft or the Evaluation Set later never rewrites a past Run. While the Draft runs alone it is the first side.
 _Avoid_: Arm, variant, candidate
 
 **Verdict**:
@@ -854,7 +906,7 @@ The share of an Agent's Visitor replies the Evaluation Model judges, from 0% (th
 _Avoid_: Sampling percentage, judge rate
 
 **Live Verdict**:
-The Evaluation Model's judgement of one sampled Visitor reply: whether it is grounded (every claim supported by its Citations) and whether it answers the question, each a pass or fail with a one-sentence reason, judged on what the Agent saw (its Remembered turns, the question and the Chunks it was given) but never its system prompt. The reply passes when both pass; a reply Purged before it is judged is skipped. A reply the Evaluation Model couldn't judge has an Error instead. It belongs to its Message, so the Purge clears its reasons and keeps its pass or fail. Its Cost counts in Organisation cost's Evaluation column, never in the Token Budget or the Version KPIs.
+The Evaluation Model's judgement of one sampled Visitor reply: whether it is grounded (every claim supported by its Citations) and whether it answers the question, each a pass or fail with a one-sentence reason, judged on what the Agent saw (its Remembered turns, the question and the Chunks it was given) but never its system prompt or the Project Instructions. The reply passes when both pass; a reply whose text, its question's or a Remembered turn's is Purged before it is judged is skipped, and nothing is sent to the judge. A reply the Evaluation Model couldn't judge has an Error instead. It belongs to its Message, so the Purge clears its reasons and keeps its pass or fail; the Trace then shows "Text purged". Its Cost counts in Organisation cost's Evaluation column, never in the Token Budget or the Version KPIs.
 _Avoid_: Live judgement, online eval, score
 
 **Live score**:
@@ -862,12 +914,32 @@ The share of an Agent Version's Live Verdicts that passed, shown as a Version KP
 _Avoid_: Judged pass rate, Pass rate (the Attack evaluation suite's), quality score
 
 **Live score drop alert**:
-The flag an Agent carries while its Live Version's Live score is clearly lower than the previous Live Version's. Once the Live Version has 30 Live Verdicts, each hourly check compares it with the previous Live Version's last 30 days as Live: a drop that a one-sided test finds significant at 95% and of at least 5 percentage points raises it. Raising it emails every Owner once; the Studio shows a "Live score drop" badge, the same badge mechanism as the Block rate alert. It clears when the drop is no longer clear or another Version is made Live.
+The flag an Agent carries while its Live Version's Live score is clearly lower than the previous Live Version's (the one it replaced in Live History), with the Live Version it was raised against. Once the Live Version has 30 judged Live Verdicts on replies since it became Live, each hourly check, after the rollup and beside the Block rate alert, compares it with the previous Live Version's Live score over its last 30 days as Live, which needs 30 judged too: a drop that a one-sided pooled two-proportion test finds significant at 95% and of at least 5 percentage points raises it. Raising it emails every Owner once, with links to the Version comparison of the two Versions and to the Conversations viewer filtered to the Agent's failed Live Verdicts; the Studio shows a "Live score drop" badge on the Agent list and the Agent page, the same badge mechanism as the Block rate alert. It clears when a later check no longer finds the drop or another Version is made Live (by publish, revert or Bulk operation), and a later drop alerts again.
 _Avoid_: Quality alarm, regression alert (a Regression is an Evaluation Case)
 
 **Evaluation budget**:
 The most an Organisation may spend in US dollars per calendar month (UTC) on Live Verdicts, set by Owners. There is none by default. Once the month's spend reaches it, sampling stops across the Organisation until the 1st of the next month and every Owner is emailed once; raising it resumes sampling at once. Visitor replies are never affected, and Evaluation Runs an Editor starts are never capped.
 _Avoid_: Eval budget, judging quota, Token Budget (the Agent's reply limit)
+
+**Verdict review**:
+An Editor's own pass or fail on a judged Verdict (Reference answer or grounding) or on either check of a Live Verdict; it agrees when it matches the Evaluation Model's. In the Review sample it is given blind, before the Evaluation Model's pass or fail and reason are shown; elsewhere the Editor sees them and agrees or disagrees. When it differs from the Evaluation Model's, the Editor may give a reason (up to 1,000 characters); on a Live Verdict the Purge clears that reason with the Message and keeps the review. A Verdict has at most one, from any Editor, and reviewing it again replaces it. It never changes the Verdict or anything counted from it (Evaluation score, Regressions, Live score, alerts). It is the only reference the Evaluation Model is measured against; Message Feedback is not one.
+_Avoid_: Label, annotation, human eval, thumbs (that is Message Feedback)
+
+**Evaluation Model agreement**:
+How often the Evaluation Model's judgements match Editors' Verdict reviews made from the Review sample, kept for each Judging setup and shown with its Wilson interval (Low sample under 30). Disagreements are split into false passes (it passed, the Editor disagrees) and false fails.
+_Avoid_: Judge calibration, judge accuracy, calibration (the Evaluation Model gives pass or fail, not probabilities)
+
+**Review sample**:
+The Organisation's queue of judged Verdicts and Live Verdict checks, drawn at random from those by the current Evaluation Model that are not yet reviewed and whose text is not Purged, which Editors review blind so that Evaluation Model agreement isn't skewed towards the ones they doubted. Verdict reviews made anywhere else are kept and shown on the Verdict, but don't count.
+_Avoid_: Labelling queue, review queue, audit sample
+
+**Judging guidance**:
+An Organisation's own instructions to the Evaluation Model (one text, up to 2,000 characters), saved by an Owner and added to every judgement it makes, so that its Verdicts and Live Verdicts follow the Organisation's idea of a pass. Each save is a new version and an Audit Event; Editors can read it. The Evaluation Model can draft it from the Verdict reviews it disagreed with, and the draft is checked against Review sample reviews it didn't see before an Owner saves it; a drop in agreement warns, never blocks.
+_Avoid_: Judge prompt, rubric, fine-tuning, calibration
+
+**Judging setup**:
+The Evaluation Model together with the version of Judging guidance it judges with. Every Verdict, Live Verdict and Evaluation Run keeps the Judging setup it was judged under, and only judgements under the same Judging setup are compared (Evaluation Model agreement, the Live score drop alert).
+_Avoid_: Judge config, judge version
 
 **Suggestion**:
 A proposed change to an Agent's Draft, drawn from its Live Version's replies that failed their Live Verdict, were given a thumbs-down or are in a Conversation rated 1 or 2, and from Evaluation Cases that failed on it, for an Editor to review: system prompt wording and retrieval settings (Top-k, Minimum Score, Hybrid weighting), each retrieval change citing the Traces behind it, plus any Knowledge Base gaps it found (questions no Chunk covered, which no configuration change can fix). An Editor starts the run that makes it and applies it to the Draft whole; it never changes the Draft or Publishes on its own, and a failed check against the Evaluation Set is a warning, not a block. Its evidence points at Messages and never copies their text, so Purged evidence reads "Text purged"; the change and its explanation are kept until an Editor deletes it.
@@ -877,6 +949,18 @@ _Avoid_: Agent (that is the assistant being changed), copilot, optimiser, auto-t
 An Editor's request for a Suggestion for one Agent over a range of UTC days (the last 14 by default), after seeing how much evidence the range holds and its estimated Cost. It gathers the evidence, has the Evaluation Model propose the Suggestion and, when the Suggestion changes the configuration and the Agent has an Evaluation Set, checks it against the Live Version in an Evaluation Run. An Agent has at most one in progress, which an Editor can cancel; its Cost counts in Organisation cost, never against the Evaluation budget.
 _Avoid_: Tuning run, optimisation
 
+**Suggestion's check**:
+The Evaluation Run a Suggestion run starts when its Suggestion changes the configuration and the Agent has an Evaluation Set: the Live Version the Suggestion was made from against a **suggestion side**, that Version's configuration with the suggested changes, answering with the Instructions it pins. A suggestion side is created only this way, never when an Editor starts a Run, and it isn't the Draft, so the check never counts in the Evaluation summary; it is kept in the Agent's Run history, labelled as a Suggestion's check. The Suggestion shows both Evaluation scores and each Regression with its Verdicts' reasons; Regressions or a failed check are a warning, never a block. A Suggestion with a change on an Agent without an Evaluation Set is "Not checked", and one with no configuration change is never checked. Its actual Cost is frozen beside the proposing Cost, and cancelling the Suggestion cancels it.
+_Avoid_: Suggestion test, validation run
+
 **Knowledge Base gap**:
 A topic a Suggestion found that failed replies asked about and no Chunk covered, listed with its evidence. No configuration change can fix it, so it is never applied; it points the Editor at the Knowledge Base.
 _Avoid_: Missing content, coverage hole
+
+**Suggestion clash**:
+A setting a Suggestion changes that the Draft has also changed some other way since the Live Version the Suggestion was made from: neither the base value nor the suggested one. Applying a Suggestion with any clash is refused whole, listing each clashing setting with its base, Draft and suggested values, and nothing is written; the Editor resolves it in the Draft. A setting the Draft already has at the suggested value is not a clash and is left as it is.
+_Avoid_: Merge conflict (two edits are never merged), stale Draft (a colleague saved the Draft after it was opened)
+
+**Stale Suggestion**:
+A Suggestion whose base Version is no longer Live, because a later Publish or revert replaced it. It still reads and can still be applied, saying that its check was against the old Live Version.
+_Avoid_: Expired Suggestion, outdated

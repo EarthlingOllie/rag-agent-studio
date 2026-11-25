@@ -1,6 +1,7 @@
 """Reading a Project's Conversations for the Studio's Conversations viewer: Visitor
 Conversations (from the widget) and Playground ones (flagged), filtered by Agent, start date,
-Agent Version, Playground, Message Feedback, Conversation Rating and Guardrail outcome, and
+Agent Version, Playground, Message Feedback, Conversation Rating, Guardrail outcome and Live
+Verdict, and
 one Conversation's Messages and each reply's Trace.
 
 Everything is found through the Project, which is found through the Organisation scope, so a
@@ -17,8 +18,9 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent, AgentVersion
-from app.conversations.models import Conversation, Message, MessageRetrieval, MessageRole
+from app.conversations.models import Conversation, Message, MessageRetrieval, MessageRole, Search
 from app.documents.models import Chunk, Document
+from app.evaluation.live_reads import LiveVerdictFilter, failed_live_verdicts, with_live_verdict
 from app.feedback.models import (
     ConversationRating,
     ConversationRatingChange,
@@ -112,7 +114,8 @@ class ConversationFilter:
     (``end`` exclusive); ``version_id`` keeps those with a reply from that Agent Version;
     ``playground`` keeps only Playground (True) or only Visitor (False) Conversations;
     ``feedback`` keeps them by their Message Feedback; ``rating`` by their current
-    Conversation Rating; ``guardrail`` by their replies' Guardrail outcomes."""
+    Conversation Rating; ``guardrail`` by their replies' Guardrail outcomes; ``live_verdict`` by
+    their replies' Live Verdicts."""
 
     agent_id: uuid.UUID | None = None
     version_id: uuid.UUID | None = None
@@ -122,6 +125,7 @@ class ConversationFilter:
     feedback: FeedbackFilter | None = None
     rating: RatingFilter | None = None
     guardrail: GuardrailFilter | None = None
+    live_verdict: LiveVerdictFilter | None = None
 
     def conditions(self) -> list[ColumnElement[bool]]:
         found: list[ColumnElement[bool]] = []
@@ -159,6 +163,8 @@ class ConversationFilter:
             found.append(~_with_guardrail_outcome())
         elif self.guardrail is not None:
             found.append(_with_guardrail_outcome(self.guardrail.value))
+        if self.live_verdict is not None:
+            found.append(with_live_verdict(self.live_verdict))
         return found
 
 
@@ -179,6 +185,8 @@ class ConversationSummary:
     rating: int | None
     # How many of its replies have a Guardrail outcome.
     guardrail_events: int
+    # How many of its replies failed their Live Verdict.
+    failed_live_verdicts: int = 0
 
 
 @dataclass(frozen=True)
@@ -279,6 +287,7 @@ async def list_conversations(
             )
         ).all()
     )
+    failed = await failed_live_verdicts(session, ids)
     return ConversationPage(
         rows=[
             ConversationSummary(
@@ -291,6 +300,7 @@ async def list_conversations(
                 thumbs_down=thumbs.get((conversation.id, Thumb.DOWN), 0),
                 rating=ratings.get(conversation.id),
                 guardrail_events=guardrail_events.get(conversation.id, 0),
+                failed_live_verdicts=failed.get(conversation.id, 0),
             )
             for conversation, agent_name in found
         ],
@@ -377,6 +387,15 @@ async def traced_chunks(session: AsyncSession, message: Message) -> list[TracedC
         .order_by(MessageRetrieval.position)
     )
     return [TracedChunk(row, name or row.document_name, text) for row, name, text in rows]
+
+
+async def searches_of(session: AsyncSession, message: Message) -> list[Search]:
+    """The answer's Knowledge Searches, in order."""
+    return list(
+        await session.scalars(
+            select(Search).where(Search.message_id == message.id).order_by(Search.order)
+        )
+    )
 
 
 def answer_in(messages: list[Message], message_id: uuid.UUID) -> Message:

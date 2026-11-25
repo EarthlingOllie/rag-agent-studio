@@ -38,6 +38,7 @@ chosen, whether the Draft has been evaluated against the current Live Version wi
 Instructions, and what that Run found. It is advisory: the Publish endpoint is unchanged.
 """
 
+import enum
 import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -45,6 +46,7 @@ from datetime import datetime
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, StringConstraints
 
 from app.agents.api import (
@@ -105,6 +107,10 @@ INSTRUCTIONS_NOT_FOUND = "Choose one of this Project's Instructions Versions."
 RUN_IN_PROGRESS = (
     "This Agent already has an Evaluation Run in progress. Wait for it to finish, or cancel it."
 )
+SUGGESTION_RUN_IN_PROGRESS = (
+    "This Agent has a Suggestion run in progress. Wait for it to finish, or cancel it, then "
+    "evaluate."
+)
 RUN_FINISHED = "This Run has already finished."
 MESSAGE_PURGED = "This Message's text has been purged, so it can't be added to the Evaluation Set."
 
@@ -117,6 +123,29 @@ def version_credential_gone(number: int) -> str:
 
 
 ClockDep = Annotated[Clock, Depends(get_clock)]
+
+
+class RunConflict(enum.StrEnum):
+    """What an Agent already has in progress when a Run of either kind is refused: an Agent runs
+    one Evaluation Run or Suggestion run at a time."""
+
+    EVALUATION_RUN_IN_PROGRESS = "evaluation_run_in_progress"
+    SUGGESTION_RUN_IN_PROGRESS = "suggestion_run_in_progress"
+
+
+class RunConflictOut(BaseModel):
+    detail: str
+    # Set when the Agent already has an Evaluation Run or Suggestion run in progress; null for
+    # every other conflict.
+    conflict: RunConflict | None = None
+
+
+def run_conflict(conflict: RunConflict, detail: str) -> JSONResponse:
+    """The typed 409 for a Run of either kind refused while the Agent has one in progress."""
+    body = RunConflictOut(detail=detail, conflict=conflict)
+    return JSONResponse(body.model_dump(mode="json"), status.HTTP_409_CONFLICT)
+
+
 Question = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=QUESTION_MAX)
 ]
@@ -157,11 +186,11 @@ _COPY_RESPONSES: dict[int | str, dict[str, Any]] = {
 _START_RESPONSES: dict[int | str, dict[str, Any]] = {
     **NOT_FOUND_RESPONSE,
     409: {
-        "model": ErrorResponse,
+        "model": RunConflictOut,
         "description": (
-            "The Project or Agent is archived, it already has a Run in progress, the Evaluation "
-            "Set is empty, there is no Default Model, or a side names a Provider Credential that "
-            "no longer exists."
+            "The Project or Agent is archived, it already has an Evaluation Run or Suggestion run "
+            "in progress (with its typed conflict), the Evaluation Set is empty, there is no "
+            "Default Model, or a side names a Provider Credential that no longer exists."
         ),
     },
     422: {
@@ -309,10 +338,11 @@ class ProgressOut(BaseModel):
 class RunSideOut(BaseModel):
     # ``first`` or ``second``; the Draft running alone is the ``first``.
     position: str
-    # ``draft``, ``version``, or ``rollout``: a Rollout evaluation's second side, the Version's
-    # AgentConfig answering with the new Instructions Version.
+    # ``draft``, ``version``, ``rollout``: a Rollout evaluation's second side, the Version's
+    # AgentConfig answering with the new Instructions Version, or ``suggestion``: a Suggestion's
+    # check's second side, the Version's AgentConfig with the suggested changes.
     kind: str
-    # The Agent Version, for a ``version`` or ``rollout`` side.
+    # The Agent Version, for a ``version``, ``rollout`` or ``suggestion`` side.
     agent_version_id: uuid.UUID | None
     version_number: int | None
     # The Draft revision it ran, for a ``draft`` side.
@@ -359,7 +389,8 @@ class RunCostOut(BaseModel):
 
 class RunOut(BaseModel):
     id: uuid.UUID
-    # ``agent`` (started from the Agent) or ``rollout`` (started by Rollout evaluation).
+    # ``agent`` (started from the Agent), ``rollout`` (started by Rollout evaluation) or
+    # ``suggestion`` (a Suggestion's check, started by its Suggestion run).
     kind: str
     # ``queued``, ``running``, ``completed``, ``failed`` or ``cancelled``.
     status: str
@@ -412,6 +443,8 @@ class RunExpectedSourceOut(BaseModel):
 
 
 class RunCaseOut(BaseModel):
+    # The case as the Run copied it: where a Suggestion's evidence opens its result.
+    id: uuid.UUID
     # The case it was copied from; null once that case is deleted.
     case_id: uuid.UUID | None
     # The question and expectations as the Run copied them when it started.
@@ -771,7 +804,8 @@ def _start_refused() -> Iterator[None]:
     except AgentArchivedError:
         raise agent_archived() from None
     except service.RunInProgressError:
-        raise HTTPException(status.HTTP_409_CONFLICT, RUN_IN_PROGRESS) from None
+        # Only starting checks it; the caller answers with the typed conflict.
+        raise
     except service.EmptySetError:
         raise HTTPException(status.HTTP_409_CONFLICT, EMPTY_SET) from None
     except service.VersionNotFoundError:
@@ -819,6 +853,7 @@ async def estimate_run(
     "/runs",
     status_code=status.HTTP_202_ACCEPTED,
     operation_id="startEvaluationRun",
+    response_model=RunOut,
     responses=_START_RESPONSES,
 )
 async def start_run(
@@ -828,14 +863,19 @@ async def start_run(
     db: Db,
     clock: ClockDep,
     body: RunIn | None = None,
-) -> RunOut:
+) -> RunOut | JSONResponse:
     """Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft
     (the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll
     it until it is ``completed``, ``failed`` or ``cancelled``."""
-    with _start_refused():
-        run = await service.start_run(
-            db, scope, project_id, agent_id, **_choices(body or RunIn()), now=clock.now()
-        )
+    try:
+        with _start_refused():
+            run = await service.start_run(
+                db, scope, project_id, agent_id, **_choices(body or RunIn()), now=clock.now()
+            )
+    except service.SuggestionInProgressError:
+        return run_conflict(RunConflict.SUGGESTION_RUN_IN_PROGRESS, SUGGESTION_RUN_IN_PROGRESS)
+    except service.RunInProgressError:
+        return run_conflict(RunConflict.EVALUATION_RUN_IN_PROGRESS, RUN_IN_PROGRESS)
     run_id = run.id
     await enqueue_run(run_id)
     # When tasks run eagerly the Run has moved on in another session: read it afresh.
@@ -907,6 +947,7 @@ async def get_run_results(
         run=_run_out(detail),
         cases=[
             RunCaseOut(
+                id=case.case.id,
                 case_id=case.case.case_id,
                 question=case.case.question,
                 reference_answer=case.case.reference_answer,

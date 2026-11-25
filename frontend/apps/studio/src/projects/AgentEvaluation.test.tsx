@@ -1184,6 +1184,22 @@ test("a full set of 200 cases says so, and New case and Copy wait until cases ar
   expect(screen.getByRole("button", { name: "Evaluate" })).toBeEnabled();
 });
 
+test("a Suggestion's check is in the Run history: the Live Version against the Suggestion", async () => {
+  const runId = "ra000000-0000-4000-8000-00000000000b";
+  const suggestionSide = { ...liveSide, position: "second", kind: "suggestion", score: 2 / 3 };
+  const check = results(twoSided(runId, { kind: "suggestion", sides: [liveSide, suggestionSide] }), []);
+  setUpPublished({ cases: [leaveCase], runs: [check] });
+  renderStudio(agentPage(hrHelper.id));
+
+  const runs = await screen.findByRole("list", { name: "Evaluation Runs" }, { timeout: 5000 });
+  expect(runs).toHaveTextContent("Suggestion's check");
+  expect(runs).toHaveTextContent("Version 1: 67% · Suggestion on Version 1: 67%");
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" });
+  expect(detail).toHaveTextContent(
+    "Version 1 · Instructions v1 · openai gpt-4.1-mini against Suggestion on Version 1 · Instructions v1 · openai gpt-4.1-mini",
+  );
+});
+
 test("a Rollout evaluation is in the Run history: the Live Version against its rollout with the new Instructions", async () => {
   const runId = "ra000000-0000-4000-8000-00000000000a";
   const rolloutSide = { ...liveSide, position: "second", kind: "rollout", instructions_version_number: 2, score: 1 / 3 };

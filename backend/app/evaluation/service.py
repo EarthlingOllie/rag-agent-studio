@@ -39,6 +39,7 @@ from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import cast
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -75,6 +76,7 @@ from app.evaluation.models import (
     EvaluationRunCase,
     EvaluationRunSide,
     EvaluationVerdict,
+    LiveVerdict,
     RunKind,
     RunStatus,
     SideKind,
@@ -84,6 +86,7 @@ from app.evaluation.settings import judge_model
 from app.projects.instructions import project_version
 from app.projects.models import InstructionsVersion, Project
 from app.projects.service import active_project
+from app.suggestions.reads import suggestion_in_progress
 from app.tenancy.models import Organisation
 from app.tenancy.repository import OrganisationScope
 
@@ -154,6 +157,11 @@ class RunInProgressError(Exception):
     """The Agent already has a queued or running Run."""
 
 
+class SuggestionInProgressError(RunInProgressError):
+    """The Agent has a Suggestion run in progress (spec 16): the Agent runs one at a time,
+    Evaluation Run or Suggestion run."""
+
+
 class RunFinishedError(Exception):
     """Only a queued or running Run can be cancelled."""
 
@@ -173,6 +181,15 @@ class SideChoice:
 
     kind: SideKind
     version_id: uuid.UUID | None = None
+
+
+@dataclass(frozen=True)
+class SuggestionSide:
+    """A Suggestion's check (spec 16): the Version it was made from against ``config``, that
+    Version's AgentConfig with the suggested changes, answering with the Instructions it pins."""
+
+    version_id: uuid.UUID
+    config: AgentConfig
 
 
 @dataclass(frozen=True)
@@ -707,7 +724,8 @@ async def _draft_instructions(
     return current, False, current.markdown
 
 
-async def _in_progress(session: AsyncSession, agent_id: uuid.UUID) -> bool:
+async def run_in_progress(session: AsyncSession, agent_id: uuid.UUID) -> bool:
+    """Whether the Agent has a queued or running Run."""
     found = await session.scalar(
         select(EvaluationRun.id).where(
             EvaluationRun.agent_id == agent_id, EvaluationRun.status.in_(IN_PROGRESS)
@@ -740,13 +758,20 @@ async def plan_run(
     starting: bool,
     now: datetime,
     rollout: InstructionsVersion | None = None,
+    suggestion: SuggestionSide | None = None,
 ) -> Plan:
     """Resolves a Run's sides, judge and repeats, refusing as ``start_run`` says. When
-    ``starting``, the Agent's row is locked and a Run in progress is refused. With ``rollout``,
-    the sides are the Live Version against its rollout side answering with those Instructions."""
+    ``starting``, the Agent's row is locked and a Run or Suggestion run in progress is refused.
+    With ``rollout``, the sides are the Live Version against its rollout side answering with
+    those Instructions. With ``suggestion``, they are its Version against the suggestion side,
+    and the Suggestion run in progress is the one checking."""
     project = await active_project(session, scope, project_id)
     found = await active_agent(session, scope, project_id, agent_id, lock=starting)
-    if starting and await _in_progress(session, found.agent.id):
+    # A Suggestion's check is a Run of its Suggestion run in progress: Evaluate is refused as
+    # that Suggestion run's, not as a Run's.
+    if starting and suggestion is None and await suggestion_in_progress(session, found.agent.id):
+        raise SuggestionInProgressError
+    if starting and await run_in_progress(session, found.agent.id):
         raise RunInProgressError
     cases = await _cases(session, found.agent.id)
     if not cases:
@@ -754,6 +779,11 @@ async def plan_run(
     live = found.agent.live_version_id
     if rollout is not None:
         sides = [SideChoice(SideKind.VERSION, live), SideChoice(SideKind.ROLLOUT, live)]
+    elif suggestion is not None:
+        sides = [
+            SideChoice(SideKind.VERSION, suggestion.version_id),
+            SideChoice(SideKind.SUGGESTION, suggestion.version_id),
+        ]
     elif sides is None:
         sides = [SideChoice(SideKind.DRAFT)]
         if live is not None:
@@ -770,6 +800,9 @@ async def plan_run(
             side = await _version_side(session, scope, found.agent.id, choice)
             if rollout is not None and choice.kind == SideKind.ROLLOUT:
                 side = replace(side, instructions=rollout, instructions_text=rollout.markdown)
+            if suggestion is not None and choice.kind == SideKind.SUGGESTION:
+                resolved = await resolve_models(session, scope.organisation_id, suggestion.config)
+                side = replace(side, resolved=resolved)
             resolved_sides.append(side)
             continue
         resolved = await resolve_models(session, scope.organisation_id, found.draft)
@@ -859,16 +892,22 @@ async def start_run(
         starting=True,
         now=now,
     )
-    run = await add_run(session, scope, plan, RunKind.AGENT, now=now)
+    run = await add_run(session, scope, plan, RunKind.AGENT, now=now, started_by=scope.member_id)
     await session.commit()
     return run
 
 
 async def add_run(
-    session: AsyncSession, scope: OrganisationScope, plan: Plan, kind: RunKind, *, now: datetime
+    session: AsyncSession,
+    scope: OrganisationScope,
+    plan: Plan,
+    kind: RunKind,
+    *,
+    now: datetime,
+    started_by: uuid.UUID | None,
 ) -> EvaluationRun:
-    """Adds the queued Run ``plan`` describes, with its sides and its copy of every case, for
-    the caller to commit."""
+    """Adds the queued Run ``plan`` describes, started by the Member ``started_by``, with its
+    sides and its copy of every case, for the caller to commit."""
     found, cases, resolved_sides, judge, repeats = (
         plan.agent,
         plan.cases,
@@ -882,7 +921,7 @@ async def add_run(
         agent_id=found.agent.id,
         status=RunStatus.QUEUED,
         kind=kind,
-        started_by=scope.member_id,
+        started_by=started_by,
         judge_credential_id=judge.credential.id,
         judge_provider=judge.credential.provider,
         judge_model=judge.model,
@@ -968,9 +1007,10 @@ async def cancel_run(
 async def evaluation_cost(
     session: AsyncSession, organisation_id: uuid.UUID, start: datetime, before: datetime
 ) -> dict[uuid.UUID, Decimal]:
-    """What each Agent's Evaluation Runs cost (answers and judging) from ``start`` until
-    ``before``, by when each answer was given, at the prices frozen as each ran. Organisation
-    cost reads it; it never counts in Version KPIs or the Token Budget."""
+    """What each Agent's Evaluation Runs (answers and judging) and Live Verdicts cost from
+    ``start`` until ``before``, by when each answer was given and each Live Verdict judged, at
+    the prices frozen then. Organisation cost reads it; it never counts in Version KPIs or the
+    Token Budget."""
     spent = func.coalesce(EvaluationCaseResult.cost_usd, 0) + func.coalesce(
         EvaluationCaseResult.judge_cost_usd, 0
     )
@@ -984,7 +1024,21 @@ async def evaluation_cost(
         )
         .group_by(EvaluationRun.agent_id)
     )
-    return {agent_id: Decimal(total) for agent_id, total in rows}
+    cost = {agent_id: Decimal(total) for agent_id, total in rows}
+    live = await session.execute(
+        select(LiveVerdict.agent_id, func.sum(LiveVerdict.cost_usd))
+        .where(
+            LiveVerdict.organisation_id == organisation_id,
+            LiveVerdict.cost_usd.is_not(None),
+            LiveVerdict.judged_at >= start,
+            LiveVerdict.judged_at < before,
+        )
+        .group_by(LiveVerdict.agent_id)
+    )
+    for agent_id, total in live:
+        # Only Live Verdicts with a Cost are summed.
+        cost[agent_id] = cost.get(agent_id, Decimal(0)) + cast(Decimal, total)
+    return cost
 
 
 async def list_runs(
