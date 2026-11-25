@@ -215,7 +215,7 @@ Replacing a Provider Credential's secret while keeping its identity, so everythi
 _Avoid_: Re-key, replace, regenerate
 
 **Credential reference**:
-Something that uses a Provider Credential, such as an Agent's model or a Project's Embedding Model. A credential can't be deleted while any reference to it exists.
+Something that uses a Provider Credential, such as an Agent's model, a Project's Embedding Model or the Call settings of an Agent with calling on. A credential can't be deleted while any reference to it exists.
 _Avoid_: Dependency, usage, link
 
 **Default Model**:
@@ -600,7 +600,7 @@ What a Visitor sees in place of the chat when the Agent is archived, in an archi
 _Avoid_: Error page, 404
 
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits, Token Budget, the Call settings, Maximum Call length, Call minutes budget and Live sample rate. Allowed Origins, the Unavailable text, the rate limits, the Token Budget and the Live sample rate are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`, or `agent.live_sample_rate_changed` for the Live sample rate) holding the before and after values of the settings it changed.
+An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits, Token Budget, the Call settings, Maximum Call length, Call minutes budget and Live sample rate. Allowed Origins, the Unavailable text, the rate limits, the Token Budget, the Live sample rate and the Call settings are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`, or `agent.live_sample_rate_changed` for the Live sample rate) holding the before and after values of the settings it changed.
 
 **Unavailable text**:
 What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit or because the day's Token Budget is spent). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
@@ -705,8 +705,16 @@ A Message said in a Call rather than typed: the Visitor's words as transcribed, 
 _Avoid_: Voice message, transcript line, utterance
 
 **Call settings**:
-Whether an Agent takes Calls (off by default), the voice-capable Provider Credential and the voice it speaks with (a Credential reference), and its spoken greeting. Calls are held in English. Part of the Operational Settings, so they apply at once and no Version holds them.
+Whether an Agent takes Calls (off by default), the voice-capable Provider Credential and the voice it speaks with (a Credential reference), and its spoken greeting. Calls are held in English. Part of the Operational Settings, so they apply at once and no Version holds them. Turning calling on is refused while the Organisation has no voice-capable credential, and a voice the credential's account doesn't offer is refused; saving sets up the Agent's Remote agent.
 _Avoid_: Voice config, calling options
+
+**Voice layer**:
+The ElevenLabs Agents service that listens, takes turns and speaks in a Call, while our runtime writes every reply (ADR-0019). The platform reaches it through one port with four operations: set up or update an Agent's Remote agent, remove it, list a credential's voices, and start a Call. Tests and `docker compose` use a scripted fake instead.
+_Avoid_: Voice provider, speech engine, TTS
+
+**Remote agent**:
+An Agent's counterpart in the Voice layer, one per Agent with calling on: it holds the voice, the language, the spoken greeting, our turn endpoint's address (from the platform's public base URL) as its custom LLM, and a per-Agent secret the platform generates and stores encrypted; it has no prompt, tools or knowledge of its own. Saving the Call settings sets it up or updates it, so nobody edits it in ElevenLabs; turning calling off, changing the credential, or archiving or deleting the Agent removes it.
+_Avoid_: ElevenLabs agent, voice agent, voice bot
 
 **Maximum Call length**:
 How long one Call may last before it is ended (10 minutes by default), timed by the platform. Part of the Operational Settings.

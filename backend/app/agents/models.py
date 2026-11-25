@@ -7,10 +7,12 @@ from typing import Any
 
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     DateTime,
     ForeignKey,
     Identity,
     Integer,
+    LargeBinary,
     String,
     Text,
     UniqueConstraint,
@@ -36,6 +38,9 @@ TOKEN_BUDGET_DEFAULT = 1_000_000
 TOKEN_BUDGET_MAX = 1_000_000_000
 # The Live sample rate: the whole percentage of Visitor replies judged (spec 15).
 LIVE_SAMPLE_RATE_MAX = 100
+# The Call settings (spec 20).
+SPOKEN_GREETING_MAX = 500
+VOICE_ID_MAX = 64
 
 
 def new_public_id() -> str:
@@ -100,6 +105,21 @@ class Agent(IdMixin, Base):
     live_score_drop_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("agent_versions.id", name="fk_agents_live_score_drop_version", use_alter=True)
     )
+    # The Call settings: whether the Agent takes Calls (off by default), the voice-capable
+    # Provider Credential and the voice it speaks with, and the spoken greeting that opens a
+    # Call. The credential is a Credential reference while calling is on.
+    calls_enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
+    call_credential_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("provider_credentials.id", ondelete="SET NULL"), index=True
+    )
+    call_voice_id: Mapped[str | None] = mapped_column(String(VOICE_ID_MAX))
+    spoken_greeting: Mapped[str] = mapped_column(
+        String(SPOKEN_GREETING_MAX), server_default=text("''")
+    )
+    # The Agent's remote agent in the voice layer (``app.voice``), while calling is on, and
+    # the per-Agent secret it presents to our turn endpoint, sealed with envelope encryption.
+    remote_agent_id: Mapped[str | None] = mapped_column(String(128))
+    call_secret_sealed: Mapped[bytes | None] = mapped_column(LargeBinary)
     # The Theme override, set by Owners and not versioned: colour tokens replacing the
     # Organisation Theme's ({token: {"light", "dark"}}, only those overridden) and an avatar
     # image (stored as the Theme's images are), or None.

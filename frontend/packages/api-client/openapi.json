@@ -6162,6 +6162,42 @@
             ],
             "title": "Allowed Origins"
           },
+          "call_credential_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Credential Id"
+          },
+          "call_voice_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Voice Id"
+          },
+          "calls_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calls Enabled"
+          },
           "conversation_messages_per_minute": {
             "anyOf": [
               {
@@ -6214,6 +6250,18 @@
             ],
             "title": "Live Sample Rate"
           },
+          "spoken_greeting": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spoken Greeting"
+          },
           "unavailable_text": {
             "anyOf": [
               {
@@ -6239,6 +6287,33 @@
             "title": "Allowed Origins",
             "type": "array"
           },
+          "call_credential_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Credential Id"
+          },
+          "call_voice_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Voice Id"
+          },
+          "calls_enabled": {
+            "title": "Calls Enabled",
+            "type": "boolean"
+          },
           "conversation_messages_per_minute": {
             "title": "Conversation Messages Per Minute",
             "type": "integer"
@@ -6255,6 +6330,10 @@
             "title": "Live Sample Rate",
             "type": "integer"
           },
+          "spoken_greeting": {
+            "title": "Spoken Greeting",
+            "type": "string"
+          },
           "unavailable_text": {
             "title": "Unavailable Text",
             "type": "string"
@@ -6266,7 +6345,11 @@
           "conversation_messages_per_minute",
           "ip_messages_per_minute",
           "daily_token_budget",
-          "live_sample_rate"
+          "live_sample_rate",
+          "calls_enabled",
+          "call_credential_id",
+          "call_voice_id",
+          "spoken_greeting"
         ],
         "title": "OperationalSettingsOut",
         "type": "object"
@@ -10951,6 +11034,36 @@
         "title": "VersionNumberOut",
         "type": "object"
       },
+      "VoiceOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sample_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Url"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "sample_url"
+        ],
+        "title": "VoiceOut",
+        "type": "object"
+      },
       "WidgetCitationOut": {
         "properties": {
           "document_name": {
@@ -13374,6 +13487,84 @@
         "summary": "Rotate Credential",
         "tags": [
           "credentials"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/voices": {
+      "get": {
+        "description": "The voices the credential's ElevenLabs account offers, for the voice picker.",
+        "operationId": "listVoices",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VoiceOut"
+                  },
+                  "title": "Response Listvoices",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This credential doesn't have the voice Capability, so it has no voices."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "ElevenLabs couldn't be reached with this credential. Check the credential in Organisation settings, Credentials, or try again shortly."
+          }
+        },
+        "summary": "List Voices",
+        "tags": [
+          "voice"
         ]
       }
     },
@@ -17846,7 +18037,7 @@
         ]
       },
       "patch": {
-        "description": "Changes the settings given. The next request uses them, without publishing, and the\nchange is recorded as an Audit Event with the before and after values (a Live sample rate\nchange as ``agent.live_sample_rate_changed``). A Live sample rate above 0 is refused with\nthe typed error ``evaluation_budget_required`` while the Organisation has no Evaluation\nbudget.",
+        "description": "Changes the settings given. The next request uses them, without publishing, and the\nchange is recorded as an Audit Event with the before and after values (a Live sample rate\nchange as ``agent.live_sample_rate_changed``). A Live sample rate above 0 is refused with\nthe typed error ``evaluation_budget_required`` while the Organisation has no Evaluation\nbudget.\n\nCall settings are refused with a 422 naming the field and reason: turning calling on while\nthe Organisation has no voice-capable credential (``no_voice_credential``), a credential\nof another Organisation (``unknown_credential``) or without the voice Capability\n(``not_voice_capable``), a voice its account doesn't offer (``voice_unavailable``), or no\ncredential or voice chosen (``missing``). A 502 means the voice layer couldn't set the\nAgent up; nothing is saved then.",
         "operationId": "changeOperationalSettings",
         "parameters": [
           {
@@ -17920,6 +18111,16 @@
               }
             },
             "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The voice layer couldn't set the Agent up"
           }
         },
         "summary": "Change Operational Settings",

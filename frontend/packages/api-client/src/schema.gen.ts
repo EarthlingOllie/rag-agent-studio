@@ -638,6 +638,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/voices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Voices
+         * @description The voices the credential's ElevenLabs account offers, for the voice picker.
+         */
+        get: operations["listVoices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/default-model": {
         parameters: {
             query?: never;
@@ -1524,6 +1544,13 @@ export interface paths {
          *     change as ``agent.live_sample_rate_changed``). A Live sample rate above 0 is refused with
          *     the typed error ``evaluation_budget_required`` while the Organisation has no Evaluation
          *     budget.
+         *
+         *     Call settings are refused with a 422 naming the field and reason: turning calling on while
+         *     the Organisation has no voice-capable credential (``no_voice_credential``), a credential
+         *     of another Organisation (``unknown_credential``) or without the voice Capability
+         *     (``not_voice_capable``), a voice its account doesn't offer (``voice_unavailable``), or no
+         *     credential or voice chosen (``missing``). A 502 means the voice layer couldn't set the
+         *     Agent up; nothing is saved then.
          */
         patch: operations["changeOperationalSettings"];
         trace?: never;
@@ -5120,6 +5147,12 @@ export interface components {
         OperationalSettingsChange: {
             /** Allowed Origins */
             allowed_origins?: string[] | null;
+            /** Call Credential Id */
+            call_credential_id?: string | null;
+            /** Call Voice Id */
+            call_voice_id?: string | null;
+            /** Calls Enabled */
+            calls_enabled?: boolean | null;
             /** Conversation Messages Per Minute */
             conversation_messages_per_minute?: number | null;
             /** Daily Token Budget */
@@ -5128,6 +5161,8 @@ export interface components {
             ip_messages_per_minute?: number | null;
             /** Live Sample Rate */
             live_sample_rate?: number | null;
+            /** Spoken Greeting */
+            spoken_greeting?: string | null;
             /** Unavailable Text */
             unavailable_text?: string | null;
         };
@@ -5135,6 +5170,12 @@ export interface components {
         OperationalSettingsOut: {
             /** Allowed Origins */
             allowed_origins: string[];
+            /** Call Credential Id */
+            call_credential_id: string | null;
+            /** Call Voice Id */
+            call_voice_id: string | null;
+            /** Calls Enabled */
+            calls_enabled: boolean;
             /** Conversation Messages Per Minute */
             conversation_messages_per_minute: number;
             /** Daily Token Budget */
@@ -5143,6 +5184,8 @@ export interface components {
             ip_messages_per_minute: number;
             /** Live Sample Rate */
             live_sample_rate: number;
+            /** Spoken Greeting */
+            spoken_greeting: string;
             /** Unavailable Text */
             unavailable_text: string;
         };
@@ -6780,6 +6823,15 @@ export interface components {
             id: string;
             /** Number */
             number: number;
+        };
+        /** VoiceOut */
+        VoiceOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Sample Url */
+            sample_url: string | null;
         };
         /** WidgetCitationOut */
         WidgetCitationOut: {
@@ -8475,6 +8527,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    listVoices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This credential doesn't have the voice Capability, so it has no voices. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ElevenLabs couldn't be reached with this credential. Check the credential in Organisation settings, Credentials, or try again shortly. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
@@ -11142,6 +11244,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description The voice layer couldn't set the Agent up */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

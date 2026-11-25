@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
-import { DEFAULT_UNAVAILABLE_TEXT, fakeAgentsApi, hrHelper, oldHelper } from "../test/agents";
+import { DEFAULT_UNAVAILABLE_TEXT, elevenLabs, fakeAgentsApi, hrHelper, oldHelper, openAi } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeEvaluationBudgetApi } from "../test/models";
 import { fakeProjectsApi, hrProject } from "../test/projects";
@@ -591,4 +591,183 @@ test("an Evaluation budget that can't be loaded keeps the Live sample rate disab
 
   expect(await within(card).findByText("The Evaluation budget could not be loaded. Try again shortly.")).toBeInTheDocument();
   expect(within(card).getByLabelText("Visitor replies judged (%)")).toBeDisabled();
+});
+
+/** The Call settings card, once the saved settings are loaded. */
+async function callSettings() {
+  const card = await screen.findByRole("region", { name: "Call settings" }, { timeout: 5000 });
+  await waitFor(() => {
+    expect(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" })).toBeEnabled();
+  });
+  return card;
+}
+
+const ELEVENLABS_ONLY = [openAi, elevenLabs];
+
+test("calling is off by default, and without a voice-capable credential the Editor is told who can add one", async () => {
+  setUp();
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  expect(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" })).not.toBeChecked();
+  expect(
+    await within(card).findByText(/The Organisation has no voice-capable credential, so the Agent can't take Calls/),
+  ).toBeInTheDocument();
+  expect(within(card).getByRole("link", { name: "Organisation settings" })).toHaveAttribute(
+    "href",
+    `/organisations/${organisationId}/settings/credentials`,
+  );
+  expect(within(card).getByText("Choose a credential to see its voices.")).toBeInTheDocument();
+  // Only voice-capable credentials can be chosen.
+  expect(within(card).getAllByRole("option").map((option) => option.textContent)).toEqual(["Choose a credential"]);
+});
+
+test("an Editor turns calling on with a credential, a voice whose sample plays, and a spoken greeting", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({ credentials: ELEVENLABS_ONLY });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  await user.click(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" }));
+  await user.selectOptions(within(card).getByRole("combobox", { name: "Credential" }), "ElevenLabs");
+  const voice = await within(card).findByRole("combobox", { name: "Voice" });
+  expect(within(voice).getAllByRole("option").map((option) => option.textContent)).toEqual([
+    "Choose a voice",
+    "Ada",
+    "Bryn",
+  ]);
+  await user.selectOptions(voice, "Ada");
+  expect(within(card).getByLabelText("Sample of Ada")).toHaveAttribute("src", "https://voices.example.test/ada.mp3");
+  await user.type(within(card).getByRole("textbox", { name: "Spoken greeting" }), "Hello, how can I help?");
+  await user.click(within(card).getByRole("button", { name: "Save Call settings" }));
+
+  expect(await within(card).findByText("Saved. Calls use these settings from now on.")).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "operational-settings")).toEqual([
+    {
+      route: "operational-settings",
+      body: {
+        calls_enabled: true,
+        call_credential_id: elevenLabs.id,
+        call_voice_id: "voice-ada",
+        spoken_greeting: "Hello, how can I help?",
+      },
+    },
+  ]);
+  expect(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" })).toBeChecked();
+});
+
+test("the saved Call settings are shown, a voice without a sample says so, and calling is turned off", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({
+    credentials: ELEVENLABS_ONLY,
+    callSettings: {
+      calls_enabled: true,
+      call_credential_id: elevenLabs.id,
+      call_voice_id: "voice-bryn",
+      spoken_greeting: "Hi.",
+    },
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  expect(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" })).toBeChecked();
+  expect(within(card).getByRole("combobox", { name: "Credential" })).toHaveValue(elevenLabs.id);
+  expect(await within(card).findByRole("combobox", { name: "Voice" })).toHaveValue("voice-bryn");
+  expect(within(card).getByText("Bryn has no sample to play.")).toBeInTheDocument();
+  expect(within(card).getByRole("textbox", { name: "Spoken greeting" })).toHaveValue("Hi.");
+
+  await user.click(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" }));
+  await user.click(within(card).getByRole("button", { name: "Save Call settings" }));
+
+  expect(await within(card).findByText("Saved. Calls use these settings from now on.")).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "operational-settings")).toEqual([
+    {
+      route: "operational-settings",
+      body: { calls_enabled: false, call_credential_id: elevenLabs.id, call_voice_id: "voice-bryn", spoken_greeting: "Hi." },
+    },
+  ]);
+});
+
+test("choosing another credential asks for a voice from its account", async () => {
+  const user = userEvent.setup();
+  setUp({
+    credentials: ELEVENLABS_ONLY,
+    callSettings: { call_credential_id: elevenLabs.id, call_voice_id: "voice-ada" },
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+  expect(await within(card).findByRole("combobox", { name: "Voice" })).toHaveValue("voice-ada");
+
+  await user.selectOptions(within(card).getByRole("combobox", { name: "Credential" }), "Choose a credential");
+
+  expect(within(card).getByText("Choose a credential to see its voices.")).toBeInTheDocument();
+});
+
+test("a refused Call settings change says which field and why", async () => {
+  const user = userEvent.setup();
+  setUp({
+    credentials: ELEVENLABS_ONLY,
+    changeSettings: () =>
+      HttpResponse.json(
+        {
+          detail: [
+            {
+              loc: ["body", "call_voice_id"],
+              msg: "Choose the voice the Agent speaks with.",
+              type: "missing",
+            },
+          ],
+        },
+        { status: 422 },
+      ),
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  await user.click(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" }));
+  await user.click(within(card).getByRole("button", { name: "Save Call settings" }));
+
+  expect(await within(card).findByRole("alert")).toHaveTextContent("Choose the voice the Agent speaks with.");
+});
+
+test("when ElevenLabs can't set the Agent up, the Editor is told", async () => {
+  const user = userEvent.setup();
+  const detail =
+    "ElevenLabs couldn't be reached with this credential. Check the credential in Organisation settings, Credentials, or try again shortly.";
+  setUp({
+    credentials: ELEVENLABS_ONLY,
+    changeSettings: () => HttpResponse.json({ detail }, { status: 502 }),
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  await user.click(within(card).getByRole("button", { name: "Save Call settings" }));
+
+  expect(await within(card).findByRole("alert")).toHaveTextContent(detail);
+});
+
+test("voices that can't be listed are explained", async () => {
+  setUp({
+    credentials: [{ ...elevenLabs, id: "c1000000-0000-4000-8000-0000000000ff", name: "Revoked" }],
+    callSettings: { call_credential_id: "c1000000-0000-4000-8000-0000000000ff" },
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  expect(
+    await within(card).findByText("This credential doesn't have the voice Capability, so it has no voices."),
+  ).toBeInTheDocument();
+});
+
+test("credentials that can't be loaded are reported in the Call settings", async () => {
+  setUp();
+  server.use(
+    http.get("*/api/organisations/:organisationId/credentials", () =>
+      HttpResponse.json({ detail: "Boom" }, { status: 500 }),
+    ),
+  );
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  expect(await within(card).findByText("The credentials could not be loaded. Try again shortly.")).toBeInTheDocument();
 });

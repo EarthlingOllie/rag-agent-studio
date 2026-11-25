@@ -9,8 +9,9 @@
   streams as Server-Sent Events from the Live Version. Visitors are anonymous: these routes take
   no Studio session. The iframe shares the API's origin (ADR-0011), so there is no CORS.
 - The Studio's Operational Settings routes (Allowed Origins, the unavailable text, the rate
-  limits and the Token Budget), for Editors and Owners. Changes apply on the next request and are
-  audited. Beside them, today's usage against the Token Budget, for the Studio's meter.
+  limits, the Token Budget and the Call settings), for Editors and Owners. Changes apply on
+  the next request and are audited. Beside them, today's usage against the Token Budget, for
+  the Studio's meter.
 """
 
 import html
@@ -30,8 +31,10 @@ from app.agents.models import (
     IP_RATE_MAX,
     LIVE_SAMPLE_RATE_MAX,
     ORIGIN_MAX,
+    SPOKEN_GREETING_MAX,
     TOKEN_BUDGET_MAX,
     UNAVAILABLE_TEXT_MAX,
+    VOICE_ID_MAX,
 )
 from app.agents.resolution import NoDefaultModelError, ProviderCredentialGoneError
 from app.agents.service import AgentNotFoundError
@@ -42,6 +45,7 @@ from app.core.settings import Settings
 from app.documents.ports import IngestionPorts
 from app.embed import service
 from app.embed.admission import Admission, Refusal
+from app.embed.call_settings import CallSettingsChange, CallSettingsError
 from app.embed.tokens import TokenSigner
 from app.embed.visitor_turn import ServingPorts, Unavailable, VisitorTurnEvent, serve_turn
 from app.evaluation.tasks import enqueue_live_verdict
@@ -60,6 +64,8 @@ from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import Scope
 from app.theme import images
 from app.theme.resolve import font_stylesheet_url, theme_stylesheet, widget_theme
+from app.voice.api import Voice, voice_layer_failed
+from app.voice.port import VoiceLayerError
 
 NO_LONGER_AVAILABLE = "This assistant is no longer available."
 TEMPORARILY_UNAVAILABLE = service.DEFAULT_UNAVAILABLE_TEXT
@@ -505,6 +511,12 @@ ConversationRate = Annotated[int, Field(ge=1, le=CONVERSATION_RATE_MAX)]
 IpRate = Annotated[int, Field(ge=1, le=IP_RATE_MAX)]
 TokenBudget = Annotated[int, Field(ge=1, le=TOKEN_BUDGET_MAX)]
 LiveSampleRate = Annotated[int, Field(ge=0, le=LIVE_SAMPLE_RATE_MAX, strict=True)]
+VoiceId = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=VOICE_ID_MAX)
+]
+SpokenGreeting = Annotated[
+    str, StringConstraints(strip_whitespace=True, max_length=SPOKEN_GREETING_MAX)
+]
 
 
 class OperationalSettingsOut(BaseModel):
@@ -524,6 +536,14 @@ class OperationalSettingsOut(BaseModel):
     # The Live sample rate: the whole percentage (0 to 100) of Visitor replies chosen at random
     # to be judged by the Evaluation Model in the background (a Live Verdict). 0 judges none.
     live_sample_rate: int
+    # The Call settings. Whether Visitors can talk to the Agent in a Call (off by default).
+    calls_enabled: bool
+    # The voice-capable Provider Credential (ElevenLabs) Calls use, and the voice of its
+    # account the Agent speaks with; null until chosen.
+    call_credential_id: uuid.UUID | None
+    call_voice_id: str | None
+    # What the Agent says when a Call opens a new Conversation; empty says nothing.
+    spoken_greeting: str
 
 
 class OperationalSettingsChange(BaseModel):
@@ -536,6 +556,14 @@ class OperationalSettingsChange(BaseModel):
     ip_messages_per_minute: IpRate | None = None
     daily_token_budget: TokenBudget | None = None
     live_sample_rate: LiveSampleRate | None = None
+    # Turning calling on needs a voice-capable credential of this Organisation and a voice its
+    # account offers; saving sets up the Agent's remote agent in the voice layer, and turning
+    # calling off removes it.
+    calls_enabled: Annotated[bool, Field(strict=True)] | None = None
+    call_credential_id: uuid.UUID | None = None
+    call_voice_id: VoiceId | None = None
+    # Null or blank: no spoken greeting.
+    spoken_greeting: SpokenGreeting | None = None
 
     @field_validator("conversation_messages_per_minute", "ip_messages_per_minute", mode="before")
     @classmethod
@@ -570,6 +598,12 @@ def _out(found: service.OperationalSettings) -> OperationalSettingsOut:
         ip_messages_per_minute=found.ip_messages_per_minute,
         daily_token_budget=found.daily_token_budget,
         live_sample_rate=found.live_sample_rate,
+        calls_enabled=found.calls_enabled,
+        call_credential_id=None
+        if found.call_credential_id is None
+        else uuid.UUID(found.call_credential_id),
+        call_voice_id=found.call_voice_id,
+        spoken_greeting=found.spoken_greeting,
     )
 
 
@@ -590,7 +624,10 @@ async def get_operational_settings(
 @settings_router.patch(
     "/operational-settings",
     operation_id="changeOperationalSettings",
-    responses=NOT_FOUND_RESPONSE,
+    responses={
+        **NOT_FOUND_RESPONSE,
+        502: {"model": ErrorResponse, "description": "The voice layer couldn't set the Agent up"},
+    },
 )
 async def change_operational_settings(
     project_id: uuid.UUID,
@@ -599,13 +636,22 @@ async def change_operational_settings(
     scope: Scope,
     db: Db,
     clock: ClockDep,
+    voice: Voice,
 ) -> OperationalSettingsOut:
     """Changes the settings given. The next request uses them, without publishing, and the
     change is recorded as an Audit Event with the before and after values (a Live sample rate
     change as ``agent.live_sample_rate_changed``). A Live sample rate above 0 is refused with
     the typed error ``evaluation_budget_required`` while the Organisation has no Evaluation
-    budget."""
+    budget.
+
+    Call settings are refused with a 422 naming the field and reason: turning calling on while
+    the Organisation has no voice-capable credential (``no_voice_credential``), a credential
+    of another Organisation (``unknown_credential``) or without the voice Capability
+    (``not_voice_capable``), a voice its account doesn't offer (``voice_unavailable``), or no
+    credential or voice chosen (``missing``). A 502 means the voice layer couldn't set the
+    Agent up; nothing is saved then."""
     blank_text = "unavailable_text" in body.model_fields_set and body.unavailable_text is None
+    blank_greeting = "spoken_greeting" in body.model_fields_set and body.spoken_greeting is None
     try:
         found = await service.change_operational_settings(
             db,
@@ -618,10 +664,24 @@ async def change_operational_settings(
             ip_messages_per_minute=body.ip_messages_per_minute,
             daily_token_budget=body.daily_token_budget,
             live_sample_rate=body.live_sample_rate,
+            call=CallSettingsChange(
+                calls_enabled=body.calls_enabled,
+                call_credential_id=body.call_credential_id,
+                call_voice_id=body.call_voice_id,
+                spoken_greeting="" if blank_greeting else body.spoken_greeting,
+            ),
+            voice=voice,
             now=clock.now(),
         )
     except (ProjectNotFoundError, AgentNotFoundError):
         raise not_found() from None
+    except CallSettingsError as error:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            [{"loc": ["body", error.field], "msg": error.message, "type": error.kind}],
+        ) from None
+    except VoiceLayerError:
+        raise voice_layer_failed() from None
     except service.EvaluationBudgetRequiredError:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,

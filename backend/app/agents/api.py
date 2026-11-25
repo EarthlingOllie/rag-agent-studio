@@ -21,6 +21,7 @@ from app.projects.api import PROJECT_ARCHIVED
 from app.projects.service import ProjectArchivedError, ProjectNotFoundError
 from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import NOT_FOUND, OWNERS_ONLY, OwnerScope, Scope
+from app.voice.api import Voice
 
 router = APIRouter(prefix=ORGANISATION_PREFIX + "/projects/{project_id}", tags=["agents"])
 
@@ -240,12 +241,19 @@ async def save_agent_draft(
     responses={**NOT_FOUND_RESPONSE, **AGENT_ARCHIVED_RESPONSE},
 )
 async def archive_agent(
-    project_id: uuid.UUID, agent_id: uuid.UUID, scope: Scope, db: Db, clock: ClockDep
+    project_id: uuid.UUID,
+    agent_id: uuid.UUID,
+    scope: Scope,
+    db: Db,
+    clock: ClockDep,
+    voice: Voice,
 ) -> AgentOut:
     """Archives the Agent: it leaves the Agents list and starts no new Playground Conversation,
     but keeps its Draft and Conversations. Records ``agent.archived``."""
     try:
-        found = await service.archive_agent(db, scope, project_id, agent_id, now=clock.now())
+        found = await service.archive_agent(
+            db, scope, project_id, agent_id, voice=voice, now=clock.now()
+        )
     except (ProjectNotFoundError, service.AgentNotFoundError):
         raise not_found() from None
     except ProjectArchivedError:
@@ -309,13 +317,20 @@ async def delete_agent(
     scope: OwnerScope,
     db: Db,
     clock: ClockDep,
+    voice: Voice,
 ) -> Response:
     """Permanently deletes an archived Agent (Owners only), once ``confirm_name`` is its name.
     Its Draft, Conversations and their Messages and Traces go with it, and ``agent.deleted``
     is recorded. This can't be undone."""
     try:
         await service.delete_agent(
-            db, scope, project_id, agent_id, confirm_name=body.confirm_name, now=clock.now()
+            db,
+            scope,
+            project_id,
+            agent_id,
+            confirm_name=body.confirm_name,
+            voice=voice,
+            now=clock.now(),
         )
     except (ProjectNotFoundError, service.AgentNotFoundError):
         raise not_found() from None

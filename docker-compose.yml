@@ -25,6 +25,10 @@ x-backend: &backend
     CREDENTIAL_VERIFIER: ${CREDENTIAL_VERIFIER:-fake}
     # Models are the gateway's offline fakes locally. Set MODEL_GATEWAY=live in .env to call providers.
     MODEL_GATEWAY: ${MODEL_GATEWAY:-fake}
+    # Calls use the scripted fake voice layer locally (no audio). PUBLIC_BASE_URL is where
+    # ElevenLabs reaches the turn endpoint (a tunnel locally); unset, the Studio's address.
+    VOICE_LAYER: ${VOICE_LAYER:-fake}
+    PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-}
     # Set LOGFIRE_TOKEN in .env to send traces to Logfire; otherwise they are printed as JSON.
     LOGFIRE_TOKEN: ${LOGFIRE_TOKEN:-}
     # X-Forwarded-For is believed only from TRUSTED_PROXIES (app/core/client_ip.py); uvicorn's own

@@ -26,6 +26,8 @@ from app.conversations.models import Conversation, Message, MessageRetrieval
 from app.documents.models import Document
 from app.embed.admission import Admission, Limits, Refusal, utc_date
 from app.embed.branding import override_of
+from app.embed.call_settings import CallSettingsChange
+from app.embed.call_settings import apply as apply_call_settings
 from app.embed.tokens import TokenSigner, expired, token_hash
 from app.evaluation.budget import has_budget
 from app.feedback.models import MessageFeedback
@@ -39,6 +41,7 @@ from app.tenancy.repository import OrganisationScope
 from app.theme.resolve import with_colours
 from app.theme.schema import ThemeSettings
 from app.theme.service import StoredImage, ThemeImageKind, organisation_theme
+from app.voice.remote import VoicePorts
 
 ORIGINS_MAX = 50
 DEFAULT_UNAVAILABLE_TEXT = "This assistant is temporarily unavailable. Please try again later."
@@ -114,6 +117,12 @@ class OperationalSettings:
     daily_token_budget: int
     # The whole percentage of Visitor replies chosen for a Live Verdict.
     live_sample_rate: int
+    # The Call settings (``app.embed.call_settings``): whether the Agent takes Calls, the
+    # voice-capable credential's ID and the voice it speaks with, and the spoken greeting.
+    calls_enabled: bool
+    call_credential_id: str | None
+    call_voice_id: str | None
+    spoken_greeting: str
 
 
 def _settings_of(agent: Agent) -> OperationalSettings:
@@ -124,6 +133,12 @@ def _settings_of(agent: Agent) -> OperationalSettings:
         ip_messages_per_minute=agent.ip_messages_per_minute,
         daily_token_budget=agent.daily_token_budget,
         live_sample_rate=agent.live_sample_rate,
+        calls_enabled=agent.calls_enabled,
+        call_credential_id=None
+        if agent.call_credential_id is None
+        else str(agent.call_credential_id),
+        call_voice_id=agent.call_voice_id,
+        spoken_greeting=agent.spoken_greeting,
     )
 
 
@@ -145,6 +160,8 @@ async def change_operational_settings(
     ip_messages_per_minute: int | None = None,
     daily_token_budget: int | None = None,
     live_sample_rate: int | None = None,
+    call: CallSettingsChange | None = None,
+    voice: VoicePorts,
     now: datetime,
 ) -> OperationalSettings:
     """Changes the settings given (``None`` leaves one as it is; a blank ``unavailable_text``
@@ -152,7 +169,11 @@ async def change_operational_settings(
     ``agent.operational_settings_changed`` Audit Event holding the before and after values of
     the settings that changed, except the Live sample rate's, which is recorded on its own as
     ``agent.live_sample_rate_changed``, so a jump in evaluation spend can be traced; a save that
-    changes nothing records nothing."""
+    changes nothing records nothing.
+
+    A Call settings change (``call``) is checked and brings the Agent's remote agent in step
+    through ``voice`` (``app.embed.call_settings.apply``); it raises ``CallSettingsError`` or
+    ``VoiceLayerError``, and then nothing is saved."""
     origins = None if allowed_origins is None else normalise_origins(allowed_origins)
     agent = (await get_agent(session, scope, project_id, agent_id, lock=True)).agent
     before = asdict(_settings_of(agent))
@@ -170,6 +191,7 @@ async def change_operational_settings(
         if live_sample_rate > 0 and not await has_budget(session, scope.organisation_id):
             raise EvaluationBudgetRequiredError
         agent.live_sample_rate = live_sample_rate
+    await apply_call_settings(session, scope, agent, call or CallSettingsChange(), voice)
     after = asdict(_settings_of(agent))
     changed = [key for key in before if before[key] != after[key]]
     for action, keys in (

@@ -118,6 +118,19 @@ async def _new_bedrock_body(owner: SignedUpMember, add_member: MemberFactory) ->
 _CREDENTIAL = "/api/organisations/{organisation_id}/credentials/{credential_id}"
 
 
+async def _a_voice_credential(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    response = await owner.client.post(
+        f"/api/organisations/{owner.organisation_id}/credentials",
+        json={
+            "name": f"Isolation {uuid.uuid4().hex[:12]}",
+            "provider": "elevenlabs",
+            "api_key": "sk-isolation-voice-only-0000",
+        },
+    )
+    assert response.status_code == 201, response.text
+    return {"credential_id": response.json()["id"]}, None
+
+
 async def _a_credential_to_list(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, _ = await _a_credential(owner, add_member)
     return params | {"capability": "chat"}, None
@@ -881,6 +894,7 @@ ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("POST", f"{_CREDENTIAL}/rotate", OWNER, _a_credential),
     ScopedRoute("DELETE", _CREDENTIAL, OWNER, _a_credential),
     ScopedRoute("GET", f"{_CREDENTIAL}/models/{{capability}}", EDITOR, _a_credential_to_list),
+    ScopedRoute("GET", f"{_CREDENTIAL}/voices", EDITOR, _a_voice_credential),
     ScopedRoute("GET", f"{_CREDENTIAL}/prices", EDITOR, _a_credential),
     ScopedRoute("PUT", f"{_CREDENTIAL}/prices", OWNER, _a_price_override),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/default-model", EDITOR),

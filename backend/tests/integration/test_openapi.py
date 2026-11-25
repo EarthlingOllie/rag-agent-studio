@@ -70,6 +70,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         ),
         "getBedrockSetup": ("/api/organisations/{organisation_id}/bedrock-setup", "get"),
         "listCredentialModels": (f"{_CREDENTIAL}/models/{{capability}}", "get"),
+        "listVoices": (f"{_CREDENTIAL}/voices", "get"),
         "listCredentialPrices": (f"{_CREDENTIAL}/prices", "get"),
         "overrideCredentialPrices": (f"{_CREDENTIAL}/prices", "put"),
         "listProviders": ("/api/providers", "get"),

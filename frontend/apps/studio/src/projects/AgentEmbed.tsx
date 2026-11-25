@@ -3,6 +3,7 @@ import { type SubmitEvent, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import { button, CodeBlock, EditableList, field, Meter, Notice, Skeleton, surface, text as type } from "../design";
+import { useCredentials } from "../settings/credentials";
 import { useEvaluationBudget } from "../settings/evaluationSettings";
 import type { Agent } from "./agents";
 import {
@@ -12,6 +13,7 @@ import {
   useChangeOperationalSettings,
   useOperationalSettings,
   useTokenUsage,
+  useVoices,
 } from "./embed";
 
 const CARD = `${surface.panel} flex flex-col gap-4`;
@@ -443,9 +445,206 @@ function LiveSampleRate({ path }: { path: SettingsPath }) {
   );
 }
 
+const SPOKEN_GREETING_MAX = 500;
+
+type CallForm = { enabled: boolean; credentialId: string; voiceId: string; greeting: string };
+
+/** The voices of the chosen credential's account, with a sample of the chosen one to play. */
+function VoicePicker({
+  organisationId,
+  credentialId,
+  voiceId,
+  disabled,
+  onChange,
+}: {
+  organisationId: string;
+  credentialId: string;
+  voiceId: string;
+  disabled: boolean;
+  onChange: (voiceId: string) => void;
+}) {
+  const voices = useVoices(organisationId, credentialId || null);
+  if (!credentialId) return <p className={type.muted}>Choose a credential to see its voices.</p>;
+  if (voices.isError) return <Notice tone="error">{voices.error.message}</Notice>;
+  if (!voices.data) return <Skeleton label="Loading the voices" lines={1} />;
+  const chosen = voices.data.find((voice) => voice.id === voiceId);
+  return (
+    <div className="flex flex-col gap-2">
+      <div>
+        <label htmlFor="call-voice" className={field.label}>
+          Voice
+        </label>
+        <select
+          id="call-voice"
+          className={field.select}
+          disabled={disabled}
+          value={voiceId}
+          onChange={(event) => {
+            onChange(event.target.value);
+          }}
+        >
+          <option value="">Choose a voice</option>
+          {voices.data.map((voice) => (
+            <option key={voice.id} value={voice.id}>
+              {voice.name}
+            </option>
+          ))}
+        </select>
+        <p className={field.hint}>The voices in the credential&apos;s ElevenLabs account.</p>
+      </div>
+      {chosen?.sample_url && (
+        <audio controls preload="none" src={chosen.sample_url} aria-label={`Sample of ${chosen.name}`} className="w-full" />
+      )}
+      {chosen && !chosen.sample_url && <p className={type.small}>{`${chosen.name} has no sample to play.`}</p>}
+    </div>
+  );
+}
+
+/** Whether Visitors can talk to the Agent in a Call, the voice-capable credential and voice it
+ * speaks with, and its spoken greeting. Saving sets the Agent up in the voice layer. */
+function CallSettings({ path }: { path: SettingsPath }) {
+  const settings = useOperationalSettings(path);
+  const credentials = useCredentials(path.organisation_id);
+  const save = useChangeOperationalSettings(path);
+  const [edited, setEdited] = useState<CallForm | null>(null);
+  const loaded = settings.isSuccess;
+  const form: CallForm = edited ?? {
+    enabled: settings.data?.calls_enabled ?? false,
+    credentialId: settings.data?.call_credential_id ?? "",
+    voiceId: settings.data?.call_voice_id ?? "",
+    greeting: settings.data?.spoken_greeting ?? "",
+  };
+  const voiceCredentials = (credentials.data ?? []).filter((credential) => credential.capabilities.includes("voice"));
+  const noVoiceCredential = credentials.isSuccess && voiceCredentials.length === 0;
+
+  function edit(change: Partial<CallForm>) {
+    save.reset();
+    setEdited({ ...form, ...change });
+  }
+
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    save.mutate(
+      {
+        calls_enabled: form.enabled,
+        spoken_greeting: form.greeting,
+        ...(form.credentialId ? { call_credential_id: form.credentialId } : {}),
+        ...(form.voiceId ? { call_voice_id: form.voiceId } : {}),
+      },
+      {
+        onSuccess: () => {
+          setEdited(null);
+        },
+      },
+    );
+  }
+
+  return (
+    <section aria-labelledby="call-settings-heading" className={CARD}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+        <h3 id="call-settings-heading" className={type.subheading}>
+          Call settings
+        </h3>
+        <p id="call-settings-hint" className={type.muted}>
+          Let Visitors talk to the Agent in a Call as well as type. It answers exactly as it does in the chat, in the
+          voice you choose; Calls are held in English.
+        </p>
+        {noVoiceCredential && (
+          <Notice tone="info">
+            The Organisation has no voice-capable credential, so the Agent can&apos;t take Calls. An Owner adds an
+            ElevenLabs credential in{" "}
+            <Link
+              to="/organisations/$organisationId/settings/credentials"
+              params={{ organisationId: path.organisation_id }}
+              className={type.link}
+            >
+              Organisation settings
+            </Link>
+            .
+          </Notice>
+        )}
+        {credentials.isError && <Notice tone="error">The credentials could not be loaded. Try again shortly.</Notice>}
+        <label className="flex items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            className={field.checkbox}
+            aria-describedby="call-settings-hint"
+            disabled={!loaded}
+            checked={form.enabled}
+            onChange={(event) => {
+              edit({ enabled: event.target.checked });
+            }}
+          />
+          Visitors can call the Agent
+        </label>
+        <div>
+          <label htmlFor="call-credential" className={field.label}>
+            Credential
+          </label>
+          <select
+            id="call-credential"
+            className={field.select}
+            disabled={!loaded}
+            value={form.credentialId}
+            onChange={(event) => {
+              // Each ElevenLabs account has its own voices.
+              edit({ credentialId: event.target.value, voiceId: "" });
+            }}
+          >
+            <option value="">Choose a credential</option>
+            {voiceCredentials.map((credential) => (
+              <option key={credential.id} value={credential.id}>
+                {credential.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <VoicePicker
+          organisationId={path.organisation_id}
+          credentialId={form.credentialId}
+          voiceId={form.voiceId}
+          disabled={!loaded}
+          onChange={(voiceId) => {
+            edit({ voiceId });
+          }}
+        />
+        <div>
+          <label htmlFor="spoken-greeting" className={field.label}>
+            Spoken greeting
+          </label>
+          <textarea
+            id="spoken-greeting"
+            aria-describedby="spoken-greeting-hint"
+            rows={2}
+            maxLength={SPOKEN_GREETING_MAX}
+            className={field.textarea}
+            disabled={!loaded}
+            value={form.greeting}
+            onChange={(event) => {
+              edit({ greeting: event.target.value });
+            }}
+          />
+          <p id="spoken-greeting-hint" className={field.hint}>
+            What the Agent says when a Call opens a new Conversation. Leave it empty to wait for the Visitor.
+          </p>
+        </div>
+        <FormError message={save.error?.message} />
+        <div className="flex items-center gap-3">
+          <button type="submit" className={button.secondary} disabled={!loaded || save.isPending}>
+            Save Call settings
+          </button>
+          <p role="status" className={type.muted}>
+            {save.isSuccess ? "Saved. Calls use these settings from now on." : ""}
+          </p>
+        </div>
+      </form>
+    </section>
+  );
+}
+
 /** The Agent's Embed Snippet, once it has a Live Version, and its Operational Settings as cards: the
  * sites allowed to show it, what Visitors see when it can't answer, its daily Token Budget, with
- * today's usage, its rate limits and its Live sample rate. They apply at once, without publishing. */
+ * today's usage, its rate limits, its Live sample rate and its Call settings. They apply at once, without publishing. */
 export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisationId: string }) {
   const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
   return (
@@ -463,6 +662,7 @@ export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisati
         <TokenBudget path={path} />
         <RateLimits path={path} />
         <LiveSampleRate path={path} />
+        <CallSettings path={path} />
       </div>
     </div>
   );

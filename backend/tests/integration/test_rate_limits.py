@@ -124,6 +124,10 @@ async def test_an_editor_sets_the_rate_limits_and_the_change_is_audited(
         "ip_messages_per_minute": 12,
         "daily_token_budget": 1_000_000,
         "live_sample_rate": 0,
+        "calls_enabled": False,
+        "call_credential_id": None,
+        "call_voice_id": None,
+        "spoken_greeting": "",
     }
     assert (await editor.client.get(path)).json() == response.json()
     events = await audit_events(owner, CHANGED)

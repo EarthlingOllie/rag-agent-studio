@@ -27,6 +27,8 @@ from app.conversations.models import Conversation
 from app.projects.models import Project
 from app.projects.service import active_project, get_project
 from app.tenancy.repository import OrganisationScope
+from app.voice import remote
+from app.voice.remote import VoicePorts
 
 CREATED = "agent.created"
 ARCHIVED = "agent.archived"
@@ -197,6 +199,7 @@ async def _set_archived(
     *,
     now: datetime,
     archive: bool,
+    voice: VoicePorts | None = None,
 ) -> AgentWithDraft:
     await active_project(session, scope, project_id)
     agent = await _find(session, scope, project_id, agent_id, lock=True)
@@ -204,6 +207,8 @@ async def _set_archived(
     if was_archived == archive:
         raise AgentArchivedError if archive else AgentNotArchivedError
     agent.archived_at = now if archive else None
+    if voice is not None:
+        await remote.remove(session, voice, agent, agent.call_credential_id)
     await audit.record(
         session,
         organisation_id=scope.organisation_id,
@@ -224,11 +229,16 @@ async def archive_agent(
     project_id: uuid.UUID,
     agent_id: uuid.UUID,
     *,
+    voice: VoicePorts,
     now: datetime,
 ) -> AgentWithDraft:
     """Archives the Agent, keeping its Draft and Conversations, and records ``agent.archived``.
-    It leaves the Agents list and starts no new Playground Conversation."""
-    return await _set_archived(session, scope, project_id, agent_id, now=now, archive=True)
+    It leaves the Agents list and starts no new Playground Conversation. Its remote agent in
+    the voice layer is removed; its Call settings stay, so saving them once it is restored sets
+    it up again."""
+    return await _set_archived(
+        session, scope, project_id, agent_id, now=now, archive=True, voice=voice
+    )
 
 
 async def restore_agent(
@@ -251,12 +261,14 @@ async def delete_agent(
     agent_id: uuid.UUID,
     *,
     confirm_name: str,
+    voice: VoicePorts,
     now: datetime,
 ) -> None:
     """Permanently deletes an archived Agent once ``confirm_name`` is its name, exactly, and
     records ``agent.deleted``. Its Draft, Conversations, Messages and their Trace rows go with
     it through the foreign keys' ``ON DELETE CASCADE``, so the credentials it named are no
-    longer referenced. Owners only; the route checks the role."""
+    longer referenced. A remote agent left in the voice layer is removed. Owners only; the
+    route checks the role."""
     await active_project(session, scope, project_id)
     agent = await _find(session, scope, project_id, agent_id, lock=True)
     if agent.archived_at is None:
@@ -280,6 +292,7 @@ async def delete_agent(
         },
         occurred_at=now,
     )
+    await remote.remove(session, voice, agent, agent.call_credential_id)
     # Conversations and Live History go first: they also reference the Agent's Versions, and
     # Postgres fires the cascades from ``agents`` in an order that depends on the triggers' oids.
     await session.execute(delete(Conversation).where(Conversation.agent_id == agent.id))

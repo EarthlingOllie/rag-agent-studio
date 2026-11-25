@@ -36,6 +36,7 @@ from app.documents import api as documents_api
 from app.documents.ports import build_ports, install_ports
 from app.embed import api as embed_api
 from app.embed import branding_api
+from app.embed.call_settings import call_settings_references
 from app.embed.tokens import TokenSigner
 from app.evaluation import api as evaluation_api
 from app.evaluation import rollout_api as evaluation_rollout_api
@@ -59,6 +60,8 @@ from app.tags import api as tags_api
 from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
 from app.theme import api as theme_api
+from app.voice import api as voice_api
+from app.voice.adapters import build_voice_layer
 from app.worker.celery_app import configure_celery
 
 logger = logging.getLogger(__name__)
@@ -77,6 +80,7 @@ ROUTERS: Sequence[APIRouter] = (
     switcher_api.router,
     credentials_api.router,
     credentials_api.providers_router,
+    voice_api.router,
     default_model_api.router,
     evaluation_settings_api.router,
     pricing_api.router,
@@ -135,6 +139,8 @@ def _lifespan(
         app.state.credential_verifier = build_verifier(
             settings, app.state.provider_http, app.state.clock
         )
+        # The voice layer behind Calls: ElevenLabs, or the scripted fake.
+        app.state.voice_layer = build_voice_layer(settings)
         # Pydantic AI's provider clients take httpx2 clients; every model call shares this one.
         app.state.model_http = httpx2.AsyncClient(timeout=settings.model_timeout_seconds)
         app.state.model_gateway = build_model_gateway(
@@ -186,6 +192,7 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     app.state.credential_references.register(agent_references)
     app.state.credential_references.register(project_embedding_references)
     app.state.credential_references.register(evaluation_model_references)
+    app.state.credential_references.register(call_settings_references)
     for router in ROUTERS:
         app.include_router(router)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.
