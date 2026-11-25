@@ -122,7 +122,8 @@ async def apply(
     calling is saved on (or has none yet), updated when the Call settings change, set up anew
     with the new credential (and the old one removed) when the credential changes, and removed
     when calling is turned off. A voice layer failure raises ``VoiceLayerError``; the caller
-    saves nothing then. An archived Agent gets no remote agent."""
+    saves nothing then. An archived Agent's settings are checked the same, but it gets no remote
+    agent."""
     before = _state(agent)
     if change.calls_enabled is not None:
         agent.calls_enabled = change.calls_enabled
@@ -138,11 +139,11 @@ async def apply(
         if before.enabled:
             await remote.remove(session, ports, agent, before.credential_id)
         return
-    if agent.archived_at is not None:
-        return
     if after == before and agent.remote_agent_id is not None:
         return
     credential = await _checked_credential(session, scope, agent, ports)
+    if agent.archived_at is not None:
+        return
     if before.enabled and before.credential_id != after.credential_id:
         # Set up in the new credential's account first, so a failure there leaves the old one.
         old = agent.remote_agent_id

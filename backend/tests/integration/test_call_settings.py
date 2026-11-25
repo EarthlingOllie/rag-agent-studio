@@ -420,6 +420,31 @@ async def test_calling_needs_a_credential_and_a_voice_chosen(owner: SignedUpMemb
     assert await call_settings(owner, agent) == CALLS_OFF
 
 
+async def test_an_archived_agents_call_settings_are_checked_too(
+    owner: SignedUpMember, voice_layer: FakeVoiceLayer
+) -> None:
+    credential = await add_elevenlabs_credential(owner)
+    agent = await an_agent(owner)
+    archived = await archive(owner, agent["project_id"], agent["id"])
+    assert archived.status_code == 200, archived.text
+
+    no_credential = await change(owner, agent, calls_enabled=True)
+    no_voice = await change(owner, agent, calls_enabled=True, call_credential_id=credential["id"])
+
+    assert refusal(no_credential) == (
+        ["body", "call_credential_id"],
+        "missing",
+        "Choose the voice-capable credential the Agent's Calls use.",
+    )
+    assert refusal(no_voice) == (
+        ["body", "call_voice_id"],
+        "missing",
+        "Choose the voice the Agent speaks with.",
+    )
+    assert await call_settings(owner, agent) == CALLS_OFF
+    assert voice_layer.remote_agents == {}
+
+
 async def test_another_organisations_credential_is_refused(
     owner: SignedUpMember, tenant_factory: TenantFactory, voice_layer: FakeVoiceLayer
 ) -> None:
