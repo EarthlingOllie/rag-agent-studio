@@ -36,7 +36,7 @@ async def add_elevenlabs(owner: SignedUpMember, **kwargs: object) -> dict[str, o
 
 
 async def test_an_owner_adds_an_elevenlabs_credential_with_the_voice_capability(
-    owner: SignedUpMember,
+    owner: SignedUpMember, clock: ControllableClock
 ) -> None:
     response = await add_credential(
         owner, provider="elevenlabs", api_key=ELEVENLABS_KEY, name="Calls"
