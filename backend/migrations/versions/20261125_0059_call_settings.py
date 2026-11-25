@@ -51,3 +51,4 @@ def downgrade() -> None:
         op.f("fk_agents_call_credential_id_provider_credentials"), "agents", type_="foreignkey"
     )
     op.drop_column("agents", "call_credential_id")
+    op.drop_column("agents", "calls_enabled")

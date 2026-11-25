@@ -25,6 +25,10 @@ from tests.documents import create_project
 from tests.integration.test_agent_archive import archive, delete_permanently, restore
 from tests.integration.test_elevenlabs_credentials import ELEVENLABS_KEY
 from tests.integration.test_embed import settings_path
+from tests.integration.test_project_deletion import (
+    delete_permanently as delete_project_permanently,
+)
+from tests.integration.test_projects import archive as archive_project
 from tests.integration.test_provider_credentials import added, audit_events, credentials_path
 
 CHANGED = "agent.operational_settings_changed"
@@ -348,6 +352,26 @@ async def test_deleting_an_agent_leaves_no_remote_agent(
     response = await delete_permanently(owner, agent["project_id"], agent["id"], "Front desk")
 
     assert response.status_code == 204, response.text
+    assert voice_layer.remote_agents == {}
+    # Nothing calls with the credential any more.
+    deleted = await owner.client.delete(credentials_path(owner.organisation_id, credential["id"]))
+    assert deleted.status_code == 204, deleted.text
+
+
+async def test_deleting_a_project_leaves_none_of_its_agents_remote_agents(
+    owner: SignedUpMember, voice_layer: FakeVoiceLayer
+) -> None:
+    credential = await add_elevenlabs_credential(owner)
+    agent = await an_agent(owner)
+    await calling_on(owner, agent, credential["id"])
+    other = await create_agent(owner, agent["project_id"], name="Back office")
+    await calling_on(owner, other, credential["id"])
+    archived = await archive_project(owner, agent["project_id"])
+    assert archived.status_code == 200, archived.text
+
+    response = await delete_project_permanently(owner, agent["project_id"], archived.json()["name"])
+
+    assert response.status_code == 202, response.text
     assert voice_layer.remote_agents == {}
     # Nothing calls with the credential any more.
     deleted = await owner.client.delete(credentials_path(owner.organisation_id, credential["id"]))

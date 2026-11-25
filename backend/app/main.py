@@ -62,6 +62,7 @@ from app.tenancy import invites_api, members_api, switcher_api
 from app.theme import api as theme_api
 from app.voice import api as voice_api
 from app.voice.adapters import build_voice_layer
+from app.voice.remote import VoicePorts, install_voice_ports
 from app.worker.celery_app import configure_celery
 
 logger = logging.getLogger(__name__)
@@ -141,6 +142,14 @@ def _lifespan(
         )
         # The voice layer behind Calls: ElevenLabs, or the scripted fake.
         app.state.voice_layer = build_voice_layer(settings)
+        # Tasks that run eagerly here (tests) reach remote agents through it too.
+        install_voice_ports(
+            VoicePorts(
+                layer=app.state.voice_layer,
+                envelope=app.state.envelope,
+                public_base_url=str(settings.public_base_url or settings.studio_url),
+            )
+        )
         # Pydantic AI's provider clients take httpx2 clients; every model call shares this one.
         app.state.model_http = httpx2.AsyncClient(timeout=settings.model_timeout_seconds)
         app.state.model_gateway = build_model_gateway(

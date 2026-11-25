@@ -33,6 +33,19 @@ class VoicePorts:
     public_base_url: str
 
 
+_installed: list[VoicePorts] = []
+
+
+def install_voice_ports(ports: VoicePorts) -> None:
+    """The API and the worker install the voice layer tasks reach remote agents through (the
+    Project deletion cascade); in tests, tasks run eagerly and use the API's own."""
+    _installed[:] = [ports]
+
+
+def current_voice_ports() -> VoicePorts:
+    return _installed[0]
+
+
 def turn_endpoint(public_base_url: str, public_id: str) -> str:
     """The OpenAI-compatible base URL the remote agent calls as its custom LLM: it posts each
     turn to ``…/chat/completions`` under it."""
