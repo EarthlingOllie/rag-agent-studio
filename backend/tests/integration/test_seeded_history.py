@@ -21,6 +21,7 @@ from app.credentials.registry import Provider
 from app.seed import content
 from app.seed.runner import RealCredential, SeedError, erase_demo, seed
 from tests.conftest import ClientFactory, SignedUpMember
+from tests.fakes.clock import ControllableClock
 from tests.integration.test_seed import ASSETS, demo_project, get, signed_in
 
 LIGHT = content.History(conversations_per_day={content.HR_AGENT: 1, content.SHOP_AGENT: 1})
@@ -106,12 +107,17 @@ async def test_an_interviewer_sees_four_weeks_of_history_that_tells_the_v2_story
 ) -> None:
     """The full history, as the README's demo walks through it: the comparison shows v2 clearly
     worse than v1, v3 promising but on a small sample, and every day of it in the rollups."""
+    # The full seed takes minutes, so stop the app's clock first: the seed dates its history from
+    # the day it reads, and this test must judge against that same day even if the suite crosses
+    # midnight UTC meanwhile.
+    clock = ControllableClock(app.state.clock.now())
+    app.state.clock = clock
     await erase_demo(app)
     await seed(app, ASSETS)
 
     owner = await signed_in(new_client, content.OWNER)
     project, agents = await demo_agents(owner)
-    today = datetime.now(UTC).date()
+    today = clock.now().date()
     start = today - timedelta(days=content.HISTORY_DAYS)
     hr = agents["HR helper"]
     # The Studio's default range, the last 30 days, holds the whole history.
