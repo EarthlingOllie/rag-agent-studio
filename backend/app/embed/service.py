@@ -310,22 +310,44 @@ async def prepare_turn(
     ip: str,
     now: datetime,
 ) -> AdmittedTurn:
-    """Saves the Visitor's question in the token's Conversation, to be answered by the Agent's
-    Live Version at this moment. A valid token's message first goes through admission control
-    with the Agent's current Token Budget and rate limits; a refused one raises
-    ``NotAdmittedError`` and nothing is saved."""
+    """Saves the Visitor's question in the token's Conversation, as ``admit_turn`` does."""
     conversation = await _conversation(session, signer, public_id, token, now=now)
-    agent = await session.get_one(Agent, conversation.agent_id)
+    agent = await agent_of(session, conversation)
+    return await admit_turn(
+        session, agent, conversation, question, admission=admission, ip=ip, now=now
+    )
+
+
+async def agent_of(session: AsyncSession, conversation: Conversation) -> Agent:
+    """The Agent a Visitor Conversation is with."""
+    return await session.get_one(Agent, conversation.agent_id)
+
+
+async def admit_turn(
+    session: AsyncSession,
+    agent: Agent,
+    conversation: Conversation,
+    question: str,
+    *,
+    admission: Admission,
+    ip: str,
+    now: datetime,
+) -> AdmittedTurn:
+    """Saves the Visitor's question in their Conversation, to be answered by the Agent's Live
+    Version at this moment. The message first goes through admission control with the Agent's
+    current Token Budget and rate limits; a refused one raises ``NotAdmittedError`` and nothing
+    is saved. A retired Agent raises ``serving.AgentNotServedError`` or
+    ``serving.AgentNotLiveError`` once admitted."""
     limits = Limits(
         public_id=agent.public_id,
         conversation_messages_per_minute=agent.conversation_messages_per_minute,
         ip_messages_per_minute=agent.ip_messages_per_minute,
         daily_token_budget=agent.daily_token_budget,
     )
-    refusal = await admission.admit(limits, token, ip)
+    refusal = await admission.admit(limits, conversation.id, ip)
     if refusal is not None:
         raise NotAdmittedError(refusal, agent.id)
-    turn = await serving.prepare_turn(session, public_id, conversation.id, question, now=now)
+    turn = await serving.prepare_turn(session, agent.public_id, conversation.id, question, now=now)
     return AdmittedTurn(turn, agent.id, limits)
 
 

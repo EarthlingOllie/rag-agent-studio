@@ -43,12 +43,10 @@ from app.documents.ports import IngestionPorts
 from app.embed import service
 from app.embed.admission import Admission, Refusal
 from app.embed.tokens import TokenSigner
-from app.evaluation.live import sample_reply
+from app.embed.visitor_turn import ServingPorts, Unavailable, VisitorTurnEvent, serve_turn
 from app.evaluation.tasks import enqueue_live_verdict
 from app.guardrails.pipeline import RefusalEvent
-from app.mail.port import Mailer
 from app.playground.api import QUESTION_MAX
-from app.playground.service import Answered, answer
 from app.projects.service import ProjectNotFoundError
 from app.runtime.errors import ErrorEvent
 from app.runtime.runtime import (
@@ -90,6 +88,26 @@ AdmissionDep = Annotated[Admission, Depends(get_admission)]
 
 
 VisitorIp = Annotated[str, Depends(request_ip)]
+
+
+def get_serving(request: Request, admission: AdmissionDep) -> ServingPorts:
+    state = request.app.state
+    settings: Settings = state.settings
+    ingestion: IngestionPorts = state.ingestion
+    return ServingPorts(
+        sessionmaker=state.sessionmaker,
+        gateway=state.model_gateway,
+        guardrails=state.guardrails,
+        embedders=ingestion.embedders,
+        clock=state.clock,
+        admission=admission,
+        mailer=state.mailer,
+        studio_url=str(settings.studio_url),
+        enqueue_live_verdict=enqueue_live_verdict,
+    )
+
+
+Serving = Annotated[ServingPorts, Depends(get_serving)]
 
 
 # The shell
@@ -290,13 +308,12 @@ def _sse(event: str, data: dict[str, Any]) -> str:
     },
 )
 async def send_message(
-    request: Request,
     public_id: str,
     body: WidgetMessageRequest,
     db: Db,
     signer: Signer,
     clock: ClockDep,
-    admission: AdmissionDep,
+    serving: Serving,
     ip: VisitorIp,
     authorization: Authorization = "",
 ) -> StreamingResponse:
@@ -311,102 +328,58 @@ async def send_message(
     # The Agent's own words for "can't answer now", read on every request so a change applies
     # at once.
     unavailable = await service.unavailable_text(db, public_id)
-    settings: Settings = request.app.state.settings
-    mailer: Mailer = request.app.state.mailer
-    studio_url = str(settings.studio_url)
     try:
-        admitted = await service.prepare_turn(
-            db, signer, public_id, token, body.content, admission=admission, ip=ip, now=clock.now()
+        conversation = await service.visitor_conversation(
+            db, signer, public_id, token, now=clock.now()
         )
-    except service.NotAdmittedError as refused:
-        reason = RATE_LIMITED
-        if refused.reason is Refusal.TOKEN_BUDGET:
-            reason = BUDGET_EXHAUSTED
-            await service.budget_exhausted(
-                db, refused.agent_id, mailer=mailer, studio_url=studio_url, now=clock.now()
-            )
-        return _event_stream(_one(_sse("unavailable", {"reason": reason, "message": unavailable})))
     except service.InvalidTokenError:
         raise _invalid() from None
+    agent = await service.agent_of(db, conversation)
+    try:
+        turn = await serve_turn(db, agent, conversation, body.content, ip, ports=serving)
     except (AgentNotServedError, AgentNotLiveError):
         raise _gone() from None
     except (NoDefaultModelError, ProviderCredentialGoneError):
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, unavailable) from None
-    ingestion: IngestionPorts = request.app.state.ingestion
-    prepared = admitted.turn
-
-    async def spent(event: Answered) -> None:
-        # The reply's actual usage counts against today's Token Budget; the reply that spends
-        # it raises the alert.
-        used = event.event.input_tokens + event.event.output_tokens
-        total = await admission.record_usage(admitted.limits.public_id, used)
-        if total >= admitted.limits.daily_token_budget:
-            async with request.app.state.sessionmaker() as session:
-                await service.budget_exhausted(
-                    session,
-                    admitted.agent_id,
-                    mailer=mailer,
-                    studio_url=studio_url,
-                    now=request.app.state.clock.now(),
-                )
 
     async def events() -> AsyncIterator[str]:
-        async for event in answer(
-            prepared,
-            sessionmaker=request.app.state.sessionmaker,
-            gateway=request.app.state.model_gateway,
-            guardrails=request.app.state.guardrails,
-            embedders=ingestion.embedders,
-            clock=request.app.state.clock,
-            searches=True,
-        ):
-            if isinstance(event, SearchEvent):
-                # Visitors are told the Agent is searching, never what for: the model's
-                # queries are internal to the reply (spec 13).
-                yield _sse("search", {})
-            elif isinstance(event, TokenEvent):
-                yield _sse("token", {"text": event.text})
-            elif isinstance(event, ReplaceEvent):
-                yield _sse("replace", {"text": event.text})
-            elif isinstance(event, RetractEvent):
-                yield _sse("retract", {})
-            elif isinstance(event, RefusalEvent):
-                yield _sse("refusal", {"text": event.text})
-            elif isinstance(event, ErrorEvent):
-                # The event's message is written for Editors (it may name the model or say to
-                # rotate the Provider Credential); Visitors get the Agent's unavailable text.
-                yield _sse("error", {"code": event.kind, "message": unavailable})
-            elif isinstance(event, CitationEvent):
-                # Only when the Live Version shows citations to Visitors.
-                if prepared.config.retrieval.citations:
-                    yield _sse(
-                        "citation",
-                        {
-                            "label": event.label,
-                            "document_name": event.chunk.document_name,
-                            "passage": event.chunk.text,
-                        },
-                    )
-            else:
-                await spent(event)
-                yield _sse("done", {"message_id": str(event.message_id)})
-                # Only once the reply is stored and sent: it may be chosen for a Live Verdict,
-                # judged in the background.
-                chosen = await sample_reply(
-                    request.app.state.sessionmaker,
-                    admitted.agent_id,
-                    event.message_id,
-                    event.event,
-                    clock=request.app.state.clock,
-                )
-                if chosen is not None:
-                    await enqueue_live_verdict(chosen)
+        async for event in turn:
+            yield _visitor_sse(event, unavailable)
 
     return _event_stream(events())
 
 
-async def _one(event: str) -> AsyncIterator[str]:
-    yield event
+def _visitor_sse(event: VisitorTurnEvent, unavailable: str) -> str:
+    """One Server-Sent Event for what serving the Visitor's turn yielded."""
+    if isinstance(event, Unavailable):
+        reason = BUDGET_EXHAUSTED if event.reason is Refusal.TOKEN_BUDGET else RATE_LIMITED
+        return _sse("unavailable", {"reason": reason, "message": unavailable})
+    if isinstance(event, SearchEvent):
+        # Visitors are told the Agent is searching, never what for: the model's queries are
+        # internal to the reply (spec 13).
+        return _sse("search", {})
+    if isinstance(event, TokenEvent):
+        return _sse("token", {"text": event.text})
+    if isinstance(event, ReplaceEvent):
+        return _sse("replace", {"text": event.text})
+    if isinstance(event, RetractEvent):
+        return _sse("retract", {})
+    if isinstance(event, RefusalEvent):
+        return _sse("refusal", {"text": event.text})
+    if isinstance(event, ErrorEvent):
+        # The event's message is written for Editors (it may name the model or say to rotate
+        # the Provider Credential); Visitors get the Agent's unavailable text.
+        return _sse("error", {"code": event.kind, "message": unavailable})
+    if isinstance(event, CitationEvent):
+        return _sse(
+            "citation",
+            {
+                "label": event.label,
+                "document_name": event.chunk.document_name,
+                "passage": event.chunk.text,
+            },
+        )
+    return _sse("done", {"message_id": str(event.message_id)})
 
 
 def _event_stream(events: AsyncIterator[str]) -> StreamingResponse:
