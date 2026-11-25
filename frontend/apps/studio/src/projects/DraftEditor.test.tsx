@@ -2,7 +2,7 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse } from "msw";
 
-import { bedrock, claude, defaultDraft, fakeAgentsApi, hrHelper, hrTag, openAi, payTag, voyage } from "../test/agents";
+import { bedrock, claude, defaultDraft, elevenLabs, fakeAgentsApi, hrHelper, hrTag, openAi, payTag, voyage } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
@@ -192,7 +192,8 @@ test("a Project without Tags says so", async () => {
 });
 
 test("the model override, reranker and classifier offer only credentials with the right capability", async () => {
-  const { requests } = setUp();
+  // A voice credential is offered in none of them.
+  const { requests } = setUp({ credentials: [openAi, claude, voyage, elevenLabs] });
   await openEditor();
   const model = within(group("Behaviour")).getByRole("group", { name: "Model override" });
   const reranker = within(group("Retrieval")).getByRole("group", { name: "Reranker" });

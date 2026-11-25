@@ -558,7 +558,7 @@ async def test_the_capability_registry_lists_providers_capabilities_and_models(
 
     assert response.status_code == 200
     providers = {p["id"]: p for p in response.json()}
-    assert list(providers) == ["anthropic", "openai", "bedrock", "voyage", "demo"]
+    assert list(providers) == ["anthropic", "openai", "bedrock", "voyage", "elevenlabs", "demo"]
     summary = {
         provider_id: (
             provider["auth_kinds"],
@@ -571,8 +571,12 @@ async def test_the_capability_registry_lists_providers_capabilities_and_models(
         "openai": (["api_key"], ["chat", "embeddings"]),
         "bedrock": (["aws_role", "aws_access_keys"], ["chat", "embeddings", "rerank"]),
         "voyage": (["api_key"], ["embeddings", "rerank"]),
+        "elevenlabs": (["api_key"], ["voice"]),
         "demo": (["api_key"], ["chat"]),
     }
+    assert providers["elevenlabs"]["name"] == "ElevenLabs"
+    # Voices belong to each ElevenLabs account, so the registry lists no models for voice.
+    assert providers["elevenlabs"]["capabilities"] == [{"capability": "voice", "models": []}]
     openai = providers["openai"]
     assert openai["name"] == "OpenAI"
     embeddings = next(c for c in openai["capabilities"] if c["capability"] == "embeddings")
@@ -583,7 +587,8 @@ async def test_the_capability_registry_lists_providers_capabilities_and_models(
     } in embeddings["models"]
     for provider in providers.values():
         for capability in provider["capabilities"]:
-            assert capability["models"], (provider["id"], capability["capability"])
+            if capability["capability"] != "voice":
+                assert capability["models"], (provider["id"], capability["capability"])
 
 
 async def test_the_capability_registry_needs_a_signed_in_member(client: httpx.AsyncClient) -> None:

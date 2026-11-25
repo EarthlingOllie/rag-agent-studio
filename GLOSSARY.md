@@ -179,7 +179,7 @@ _Avoid_: Purge, hard delete
 ## Models
 
 **Provider Credential**:
-A secret an Organisation stores so it can call a model provider.
+A secret an Organisation stores so it can call a model provider, or ElevenLabs for Calls.
 _Avoid_: API key, token, connection
 
 **Capability**:
@@ -191,7 +191,7 @@ The last four characters of a Provider Credential's secret: all of the secret th
 _Avoid_: Hint, preview, redacted key
 
 **Credential check**:
-A live call to the provider that proves a Provider Credential works, made when it is saved, rotated, or re-checked on demand. It passes or fails with a typed reason (invalid key, missing model access, quota exceeded, provider unreachable; for Bedrock also role not assumable and wrong region). A Bedrock check first assumes the role (or checks the access keys), then checks model access in the credential's region.
+A live call to the provider that proves a Provider Credential works, made when it is saved, rotated, or re-checked on demand. It passes or fails with a typed reason (invalid key, missing model access, quota exceeded, provider unreachable; for Bedrock also role not assumable and wrong region). A Bedrock check first assumes the role (or checks the access keys), then checks model access in the credential's region. An ElevenLabs check proves the key may use ElevenLabs Agents; a key whose permissions leave them out fails as an invalid key.
 _Avoid_: Validation, test call, ping
 
 **Bedrock role**:

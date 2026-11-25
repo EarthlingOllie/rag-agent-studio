@@ -42,6 +42,8 @@ export const providers: Provider[] = [
       { capability: "rerank", models: models("rerank-2.5") },
     ],
   },
+  // Voices belong to each ElevenLabs account, so the registry lists no models for voice.
+  { id: "elevenlabs", name: "ElevenLabs", auth_kinds: ["api_key"], capabilities: [{ capability: "voice", models: [] }] },
 ];
 
 export const marketingOpenAi: Credential = {
@@ -72,6 +74,21 @@ export const legalVoyage: Credential = {
   check_failure: "quota_exceeded",
   last_checked_at: "2026-11-04T17:45:00Z",
   created_at: "2026-11-01T08:00:00Z",
+};
+
+export const callsElevenLabs: Credential = {
+  id: "c0000000-0000-4000-8000-000000000005",
+  name: "Calls ElevenLabs",
+  provider: "elevenlabs",
+  auth_kind: "api_key",
+  masked_suffix: "e1ev",
+  role_arn: null,
+  region: null,
+  capabilities: ["voice"],
+  check_status: "passed",
+  check_failure: null,
+  last_checked_at: "2026-11-05T09:00:00Z",
+  created_at: "2026-11-05T09:00:00Z",
 };
 
 export const bedrockRole: Credential = {

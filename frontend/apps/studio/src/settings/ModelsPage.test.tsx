@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { delay, http, HttpResponse } from "msw";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
-import { legalVoyage, marketingOpenAi } from "../test/credentials";
+import { callsElevenLabs, legalVoyage, marketingOpenAi } from "../test/credentials";
 import {
   chatModels,
   claudeDefault,
@@ -56,7 +56,7 @@ test("an Organisation without a Default Model says so", async () => {
 });
 
 test("the credential picker offers only chat-capable credentials, and the model list is that credential's chat models", async () => {
-  const api = fakeModelsApi({ credentials: [marketingOpenAi, legalVoyage, legalClaude, embeddingsOnlyOpenAi] });
+  const api = fakeModelsApi({ credentials: [marketingOpenAi, legalVoyage, legalClaude, embeddingsOnlyOpenAi, callsElevenLabs] });
   openAs();
   const form = await picker();
 

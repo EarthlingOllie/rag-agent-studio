@@ -97,6 +97,13 @@ export const bedrock = credential(
   ["chat"],
 );
 
+export const elevenLabs = credential(
+  "c1000000-0000-4000-8000-000000000005",
+  "ElevenLabs",
+  "elevenlabs",
+  ["voice"],
+);
+
 /** Models per credential and capability, as `GET …/credentials/{id}/models/{capability}` answers. */
 export const offeredModels: Record<string, ModelOut[]> = {
   [`${openAi.id}/chat`]: [

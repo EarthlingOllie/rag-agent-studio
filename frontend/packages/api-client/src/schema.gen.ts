@@ -3236,7 +3236,7 @@ export interface components {
          * Capability
          * @enum {string}
          */
-        Capability: "chat" | "embeddings" | "rerank";
+        Capability: "chat" | "embeddings" | "rerank" | "voice";
         /** CapabilityModelsOut */
         CapabilityModelsOut: {
             capability: components["schemas"]["Capability"];
@@ -3794,7 +3794,7 @@ export interface components {
              * Provider
              * @enum {string}
              */
-            provider: "anthropic" | "openai" | "voyage" | "demo";
+            provider: "anthropic" | "openai" | "voyage" | "elevenlabs" | "demo";
         };
         /** CreateInviteRequest */
         CreateInviteRequest: {
@@ -5380,7 +5380,7 @@ export interface components {
          * Provider
          * @enum {string}
          */
-        Provider: "anthropic" | "openai" | "bedrock" | "voyage" | "demo";
+        Provider: "anthropic" | "openai" | "bedrock" | "voyage" | "elevenlabs" | "demo";
         /** ProviderOut */
         ProviderOut: {
             /** Auth Kinds */

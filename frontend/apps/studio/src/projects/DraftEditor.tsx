@@ -17,6 +17,7 @@ const PROVIDER_NAMES: Record<Credential["provider"], string> = {
   openai: "OpenAI",
   bedrock: "Amazon Bedrock",
   voyage: "Voyage AI",
+  elevenlabs: "ElevenLabs",
   // The seeded demo provider: canned answers from the Knowledge Base, never a real model.
   demo: "Demo: canned answers, not a real model",
 };
