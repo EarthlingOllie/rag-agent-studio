@@ -10,7 +10,7 @@ import uuid
 
 from fastapi import FastAPI
 from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.embeddings.registry import LOCAL_MODEL
 from app.projects.models import Project
@@ -41,6 +41,23 @@ async def _copy_chunk(session: AsyncSession, chunk_id: str, copies: int) -> None
     )
 
 
+async def _forget_earlier_tests_chunks(app: FastAPI, *project_ids: str) -> None:
+    """Deletes every other Project's Chunks and vacuums them out of the HNSW indexes. The test
+    database outlives a run, and every run of these tests leaves hundreds of Chunks at the
+    query's vector (a deleted Chunk stays in the index until a vacuum); enough of them make
+    pgvector's iterative scan give up (``hnsw.scan_mem_multiplier``) before it reaches this
+    Project's Chunks. The index then holds only the Chunks this test places."""
+    async with app.state.sessionmaker() as session, session.begin():
+        await session.execute(
+            text("DELETE FROM chunks WHERE project_id::text <> ALL(:ids)"),
+            {"ids": list(project_ids)},
+        )
+    engine: AsyncEngine = app.state.engine
+    async with engine.connect() as connection:
+        autocommit = await connection.execution_options(isolation_level="AUTOCOMMIT")
+        await autocommit.execute(text("VACUUM chunks"))
+
+
 async def _as_on_a_large_table(session: AsyncSession) -> None:
     """Steers the planner as a large table would: away from reading every Chunk of the Project
     and sorting them, towards an index that returns them in distance order."""
@@ -57,6 +74,7 @@ async def _setup(app: FastAPI, owner: SignedUpMember) -> tuple[str, list[float]]
     other_document = await upload(app, owner, other, "pay.md", b"Expenses are paid monthly.")
     (my_chunk,) = await chunks(owner, mine, my_document["id"])
     (other_chunk,) = await chunks(owner, other, other_document["id"])
+    await _forget_earlier_tests_chunks(app, mine, other)
     async with app.state.sessionmaker() as session, session.begin():
         await _copy_chunk(session, my_chunk["id"], 2)
         await _copy_chunk(session, other_chunk["id"], OTHER_PROJECT_CHUNKS)
