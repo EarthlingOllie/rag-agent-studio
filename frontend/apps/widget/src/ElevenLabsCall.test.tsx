@@ -169,6 +169,16 @@ function elevenLabsApi({ greet = true }: { greet?: boolean } = {}) {
   return seen;
 }
 
+/** Why the Call ended: shown in the chat, and announced politely with its end rather than as an alert. */
+async function saysWhy(reason: string): Promise<HTMLElement> {
+  const note = await screen.findByText((_, element) => element?.matches("p.error") === true && element.textContent.includes(reason));
+  expect(note).not.toHaveAttribute("role");
+  await waitFor(() => {
+    expect(screen.getByRole("status", { name: "Announcements" })).toHaveTextContent(reason);
+  });
+  return note;
+}
+
 beforeEach(() => {
   localStorage.clear();
   elevenLabs.sessions = [];
@@ -337,7 +347,7 @@ test("End call leaves the ElevenLabs session and ends the Call", async () => {
   options.onDisconnect?.({ reason: "user" });
   // Nor is the connection closing after the Call ended.
   options.onDisconnect?.({ reason: "error", message: "Connection closed", context: { type: "close" } });
-  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  expect(screen.queryByText(DROPPED)).not.toBeInTheDocument();
 });
 
 test("a Call ElevenLabs drops returns to messaging", async () => {
@@ -352,7 +362,7 @@ test("a Call ElevenLabs drops returns to messaging", async () => {
     context: { type: "error" },
   });
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(DROPPED);
+  await saysWhy(DROPPED);
   expect(screen.getByLabelText("Message")).toBeInTheDocument();
   expect(seen).toContain("end call");
 });
@@ -364,7 +374,7 @@ test("a Call ElevenLabs can't join returns to messaging", async () => {
 
   await choose("Call");
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(DROPPED);
+  await saysWhy(DROPPED);
   expect(screen.getByLabelText("Message")).toBeInTheDocument();
   expect(seen).toContain("end call");
 });
@@ -376,7 +386,7 @@ test("a refused microphone says so and opens the chat, without joining ElevenLab
 
   await choose("Call");
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(MIC_REFUSED);
+  await saysWhy(MIC_REFUSED);
   expect(screen.getByLabelText("Message")).toHaveFocus();
   expect(elevenLabs.sessions).toHaveLength(0);
   expect(seen).toContain("end call");
@@ -389,7 +399,7 @@ test("a host page whose policy blocks the microphone says so and opens the chat,
 
   await choose("Call");
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(MIC_BLOCKED);
+  await saysWhy(MIC_BLOCKED);
   expect(screen.getByLabelText("Message")).toBeInTheDocument();
   expect(microphone.requests).toBe(0);
   expect(elevenLabs.sessions).toHaveLength(0);
@@ -414,7 +424,7 @@ test("a page with no microphone access at all (not a secure context) says the si
 
   await choose("Call");
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(MIC_BLOCKED);
+  await saysWhy(MIC_BLOCKED);
   expect(screen.getByLabelText("Message")).toBeInTheDocument();
 });
 
@@ -425,7 +435,7 @@ test("a microphone that can't be used says so and opens the chat", async () => {
 
   await choose("Call");
 
-  expect(await screen.findByRole("alert")).toHaveTextContent(MIC_UNUSABLE);
+  await saysWhy(MIC_UNUSABLE);
   expect(screen.getByLabelText("Message")).toBeInTheDocument();
   expect(elevenLabs.sessions).toHaveLength(0);
 });
@@ -447,4 +457,51 @@ test("a widget that leaves the page while ElevenLabs is still joining leaves the
   await waitFor(() => {
     expect(seen).toContain("end call");
   });
+});
+
+// Interruptions (ticket 20-11)
+
+test("when the Visitor talks over a reply the widget tells the API, and the Call goes on", async () => {
+  const seen = elevenLabsApi();
+  const interruptions: (string | null)[] = [];
+  server.use(
+    http.post(`${API}/conversation/calls/current/interruptions`, ({ request }) => {
+      interruptions.push(request.headers.get("Authorization"));
+      return new HttpResponse(null, { status: 204 });
+    }),
+  );
+  render(<Widget boot={boot} />);
+  await choose("Call");
+  const { options } = await joined();
+  options.onConnect?.({ conversationId: "conv_1" });
+  options.onMessage?.(said("user", "How much leave do I get?", 1));
+  options.onModeChange?.({ mode: "speaking" });
+  options.onMessage?.(said("agent", "Twenty-five days.", 2));
+  expect(await screen.findByText(/Twenty-five days/)).toBeInTheDocument();
+
+  options.onInterruption?.({ event_id: 2 });
+  options.onModeChange?.({ mode: "listening" });
+
+  await waitFor(() => {
+    expect(interruptions).toEqual(["Bearer wc1.token"]);
+  });
+  await waitFor(() => {
+    expect(callState()).toHaveTextContent("Listening…");
+  });
+  expect(seen).not.toContain("end call");
+});
+
+test("an interruption the API can't be told of leaves the Call going", async () => {
+  elevenLabsApi();
+  server.use(http.post(`${API}/conversation/calls/current/interruptions`, () => HttpResponse.error()));
+  render(<Widget boot={boot} />);
+  await choose("Call");
+  const { options } = await joined();
+  options.onConnect?.({ conversationId: "conv_1" });
+
+  options.onInterruption?.({ event_id: 1 });
+
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  expect(screen.getByRole("group", { name: "Call" })).toBeInTheDocument();
+  expect(screen.queryByText(DROPPED)).not.toBeInTheDocument();
 });

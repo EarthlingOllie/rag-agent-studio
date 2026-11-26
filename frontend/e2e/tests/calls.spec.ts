@@ -1,6 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 import AxeBuilder from "@axe-core/playwright";
+import type { APIRequestContext, Page } from "@playwright/test";
 
 import { AXE_TAGS, expect, test } from "../fixtures";
 import { liveVersion, openAgentView, publishAgent } from "../fixtures/agent";
@@ -130,4 +131,104 @@ test.describe("Calls", () => {
     await expect(log.getByRole("listitem", { name: "You" })).toHaveCount(0);
     await visitor.close();
   });
+
+  for (const [colorScheme, reducedMotion, pulse] of [
+    ["light", "no-preference", /^widget-(listening|speaking)$/],
+    ["dark", "reduce", /^none$/],
+  ] as const) {
+    test(`a keyboard Visitor calls in ${colorScheme} mode (${reducedMotion} motion): the choice screen and the Call view are labelled, and axe finds no AA violations`, async ({
+      signedInPage: page,
+      browser,
+    }) => {
+      test.setTimeout(120_000);
+      await page.goto("/");
+      const publicId = await callingAgent(page.request);
+      const visitor = await browser.newContext({ colorScheme, reducedMotion });
+      const host = await visitor.newPage();
+      await host.goto(`${HOST_URL}/?agent=${publicId}`);
+      const widget = host.frameLocator('iframe[title="Chat"]');
+      const launcher = widget.getByRole("button", { name: "Open chat" });
+      await launcher.focus({ timeout: 15_000 });
+      await host.keyboard.press("Enter");
+
+      const choice = widget.getByRole("group", { name: "How would you like to ask?" });
+      await expect(choice.getByRole("button", { name: "Message" })).toBeFocused({ timeout: 15_000 });
+      expect(await violations(host)).toEqual([]);
+      await host.keyboard.press("Tab");
+      await expect(choice.getByRole("button", { name: "Call" })).toBeFocused();
+      await host.keyboard.press("Enter");
+
+      // Focus moves into the Call view, whose controls are reached by keyboard.
+      const call = widget.getByRole("group", { name: "Call" });
+      await expect(call).toBeFocused();
+      await expect(call.getByRole("status")).toHaveText("Listening…", { timeout: 15_000 });
+      expect(await stateAnimation(host)).toMatch(pulse);
+      expect(await violations(host)).toEqual([]);
+      await host.keyboard.press("Tab");
+      const mute = call.getByRole("button", { name: "Mute" });
+      await expect(mute).toBeFocused();
+      await host.keyboard.press("Space");
+      await expect(mute).toHaveAttribute("aria-pressed", "true");
+      await expect(call.getByRole("status")).toHaveText("You're muted.", { timeout: 15_000 });
+      expect(await violations(host)).toEqual([]);
+      await host.keyboard.press("Tab");
+      await expect(call.getByRole("button", { name: "End call" })).toBeFocused();
+      await host.keyboard.press("Enter");
+
+      await expect(widget.getByLabel("Message")).toBeFocused();
+      await expect(widget.getByRole("status", { name: "Announcements" })).toHaveText("Call ended.");
+      await visitor.close();
+    });
+  }
 });
+
+/**
+ * A published Agent with calling on and a starter question (which the scripted Call never gets
+ * to say while muted), allowed on the demo host page, in an Organisation whose Theme follows the
+ * Visitor's light or dark mode.
+ */
+async function callingAgent(request: APIRequestContext): Promise<string> {
+  const me = (await (await request.get("/api/auth/me")).json()) as { organisations: { id: string }[] };
+  const organisation = `/api/organisations/${me.organisations[0]?.id ?? ""}`;
+  const chat = await request.post(`${organisation}/credentials`, { data: { name: "Support Claude", provider: "anthropic", api_key: CHAT_KEY } });
+  expect(chat.status()).toBe(201);
+  const { id: chatId } = (await chat.json()) as { id: string };
+  expect((await request.put(`${organisation}/default-model`, { data: { credential_id: chatId, model: "claude-haiku-4-5" } })).status()).toBe(200);
+  const voice = await request.post(`${organisation}/credentials`, { data: { name: "Front desk voice", provider: "elevenlabs", api_key: VOICE_KEY } });
+  expect(voice.status()).toBe(201);
+  const { id: voiceId } = (await voice.json()) as { id: string };
+  const project = (await (await request.post(`${organisation}/projects`, { data: { name: "Northwind HR", description: "" } })).json()) as { id: string };
+  const created = await request.post(`${organisation}/projects/${project.id}/agents`, { data: { name: "HR helper" } });
+  expect(created.status()).toBe(201);
+  const agent = (await created.json()) as { id: string; public_id: string };
+  const agentPath = `${organisation}/projects/${project.id}/agents/${agent.id}`;
+  expect((await request.put(`${agentPath}/draft`, { data: { experience: { starter_questions: [QUESTION] } } })).status()).toBe(200);
+  expect((await request.post(`${agentPath}/versions`, { data: { note: "Calls" } })).status()).toBe(201);
+  const settings = await request.patch(`${agentPath}/operational-settings`, {
+    data: {
+      allowed_origins: [new URL(HOST_URL).origin],
+      calls_enabled: true,
+      call_credential_id: voiceId,
+      call_voice_id: "fake-voice-ada",
+      spoken_greeting: "Hello, you're through to HR.",
+    },
+  });
+  expect(settings.status()).toBe(200);
+  const theme = (await (await request.get(`${organisation}/theme`)).json()) as Record<string, unknown>;
+  for (const key of ["updated_at", "logo", "avatar"]) Reflect.deleteProperty(theme, key);
+  expect((await request.put(`${organisation}/theme`, { data: { ...theme, mode: "auto" } })).status()).toBe(200);
+  return agent.public_id;
+}
+
+/** Every WCAG 2.2 AA violation axe finds on the host page, the widget's frame included. */
+async function violations(host: Page) {
+  const results = await new AxeBuilder({ page: host }).withTags(AXE_TAGS).analyze();
+  return results.violations.map(({ id, nodes }) => ({ id, targets: nodes.map((node) => node.target) }));
+}
+
+/** The Call view's speaking or listening pulse, as the browser resolves it inside the frame. */
+async function stateAnimation(host: Page): Promise<string> {
+  const frame = host.frames().find((candidate) => candidate.url().includes("/widget/a/"));
+  if (!frame) throw new Error("The widget's frame isn't on the host page");
+  return frame.locator(".call-state").evaluate((element) => getComputedStyle(element, "::before").animationName);
+}

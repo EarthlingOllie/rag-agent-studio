@@ -2963,6 +2963,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/widget/agents/{public_id}/conversation/calls/current/interruptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Interrupt Call
+         * @description The Visitor talked over the reply being spoken in the token's Conversation's open Call:
+         *     that Agent Message is marked interrupted, and keeps its whole text. With no reply being
+         *     spoken, nothing changes.
+         */
+        post: operations["interruptWidgetCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/widget/agents/{public_id}/conversation/rating": {
         parameters: {
             query?: never;
@@ -7207,6 +7229,8 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Interrupted */
+            interrupted: boolean;
             /**
              * Role
              * @enum {string}
@@ -15601,6 +15625,47 @@ export interface operations {
         };
     };
     endWidgetCall: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    interruptWidgetCall: {
         parameters: {
             query?: never;
             header?: {

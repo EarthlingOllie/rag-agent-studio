@@ -568,6 +568,8 @@ class ResumedMessage:
     feedback: MessageFeedback | None
     # Said in a Call rather than typed: a Spoken Message.
     spoken: bool
+    # A spoken reply the Visitor talked over; it keeps its whole text.
+    interrupted: bool
 
 
 @dataclass(frozen=True)
@@ -611,7 +613,15 @@ async def resume(
     given = await feedback_on(session, [m.id for m in messages])
     return ResumedConversation(
         [
-            ResumedMessage(m.id, m.role, m.content, cited.get(m.id, []), given.get(m.id), m.spoken)
+            ResumedMessage(
+                m.id,
+                m.role,
+                m.content,
+                cited.get(m.id, []),
+                given.get(m.id),
+                m.spoken,
+                m.interrupted,
+            )
             for m in messages
         ],
         await rating_state(session, conversation),

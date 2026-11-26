@@ -268,3 +268,16 @@ export async function endCall(boot: Boot, token: string): Promise<void> {
     // Unreachable: the platform ends a Call nobody is in on its own.
   }
 }
+
+/**
+ * Tells the API the Visitor talked over the reply being spoken in the Conversation's open Call,
+ * so that reply is marked interrupted (it keeps its whole text). Best effort: the Call goes on
+ * either way.
+ */
+export async function interruptCall(boot: Boot, token: string): Promise<void> {
+  try {
+    await request("POST", `${base(boot)}/conversation/calls/current/interruptions`, token);
+  } catch {
+    // Unreachable: the reply simply stays unmarked.
+  }
+}

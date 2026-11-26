@@ -29,6 +29,8 @@ export type CallHandlers = {
   /** The Agent has spoken its reply to the Visitor's last words. */
   onReply: () => void;
   onMode: (mode: CallMode) => void;
+  /** The Visitor talked over the reply being spoken. */
+  onInterruption: () => void;
   /** The Call can't go on. */
   onFailure: (failure: ChatError) => void;
 };
@@ -163,6 +165,10 @@ function elevenLabs(started: StartedCall, handlers: CallHandlers): CallSession {
         },
         onModeChange: ({ mode }) => {
           handlers.onMode(mode);
+        },
+        // The Visitor talked over the Agent, which stopped speaking.
+        onInterruption: () => {
+          handlers.onInterruption();
         },
         // The Visitor's transcribed words; for the Agent, only that it has replied (the
         // reply itself, with its sources and Message ID, is read from our API).

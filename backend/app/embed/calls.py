@@ -9,6 +9,8 @@ voice layer listening, taking turns and speaking, and our runtime writing every 
   Playground Call token for one of its Playground Calls, ``app.playground.calls``). A turn
   that fails either check is refused before anything is answered.
 - ``end_call`` (the widget, with the Conversation token) ends the Conversation's open Call.
+- ``interrupt`` (the widget, with the Conversation token) marks the reply the Visitor talked
+  over as interrupted.
 - ``end_unavailable`` ends a Call whose turn the Agent couldn't answer.
 
 The Call limits (``app.embed.call_limits``) bound both: admission refuses a second Call in the
@@ -146,6 +148,27 @@ async def end_call(
     token."""
     conversation = await service.visitor_conversation(session, signer, public_id, token, now=now)
     await call_limits.end_open_call(session, conversation, now=now, reason=CallEnd.VISITOR)
+    await session.commit()
+
+
+async def interrupt(
+    session: AsyncSession, signer: TokenSigner, public_id: str, token: str, *, now: datetime
+) -> None:
+    """Marks the reply being spoken in the token's Conversation's open Call as interrupted: the
+    Visitor talked over it. That is the Call's latest Message, if it is the Agent's; with no
+    Call open, or the Visitor's words the latest (the reply they talked over isn't saved yet),
+    nothing changes. The reply keeps its whole text. Raises ``service.InvalidTokenError`` for
+    a bad token."""
+    conversation = await service.visitor_conversation(session, signer, public_id, token, now=now)
+    latest = await session.scalar(
+        select(Message)
+        .join(Call, Call.id == Message.call_id)
+        .where(Call.conversation_id == conversation.id, Call.ended_at.is_(None))
+        .order_by(Message.seq.desc())
+        .limit(1)
+    )
+    if latest is not None and latest.role == "assistant":
+        latest.interrupted = True
     await session.commit()
 
 

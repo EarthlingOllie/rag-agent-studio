@@ -423,6 +423,8 @@ class WidgetMessageOut(BaseModel):
     # A Spoken Message: said in a Call (the Visitor's transcribed words or the reply the Agent
     # spoke) rather than typed.
     spoken: bool
+    # A spoken reply the Visitor talked over. It keeps its whole text.
+    interrupted: bool
 
 
 class WidgetRatingOut(BaseModel):
@@ -479,6 +481,7 @@ async def get_conversation(
                     )
                 ),
                 spoken=m.spoken,
+                interrupted=m.interrupted,
             )
             for m in resumed.messages
         ],

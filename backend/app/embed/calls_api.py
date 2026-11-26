@@ -1,7 +1,8 @@
 """Call routes of the widget API (spec 20): the Visitor's widget starts a Call in its
 Conversation (``POST …/conversation/calls``) and ends it (``DELETE …/conversation/calls/current``),
-with the Conversation token as for messages. The turns of the Call reach the platform from the
-voice layer, through the turn endpoint (``app.embed.turn_api``).
+with the Conversation token as for messages, and says when the Visitor talked over a reply
+(``POST …/conversation/calls/current/interruptions``). The turns of the Call reach the platform
+from the voice layer, through the turn endpoint (``app.embed.turn_api``).
 """
 
 import uuid
@@ -185,5 +186,23 @@ async def end_call(
     What was said stays in the Conversation as Spoken Messages."""
     try:
         await calls.end_call(db, signer, public_id, _bearer(authorization), now=clock.now())
+    except service.InvalidTokenError:
+        raise _invalid() from None
+
+
+@router.post(
+    "/current/interruptions",
+    operation_id="interruptWidgetCall",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_errors((401, INVALID_TOKEN)),
+)
+async def interrupt_call(
+    public_id: str, db: Db, signer: Signer, clock: ClockDep, authorization: Authorization = ""
+) -> None:
+    """The Visitor talked over the reply being spoken in the token's Conversation's open Call:
+    that Agent Message is marked interrupted, and keeps its whole text. With no reply being
+    spoken, nothing changes."""
+    try:
+        await calls.interrupt(db, signer, public_id, _bearer(authorization), now=clock.now())
     except service.InvalidTokenError:
         raise _invalid() from None

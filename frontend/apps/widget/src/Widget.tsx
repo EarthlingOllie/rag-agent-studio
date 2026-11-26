@@ -14,6 +14,7 @@ import {
   ask,
   endCall,
   endConversation,
+  interruptCall,
   resume,
   startCall,
   startConversation,
@@ -59,6 +60,11 @@ export const CALL_UNAVAILABLE = "The assistant can't answer right now. You can s
 export function callLengthReached(minutes: number): string {
   return `The Call reached its ${String(minutes)}-minute limit. You can still send a message.`;
 }
+
+/** Announced, politely, once a Call has connected. */
+export const CALL_STARTED = "Call started.";
+/** Announced, politely, when a Call ends: with the reason, when it ended for one. */
+export const CALL_ENDED = "Call ended.";
 
 /** What a Call view says the Call is doing. */
 function callState(mode: CallMode | "connecting", muted: boolean, name: string): string {
@@ -164,7 +170,9 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   // The Conversation Rating, and whether the Visitor dismissed the rating prompt.
   const [rating, setRating] = useState<Rating>(UNRATED);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorText] = useState<string | null>(null);
+  // Why a Call ended is announced politely, so its note isn't an alert as well.
+  const [quietError, setQuietError] = useState(false);
   // The last completed reply, for screen readers; its `id` makes a repeated reply a new node.
   const [announcement, setAnnouncement] = useState<{ id: number; text: string } | null>(null);
   // The Conversation token, once the bootstrap token has been exchanged for one (or kept from
@@ -178,6 +186,8 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   // A resumed Conversation whose Call the page cut off: the Visitor is offered "Continue call".
   const [continuing, setContinuing] = useState(false);
   const call = useRef<CallSession | null>(null);
+  // Whether the Call being held has connected (its start was announced).
+  const connected = useRef(false);
   // Leaves and ends the Call being held, when the widget leaves the page during it.
   const leaveCall = useRef<(() => void) | null>(null);
   // Ends the Call when it reaches the Maximum Call length, as the platform does.
@@ -225,6 +235,16 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     opened.current ||= open;
   }, [open, type, bubble, host, boot.theme.launcher_position]);
 
+  function setError(text: string | null, quiet = false) {
+    setErrorText(text);
+    setQuietError(quiet);
+  }
+
+  /** Says `text` politely to screen readers (a repeated text is a new node, so it is said again). */
+  function announce(text: string) {
+    setAnnouncement((last) => ({ id: (last?.id ?? 0) + 1, text }));
+  }
+
   function forget() {
     token.current = null;
     store.clear();
@@ -268,6 +288,11 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
       },
     );
   }, [boot, store]);
+
+  // The control that started a Call goes away, so focus moves to the Call view.
+  useEffect(() => {
+    if (phase === "call") root.current?.querySelector<HTMLElement>(".call")?.focus();
+  }, [phase]);
 
   useEffect(() => {
     if (focusInput.current && phase === "chat") {
@@ -313,7 +338,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
           // Announced once per reply, however many Searches it makes.
           if (searched) return;
           searched = true;
-          setAnnouncement((last) => ({ id: (last?.id ?? 0) + 1, text: boot.ui_text.searching_status ?? SEARCHING }));
+          announce(boot.ui_text.searching_status ?? SEARCHING);
         },
         onToken: (text) => {
           answer += text;
@@ -337,7 +362,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         },
       });
       updateReply((reply) => ({ ...reply, id }));
-      setAnnouncement((last) => ({ id: (last?.id ?? 0) + 1, text: `${boot.name}: ${answer}` }));
+      announce(`${boot.name}: ${answer}`);
     } catch (failure) {
       if (failure instanceof ChatError && failure.status === 404) {
         retire();
@@ -395,16 +420,22 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   function stopCall() {
     if (phase !== "call") return;
     leave();
+    announce(CALL_ENDED);
     // A Call past connecting has its Conversation token.
     void endCall(boot, token.current as string);
   }
 
-  /** Leaves the Call, ends it, and returns to the chat with what was said in the log. */
+  /**
+   * Leaves the Call, ends it, and returns to the chat with what was said in the log. Its end, and
+   * why it ended (`failure`), are announced politely; a Call that never connected announces only why.
+   */
   async function hangUp(failure: string | null = null) {
     leave();
     if (token.current !== null) await endCall(boot, token.current);
     await refreshLog();
-    setError(failure);
+    setError(failure, true);
+    announce([connected.current ? CALL_ENDED : null, failure].filter((part) => part !== null).join(" "));
+    connected.current = false;
     focusInput.current = true;
     setPhase("chat");
   }
@@ -415,6 +446,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     setError(null);
     setMuted(false);
     setCallMode("connecting");
+    connected.current = false;
     setPhase("call");
     try {
       if (token.current === null) {
@@ -428,7 +460,14 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
       }
       const conversation = token.current;
       const session = joinCall(boot, started, {
-        onMode: setCallMode,
+        onMode: (mode) => {
+          setCallMode(mode);
+          if (connected.current) return;
+          connected.current = true;
+          announce(CALL_STARTED);
+        },
+        // Best effort: the reply being spoken is marked interrupted.
+        onInterruption: () => void interruptCall(boot, conversation),
         onVisitorWords: (words) => {
           setMessages((current) => [...current, { role: "visitor", text: words, citations: [], feedback: null, spoken: true }]);
         },
@@ -544,8 +583,9 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     );
   } else if (phase === "call") {
     footer = (
-      <div className="call" role="group" aria-label="Call">
-        <p role="status" className="call-state" data-mode={callMode}>
+      <div className="call" role="group" aria-label="Call" tabIndex={-1}>
+        {/* Shown, not read out: a screen reader saying "speaking" would talk over the Agent. */}
+        <p role="status" aria-live="off" className="call-state" data-mode={callMode}>
           {callState(callMode, muted, name)}
         </p>
         <div className="call-controls">
@@ -585,7 +625,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     footer = (
       <>
         {error && (
-          <p role="alert" className="error">
+          <p role={quietError ? undefined : "alert"} className="error">
             {error}
           </p>
         )}
@@ -636,9 +676,9 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
             agentName={name}
             logoUrl={boot.logo_url}
             avatarUrl={boot.avatar_url}
-            {...(showing
-              ? { logLabel: "Conversation", announcements: announcement && <p key={announcement.id}>{announcement.text}</p> }
-              : {})}
+            {...(showing ? { logLabel: "Conversation" } : {})}
+            // Already on the page at the choice, so a Call's start is announced.
+            {...(showing || choosing ? { announcements: announcement && <p key={announcement.id}>{announcement.text}</p> } : {})}
             actions={
               <>
                 {(chatting || phase === "call") && (

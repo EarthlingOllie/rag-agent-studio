@@ -76,6 +76,7 @@ async def test_a_visitor_who_reloads_gets_their_conversation_back(
             "citations": [],
             "feedback": None,
             "spoken": False,
+            "interrupted": False,
         },
         {
             "role": "assistant",
@@ -83,6 +84,7 @@ async def test_a_visitor_who_reloads_gets_their_conversation_back(
             "citations": [{"label": "C1", "document_name": "leave.txt"}],
             "feedback": None,
             "spoken": False,
+            "interrupted": False,
         },
         {
             "role": "user",
@@ -90,6 +92,7 @@ async def test_a_visitor_who_reloads_gets_their_conversation_back(
             "citations": [],
             "feedback": None,
             "spoken": False,
+            "interrupted": False,
         },
         {
             "role": "assistant",
@@ -97,6 +100,7 @@ async def test_a_visitor_who_reloads_gets_their_conversation_back(
             "citations": [{"label": "C1", "document_name": "leave.txt"}],
             "feedback": None,
             "spoken": False,
+            "interrupted": False,
         },
     ]
     assert [ids[1], ids[3]] == [first[-1][1]["message_id"], second[-1][1]["message_id"]]

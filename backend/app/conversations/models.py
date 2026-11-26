@@ -210,6 +210,9 @@ class Message(IdMixin, Base):
     call_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey(Call.id, ondelete="SET NULL"), index=True
     )
+    # An interrupted reply: the Visitor talked over this spoken Agent Message. It keeps its
+    # whole text, so the Agent may refer to words the Visitor never heard.
+    interrupted: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
 
 class Search(IdMixin, Base):

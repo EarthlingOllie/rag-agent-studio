@@ -165,6 +165,10 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "endWidgetConversation": ("/api/widget/agents/{public_id}/conversation", "delete"),
         "startWidgetCall": ("/api/widget/agents/{public_id}/conversation/calls", "post"),
         "endWidgetCall": ("/api/widget/agents/{public_id}/conversation/calls/current", "delete"),
+        "interruptWidgetCall": (
+            "/api/widget/agents/{public_id}/conversation/calls/current/interruptions",
+            "post",
+        ),
         "answerCallTurn": ("/api/widget/agents/{public_id}/llm/v1/chat/completions", "post"),
         "giveMessageFeedback": (_FEEDBACK, "put"),
         "removeMessageFeedback": (_FEEDBACK, "delete"),

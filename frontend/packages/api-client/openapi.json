@@ -11686,6 +11686,10 @@
             "title": "Id",
             "type": "string"
           },
+          "interrupted": {
+            "title": "Interrupted",
+            "type": "boolean"
+          },
           "role": {
             "enum": [
               "user",
@@ -11705,7 +11709,8 @@
           "content",
           "citations",
           "feedback",
-          "spoken"
+          "spoken",
+          "interrupted"
         ],
         "title": "WidgetMessageOut",
         "type": "object"
@@ -25538,6 +25543,64 @@
           }
         },
         "summary": "End Call",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/conversation/calls/current/interruptions": {
+      "post": {
+        "description": "The Visitor talked over the reply being spoken in the token's Conversation's open Call:\nthat Agent Message is marked interrupted, and keeps its whole text. With no reply being\nspoken, nothing changes.",
+        "operationId": "interruptWidgetCall",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Interrupt Call",
         "tags": [
           "widget"
         ]

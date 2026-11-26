@@ -724,6 +724,104 @@ async def test_an_ended_conversations_token_starts_no_call(
     assert (await start_call(visitor, agent["public_id"], token)).status_code == 401
 
 
+# Interruption (ticket 20-11)
+
+
+async def interrupt(visitor: httpx.AsyncClient, public_id: str, token: str) -> httpx.Response:
+    """The widget saying the Visitor talked over the reply being spoken."""
+    return await visitor.post(
+        calls_path(public_id, "current", "interruptions"), headers=bearer(token)
+    )
+
+
+async def test_a_reply_the_visitor_talked_over_is_marked_interrupted_and_keeps_its_whole_text(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, voice: httpx.AsyncClient
+) -> None:
+    agent = await calling_agent(app, owner)
+    token = await conversation_token(visitor, agent["public_id"])
+    call = await started(visitor, agent["public_id"], token)
+    secret = await secret_of(app, agent)
+    await turn(voice, agent["public_id"], secret, call["call_token"], "How much leave?")
+    await turn(voice, agent["public_id"], secret, call["call_token"], "And notice?")
+    before = (await resume(visitor, agent["public_id"], token)).json()["messages"]
+
+    response = await interrupt(visitor, agent["public_id"], token)
+
+    assert response.status_code == 204
+    messages = (await resume(visitor, agent["public_id"], token)).json()["messages"]
+    # Only the reply being spoken is marked, and it keeps every word, heard or not.
+    assert [(m["role"], m["interrupted"]) for m in messages] == [
+        ("user", False),
+        ("assistant", False),
+        ("user", False),
+        ("assistant", True),
+    ]
+    assert [m["content"] for m in messages] == [m["content"] for m in before]
+    assert "And notice?" in messages[3]["content"]
+    # Saying so again changes nothing.
+    assert (await interrupt(visitor, agent["public_id"], token)).status_code == 204
+    again = (await resume(visitor, agent["public_id"], token)).json()["messages"]
+    assert [m["interrupted"] for m in again] == [False, False, False, True]
+
+
+async def test_talking_before_any_reply_or_outside_a_call_marks_nothing(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, voice: httpx.AsyncClient
+) -> None:
+    agent = await calling_agent(app, owner)
+    token = await conversation_token(visitor, agent["public_id"])
+    await send(visitor, agent["public_id"], token, "How much leave?")
+    # No Call open: the typed reply isn't spoken, so nothing was talked over.
+    assert (await interrupt(visitor, agent["public_id"], token)).status_code == 204
+    # A Call with no reply yet: its greeting, or the earlier typed reply, isn't marked.
+    await started(visitor, agent["public_id"], token)
+    assert (await interrupt(visitor, agent["public_id"], token)).status_code == 204
+
+    messages = (await resume(visitor, agent["public_id"], token)).json()["messages"]
+    assert [m["interrupted"] for m in messages] == [False, False]
+
+
+async def test_a_call_whose_latest_message_is_the_visitors_marks_nothing(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, voice: httpx.AsyncClient
+) -> None:
+    """The Visitor talked over a reply that isn't saved yet: the reply before it was heard."""
+    agent = await calling_agent(app, owner)
+    token = await conversation_token(visitor, agent["public_id"])
+    call = await started(visitor, agent["public_id"], token)
+    secret = await secret_of(app, agent)
+    await turn(voice, agent["public_id"], secret, call["call_token"], "How much leave?")
+    async with app.state.sessionmaker() as session:
+        first = await session.scalar(
+            select(Message).where(Message.call_id == uuid.UUID(call["call_id"])).limit(1)
+        )
+        assert first is not None
+        session.add(
+            Message(
+                organisation_id=first.organisation_id,
+                conversation_id=first.conversation_id,
+                role="user",
+                content="And notice?",
+                spoken=True,
+                call_id=first.call_id,
+            )
+        )
+        await session.commit()
+
+    assert (await interrupt(visitor, agent["public_id"], token)).status_code == 204
+
+    messages = (await resume(visitor, agent["public_id"], token)).json()["messages"]
+    assert [m["interrupted"] for m in messages] == [False, False, False]
+
+
+async def test_saying_a_reply_was_interrupted_needs_a_good_conversation_token(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient
+) -> None:
+    agent = await calling_agent(app, owner)
+    token = await conversation_token(visitor, agent["public_id"])
+    await started(visitor, agent["public_id"], token)
+
+    assert (await interrupt(visitor, agent["public_id"], tamper(token))).status_code == 401
+
+
 # Moving between typing and talking (ticket 20-10)
 
 GREETING = "Hello, you're through to the front desk."
