@@ -187,6 +187,33 @@ run "lets_the_deploy_role_use_the_state_and_manage_prefixed_iam_only" {
   }
 }
 
+run "lets_the_deploy_role_manage_queues_named_for_this_project_only" {
+  command = plan
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "ManageProjectQueues"] == [{
+      Sid    = "ManageProjectQueues"
+      Effect = "Allow"
+      Action = [
+        "sqs:CreateQueue", "sqs:DeleteQueue", "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:ListDeadLetterSourceQueues",
+        "sqs:ListQueueTags", "sqs:SetQueueAttributes", "sqs:TagQueue", "sqs:UntagQueue",
+      ]
+      Resource = "arn:aws:sqs:*:123456789012:studio-*"
+    }]
+    error_message = "The deploy role may manage the queues environments create (studio-*) in this account (ticket 22-02)."
+  }
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "NoOtherQueues"] == [{
+      Sid         = "NoOtherQueues"
+      Effect      = "Deny"
+      Action      = "sqs:*"
+      NotResource = "arn:aws:sqs:*:123456789012:studio-*"
+    }]
+    error_message = "PowerUserAccess would otherwise let CI touch any queue: every queue not named for this project must be denied."
+  }
+}
+
 run "rejects_a_name_prefix_that_would_let_the_role_manage_itself" {
   command = plan
 

@@ -206,6 +206,10 @@ Email the stack sends lands in Mailpit. `latestEmailTo` and `linkPath` in `fixtu
 
 To use a Chromium that is already installed instead of Playwright's download, set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`.
 
+## Job queues (AWS)
+
+Ticket 22-02 added `infra/modules/queue`: the general and runs SQS queues, a dead-letter queue and a depth alarm for each, encryption at rest, and outputs of each queue's name, URL and ARN. `infra/envs/demo` wires it in; the ecs module's new `queues` input puts `GENERAL_QUEUE_NAME/URL` and `RUNS_QUEUE_NAME/URL` in every container's environment (recorded in `infra/modules/ecs/tests/task-settings.json`) and grants the task roles their queue actions. `infra/bootstrap` lets the deploy role manage `studio-*` queues only. The backend does not read these settings yet (ticket 22-03). See [deploy-demo.md](deploy-demo.md#job-queues).
+
 ## CI workflows
 
 | Workflow | Runs |

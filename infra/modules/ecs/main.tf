@@ -63,7 +63,16 @@ locals {
     },
   ]
 
-  # Beat only enqueues work on Redis, so it gets no AWS permissions (null: no policy at all).
+  # Jobs go through the queue module's queues (ADR-0021). Sending needs no KMS permission: the queues use SSE-SQS.
+  queue_arns = [var.queues.general.arn, var.queues.runs.arn]
+  send_to_both_queues = {
+    Sid      = "SendJobsToBothQueues"
+    Effect   = "Allow"
+    Action   = ["sqs:SendMessage"]
+    Resource = local.queue_arns
+  }
+
+  # Each service's policy, or null for none. 22-04 narrows the worker's receive to each pool's own queue.
   task_role_policies = {
     api = {
       Version = "2012-10-17"
@@ -86,6 +95,7 @@ locals {
             StringNotEquals = { "aws:ResourceAccount" = local.account_id }
           }
         },
+        local.send_to_both_queues,
       ])
     }
     worker = {
@@ -99,9 +109,26 @@ locals {
           Action   = ["kms:Decrypt"]
           Resource = var.credentials_key_arn
         },
+        {
+          Sid      = "ReceiveJobsFromBothQueues"
+          Effect   = "Allow"
+          Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"]
+          Resource = local.queue_arns
+        },
+        # A job may queue follow-on work on either queue.
+        local.send_to_both_queues,
       ])
     }
-    beat = null
+    # Beat only queues the scheduled jobs, which all go to the general queue: its one AWS permission.
+    beat = {
+      Version = "2012-10-17"
+      Statement = [{
+        Sid      = "SendJobsToTheGeneralQueue"
+        Effect   = "Allow"
+        Action   = ["sqs:SendMessage"]
+        Resource = var.queues.general.arn
+      }]
+    }
   }
 }
 
@@ -155,6 +182,13 @@ locals {
     REDIS_PORT = tostring(var.cache.port)
     REDIS_TLS  = "true"
   }
+  # Named by Terraform, so no task needs permission to list or create queues (spec 22 story 8).
+  queue_environment = {
+    GENERAL_QUEUE_NAME = var.queues.general.name
+    GENERAL_QUEUE_URL  = var.queues.general.url
+    RUNS_QUEUE_NAME    = var.queues.runs.name
+    RUNS_QUEUE_URL     = var.queues.runs.url
+  }
   # What the API and worker need beyond the data stores: Documents in S3, credential envelopes sealed by KMS, and
   # the Studio's public address for links in emails.
   app_environment = {
@@ -171,7 +205,7 @@ locals {
   # appends CloudFront's, so the first untrusted address from the right is the Visitor's.
   trusted_proxies = join(",", concat([var.vpc_cidr], sort([for e in data.aws_ec2_managed_prefix_list.cloudfront.entries : e.cidr])))
 
-  base_environment = merge(local.common_environment, local.database_environment, local.cache_environment)
+  base_environment = merge(local.common_environment, local.database_environment, local.cache_environment, local.queue_environment)
   environment = {
     # The API's task role is the principal Organisations trust in their Bedrock roles (spec 09 story 13).
     # The demo pages' routes (ticket 10-03) are the API's alone, and only in a demo environment.

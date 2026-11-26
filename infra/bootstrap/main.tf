@@ -17,6 +17,8 @@ locals {
   account_id = data.aws_caller_identity.current.account_id
   partition  = data.aws_partition.current.partition
   iam_arn    = "arn:${local.partition}:iam::${local.account_id}"
+  # Every environment's queues (ticket 22-02), in any region of this account.
+  project_queues_arn = "arn:${local.partition}:sqs:*:${local.account_id}:${var.managed_resource_prefix}*"
 
   deploy_policy = {
     Version = "2012-10-17"
@@ -68,6 +70,23 @@ locals {
           "kms:DisableKey", "kms:DisableKeyRotation", "kms:PutKeyPolicy", "kms:ScheduleKeyDeletion",
         ]
         Resource = [aws_s3_bucket.state.arn, aws_kms_key.state.arn]
+      },
+      {
+        # What Terraform needs for the queue module's queues and their redrive policies.
+        Sid    = "ManageProjectQueues"
+        Effect = "Allow"
+        Action = [
+          "sqs:CreateQueue", "sqs:DeleteQueue", "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:ListDeadLetterSourceQueues",
+          "sqs:ListQueueTags", "sqs:SetQueueAttributes", "sqs:TagQueue", "sqs:UntagQueue",
+        ]
+        Resource = local.project_queues_arn
+      },
+      {
+        # PowerUserAccess allows every SQS action on every queue; CI may touch only this project's.
+        Sid         = "NoOtherQueues"
+        Effect      = "Deny"
+        Action      = "sqs:*"
+        NotResource = local.project_queues_arn
       },
     ]
   }

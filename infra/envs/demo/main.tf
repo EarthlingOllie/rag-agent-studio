@@ -53,6 +53,13 @@ module "cache" {
   )
 }
 
+# The general and runs job queues (ADR-0021). Their names and URLs reach the services as settings (ticket 22-02).
+module "queue" {
+  source      = "../../modules/queue"
+  name_prefix = local.name_prefix
+  tags        = local.tags
+}
+
 # Browsers upload Documents only from the CloudFront origin, and only the distribution reads static assets.
 module "storage" {
   source                         = "../../modules/storage"
@@ -114,6 +121,8 @@ module "ecs" {
     auth_token_secret_arn = module.cache.auth_token_secret_arn
     security_group_id     = module.cache.security_group_id
   }
+
+  queues = module.queue.queues
 }
 
 # One distribution serves the Studio and widget from the static bucket and the API from the ALB (ADR-0011).

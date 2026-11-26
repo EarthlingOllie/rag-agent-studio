@@ -120,6 +120,18 @@ variables {
     auth_token_secret_arn = "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-cache/auth-token-BBBBBB"
     security_group_id     = "sg-0cache00000000001"
   }
+  queues = {
+    general = {
+      name = "studio-demo-queue-general"
+      url  = "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-general"
+      arn  = "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-general"
+    }
+    runs = {
+      name = "studio-demo-queue-runs"
+      url  = "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-runs"
+      arn  = "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs"
+    }
+  }
 }
 
 run "runs_api_worker_and_beat_on_arm64_fargate" {
@@ -228,17 +240,12 @@ run "each_service_has_its_own_least_privilege_task_role" {
   }
 
   assert {
-    condition     = keys(aws_iam_role_policy.task) == ["api", "worker"] && alltrue([for k, p in aws_iam_role_policy.task : p.role == aws_iam_role.task[k].id])
-    error_message = "Beat calls no AWS API, so its task role must have no permissions at all."
+    condition     = keys(aws_iam_role_policy.task) == ["api", "beat", "worker"] && alltrue([for k, p in aws_iam_role_policy.task : p.role == aws_iam_role.task[k].id])
+    error_message = "Each service's task role must have its own policy (Beat's first is sending to the general queue, ticket 22-02)."
   }
 
   assert {
-    condition     = output.task_role_policies.beat == null
-    error_message = "Beat's task role must have no policy document."
-  }
-
-  assert {
-    condition     = output.task_role_policies.api == jsondecode(aws_iam_role_policy.task["api"].policy) && output.task_role_policies.worker == jsondecode(aws_iam_role_policy.task["worker"].policy)
+    condition     = alltrue([for k in ["api", "beat", "worker"] : output.task_role_policies[k] == jsondecode(aws_iam_role_policy.task[k].policy)])
     error_message = "The roles must use the policy documents asserted below."
   }
 }
@@ -284,9 +291,18 @@ run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_wit
             StringNotEquals = { "aws:ResourceAccount" = "123456789012" }
           }
         },
+        {
+          Sid    = "SendJobsToBothQueues"
+          Effect = "Allow"
+          Action = ["sqs:SendMessage"]
+          Resource = [
+            "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-general",
+            "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs",
+          ]
+        },
       ]
     }
-    error_message = "The API may use Document objects, the credentials key, and assume other accounts' roles only with an external ID."
+    error_message = "The API may use Document objects, the credentials key, assume other accounts' roles only with an external ID, and only send to the two queues."
   }
 }
 
@@ -321,10 +337,76 @@ run "the_worker_reads_documents_and_only_decrypts_with_the_credentials_key" {
           Action   = ["kms:Decrypt"]
           Resource = "arn:aws:kms:eu-west-2:123456789012:key/11111111-1111-1111-1111-111111111111"
         },
+        {
+          Sid    = "ReceiveJobsFromBothQueues"
+          Effect = "Allow"
+          Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"]
+          Resource = [
+            "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-general",
+            "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs",
+          ]
+        },
+        {
+          Sid    = "SendJobsToBothQueues"
+          Effect = "Allow"
+          Action = ["sqs:SendMessage"]
+          Resource = [
+            "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-general",
+            "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs",
+          ]
+        },
       ]
     }
-    error_message = "The worker may use Document objects and only decrypt with the credentials key (to embed with a Project's provider Embedding Model): no encrypt and no role assumption."
+    error_message = "The worker may use Document objects, only decrypt with the credentials key (to embed with a Project's provider Embedding Model), and receive from and send to both queues until 22-04 splits it per pool."
   }
+}
+
+run "beat_may_only_send_to_the_general_queue" {
+  command = plan
+
+  assert {
+    condition = output.task_role_policies.beat == {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid      = "SendJobsToTheGeneralQueue"
+          Effect   = "Allow"
+          Action   = ["sqs:SendMessage"]
+          Resource = "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-general"
+        },
+      ]
+    }
+    error_message = "Beat queues the scheduled jobs on the general queue and may do nothing else (spec 22 story 35)."
+  }
+}
+
+run "every_service_is_told_the_queue_names_and_urls" {
+  command = apply
+
+  assert {
+    condition = alltrue([for t in concat(values(aws_ecs_task_definition.this), [aws_ecs_task_definition.migrate, aws_ecs_task_definition.seed]) :
+      { for e in jsondecode(t.container_definitions)[0].environment : e.name => e.value if startswith(e.name, "GENERAL_QUEUE_") || startswith(e.name, "RUNS_QUEUE_") } == {
+        GENERAL_QUEUE_NAME = "studio-demo-queue-general"
+        GENERAL_QUEUE_URL  = "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-general"
+        RUNS_QUEUE_NAME    = "studio-demo-queue-runs"
+        RUNS_QUEUE_URL     = "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-runs"
+      }
+    ])
+    error_message = "Every container must be given the queues by setting, so no task needs to list or create them (spec 22 story 8)."
+  }
+}
+
+run "rejects_a_queue_arn_that_is_not_sqs" {
+  command = plan
+
+  variables {
+    queues = {
+      general = { name = "studio-demo-queue-general", url = "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-general", arn = "arn:aws:sns:eu-west-2:123456789012:studio-demo-queue-general" }
+      runs    = { name = "studio-demo-queue-runs", url = "studio-demo-queue-runs", arn = "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs" }
+    }
+  }
+
+  expect_failures = [var.queues]
 }
 
 run "only_cloudfront_can_reach_the_alb" {
