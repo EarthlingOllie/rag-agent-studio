@@ -421,9 +421,16 @@ run "the_general_pool_reads_documents_decrypts_credentials_and_receives_only_gen
             "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs",
           ]
         },
+        {
+          Sid       = "ProtectItsOwnTaskFromScaleIn"
+          Effect    = "Allow"
+          Action    = ["ecs:GetTaskProtection", "ecs:UpdateTaskProtection"]
+          Resource  = "arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/*"
+          Condition = { StringEquals = { "aws:ResourceTag/Name" = "studio-demo-ecs-worker-general" } }
+        },
       ]
     }
-    error_message = "The general pool ingests, re-embeds and deletes Documents (their objects and the data key), opens credential envelopes to embed with a Project's provider Embedding Model, receives only from the general queue and sends to both (spec 22 story 34)."
+    error_message = "The general pool ingests, re-embeds and deletes Documents (their objects and the data key), opens credential envelopes to embed with a Project's provider Embedding Model, receives only from the general queue and sends to both (spec 22 story 34), and protects its own tasks from scale-in (ticket 22-06)."
   }
 }
 
@@ -455,9 +462,16 @@ run "the_runs_pool_only_decrypts_credentials_and_receives_only_runs_jobs" {
             "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs",
           ]
         },
+        {
+          Sid       = "ProtectItsOwnTaskFromScaleIn"
+          Effect    = "Allow"
+          Action    = ["ecs:GetTaskProtection", "ecs:UpdateTaskProtection"]
+          Resource  = "arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/*"
+          Condition = { StringEquals = { "aws:ResourceTag/Name" = "studio-demo-ecs-worker-runs" } }
+        },
       ]
     }
-    error_message = "Evaluation Runs and Suggestion runs never touch Documents' objects: the runs pool only opens credential envelopes (to call the Agent's model), receives only from the runs queue and sends to both (spec 22 story 34)."
+    error_message = "Evaluation Runs and Suggestion runs never touch Documents' objects: the runs pool only opens credential envelopes (to call the Agent's model), receives only from the runs queue and sends to both (spec 22 story 34), and protects its own tasks from scale-in (ticket 22-06)."
   }
 }
 
@@ -1991,5 +2005,29 @@ run "terraform_ignores_task_counts_after_creation_so_an_apply_keeps_a_scale_out"
   assert {
     condition     = { for k, s in aws_ecs_service.this : k => s.desired_count } == { api = 2, "worker-general" = 3, "worker-runs" = 1, beat = 0 }
     error_message = "Once a service exists, autoscaling owns its task count: Terraform must ignore desired_count changes (spec 22 story 21)."
+  }
+}
+
+# --- Scale-in protection (ticket 22-06): a worker protects its own task while it holds a job --------------------------
+
+run "only_the_worker_pools_may_set_task_protection_and_only_on_their_own_tasks" {
+  command = plan
+
+  assert {
+    condition = { for k, p in output.task_role_policies : k => [for st in p.Statement : st.Resource if contains(flatten([st.Action]), "ecs:UpdateTaskProtection")] } == {
+      api              = []
+      beat             = []
+      "worker-general" = ["arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/*"]
+      "worker-runs"    = ["arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/*"]
+    }
+    error_message = "Only the worker pools may set task protection, on tasks in this cluster only."
+  }
+
+  assert {
+    condition = alltrue([for k in ["worker-general", "worker-runs"] : (
+      one([for st in output.task_role_policies[k].Statement : st.Condition if st.Sid == "ProtectItsOwnTaskFromScaleIn"]) == { StringEquals = { "aws:ResourceTag/Name" = aws_ecs_service.this[k].tags["Name"] } } &&
+      aws_ecs_service.this[k].propagate_tags == "SERVICE"
+    )])
+    error_message = "A pool may protect only tasks carrying its own service's Name tag (propagated from the service), so one pool can't unprotect the other's tasks; the ECS agent's endpoint acts on the calling task alone."
   }
 }

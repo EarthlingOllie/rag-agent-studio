@@ -269,6 +269,30 @@ run "lets_the_deploy_role_manage_scaling_of_this_projects_services_only" {
   }
 }
 
+run "lets_the_deploy_role_read_and_clear_task_protection_in_this_projects_clusters_only" {
+  command = plan
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "ReadAndClearProjectTaskProtection"] == [{
+      Sid      = "ReadAndClearProjectTaskProtection"
+      Effect   = "Allow"
+      Action   = ["ecs:GetTaskProtection", "ecs:UpdateTaskProtection"]
+      Resource = "arn:aws:ecs:*:123456789012:task/studio-*/*"
+    }]
+    error_message = "The deploy script reads and clears protection on old worker tasks in this project's clusters (ticket 22-06)."
+  }
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "NoOtherTaskProtection"] == [{
+      Sid         = "NoOtherTaskProtection"
+      Effect      = "Deny"
+      Action      = ["ecs:GetTaskProtection", "ecs:UpdateTaskProtection"]
+      NotResource = "arn:aws:ecs:*:123456789012:task/studio-*/*"
+    }]
+    error_message = "PowerUserAccess would otherwise let CI change protection on any task: tasks outside this project's clusters must be denied."
+  }
+}
+
 run "rejects_a_name_prefix_that_would_let_the_role_manage_itself" {
   command = plan
 

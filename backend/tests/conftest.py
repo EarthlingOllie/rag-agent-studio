@@ -8,7 +8,7 @@ the few tests that start a real worker.
 import base64
 import os
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -21,11 +21,13 @@ from asgi_lifespan import LifespanManager
 from fastapi import FastAPI
 
 from app.core.clock import Clock
+from app.jobs.protection import NoProtection, install_protection
 from app.mail.outbox import OutboxMailer
 from app.main import create_app
 from app.worker.publisher import install_publisher
 from tests.fakes.clock import ControllableClock
 from tests.fakes.jobs import RecordingJobPublisher
+from tests.fakes.protection import RecordingProtection
 from tests.worker_resources import worker_database_url, worker_queue_name, worker_redis_url
 
 BASE_DATABASE_URL = os.environ.get(
@@ -129,6 +131,16 @@ def jobs(app: FastAPI) -> RecordingJobPublisher:
     app.state.jobs = fake
     install_publisher(fake)
     return fake
+
+
+@pytest.fixture
+def protection() -> Iterator[RecordingProtection]:
+    """Replaces the Scale-in protection adapter (a no-op outside ECS) with the fake, which records
+    each protect, renew and release, and can fail a step."""
+    fake = RecordingProtection()
+    install_protection(fake)
+    yield fake
+    install_protection(NoProtection())
 
 
 ClientFactory = Callable[[], Awaitable[httpx.AsyncClient]]

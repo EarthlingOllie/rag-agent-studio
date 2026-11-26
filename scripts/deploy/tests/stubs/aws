@@ -15,7 +15,22 @@ case "$1 $2" in
     # tasks-stopped: the waiter gives up (exit 255) until it has been called STUB_TASK_STOPS_AFTER_WAITS times.
     [ "$(grep -c '^aws ecs wait tasks-stopped' "$STUB_CALLS")" -ge "${STUB_TASK_STOPS_AFTER_WAITS:-1}" ] || exit 255
     exit 0 ;;
-  "ecs describe-tasks") echo "${STUB_TASK_EXIT_CODE-${STUB_MIGRATION_EXIT_CODE-0}}" ;;
+  "ecs describe-tasks")
+    if [[ "$*" == *taskDefinitionArn* ]]; then
+      # The old tasks of a service (not on its new task definition): with STUB_OLD_TASKS=1, every task it was given.
+      [ "${STUB_OLD_TASKS:-0}" = 1 ] && echo "${*:6:1}"
+      exit 0
+    fi
+    echo "${STUB_TASK_EXIT_CODE-${STUB_MIGRATION_EXIT_CODE-0}}" ;;
+  "ecs list-tasks") echo "arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/$6-old" ;;
+  "ecs get-task-protection")
+    # Tasks whose ARN contains STUB_PROTECTED_IN are protected for the first STUB_PROTECTED_CHECKS lookups of them.
+    task=$6
+    if [ -n "${STUB_PROTECTED_IN:-}" ] && [[ "$task" == *"$STUB_PROTECTED_IN"* ]] &&
+      [ "$(grep -c "^aws ecs get-task-protection .*$STUB_PROTECTED_IN" "$STUB_CALLS")" -le "${STUB_PROTECTED_CHECKS:-1000000}" ]; then
+      echo "$task"
+    fi ;;
+  "ecs update-task-protection") echo "${STUB_CLEAR_FAILURES-}" ;;
   "ecs update-service") exit 0 ;;
   "s3 sync")
     # Keep what would have been uploaded, so the tests can check the bucket's layout.

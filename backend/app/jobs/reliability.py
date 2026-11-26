@@ -8,6 +8,10 @@ The database row is the record that a job must run; the broker's message only wa
 - **The heartbeat.** While a job holds its claim, a background task writes the time to its row
   every ``heartbeat_seconds``, whatever the job is busy with (conversion runs in a thread, model
   calls await), so a live job is never mistaken for a dead one.
+- **Scale-in protection.** While the heartbeat runs, the worker's task is protected from
+  scale-in (``app.jobs.protection``, spec 22): protected as the job starts, renewed with each
+  beat, and released when the job ends, whether it finished, failed or found its claim gone. A
+  failure to set or clear protection is logged and never fails the job.
 - **Holding the claim.** The job's final write, and any step that settles its row, first checks
   the row still carries its claim (``holds``): a copy that was given up for dead and replaced
   can't write over the copy that replaced it.
@@ -24,8 +28,9 @@ Job code never reads the heartbeat columns itself.
 """
 
 import asyncio
+import logging
 import uuid
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -37,6 +42,9 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.clock import Clock
 from app.core.settings import Settings
+from app.jobs.protection import current_protection
+
+logger = logging.getLogger(__name__)
 
 # The key of the sweeper's Postgres advisory lock (an arbitrary constant: "sweep" in ASCII).
 SWEEPER_LOCK_KEY = 0x7377656570
@@ -232,6 +240,21 @@ async def _beat(sessionmaker: async_sessionmaker[AsyncSession], found: Claim, cl
         await beat(session, found, clock.now())
 
 
+async def _protection(
+    step: str, call: Callable[[uuid.UUID], Awaitable[None]], found: Claim
+) -> None:
+    """One Scale-in protection call, which never fails the job: a failure is logged."""
+    try:
+        await call(found.claim_id)
+    except Exception:
+        logger.warning(
+            "Scale-in protection failed to %s",
+            step,
+            exc_info=True,
+            extra={"claim_id": str(found.claim_id), "job_id": str(found.row_id)},
+        )
+
+
 @asynccontextmanager
 async def heartbeat(
     sessionmaker: async_sessionmaker[AsyncSession],
@@ -242,18 +265,26 @@ async def heartbeat(
     """Writes the claim's heartbeat every ``interval_seconds`` while the block runs, in a
     background task on the job's event loop. If writing a beat fails, the beats stop and the
     sweeper later takes the job for dead, which is safe: it is restarted, and this copy loses
-    its claim."""
+    its claim.
+
+    Meanwhile the task is protected from scale-in: protected now, renewed after each beat, and
+    released when the block ends, however it ends. If the beats stop, so do the renewals, and the
+    protection lapses at its expiry."""
+    protection = current_protection()
+    await _protection("protect", protection.protect, found)
 
     async def beat() -> None:
         while True:
             await asyncio.sleep(interval_seconds)
             await _beat(sessionmaker, found, clock)
+            await _protection("renew", protection.renew, found)
 
     task = asyncio.create_task(beat())
     try:
         yield
     finally:
         task.cancel()
+        await _protection("release", protection.release, found)
 
 
 class JobPolicy(Protocol):

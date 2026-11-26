@@ -213,6 +213,12 @@ class Settings(BaseSettings):
     job_heartbeat_seconds: float = Field(default=30.0, gt=0)
     job_dead_after_seconds: float = Field(default=300.0, gt=0)
     job_queued_too_long_seconds: float = Field(default=900.0, gt=0)
+    # Scale-in protection (spec 22): a worker on ECS protects its task while it holds a job,
+    # with an expiry this many minutes ahead, pushed forward by each heartbeat, so the
+    # protection of a worker that died lapses by itself. ECS sets ECS_AGENT_URI in every
+    # container; without it (locally) there is nothing to protect.
+    scale_in_protection_minutes: int = Field(default=5, ge=1, le=2880)
+    ecs_agent_uri: str | None = None
     # A Live Verdict still Pending this long after its job was sent (lost, or its worker died)
     # is sent again by the sweeper, up to this many times; one still Pending after that is an
     # Error. In seconds.

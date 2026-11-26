@@ -21,6 +21,8 @@ locals {
   project_queues_arn = "arn:${local.partition}:sqs:*:${local.account_id}:${var.managed_resource_prefix}*"
   # Every environment's ECS services (cluster studio-<env>-ecs, services studio-<env>-ecs-<service>), in any region.
   project_services_arn = "arn:${local.partition}:ecs:*:${local.account_id}:service/${var.managed_resource_prefix}*/${var.managed_resource_prefix}*"
+  # Every environment's ECS tasks (cluster studio-<env>-ecs).
+  project_tasks_arn = "arn:${local.partition}:ecs:*:${local.account_id}:task/${var.managed_resource_prefix}*/*"
   scaling_changes = [
     "application-autoscaling:DeleteScalingPolicy", "application-autoscaling:DeregisterScalableTarget",
     "application-autoscaling:PutScalingPolicy", "application-autoscaling:RegisterScalableTarget",
@@ -129,6 +131,19 @@ locals {
         Action    = local.scaling_changes
         Resource  = "*"
         Condition = { StringNotEqualsIfExists = { "application-autoscaling:service-namespace" = "ecs" } }
+      },
+      {
+        # The deploy script waits for old worker tasks that still hold a job, then clears their protection (ticket 22-06).
+        Sid      = "ReadAndClearProjectTaskProtection"
+        Effect   = "Allow"
+        Action   = ["ecs:GetTaskProtection", "ecs:UpdateTaskProtection"]
+        Resource = local.project_tasks_arn
+      },
+      {
+        Sid         = "NoOtherTaskProtection"
+        Effect      = "Deny"
+        Action      = ["ecs:GetTaskProtection", "ecs:UpdateTaskProtection"]
+        NotResource = local.project_tasks_arn
       },
     ]
   }

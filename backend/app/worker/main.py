@@ -19,6 +19,7 @@ from app.documents.ports import build_ports, current_ports, install_ports, warm_
 from app.evaluation.ports import EvaluationPorts, install_evaluation_ports
 from app.gateway.adapters import build_model_gateway
 from app.guardrails.pipeline import build_pipeline
+from app.jobs.protection import build_protection, install_protection
 from app.mail.factory import build_mailer
 from app.worker.celery_app import configure_celery
 from app.worker.publisher import current_publisher
@@ -32,6 +33,8 @@ app = configure_celery(settings)
 # The adapters ingestion runs through, chosen by the settings.
 envelope = build_envelope(settings)
 install_ports(build_ports(settings, envelope))
+# Scale-in protection of this task while it holds a job: ECS task protection on ECS, else none.
+install_protection(build_protection(settings))
 # What Evaluation Runs answer and judge through: the gateway, Guardrails and local embedders.
 install_evaluation_ports(
     EvaluationPorts(

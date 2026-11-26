@@ -6,25 +6,30 @@
 #   3. terraform apply at the tag: new task definitions for the services and the migration task (the services
 #      themselves do not roll on apply; see the ecs module)
 #   4. run the migration task (`alembic upgrade head`) and wait for it; anything but exit 0 stops the deploy here
-#   5. point each service (the API, both worker pools and Beat) at its new task definition, then wait for each and
-#      report it stable
+#   5. point each service (the API, both worker pools and Beat) at its new task definition; wait up to the given
+#      minutes (default 30) while old worker tasks are still protected from scale-in, that is, still running a job
+#      (ticket 22-06), then clear their protection; then wait for each service and report it stable
 #   6. upload the Studio and widget builds and the demo pages (under /demo/) to the static bucket; HTML, embed.js and
 #      the unhashed widget.js no-cache
 #   7. invalidate those paths in CloudFront and wait for the invalidation
 #   8. smoke check the CloudFront URL (scripts/deploy/smoke.sh) and print it
-# Usage: TF_STATE_BUCKET=... AWS_REGION=... scripts/deploy/deploy.sh <image tag>
+# Usage: TF_STATE_BUCKET=... AWS_REGION=... scripts/deploy/deploy.sh <image tag> [minutes to wait for running jobs]
 # Optional: DEPLOY_ROOT (default infra/envs/demo), STUDIO_DIST and WIDGET_DIST (the `pnpm build` outputs), DEMO_DIST
 # (the demo pages, default frontend/apps/widget/host/demo; the disallowed-origin page beside it is local-only),
-# SMOKE_AGENT_ID (a live Agent's public ID for the widget shell check), SMOKE_ATTEMPTS, SMOKE_DELAY_SECONDS.
+# SMOKE_AGENT_ID (a live Agent's public ID for the widget shell check), SMOKE_ATTEMPTS, SMOKE_DELAY_SECONDS,
+# PROTECTED_POLL_SECONDS (how often the wait for running jobs looks again, default 30).
 set -euo pipefail
 
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
 
-usage() { echo "usage: $0 <image tag> (1-128 of A-Z a-z 0-9 . _ -, not latest)" >&2; exit 2; }
-[ $# -eq 1 ] || usage
+usage() { echo "usage: $0 <image tag> (1-128 of A-Z a-z 0-9 . _ -, not latest) [minutes to wait for running jobs, default 30]" >&2; exit 2; }
+[ $# -eq 1 ] || [ $# -eq 2 ] || usage
 tag=$1
 [[ "$tag" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]] && [ "$tag" != latest ] || usage
+wait_minutes=${2:-30}
+[[ "$wait_minutes" =~ ^[0-9]+$ ]] || usage
+poll_seconds=${PROTECTED_POLL_SECONDS:-30}
 [ -n "${TF_STATE_BUCKET:-}" ] || { echo "TF_STATE_BUCKET must name the bootstrap's state bucket (its state_bucket_name output)." >&2; exit 2; }
 [ -n "${AWS_REGION:-}" ] || { echo "AWS_REGION must be set." >&2; exit 2; }
 root=${DEPLOY_ROOT:-$repo/infra/envs/demo}
@@ -105,6 +110,45 @@ for key in $(out '.services | keys[]'); do
   aws ecs update-service --cluster "$cluster" --service "$service" --task-definition "$task_definition" \
     --query service.serviceName --output text >/dev/null
 done
+
+# A worker protects its task from scale-in while it holds a job (ticket 22-06), and ECS does not stop a protected task,
+# so the old tasks keep running their jobs while the new ones start. Wait for them up to $wait_minutes minutes, then
+# clear their protection so the roll completes (an interrupted job is restarted or ended by the sweeper, ADR-0020).
+old_protected_tasks() {
+  local key service task_definition tasks old
+  for key in $(out '.services | keys[] | select(startswith("worker-"))'); do
+    service=$(jq -r --arg k "$key" '.services[$k]' "$work/deploy.json")
+    task_definition=$(jq -r --arg k "$key" '.task_definition_arns[$k]' "$work/deploy.json")
+    tasks=$(aws ecs list-tasks --cluster "$cluster" --service-name "$service" --desired-status RUNNING --query taskArns --output text)
+    [ -n "$tasks" ] && [ "$tasks" != None ] || continue
+    # shellcheck disable=SC2086 # One argument per task ARN.
+    old=$(aws ecs describe-tasks --cluster "$cluster" --tasks $tasks \
+      --query "tasks[?taskDefinitionArn!=\`$task_definition\`].taskArn" --output text)
+    [ -n "$old" ] && [ "$old" != None ] || continue
+    # shellcheck disable=SC2086
+    aws ecs get-task-protection --cluster "$cluster" --tasks $old --query 'protectedTasks[?protectionEnabled].taskArn' --output text
+  done | tr '\t' '\n' | grep -v -e '^$' -e '^None$' || true
+}
+count() { local n; n=$(wc -l <<<"$1"); if [ "$n" = 1 ]; then echo "1 old worker task"; else echo "$n old worker tasks"; fi; }
+waited=0
+protected=$(old_protected_tasks)
+while [ -n "$protected" ] && [ "$waited" -lt $((wait_minutes * 60)) ]; do
+  step "Waiting for $(count "$protected") still running a job ($((waited / 60)) of $wait_minutes minutes)"
+  sleep "$poll_seconds"
+  waited=$((waited + poll_seconds))
+  protected=$(old_protected_tasks)
+done
+if [ -n "$protected" ]; then
+  step "Clearing scale-in protection on $(count "$protected") after $wait_minutes minutes"
+  # shellcheck disable=SC2046 # One argument per task ARN.
+  failures=$(aws ecs update-task-protection --cluster "$cluster" --tasks $(echo "$protected") --no-protection-enabled \
+    --query failures --output text)
+  if [ -n "$failures" ] && [ "$failures" != None ]; then
+    echo "::error title=Rollout failed::Could not clear scale-in protection on the old worker tasks: $failures" >&2
+    exit 1
+  fi
+fi
+
 for service in "${services[@]}"; do
   step "Waiting for $service to stabilise"
   if ! aws ecs wait services-stable --cluster "$cluster" --services "$service"; then

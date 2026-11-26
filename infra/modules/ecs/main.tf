@@ -102,6 +102,17 @@ locals {
     Resource = queue.arn
   } }
 
+  # A worker protects its task from scale-in while it holds a job (ticket 22-06), through the ECS agent's endpoint,
+  # which acts on the calling task alone. IAM narrows it to this cluster's tasks carrying the pool's own Name tag
+  # (services propagate their tags to their tasks), so one pool can't unprotect the other's tasks.
+  protect_own_task = { for pool in local.workers : pool => {
+    Sid       = "ProtectItsOwnTaskFromScaleIn"
+    Effect    = "Allow"
+    Action    = ["ecs:GetTaskProtection", "ecs:UpdateTaskProtection"]
+    Resource  = "arn:aws:ecs:${local.region}:${local.account_id}:task/${local.name}/*"
+    Condition = { StringEquals = { "aws:ResourceTag/Name" = "${local.name}-${pool}" } }
+  } }
+
   # Each service's policy, or null for none.
   task_role_policies = {
     api = {
@@ -136,6 +147,7 @@ locals {
         local.open_credential_envelopes,
         local.receive_own_queue["worker-general"],
         local.send_to_both_queues,
+        local.protect_own_task["worker-general"],
       ])
     }
     # Evaluation Runs and Suggestion runs read the database and call models; they never touch Documents' objects.
@@ -145,6 +157,7 @@ locals {
         local.open_credential_envelopes,
         local.receive_own_queue["worker-runs"],
         local.send_to_both_queues,
+        local.protect_own_task["worker-runs"],
       ]
     }
     # Beat only queues the scheduled jobs, which all go to the general queue: its one AWS permission.

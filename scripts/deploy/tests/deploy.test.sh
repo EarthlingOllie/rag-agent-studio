@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Tests for scripts/deploy/deploy.sh, the deploy workflow's apply run (spec 09 stories 25, 26 and 32).
 # terraform, aws and docker are stubs (tests/stubs) that log every call and answer as each case says; nothing calls
-# AWS. The smoke check runs for real, with curl, against a local HTTP server (fake_site.py) standing in for CloudFront.
+# AWS. sleep is stubbed too (tests/stubs-clock), so the wait for protected tasks (ticket 22-06) passes in no time and
+# each sleep is logged. The smoke check runs for real, with curl, against a local HTTP server (fake_site.py) standing in for CloudFront.
 # Usage: scripts/deploy/tests/deploy.test.sh
 set -uo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
@@ -59,6 +60,7 @@ deploy_json() {
 }
 
 # run <case> <tag> [VAR=value...]: runs deploy.sh in a fresh case directory; sets $status, $out, $calls, $dir.
+# A wait_minutes=N prefix passes N as deploy.sh's second argument (the wait for protected tasks).
 run() {
   local name=$1 tag=$2
   shift 2
@@ -66,10 +68,10 @@ run() {
   mkdir -p "$dir"
   : >"$dir/calls"
   deploy_json "$site_url" >"$dir/deploy.json"
-  out=$(env PATH="$here/stubs:$PATH" STUB_CALLS="$dir/calls" STUB_DEPLOY_JSON="$dir/deploy.json" STUB_UPLOADED="$dir/uploaded" \
+  out=$(env PATH="$here/stubs:$here/stubs-clock:$PATH" STUB_CALLS="$dir/calls" STUB_DEPLOY_JSON="$dir/deploy.json" STUB_UPLOADED="$dir/uploaded" \
     TF_STATE_BUCKET=rag-agent-studio-tfstate-123456789012 AWS_REGION=eu-west-2 \
     STUDIO_DIST="$work/studio" WIDGET_DIST="$work/widget" DEMO_DIST="$work/demo" SMOKE_ATTEMPTS=1 SMOKE_DELAY_SECONDS=0 \
-    GITHUB_STEP_SUMMARY="$dir/summary.md" "$@" "$deploy" "$tag" 2>&1)
+    GITHUB_STEP_SUMMARY="$dir/summary.md" "$@" "$deploy" "$tag" ${wait_minutes:+"$wait_minutes"} 2>&1)
   status=$?
   calls=$(cat "$dir/calls")
 }
@@ -156,6 +158,85 @@ grep -qxF 'aws cloudfront create-invalidation --distribution-id E2EXAMPLE0ABCD -
 name=prints_the_cloudfront_url_in_the_job_summary
 summary=$(cat "$work/deploys_in_order_at_the_given_tag/summary.md")
 if grep -qF "$site_url" <<<"$summary" && grep -qF '0123abc' <<<"$summary"; then echo "ok   $name"; else fail $name "summary: $summary"; fi
+
+# --- Ticket 22-06: the roll waits for running jobs (protected old worker tasks), then clears their protection --------
+
+name=finds_old_worker_tasks_and_asks_whether_they_are_protected
+run "$name" 0123abc STUB_IMAGE_IN_ECR=0 STUB_OLD_TASKS=1
+ok=1
+expect_status $name 0 || ok=0
+for svc in worker-general worker-runs; do
+  grep -qxF "aws ecs list-tasks --cluster studio-demo-ecs --service-name studio-demo-ecs-$svc --desired-status RUNNING --query taskArns --output text" <<<"$calls" || { fail $name "no list-tasks for $svc"; ok=0; }
+  # shellcheck disable=SC2016 # The backticks are a JMESPath literal.
+  grep -qxF "aws ecs describe-tasks --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/studio-demo-ecs-$svc-old --query tasks[?taskDefinitionArn!=\`arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-$svc:7\`].taskArn --output text" <<<"$calls" || { fail $name "no old-task lookup for $svc: $(grep 'describe-tasks' <<<"$calls")"; ok=0; }
+  grep -qxF "aws ecs get-task-protection --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/studio-demo-ecs-$svc-old --query protectedTasks[?protectionEnabled].taskArn --output text" <<<"$calls" || { fail $name "no protection lookup for $svc"; ok=0; }
+done
+never $name '^aws ecs (list-tasks|get-task-protection) .*studio-demo-ecs-(api|beat)' || ok=0
+before $name '^aws ecs update-service .*--service studio-demo-ecs-worker-runs ' '^aws ecs list-tasks' || ok=0
+never $name '^sleep 30' || ok=0
+never $name '^aws ecs update-task-protection' || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+name=waits_while_old_worker_tasks_are_protected_and_lets_the_roll_finish_when_their_jobs_end
+run "$name" 0123abc STUB_IMAGE_IN_ECR=0 STUB_OLD_TASKS=1 STUB_PROTECTED_IN=worker-runs STUB_PROTECTED_CHECKS=3
+ok=1
+expect_status $name 0 || ok=0
+sleeps=$(grep -c '^sleep 30$' <<<"$calls")
+[ "$sleeps" = 3 ] || { fail $name "expected 3 waits of 30 s, got $sleeps"; ok=0; }
+expect_output $name "Waiting for 1 old worker task still running a job (0 of 30 minutes)" || ok=0
+never $name '^aws ecs update-task-protection' || ok=0
+last_check=$(grep -n '^aws ecs get-task-protection' <<<"$calls" | tail -1 | cut -d: -f1)
+first_wait=$(line '^aws ecs wait services-stable')
+[ -n "$first_wait" ] && [ "$last_check" -lt "$first_wait" ] || { fail $name "the services were waited on before the protected tasks finished"; ok=0; }
+expect_output $name "studio-demo-ecs-worker-runs is stable" || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+name=clears_protection_on_old_tasks_after_30_minutes_and_lets_the_roll_finish
+run "$name" 0123abc STUB_IMAGE_IN_ECR=0 STUB_OLD_TASKS=1 STUB_PROTECTED_IN=worker-runs
+ok=1
+expect_status $name 0 || ok=0
+sleeps=$(grep -c '^sleep 30$' <<<"$calls")
+[ "$sleeps" = 60 ] || { fail $name "expected 60 waits of 30 s (30 minutes), got $sleeps"; ok=0; }
+grep -qxF 'aws ecs update-task-protection --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/studio-demo-ecs-worker-runs-old --no-protection-enabled --query failures --output text' <<<"$calls" || { fail $name "protection was not cleared: $(grep 'update-task-protection' <<<"$calls")"; ok=0; }
+before $name '^sleep 30' '^aws ecs update-task-protection' || ok=0
+before $name '^aws ecs update-task-protection' '^aws ecs wait services-stable' || ok=0
+expect_output $name "Clearing scale-in protection on 1 old worker task after 30 minutes" || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+name=the_wait_for_protected_tasks_is_an_argument
+wait_minutes=5 run "$name" 0123abc STUB_IMAGE_IN_ECR=0 STUB_OLD_TASKS=1 STUB_PROTECTED_IN=worker-
+ok=1
+expect_status $name 0 || ok=0
+sleeps=$(grep -c '^sleep 30$' <<<"$calls")
+[ "$sleeps" = 10 ] || { fail $name "expected 10 waits of 30 s (5 minutes), got $sleeps"; ok=0; }
+grep -qxF 'aws ecs update-task-protection --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/studio-demo-ecs-worker-general-old arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/studio-demo-ecs-worker-runs-old --no-protection-enabled --query failures --output text' <<<"$calls" || { fail $name "protection was not cleared on both pools: $(grep 'update-task-protection' <<<"$calls")"; ok=0; }
+expect_output $name "Clearing scale-in protection on 2 old worker tasks after 5 minutes" || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+name=no_wait_clears_protection_at_once
+wait_minutes=0 run "$name" 0123abc STUB_IMAGE_IN_ECR=0 STUB_OLD_TASKS=1 STUB_PROTECTED_IN=worker-runs
+ok=1
+expect_status $name 0 || ok=0
+never $name '^sleep 30' || ok=0
+grep -q '^aws ecs update-task-protection' <<<"$calls" || { fail $name "protection was not cleared"; ok=0; }
+[ $ok = 1 ] && echo "ok   $name"
+
+name=a_failure_to_clear_protection_stops_the_deploy
+wait_minutes=0 run "$name" 0123abc STUB_IMAGE_IN_ECR=0 STUB_OLD_TASKS=1 STUB_PROTECTED_IN=worker-runs STUB_CLEAR_FAILURES=MISSING
+ok=1
+expect_status $name 1 || ok=0
+expect_output $name "Could not clear scale-in protection" || ok=0
+never $name '^aws ecs wait services-stable' || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+for bad in abc -1 1.5; do
+  name="rejects_the_wait_'$bad'"
+  wait_minutes=$bad run "$name" 0123abc STUB_IMAGE_IN_ECR=0
+  ok=1
+  expect_status "$name" 2 || ok=0
+  [ -z "$calls" ] || { fail "$name" "calls were made: $calls"; ok=0; }
+  [ $ok = 1 ] && echo "ok   $name"
+done
 
 # --- Images: a tag already in ECR is deployed as is; otherwise the locally built images are pushed first --------------
 
