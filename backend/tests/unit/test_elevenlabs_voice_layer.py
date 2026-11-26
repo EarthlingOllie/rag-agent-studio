@@ -129,9 +129,10 @@ async def test_the_voices_are_listed_page_by_page() -> None:
 async def test_a_call_is_started_with_a_webrtc_token() -> None:
     layer, replay = replaying("start_call.json")
 
-    joined = await layer.start_call(KEY, "agent_01k9w3")
+    joined = await layer.start_call(KEY, "agent_01k9w3", greet=False)
 
-    assert joined == CallJoin("eyJhbGciOiJIUzI1NiJ9.livekit-room-grant")
+    # The browser silences the greeting with the first-message override the remote agent allows.
+    assert joined == CallJoin("eyJhbGciOiJIUzI1NiJ9.livekit-room-grant", greet=False)
     assert_all_sent_with_the_key(replay)
 
 
@@ -151,7 +152,7 @@ async def test_a_refused_key_fails() -> None:
         lambda layer: layer.set_up_agent(KEY, SPEC, remote_agent_id="agent_01k9w3"),
         lambda layer: layer.remove_agent(KEY, "agent_01k9w3"),
         lambda layer: layer.list_voices(KEY),
-        lambda layer: layer.start_call(KEY, "agent_01k9w3"),
+        lambda layer: layer.start_call(KEY, "agent_01k9w3", greet=True),
     ],
 )
 async def test_an_unreachable_elevenlabs_fails_every_operation(operation) -> None:  # type: ignore[no-untyped-def]
@@ -172,7 +173,7 @@ async def test_an_elevenlabs_outage_fails_a_call_start(status: int) -> None:
     )
 
     with pytest.raises(VoiceLayerError):
-        await layer.start_call(KEY, "agent_01k9w3")
+        await layer.start_call(KEY, "agent_01k9w3", greet=True)
 
 
 async def test_an_answer_that_isnt_json_fails() -> None:
@@ -182,7 +183,7 @@ async def test_an_answer_that_isnt_json_fails() -> None:
     )
 
     with pytest.raises(VoiceLayerError):
-        await layer.start_call(KEY, "agent_01k9w3")
+        await layer.start_call(KEY, "agent_01k9w3", greet=True)
 
 
 def routed(
@@ -276,7 +277,7 @@ async def test_a_call_with_a_remote_agent_gone_fails() -> None:
     )
 
     with pytest.raises(VoiceLayerError):
-        await layer.start_call(KEY, "agent_gone")
+        await layer.start_call(KEY, "agent_gone", greet=True)
 
 
 async def test_voices_stop_after_the_last_page_read() -> None:

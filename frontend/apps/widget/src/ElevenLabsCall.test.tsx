@@ -96,7 +96,7 @@ const question = {
   spoken: true,
 };
 
-function elevenLabsApi() {
+function elevenLabsApi({ greet = true }: { greet?: boolean } = {}) {
   const seen: string[] = [];
   server.use(
     http.post(`${API}/conversations`, () => HttpResponse.json({ conversation_token: "wc1.token" }, { status: 201 })),
@@ -109,6 +109,7 @@ function elevenLabsApi() {
           join: {
             voice_layer: "elevenlabs",
             conversation_token: "livekit-room-token",
+            greet,
           },
           max_call_minutes: 10,
         },
@@ -186,6 +187,26 @@ test("picking Call joins ElevenLabs over WebRTC with the Call token as extra bod
     connectionType: "webrtc",
     customLlmExtraBody: { call_token: "wk2.call" },
   });
+});
+
+test("a Call that opens a Conversation with no Messages lets the remote agent speak its greeting", async () => {
+  elevenLabsApi({ greet: true });
+  render(<Widget boot={boot} />);
+
+  await choose("Call");
+
+  const { options } = await joined();
+  expect(options).not.toHaveProperty("overrides");
+});
+
+test("any other Call opens with the Agent listening: its greeting is silenced", async () => {
+  elevenLabsApi({ greet: false });
+  render(<Widget boot={boot} />);
+
+  await choose("Call");
+
+  const { options } = await joined();
+  expect(options).toMatchObject({ overrides: { agent: { firstMessage: "" } } });
 });
 
 test("the Visitor's words and the Agent's reply reach the log, with speaking and listening shown", async () => {

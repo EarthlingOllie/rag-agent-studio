@@ -103,6 +103,31 @@ test.describe("Calls", () => {
     await expect(call).toHaveCount(0);
     await expect(log.getByRole("listitem", { name: "You" })).toHaveText(QUESTION);
     await expect(log.getByRole("listitem", { name: "HR helper" }).first()).toContainText("Sources: northwind-staff-handbook.md");
+
+    // The chat header's Call button starts another Call in the same Conversation; it opens
+    // listening, as the Conversation already has Messages.
+    await widget.getByRole("button", { name: "Call", exact: true }).click();
+    await expect(call.getByRole("status")).toHaveText("Listening…", { timeout: 15_000 });
+    await expect(log.getByRole("listitem", { name: "You" })).toHaveCount(2, { timeout: 15_000 });
+    await expect(log.getByRole("listitem", { name: "HR helper" })).toHaveCount(2, { timeout: 15_000 });
+
+    // A reload ends the Call: the resumed Conversation shows what was said and offers
+    // "Continue call", which starts a new Call only when tapped.
+    await host.reload();
+    await widget.getByRole("button", { name: "Open chat" }).click({ timeout: 15_000 });
+    const continueCall = widget.getByRole("button", { name: "Continue call" });
+    await expect(continueCall).toBeVisible({ timeout: 15_000 });
+    await expect(log.getByRole("listitem", { name: "You" })).toHaveCount(2);
+    await expect(call).toHaveCount(0);
+    await expect(widget.getByLabel("Message")).toBeVisible();
+    await continueCall.click();
+    await expect(call.getByRole("status")).toHaveText("Listening…", { timeout: 15_000 });
+    await expect(continueCall).toHaveCount(0);
+
+    // New chat ends the Call and starts afresh.
+    await widget.getByRole("button", { name: "New chat" }).click();
+    await expect(call).toHaveCount(0);
+    await expect(log.getByRole("listitem", { name: "You" })).toHaveCount(0);
     await visitor.close();
   });
 });

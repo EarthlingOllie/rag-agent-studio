@@ -30,12 +30,19 @@ async def test_the_fake_joins_a_call_with_a_remote_agent_it_holds() -> None:
     layer = FakeVoiceLayer()
     remote_agent_id = await layer.set_up_agent("key", SPEC, remote_agent_id=None)
 
-    joined = await layer.start_call("key", remote_agent_id)
+    joined = await layer.start_call("key", remote_agent_id, greet=True)
+    listening = await layer.start_call("key", remote_agent_id, greet=False)
 
-    assert joined == CallJoin(joined.conversation_token)
-    assert layer.calls == [(remote_agent_id, joined.conversation_token)]
+    assert joined == CallJoin(joined.conversation_token, greet=True)
+    assert listening == CallJoin(listening.conversation_token, greet=False)
+    assert layer.calls == [
+        (remote_agent_id, joined.conversation_token),
+        (remote_agent_id, listening.conversation_token),
+    ]
+    # Only the Call that greets speaks the remote agent's greeting.
+    assert layer.greetings == [SPEC.spoken_greeting]
     with pytest.raises(VoiceLayerError):
-        await layer.start_call("key", "gone")
+        await layer.start_call("key", "gone", greet=True)
     layer.failing = True
     with pytest.raises(VoiceLayerError):
-        await layer.start_call("key", remote_agent_id)
+        await layer.start_call("key", remote_agent_id, greet=True)

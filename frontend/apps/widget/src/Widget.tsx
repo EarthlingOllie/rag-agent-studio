@@ -148,6 +148,11 @@ function Sources({ citations }: { citations: Citation[] }) {
  * tells the host page (`host`, the only origin it posts to) how to size its frame. The
  * Conversation token is kept in the iframe's storage, so a Visitor who comes back resumes their
  * Conversation; they can start a new chat or end it.
+ *
+ * For an Agent that takes Calls, the Visitor moves between typing and talking in one
+ * Conversation: the header's Call button starts a Call, and End call returns to the chat. A
+ * reload or page change ends the Call; the resumed Conversation offers "Continue call", which
+ * starts a new Call only when tapped.
  */
 export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?: Launcher | null; host?: string | null }) {
   const type = launcher ?? boot.theme.launcher_type;
@@ -170,6 +175,8 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   // The Call being held: what it is doing, and whether the Visitor muted it.
   const [callMode, setCallMode] = useState<CallMode | "connecting">("connecting");
   const [muted, setMuted] = useState(false);
+  // A resumed Conversation whose Call the page cut off: the Visitor is offered "Continue call".
+  const [continuing, setContinuing] = useState(false);
   const call = useRef<CallSession | null>(null);
   // Leaves and ends the Call being held, when the widget leaves the page during it.
   const leaveCall = useRef<(() => void) | null>(null);
@@ -186,14 +193,22 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   // Whether the widget is still on the page: a Call that finishes starting after it left is
   // ended, not joined.
   const mounted = useRef(true);
-  // A Call doesn't outlive the widget: leaving the page leaves the voice session, ends the Call
-  // and stops its limit timer.
+  // A Call doesn't outlive the widget: leaving the page (a reload, a page change, or the widget
+  // going away) leaves the voice session, ends the Call and stops its limit timer. The kept
+  // Call mark stays, so the next page offers "Continue call".
   useEffect(() => {
     mounted.current = true;
+    function leavePage() {
+      clearTimeout(callLimit.current);
+      const leaving = leaveCall.current;
+      leaveCall.current = null;
+      leaving?.();
+    }
+    window.addEventListener("pagehide", leavePage);
     return () => {
       mounted.current = false;
-      clearTimeout(callLimit.current);
-      leaveCall.current?.();
+      window.removeEventListener("pagehide", leavePage);
+      leavePage();
     };
   }, []);
 
@@ -233,6 +248,10 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
           token.current = kept;
           setRating(resumed.rating);
           setMessages(logged(resumed));
+          // A Call cut off by the page going away: a still-open one ends now, and the Visitor
+          // can start a new one.
+          if (resumed.call_open) void endCall(boot, kept);
+          setContinuing(resumed.call_open || store.inCall());
         }
         setPhase("chat");
       },
@@ -273,6 +292,9 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   async function send(question: string) {
     setError(null);
     setPending(true);
+    // Typing instead: the cut-off Call is no longer offered.
+    setContinuing(false);
+    store.saveCall(false);
     setMessages((current) => [
       ...current,
       { role: "visitor", text: question, citations: [], feedback: null },
@@ -366,6 +388,15 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     leaveCall.current = null;
     call.current?.end();
     call.current = null;
+    store.saveCall(false);
+  }
+
+  /** New chat or End chat during a Call: leaves the Call and ends it. */
+  function stopCall() {
+    if (phase !== "call") return;
+    leave();
+    // A Call past connecting has its Conversation token.
+    void endCall(boot, token.current as string);
   }
 
   /** Leaves the Call, ends it, and returns to the chat with what was said in the log. */
@@ -380,6 +411,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
 
   async function startTalking() {
     setChosen(true);
+    setContinuing(false);
     setError(null);
     setMuted(false);
     setCallMode("connecting");
@@ -404,6 +436,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         onFailure: (failure) => void hangUp(failure.message),
       });
       call.current = session;
+      store.saveCall(true);
       leaveCall.current = () => {
         session.end();
         void endCall(boot, conversation);
@@ -430,6 +463,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   function close(next: Phase) {
     if (token.current !== null) void endConversation(boot, token.current);
     forget();
+    setContinuing(false);
     setMessages([]);
     setRating(UNRATED);
     setError(null);
@@ -442,6 +476,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
 
   /** "End chat": a Visitor who hasn't rated a Conversation with a reply is asked to first. */
   function endChat() {
+    stopCall();
     if (token.current !== null && replies > 0 && rating.score === null) setPhase("ending");
     else close("ended");
   }
@@ -470,6 +505,8 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   const chatting = phase === "chat" && !choosing;
   // While the Visitor is asked to rate on "End chat", and during a Call, the Conversation stays in view.
   const showing = chatting || phase === "ending" || phase === "call";
+  // New chat and End chat stay in the header during a Call, and end it; not while it connects.
+  const connecting = phase === "call" && callMode === "connecting";
   let footer: ReactNode;
   if (phase === "retired") {
     footer = (
@@ -568,6 +605,13 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
             ))}
           </ul>
         )}
+        {continuing && (
+          <p className="continue-call">
+            <button type="button" onClick={() => void startTalking()}>
+              Continue call
+            </button>
+          </p>
+        )}
         {ratingPrompt(false)}
         <Composer onSend={onSend} disabled={pending} sendLabel={pending ? "Answering…" : (boot.ui_text.send_button ?? "Send")} />
       </>
@@ -597,22 +641,24 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
               : {})}
             actions={
               <>
-                {chatting && (
+                {(chatting || phase === "call") && (
                   <span className="controls">
+                    {boot.calls && chatting && (
+                      <button type="button" disabled={pending} onClick={() => void startTalking()}>
+                        Call
+                      </button>
+                    )}
                     <button
                       type="button"
-                      disabled={pending}
+                      disabled={pending || connecting}
                       onClick={() => {
+                        stopCall();
                         close("chat");
                       }}
                     >
                       New chat
                     </button>
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={endChat}
-                    >
+                    <button type="button" disabled={pending || connecting} onClick={endChat}>
                       End chat
                     </button>
                   </span>

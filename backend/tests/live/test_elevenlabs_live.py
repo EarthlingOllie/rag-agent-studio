@@ -87,13 +87,13 @@ async def test_a_remote_agent_is_set_up_called_and_removed_on_a_real_account(
         )
         assert updated == remote_agent_id
 
-        joined = await layers("start_call.json").start_call(api_key, remote_agent_id)
+        joined = await layers("start_call.json").start_call(api_key, remote_agent_id, greet=True)
         assert joined.conversation_token
     finally:
         await layers("remove_agent.json").remove_agent(api_key, remote_agent_id)
 
     # Gone: a Call can't be started with it, and removing it again counts as removed.
     with pytest.raises(VoiceLayerError):
-        await layers("start_call_gone.json").start_call(api_key, remote_agent_id)
+        await layers("start_call_gone.json").start_call(api_key, remote_agent_id, greet=True)
     await layers("remove_agent_gone.json").remove_agent(api_key, remote_agent_id)
     layers.save()

@@ -77,8 +77,8 @@ function base(boot: Boot): string {
   return `/api/widget/agents/${encodeURIComponent(boot.agent)}`;
 }
 
-function request(method: string, url: string, token?: string, body?: unknown): Promise<Response> {
-  const init: RequestInit & { headers: Record<string, string> } = { method, headers: {} };
+function request(method: string, url: string, token?: string, body?: unknown, keepalive = false): Promise<Response> {
+  const init: RequestInit & { headers: Record<string, string> } = { method, headers: {}, ...(keepalive ? { keepalive } : {}) };
   if (token) init.headers.Authorization = `Bearer ${token}`;
   if (body !== undefined) {
     init.headers["Content-Type"] = "application/json";
@@ -257,10 +257,13 @@ export async function startCall(boot: Boot, token: string): Promise<StartedCall>
   return (await response.json()) as StartedCall;
 }
 
-/** Ends the Conversation's open Call. Best effort: the widget leaves the Call either way. */
+/**
+ * Ends the Conversation's open Call. Best effort: the widget leaves the Call either way. The
+ * request outlives the page, so a reload or a page change mid-Call still ends it.
+ */
 export async function endCall(boot: Boot, token: string): Promise<void> {
   try {
-    await request("DELETE", `${base(boot)}/conversation/calls/current`, token);
+    await request("DELETE", `${base(boot)}/conversation/calls/current`, token, undefined, true);
   } catch {
     // Unreachable: the platform ends a Call nobody is in on its own.
   }

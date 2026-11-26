@@ -214,7 +214,7 @@ async def test_a_visitor_starts_a_call_and_gets_what_the_browser_joins_with_and_
     body = await started(visitor, agent["public_id"], token)
 
     ((remote_agent_id, join_token),) = voice_layer.calls
-    assert body["join"] == {"voice_layer": "fake", "conversation_token": join_token}
+    assert body["join"] == {"voice_layer": "fake", "conversation_token": join_token, "greet": True}
     assert remote_agent_id in voice_layer.remote_agents
     # The Call token is signed and bound to the Call and its Conversation.
     call = await the_call(app, body["call_id"])
@@ -722,6 +722,89 @@ async def test_an_ended_conversations_token_starts_no_call(
     await end_conversation(visitor, agent["public_id"], token)
 
     assert (await start_call(visitor, agent["public_id"], token)).status_code == 401
+
+
+# Moving between typing and talking (ticket 20-10)
+
+GREETING = "Hello, you're through to the front desk."
+
+
+async def test_a_call_opening_a_new_conversation_speaks_the_greeting_which_is_no_message(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, voice_layer: FakeVoiceLayer
+) -> None:
+    agent = await calling_agent(app, owner)
+    token = await conversation_token(visitor, agent["public_id"])
+
+    call = await started(visitor, agent["public_id"], token)
+
+    assert call["join"]["greet"] is True
+    said = await visitor.post(
+        fake_turn_path(call["join"]["conversation_token"]),
+        json={"words": "How much leave?", "call_token": call["call_token"]},
+    )
+    # The voice layer spoke the greeting first (and sends it as history, which is ignored).
+    assert voice_layer.greetings == [GREETING]
+    parts = [part[2] for part in json.loads(said.json()["agent_response"])]
+    assert not any(GREETING in part for part in parts)
+    messages = (await resume(visitor, agent["public_id"], token)).json()["messages"]
+    # Only the Visitor's words and the reply are Messages.
+    assert [m["role"] for m in messages] == ["user", "assistant"]
+    assert messages[0]["content"] == "How much leave?"
+
+
+async def test_a_call_in_a_conversation_with_messages_opens_with_the_agent_listening(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, voice_layer: FakeVoiceLayer
+) -> None:
+    agent = await calling_agent(app, owner)
+    token = await conversation_token(visitor, agent["public_id"])
+    await send(visitor, agent["public_id"], token, "How much leave?")
+
+    call = await started(visitor, agent["public_id"], token)
+
+    assert call["join"]["greet"] is False
+    assert voice_layer.greetings == []
+
+
+async def test_a_conversation_holds_several_calls_and_the_agent_remembers_every_turn(
+    app: FastAPI,
+    owner: SignedUpMember,
+    visitor: httpx.AsyncClient,
+    voice: httpx.AsyncClient,
+    voice_layer: FakeVoiceLayer,
+) -> None:
+    agent = await calling_agent(app, owner)
+    token = await conversation_token(visitor, agent["public_id"])
+    secret = await secret_of(app, agent)
+    first = await started(visitor, agent["public_id"], token)
+    await turn(voice, agent["public_id"], secret, first["call_token"], "Spoken in the first Call.")
+    await end_call(visitor, agent["public_id"], token)
+    await send(visitor, agent["public_id"], token, "Typed between the Calls.")
+
+    second = await started(visitor, agent["public_id"], token)
+    response = await turn(
+        voice, agent["public_id"], secret, second["call_token"], "Spoken in the second Call."
+    )
+
+    # The second Call opens listening, and its turn has every earlier turn as history.
+    assert second["join"]["greet"] is False
+    assert voice_layer.greetings == [GREETING]
+    parts = [part[2] for part in json.loads(spoken(response))]
+    assert "Spoken in the first Call." in parts
+    assert "Typed between the Calls." in parts
+    assert "Spoken in the second Call." in parts[-1]
+    assert await call_count(app, agent) == 2
+    messages = (await resume(visitor, agent["public_id"], token)).json()["messages"]
+    assert [m["spoken"] for m in messages] == [True, True, False, False, True, True]
+    async with app.state.sessionmaker() as session:
+        call_ids = [(await session.get_one(Message, uuid.UUID(m["id"]))).call_id for m in messages]
+    assert [str(c) if c else None for c in call_ids] == [
+        first["call_id"],
+        first["call_id"],
+        None,
+        None,
+        second["call_id"],
+        second["call_id"],
+    ]
 
 
 # The scripted fake voice layer, as the widget's scripted call client drives it

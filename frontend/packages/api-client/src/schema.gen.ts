@@ -3379,6 +3379,8 @@ export interface components {
         CallJoinOut: {
             /** Conversation Token */
             conversation_token: string;
+            /** Greet */
+            greet: boolean;
             /**
              * Voice Layer
              * @enum {string}

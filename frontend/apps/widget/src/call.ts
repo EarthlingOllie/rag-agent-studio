@@ -122,6 +122,9 @@ function elevenLabs(started: StartedCall, handlers: CallHandlers): CallSession {
         textOnly: false,
         // ElevenLabs sends it to our turn endpoint with every turn: which Call the turn is in.
         customLlmExtraBody: { call_token: started.call_token },
+        // The spoken greeting opens only a Conversation with no Messages; any other Call opens
+        // with the Agent listening.
+        ...(started.join.greet ? {} : { overrides: { agent: { firstMessage: "" } } }),
         onConnect: () => {
           handlers.onMode("listening");
         },

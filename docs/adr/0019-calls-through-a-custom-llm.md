@@ -6,4 +6,6 @@ We chose this over copying each Agent's configuration into an ElevenLabs-hosted 
 
 Because the voice layer doesn't change what the model is asked, calling (on or off, the voice, the spoken greeting) is an Operational Setting, not part of a Version (ADR-0009).
 
+The remote agent holds the spoken greeting, but our API decides when it is said: starting a Call tells the browser whether the Conversation has no Messages yet, and otherwise the browser joins with an empty first-message override (which the remote agent allows), so the Call opens listening. The greeting is never saved as a Message, and the turn endpoint ignores it in the history the voice layer sends.
+
 The price: ElevenLabs must reach our API from the public internet, so a local stack can't hold a real Call without a tunnel, and the endpoint ElevenLabs calls is a public route that spends model tokens and must prove which Conversation each request belongs to. Don't "simplify" by letting ElevenLabs hold the prompt or call the model provider itself.

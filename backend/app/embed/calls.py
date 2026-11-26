@@ -25,7 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents import serving
 from app.agents.models import Agent
-from app.conversations.models import Call, Conversation
+from app.conversations.models import Call, Conversation, Message
 from app.credentials.models import ProviderCredential
 from app.credentials.service import open_secret
 from app.embed import call_limits, service
@@ -114,11 +114,18 @@ async def start_call(
         ip=ip,
         max_call_minutes=agent.max_call_minutes,
     )
+    # The spoken greeting opens a Conversation with no Messages; any other Call opens listening.
+    greet = (
+        await session.scalar(
+            select(Message.id).where(Message.conversation_id == conversation.id).limit(1)
+        )
+        is None
+    )
     session.add(call)
     await session.flush()
     try:
         join = await voice.layer.start_call(
-            open_secret(voice.envelope, credential), str(agent.remote_agent_id)
+            open_secret(voice.envelope, credential), str(agent.remote_agent_id), greet=greet
         )
     except VoiceLayerError:
         await session.rollback()

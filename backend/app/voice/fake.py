@@ -45,6 +45,8 @@ class FakeVoiceLayer:
         self.remote_agents: dict[str, FakeRemoteAgent] = {}
         # Every Call joined: (remote agent ID, conversation token).
         self.calls: list[tuple[str, str]] = []
+        # Every greeting spoken as a Call opened.
+        self.greetings: list[str] = []
         self.failing = False
         self._ids = itertools.count(1)
         self._joined: dict[str, FakeCall] = {}
@@ -70,14 +72,21 @@ class FakeVoiceLayer:
         self._check()
         return list(FAKE_VOICES)
 
-    async def start_call(self, api_key: str, remote_agent_id: str) -> CallJoin:
+    async def start_call(self, api_key: str, remote_agent_id: str, *, greet: bool) -> CallJoin:
         self._check()
-        if remote_agent_id not in self.remote_agents:
+        remote_agent = self.remote_agents.get(remote_agent_id)
+        if remote_agent is None:
             raise VoiceLayerError("The fake voice layer has no such remote agent.")
         token = f"fake-call-{next(self._ids)}"
         self.calls.append((remote_agent_id, token))
-        self._joined[token] = FakeCall(remote_agent_id)
-        return CallJoin(token)
+        call = FakeCall(remote_agent_id)
+        greeting = remote_agent.spec.spoken_greeting
+        if greet and greeting:
+            # Spoken as the Call opens, and part of the transcript ElevenLabs sends as history.
+            self.greetings.append(greeting)
+            call.transcript.append({"role": "assistant", "content": greeting})
+        self._joined[token] = call
+        return CallJoin(token, greet)
 
     async def hold_turn(
         self, join_token: str, words: str, call_token: str, *, transport: httpx.AsyncBaseTransport

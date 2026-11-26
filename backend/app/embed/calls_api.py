@@ -48,6 +48,9 @@ class CallJoinOut(BaseModel):
     voice_layer: Literal["elevenlabs", "fake"]
     # What the browser joins the Call in the voice layer with.
     conversation_token: str
+    # Whether the voice layer speaks the Agent's spoken greeting as the Call opens: only for a
+    # Conversation with no Messages yet. Otherwise the Call opens with the Agent listening.
+    greet: bool
 
 
 class StartedCallOut(BaseModel):
@@ -160,7 +163,9 @@ async def start_call(
         call_id=started.call_id,
         call_token=started.call_token,
         join=CallJoinOut(
-            voice_layer=settings.voice_layer, conversation_token=started.join.conversation_token
+            voice_layer=settings.voice_layer,
+            conversation_token=started.join.conversation_token,
+            greet=started.join.greet,
         ),
         max_call_minutes=started.max_call_minutes,
     )

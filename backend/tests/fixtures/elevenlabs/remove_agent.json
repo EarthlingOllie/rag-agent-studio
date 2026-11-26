@@ -30,7 +30,12 @@
         },
         "platform_settings": {
           "overrides": {
-            "custom_llm_extra_body": true
+            "custom_llm_extra_body": true,
+            "conversation_config_override": {
+              "agent": {
+                "first_message": true
+              }
+            }
           }
         },
         "metadata": {

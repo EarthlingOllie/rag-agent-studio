@@ -700,6 +700,14 @@ _Avoid_: Voice token, session key
 An Agent's alert that Visitors' Calls can't start because the voice layer refuses them (its agent is gone, the key was revoked, the provider is down). Visitors get the Unavailable text and messaging keeps working; saving the Call settings sets the voice layer up again.
 _Avoid_: Voice error, call outage
 
+**Spoken greeting**:
+What an Agent's Remote agent says as a Call opens a Conversation that has no Messages yet, from the Call settings. It is only spoken, never saved as a Message; a Call in a Conversation that already has Messages (typed, or from an earlier Call) opens with the Agent listening.
+_Avoid_: Voice greeting, first message, welcome message
+
+**Continue call**:
+What the widget offers on a resumed Conversation whose last Call the page cut off (a reload or a page change ends the Call). Tapping it starts a new Call in the same Conversation; the microphone is never opened until the Visitor taps.
+_Avoid_: Rejoin, reconnect, resume call
+
 **Spoken Message**:
 A Message said in a Call rather than typed: the Visitor's words as transcribed, or the Agent's reply as the model wrote it. An Agent's Spoken Message the Visitor talked over is marked interrupted and still holds the whole reply, so it matches its Trace. It takes Message Feedback, counts in a Version's metrics and is judged like a typed one.
 _Avoid_: Voice message, transcript line, utterance

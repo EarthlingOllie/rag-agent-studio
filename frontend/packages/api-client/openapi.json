@@ -855,6 +855,10 @@
             "title": "Conversation Token",
             "type": "string"
           },
+          "greet": {
+            "title": "Greet",
+            "type": "boolean"
+          },
           "voice_layer": {
             "enum": [
               "elevenlabs",
@@ -866,7 +870,8 @@
         },
         "required": [
           "voice_layer",
-          "conversation_token"
+          "conversation_token",
+          "greet"
         ],
         "title": "CallJoinOut",
         "type": "object"

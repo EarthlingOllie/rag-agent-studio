@@ -54,7 +54,14 @@ def _agent_body(spec: RemoteAgentSpec, secret_id: str) -> dict[str, Any]:
             },
             "tts": {"voice_id": spec.voice_id},
         },
-        "platform_settings": {"overrides": {"custom_llm_extra_body": spec.extra_body}},
+        "platform_settings": {
+            "overrides": {
+                "custom_llm_extra_body": spec.extra_body,
+                # The browser may silence the greeting: a Call in a Conversation that already
+                # has Messages opens listening.
+                "conversation_config_override": {"agent": {"first_message": True}},
+            }
+        },
     }
 
 
@@ -181,11 +188,13 @@ class ElevenLabsVoiceLayer:
             params = {**params, "next_page_token": page["next_page_token"]}
         return voices
 
-    async def start_call(self, api_key: str, remote_agent_id: str) -> CallJoin:
+    async def start_call(self, api_key: str, remote_agent_id: str, *, greet: bool) -> CallJoin:
+        """The WebRTC token the browser joins with. ElevenLabs can't be told here whether to
+        greet: the browser joins with an empty first-message override when ``greet`` is false."""
         answer = await self._listed(
             api_key, "/v1/convai/conversation/token", {"agent_id": remote_agent_id}
         )
-        return CallJoin(str(answer["token"]))
+        return CallJoin(str(answer["token"]), greet)
 
     async def _listed(self, api_key: str, path: str, params: dict[str, str]) -> Any:
         """A GET where a 404 is a failure like any other (a gone remote agent can't be

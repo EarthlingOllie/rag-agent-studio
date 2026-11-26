@@ -40,7 +40,8 @@ class RemoteAgentSpec:
     # A name to recognise it by in the ElevenLabs account.
     name: str
     voice_id: str
-    # What it says first when a Call opens a new Conversation; empty says nothing.
+    # What it says first when a Call opens a Conversation with no Messages; empty says nothing.
+    # It is spoken by the voice layer only, never saved as a Message.
     spoken_greeting: str
     # Our OpenAI-compatible turn endpoint, its custom LLM.
     llm_url: str
@@ -57,6 +58,9 @@ class CallJoin:
     """What the browser needs to join a Call with the remote agent."""
 
     conversation_token: str
+    # Whether the remote agent speaks its greeting when the Call opens; otherwise it opens
+    # listening.
+    greet: bool
 
 
 class VoiceLayer(Protocol):
@@ -76,6 +80,8 @@ class VoiceLayer(Protocol):
         """The voices the key's account offers. Raises ``VoiceLayerError``."""
         ...
 
-    async def start_call(self, api_key: str, remote_agent_id: str) -> CallJoin:
-        """Asks for a Call with the remote agent. Raises ``VoiceLayerError``."""
+    async def start_call(self, api_key: str, remote_agent_id: str, *, greet: bool) -> CallJoin:
+        """Asks for a Call with the remote agent, which speaks its greeting when it opens only
+        if ``greet`` (a Call that opens a Conversation with no Messages). Raises
+        ``VoiceLayerError``."""
         ...

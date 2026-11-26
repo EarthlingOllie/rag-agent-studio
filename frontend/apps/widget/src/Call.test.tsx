@@ -54,7 +54,7 @@ function json(body: unknown, status = 200): Response {
 /** The widget API and the fake voice layer, recording what the widget asked. */
 function fakeCallApi({
   startCall = () =>
-    json({ call_id: "c1", call_token: "wk2.call", join: { voice_layer: "fake", conversation_token: "fake-call-1" }, max_call_minutes: 10 }, 201),
+    json({ call_id: "c1", call_token: "wk2.call", join: { voice_layer: "fake", conversation_token: "fake-call-1", greet: true }, max_call_minutes: 10 }, 201),
   turn = () => json({ agent_response: "Twenty-five days." }),
   history = () => json({ messages: spokenMessages, rating: UNRATED, call_open: true }),
   startConversation = () => json({ conversation_token: "wc1.token" }, 201),
@@ -81,6 +81,10 @@ function fakeCallApi({
     http.get(`${API}/conversation`, () => {
       seen.push({ route: "resume" });
       return history();
+    }),
+    http.delete(`${API}/conversation`, () => {
+      seen.push({ route: "end conversation" });
+      return new HttpResponse(null, { status: 204 });
     }),
     http.post("*/api/widget/fake-voice/calls/:join/turns", async ({ request, params }) => {
       seen.push({ route: `turn ${String(params.join)}`, body: await request.json() });
@@ -506,4 +510,167 @@ test("a Call ended while its reply is read back stays ended without an alert", a
   await after(50);
 
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+// Moving between typing and talking (ticket 20-10)
+
+async function listening() {
+  await waitFor(() => {
+    expect(callState()).toHaveTextContent("Listening…");
+  });
+}
+
+test("the chat header has a Call button that starts a Call from the chat; End call returns to typing", async () => {
+  const seen = fakeCallApi();
+  render(<Widget boot={boot} />);
+  await choose("Message");
+  const user = userEvent.setup();
+
+  await user.click(screen.getByRole("button", { name: "Call" }));
+
+  // The text box is hidden for the whole Call.
+  expect(screen.queryByLabelText("Message")).not.toBeInTheDocument();
+  const log = screen.getByRole("log", { name: "Conversation" });
+  expect(await within(log).findByText("Twenty-five days [C1].")).toBeInTheDocument();
+  await listening();
+  expect(screen.queryByLabelText("Message")).not.toBeInTheDocument();
+  await user.click(screen.getByRole("button", { name: "End call" }));
+
+  expect(await screen.findByLabelText("Message")).toBeInTheDocument();
+  expect(within(log).getByText("How much leave do I get?")).toBeInTheDocument();
+  expect(within(log).getByText("Twenty-five days [C1].")).toBeInTheDocument();
+  expect(seen.map((s) => s.route)).toContain("end call");
+});
+
+test("an Agent with calling off has no Call button", async () => {
+  render(<Widget boot={{ ...boot, calls: false }} />);
+
+  expect(await screen.findByLabelText("Message")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Call" })).not.toBeInTheDocument();
+});
+
+test("New chat during a Call ends the Call and the Conversation", async () => {
+  const seen = fakeCallApi({ turn: () => new Promise<Response>(() => undefined) });
+  render(<Widget boot={boot} />);
+  await choose("Call");
+  await listening();
+
+  await userEvent.setup().click(screen.getByRole("button", { name: "New chat" }));
+
+  expect(await screen.findByLabelText("Message")).toBeInTheDocument();
+  expect(screen.queryByRole("group", { name: "Call" })).not.toBeInTheDocument();
+  await waitFor(() => {
+    expect(seen.map((s) => s.route)).toEqual(expect.arrayContaining(["end call", "end conversation"]));
+  });
+  expect(within(screen.getByRole("log", { name: "Conversation" })).queryByText("Twenty-five days [C1].")).not.toBeInTheDocument();
+});
+
+test("End chat during a Call ends the Call before asking for a rating", async () => {
+  const seen = fakeCallApi();
+  render(<Widget boot={boot} />);
+  await choose("Call");
+  await screen.findByText("Twenty-five days [C1].");
+  await listening();
+
+  await userEvent.setup().click(screen.getByRole("button", { name: "End chat" }));
+
+  expect(await screen.findByRole("button", { name: "End without rating" })).toBeInTheDocument();
+  expect(screen.queryByRole("group", { name: "Call" })).not.toBeInTheDocument();
+  await waitFor(() => {
+    expect(seen.map((s) => s.route)).toContain("end call");
+  });
+  expect(seen.map((s) => s.route)).not.toContain("end conversation");
+  // The Call's words stay in view while the Visitor is asked to rate.
+  expect(screen.getByText("Twenty-five days [C1].")).toBeInTheDocument();
+});
+
+test("New chat and End chat wait while a Call is connecting", async () => {
+  fakeCallApi({ startCall: () => new Promise<Response>(() => undefined) });
+  render(<Widget boot={boot} />);
+  await choose("Call");
+
+  expect(screen.getByRole("button", { name: "New chat" })).toBeDisabled();
+  expect(screen.getByRole("button", { name: "End chat" })).toBeDisabled();
+});
+
+test("a reload ends the Call; the resumed Conversation shows what was said and offers Continue call", async () => {
+  // The Call is open while it is held; the reload ended it.
+  let callOpen = true;
+  const seen = fakeCallApi({ history: () => json({ messages: spokenMessages, rating: UNRATED, call_open: callOpen }) });
+  const page = render(<Widget boot={boot} />);
+  await choose("Call");
+  await screen.findByText("Twenty-five days [C1].");
+  await listening();
+
+  // The page goes away mid-Call.
+  window.dispatchEvent(new Event("pagehide"));
+  await waitFor(() => {
+    expect(seen.map((s) => s.route)).toContain("end call");
+  });
+  page.unmount();
+  callOpen = false;
+  const ends = seen.filter((s) => s.route === "end call").length;
+  seen.length = 0;
+
+  render(<Widget boot={boot} />);
+
+  const log = await screen.findByRole("log", { name: "Conversation" });
+  expect(await within(log).findByText("Twenty-five days [C1].")).toBeInTheDocument();
+  const continueCall = screen.getByRole("button", { name: "Continue call" });
+  // The microphone isn't opened by itself: no Call starts until the Visitor taps.
+  await after(SCRIPT_PAUSE_MS * 2);
+  expect(seen.map((s) => s.route)).toEqual(["resume"]);
+  expect(ends).toBe(1);
+
+  await userEvent.setup().click(continueCall);
+
+  await listening();
+  expect(seen.map((s) => s.route).slice(0, 2)).toEqual(["resume", "start call"]);
+  expect(screen.queryByRole("button", { name: "Continue call" })).not.toBeInTheDocument();
+  await userEvent.setup().click(screen.getByRole("button", { name: "End call" }));
+  await screen.findByLabelText("Message");
+});
+
+test("a resumed Conversation whose Call is still open ends it, and Continue call starts a new one", async () => {
+  localStorage.setItem("rag-widget:conversation:agt_hr", "wc1.kept");
+  const seen = fakeCallApi({ history: () => json({ messages: spokenMessages, rating: UNRATED, call_open: true }) });
+  render(<Widget boot={boot} />);
+
+  const continueCall = await screen.findByRole("button", { name: "Continue call" });
+  await waitFor(() => {
+    expect(seen).toEqual([{ route: "resume" }, { route: "end call", authorization: "Bearer wc1.kept" }]);
+  });
+
+  await userEvent.setup().click(continueCall);
+
+  await listening();
+  await userEvent.setup().click(screen.getByRole("button", { name: "End call" }));
+  await screen.findByLabelText("Message");
+  expect(seen.map((s) => s.route)).toContain("start call");
+});
+
+test("a resumed Conversation whose Calls all ended offers no Continue call", async () => {
+  localStorage.setItem("rag-widget:conversation:agt_hr", "wc1.kept");
+  fakeCallApi({ history: () => json({ messages: spokenMessages, rating: UNRATED, call_open: false }) });
+  render(<Widget boot={boot} />);
+
+  expect(await screen.findByText("Twenty-five days [C1].")).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Continue call" })).not.toBeInTheDocument();
+});
+
+test("typing instead of continuing the Call withdraws Continue call", async () => {
+  localStorage.setItem("rag-widget:conversation:agt_hr", "wc1.kept");
+  fakeCallApi({ history: () => json({ messages: spokenMessages, rating: UNRATED, call_open: true }) });
+  server.use(
+    http.post(`${API}/messages`, () => new HttpResponse('event: done\ndata: {"message_id": "r2"}\n\n', { headers: { "Content-Type": "text/event-stream" } })),
+  );
+  render(<Widget boot={boot} />);
+  await screen.findByRole("button", { name: "Continue call" });
+  const user = userEvent.setup();
+
+  await user.type(screen.getByLabelText("Message"), "Thanks{Enter}");
+
+  await waitFor(() => {
+    expect(screen.queryByRole("button", { name: "Continue call" })).not.toBeInTheDocument();
+  });
 });
