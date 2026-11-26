@@ -1,6 +1,7 @@
 """The hourly alerts, run after each rollup: the Block rate alert and the Live score drop alert.
 Each sets a flag on the Agent (the Studio's badge) and emails every Owner of its Organisation once
-when raised; the first run that no longer finds the problem clears it.
+when raised (the emails are recorded with the alert, so the sweeper sends any a dead process
+left, ``app.alert_emails``); the first run that no longer finds the problem clears it.
 
 Block rate alert: every Agent's Guardrail block rate over the last hour is compared with its
 baseline, the week before that hour. A spike is at least ``SPIKE_MIN_BLOCKS`` blocked Visitor
@@ -39,12 +40,13 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent, AgentVersion, LiveHistoryEntry
+from app.alert_emails.delivery import raise_alert, send_alert_emails
+from app.alert_emails.models import Alert
 from app.analytics.stats import clearly_lower
 from app.conversations.models import Conversation, Message, MessageRole
 from app.evaluation.models import LiveStatus, LiveVerdict
 from app.mail import templates
 from app.mail.port import Mailer
-from app.tenancy.models import Member, Membership, Role
 
 WINDOW = timedelta(hours=1)
 BASELINE = timedelta(days=7)
@@ -132,37 +134,30 @@ def _percent(rate: float) -> str:
     return f"{round(rate * 100)}%"
 
 
-async def _owners(session: AsyncSession, agent: Agent) -> list[tuple[str, str]]:
-    """The name and email of every Owner of the Agent's Organisation."""
-    rows = await session.execute(
-        select(Member.name, Member.email)
-        .join(Membership, Membership.member_id == Member.id)
-        .where(Membership.organisation_id == agent.organisation_id, Membership.role == Role.OWNER)
-        .order_by(Member.email)
-    )
-    return [(name, email) for name, email in rows]
-
-
-async def _email_owners(
-    session: AsyncSession, agent: Agent, rates: Rates, *, mailer: Mailer, studio_url: str
-) -> None:
-    owners = await _owners(session, agent)
+async def _raise_spike(
+    session: AsyncSession, agent: Agent, rates: Rates, at: datetime, *, studio_url: str
+) -> list[uuid.UUID]:
+    """Records the Block rate alert's email to every Owner, in the transaction raising it."""
     link = templates.blocked_conversations_link(
         studio_url, str(agent.organisation_id), str(agent.project_id), str(agent.id)
     )
-    for name, email in owners:
-        await mailer.send(
-            templates.block_rate_spike(
-                to=email,
-                name=name,
-                agent_name=agent.name,
-                blocks=rates.blocks,
-                replies=rates.replies,
-                rate=_percent(rates.rate),
-                baseline_rate=_percent(rates.baseline_rate),
-                link=link,
-            )
-        )
+    return await raise_alert(
+        session,
+        Alert.BLOCK_RATE,
+        organisation_id=agent.organisation_id,
+        agent_id=agent.id,
+        raised_at=at,
+        render=lambda name, email: templates.block_rate_spike(
+            to=email,
+            name=name,
+            agent_name=agent.name,
+            blocks=rates.blocks,
+            replies=rates.replies,
+            rate=_percent(rates.rate),
+            baseline_rate=_percent(rates.baseline_rate),
+            link=link,
+        ),
+    )
 
 
 async def _missed_hours(session: AsyncSession, at: datetime) -> dict[datetime, set[uuid.UUID]]:
@@ -217,8 +212,9 @@ async def _check_hour(
     studio_url: str,
 ) -> None:
     """Raises the Block rate alert of every Agent (of ``agents``, or all) whose block rate
-    spiked in the hour before ``at`` (emailing its Owners), and clears it on every other one.
-    An Agent already alerted is not emailed again while the spike lasts."""
+    spiked in the hour before ``at`` (emailing its Owners through ``app.alert_emails``), and
+    clears it on every other one. An Agent already alerted is not emailed again while the spike
+    lasts."""
     rates = await _rates(session, at, agents)
     spiking = {agent_id for agent_id, found in rates.items() if found.spike}
     only = [] if agents is None else [Agent.id.in_(agents)]
@@ -235,10 +231,12 @@ async def _check_hour(
             .returning(Agent.id)
         )
     )
-    await session.commit()
+    emails: list[uuid.UUID] = []
     for agent_id in sorted(raised):
         agent = await session.get_one(Agent, agent_id)
-        await _email_owners(session, agent, rates[agent_id], mailer=mailer, studio_url=studio_url)
+        emails += await _raise_spike(session, agent, rates[agent_id], at, studio_url=studio_url)
+    await session.commit()
+    await send_alert_emails(session, mailer, now=at, ids=emails)
 
 
 @dataclass(frozen=True)
@@ -331,9 +329,11 @@ def _score(passed: int, judged: int) -> str:
     return _percent(passed / judged)
 
 
-async def _email_drop(
-    session: AsyncSession, agent: Agent, scores: Scores, *, mailer: Mailer, studio_url: str
-) -> None:
+async def _raise_drop(
+    session: AsyncSession, agent: Agent, scores: Scores, at: datetime, *, studio_url: str
+) -> list[uuid.UUID]:
+    """Records the Live score drop alert's email to every Owner, in the transaction raising
+    it."""
     version = await session.get_one(AgentVersion, scores.version_id)
     previous = await session.get_one(AgentVersion, scores.previous_id)
     ids = (str(agent.organisation_id), str(agent.project_id), str(agent.id))
@@ -341,31 +341,36 @@ async def _email_drop(
         studio_url, *ids, str(previous.id), str(version.id)
     )
     failed_link = templates.failed_live_verdicts_link(studio_url, *ids)
-    for name, email in await _owners(session, agent):
-        await mailer.send(
-            templates.live_score_drop(
-                to=email,
-                name=name,
-                agent_name=agent.name,
-                version=version.number,
-                score=_score(scores.passed, scores.judged),
-                passed=scores.passed,
-                judged=scores.judged,
-                previous_version=previous.number,
-                previous_score=_score(scores.previous_passed, scores.previous_judged),
-                previous_passed=scores.previous_passed,
-                previous_judged=scores.previous_judged,
-                comparison_link=comparison_link,
-                failed_link=failed_link,
-            )
-        )
+    return await raise_alert(
+        session,
+        Alert.LIVE_SCORE_DROP,
+        organisation_id=agent.organisation_id,
+        agent_id=agent.id,
+        raised_at=at,
+        render=lambda name, email: templates.live_score_drop(
+            to=email,
+            name=name,
+            agent_name=agent.name,
+            version=version.number,
+            score=_score(scores.passed, scores.judged),
+            passed=scores.passed,
+            judged=scores.judged,
+            previous_version=previous.number,
+            previous_score=_score(scores.previous_passed, scores.previous_judged),
+            previous_passed=scores.previous_passed,
+            previous_judged=scores.previous_judged,
+            comparison_link=comparison_link,
+            failed_link=failed_link,
+        ),
+    )
 
 
 async def check_live_scores(
     session: AsyncSession, at: datetime, *, mailer: Mailer, studio_url: str
 ) -> None:
     """Raises the Live score drop alert of every Agent whose Live Version's Live score, as of
-    ``at``, is clearly lower than the previous Live Version's (emailing its Owners), and clears
+    ``at``, is clearly lower than the previous Live Version's (emailing its Owners through
+    ``app.alert_emails``), and clears
     it on every other Agent. An Agent already alerted is not emailed again while the drop
     lasts."""
     scores = await _scores(session, at)
@@ -391,7 +396,9 @@ async def check_live_scores(
             )
             .returning(Agent.id)
         )
-    await session.commit()
+    emails: list[uuid.UUID] = []
     for agent_id in raised:
         agent = await session.get_one(Agent, agent_id)
-        await _email_drop(session, agent, dropping[agent_id], mailer=mailer, studio_url=studio_url)
+        emails += await _raise_drop(session, agent, dropping[agent_id], at, studio_url=studio_url)
+    await session.commit()
+    await send_alert_emails(session, mailer, now=at, ids=emails)

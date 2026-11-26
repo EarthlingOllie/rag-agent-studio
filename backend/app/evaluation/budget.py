@@ -23,10 +23,11 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import audit
+from app.alert_emails.delivery import raise_alert
+from app.alert_emails.models import Alert
 from app.evaluation.models import EvaluationSpend
 from app.mail import templates
-from app.mail.port import Mailer
-from app.tenancy.models import Member, Membership, Organisation, Role
+from app.tenancy.models import Organisation
 from app.tenancy.repository import OrganisationScope
 
 EVALUATION_BUDGET_CHANGED = "organisation.evaluation_budget_changed"
@@ -129,7 +130,7 @@ async def add_spend(
 ) -> bool:
     """Adds a judgement's Cost to the month's spend, atomically, in the caller's transaction.
     True when this judgement took the spend to or past the budget first this month: its
-    Owners are to be emailed (``email_owners``) once the transaction commits."""
+    Owners are to be emailed (``raise_budget_spent``) in the same transaction."""
     month = month_of(now)
     spent = await session.scalar(
         insert(EvaluationSpend)
@@ -159,30 +160,25 @@ async def add_spend(
     return marked is not None
 
 
-async def email_owners(
-    session: AsyncSession,
-    organisation_id: uuid.UUID,
-    now: datetime,
-    *,
-    mailer: Mailer,
-    studio_url: str,
-) -> None:
-    """Emails every Owner that the month's Evaluation budget is spent and sampling has paused."""
+async def raise_budget_spent(
+    session: AsyncSession, organisation_id: uuid.UUID, now: datetime, *, studio_url: str
+) -> list[uuid.UUID]:
+    """Records the email telling every Owner that the month's Evaluation budget is spent and
+    sampling has paused, in the transaction of the judgement that spent it (``add_spend``); the
+    emails' IDs, to send once it commits (``app.alert_emails``)."""
     found = await read_budget(session, organisation_id, now)
-    owners = await session.execute(
-        select(Member.name, Member.email)
-        .join(Membership, Membership.member_id == Member.id)
-        .where(Membership.organisation_id == organisation_id, Membership.role == Role.OWNER)
-        .order_by(Member.email)
-    )
     link = templates.models_settings_link(studio_url, str(organisation_id))
-    for name, email in owners:
-        await mailer.send(
-            templates.evaluation_budget_spent(
-                to=email,
-                name=name,
-                budget=f"${_dollars(found.budget_usd)}",
-                resets_on=found.resets_at.date(),
-                link=link,
-            )
-        )
+    return await raise_alert(
+        session,
+        Alert.EVALUATION_BUDGET_SPENT,
+        organisation_id=organisation_id,
+        agent_id=None,
+        raised_at=now,
+        render=lambda name, email: templates.evaluation_budget_spent(
+            to=email,
+            name=name,
+            budget=f"${_dollars(found.budget_usd)}",
+            resets_on=found.resets_at.date(),
+            link=link,
+        ),
+    )
