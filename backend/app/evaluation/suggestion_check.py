@@ -128,6 +128,8 @@ async def check_cost(session: AsyncSession, run_id: uuid.UUID) -> Decimal | None
 _STATES = {
     RunStatus.FAILED: CheckState.FAILED,
     RunStatus.CANCELLED: CheckState.CANCELLED,
+    # Its worker stopped: read as a cancelled check (spec 21).
+    RunStatus.INTERRUPTED: CheckState.CANCELLED,
 }
 
 

@@ -40,7 +40,7 @@ Every spec tests at the **highest seam available** and uses as few seams as poss
 
 | Port | Production adapter | Test fake |
 |---|---|---|
-| Chat model | Pydantic AI provider models | Pydantic AI `TestModel` / `FunctionModel` |
+| Chat model | Pydantic AI provider models | Pydantic AI `TestModel` / `FunctionModel`; a test's model builder that raises `JobKilled` (`app/jobs/faults.py`) stops the job at that model as a dead worker would |
 | Document converter | Docling | Fake converter returning fixed markdown and structure; its kill switch stops the job at a conversion as a dead worker would |
 | Embedder | Local `multilingual-e5-small`, Voyage, OpenAI, Bedrock | Deterministic hash-based embedder, with a kill switch at its embedding calls |
 | Injection classifier | Local ONNX model, LLM classifier | Rule-driven fake |

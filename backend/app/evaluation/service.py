@@ -930,6 +930,7 @@ async def add_run(
         answers_total=len(cases) * repeats * len(resolved_sides),
         estimated_cost_usd=plan.estimate.total_usd,
         created_at=now,
+        queued_at=now,
     )
     session.add(run)
     await session.flush()

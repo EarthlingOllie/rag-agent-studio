@@ -59,6 +59,9 @@ class RunStatus(enum.StrEnum):
     FAILED = "failed"
     # Stopped by an Editor; what it answered and spent so far is kept.
     CANCELLED = "cancelled"
+    # Its worker stopped (no heartbeat for the dead-after time, ADR-0020); what it answered and
+    # spent so far is kept, and the Editor may run it again.
+    INTERRUPTED = "interrupted"
 
 
 # Queued or running: an Agent has at most one such Run.
@@ -222,6 +225,11 @@ class EvaluationRun(IdMixin, Base):
     # None when a price it needed is unknown. Its actual Cost is its case results'.
     estimated_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When it was last put on Queued, and, while Running, the claim of the job answering it and
+    # that job's last heartbeat (``app.jobs.reliability``, ADR-0020).
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    claim_id: Mapped[uuid.UUID | None] = mapped_column()
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class EvaluationRunSide(IdMixin, Base):
