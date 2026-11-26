@@ -10,7 +10,7 @@ endpoint (identical before and after a purge), the Trace (tombstones) and Audit 
 import asyncio
 import json
 from collections.abc import AsyncIterator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -339,6 +339,10 @@ async def test_without_a_time_the_purge_runs_as_of_now(app: FastAPI, owner: Sign
     # A seed test earlier in this worker may have left the demo Organisation, whose Retention
     # Window of two weeks its Seeded history outlives.
     await erase_demo(app)
+    # Tests that run the clock in the past (test_live_score, test_live_verdict_context) can leave
+    # Messages in this worker's database that are past their Retention Window as of now, from
+    # this run or an earlier one on the same database. Purge them first so only this run counts.
+    await purge(datetime.now(UTC))
     result = await asyncio.to_thread(purge_expired.apply)
 
     # An Organisation with no Messages has nothing to purge.
