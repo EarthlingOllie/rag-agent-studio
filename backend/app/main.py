@@ -60,6 +60,7 @@ from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
 from app.theme import api as theme_api
 from app.worker.celery_app import configure_celery
+from app.worker.publisher import CeleryJobPublisher, install_publisher
 
 logger = logging.getLogger(__name__)
 
@@ -123,6 +124,9 @@ def _lifespan(
         app.state.envelope = build_envelope(settings)
         app.state.widget_tokens = TokenSigner(settings.local_key_wrapper_key.get_secret_value())
         configure_celery(settings)
+        # Every background job is sent through the Job publisher; tests install the fake.
+        app.state.jobs = CeleryJobPublisher()
+        install_publisher(app.state.jobs)
         app.state.engine = create_engine(settings)
         instrument_engine(app.state.engine)
         app.state.sessionmaker = create_sessionmaker(app.state.engine)

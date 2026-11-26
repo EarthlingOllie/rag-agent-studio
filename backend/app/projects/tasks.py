@@ -10,9 +10,8 @@ from app.core.db import create_engine, create_sessionmaker
 from app.core.settings import load_settings
 from app.documents.ports import current_ports
 from app.projects import service
-from app.worker.celery_app import celery_app
-
-DELETE_PROJECT_TASK = "projects.delete"
+from app.worker.celery_app import DELETE_PROJECT_TASK, celery_app
+from app.worker.publisher import current_publisher
 
 
 async def _delete(project_id: uuid.UUID, actor_id: uuid.UUID, requested_at: datetime) -> None:
@@ -28,7 +27,7 @@ async def _delete(project_id: uuid.UUID, actor_id: uuid.UUID, requested_at: date
         await current_ports().object_store.delete_prefix(prefix)
 
 
-@celery_app.task(name=DELETE_PROJECT_TASK)
+@celery_app.task(name=DELETE_PROJECT_TASK, ignore_result=True)
 def delete_project(project_id: str, actor_id: str, requested_at: str) -> None:
     """Permanently deletes an archived Project: first, in one transaction, its rows (Documents,
     Chunks, Tags, Agents, Conversations...) with the ``project.deleted`` Audit Event, so it
@@ -43,8 +42,7 @@ def delete_project(project_id: str, actor_id: str, requested_at: str) -> None:
 async def enqueue_deletion(
     project_id: uuid.UUID, *, actor_id: uuid.UUID, requested_at: datetime
 ) -> None:
-    """Sends the task from a thread: sending blocks on the broker, and in eager mode (tests)
-    the task itself runs there, with its own event loop."""
-    await asyncio.to_thread(
-        delete_project.delay, str(project_id), str(actor_id), requested_at.isoformat()
+    """Sends the Project deletion job through the Job publisher."""
+    await current_publisher().delete_project(
+        project_id, actor_id=actor_id, requested_at=requested_at
     )

@@ -11,12 +11,17 @@ from app.core.settings import load_settings
 from app.documents.pipeline import Attempt
 from app.documents.ports import current_ports
 from app.re_embedding.job import re_embed
-from app.worker.celery_app import celery_app
+from app.worker.celery_app import RE_EMBED_TASK, celery_app
+from app.worker.publisher import current_publisher
 
-RE_EMBED_TASK = "projects.re_embed"
+
+async def _re_embed(job_id: uuid.UUID, attempt_number: int) -> None:
+    delay = await _run_re_embed(job_id, attempt_number)
+    if delay is not None:
+        await current_publisher().re_embed(job_id, attempt=attempt_number + 1, countdown=delay)
 
 
-async def _re_embed(job_id: uuid.UUID, attempt_number: int) -> float | None:
+async def _run_re_embed(job_id: uuid.UUID, attempt_number: int) -> float | None:
     settings = load_settings()
     engine = create_engine(settings)
     ports = current_ports()
@@ -39,16 +44,14 @@ async def _re_embed(job_id: uuid.UUID, attempt_number: int) -> float | None:
         await engine.dispose()
 
 
-@celery_app.task(name=RE_EMBED_TASK)
+@celery_app.task(name=RE_EMBED_TASK, ignore_result=True)
 def re_embed_project(job_id: str, attempt: int = 1) -> None:
     """Runs a re-embed job until it switches, fails or is cancelled. After a provider failure
-    the task sends itself again with the next attempt number, delayed by the backoff. (In eager
-    mode, in tests, the next attempt runs at once.)"""
-    delay = asyncio.run(_re_embed(uuid.UUID(job_id), attempt))
-    if delay is not None:
-        re_embed_project.apply_async((job_id,), {"attempt": attempt + 1}, countdown=delay)
+    the task sends itself again, through the Job publisher, with the next attempt number,
+    delayed by the backoff. (In eager mode, in tests, the next attempt runs at once.)"""
+    asyncio.run(_re_embed(uuid.UUID(job_id), attempt))
 
 
 async def enqueue_re_embed(job_id: uuid.UUID) -> None:
-    """Sends the task from a thread, as ``enqueue_ingestion`` does."""
-    await asyncio.to_thread(re_embed_project.delay, str(job_id))
+    """Sends the re-embed job through the Job publisher."""
+    await current_publisher().re_embed(job_id)

@@ -50,7 +50,7 @@ Every spec tests at the **highest seam available** and uses as few seams as poss
 | Mailer | SES | In-memory outbox; Mailpit in `docker compose` |
 | Clock | System clock | Controllable clock |
 | Voice layer | ElevenLabs Agents | Scripted fake: a Call with no audio, whose turns the test drives |
-| Job publisher | Celery (Redis; SQS from spec 22) | Fake that records what was sent and can lose or hold a message |
+| Job publisher | Celery (Redis; SQS from spec 22) | Fake that records what was sent and can lose or hold a message, and release held ones (`jobs` fixture, `tests/fakes/jobs.py`) |
 | Scale-in protection | ECS task protection | Fake that records protect, renew and release |
 
 - **Live suite:** tests marked `live` call real providers and real Docling. They run nightly and on demand, outside the coverage gate.

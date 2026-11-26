@@ -12,10 +12,8 @@ from app.core.settings import load_settings
 from app.evaluation.job import run_evaluation
 from app.evaluation.live import judge_live_verdict
 from app.evaluation.ports import current_evaluation_ports
-from app.worker.celery_app import celery_app
-
-EVALUATION_RUN_TASK = "evaluation.run"
-LIVE_VERDICT_TASK = "evaluation.live_verdict"
+from app.worker.celery_app import EVALUATION_RUN_TASK, LIVE_VERDICT_TASK, celery_app
+from app.worker.publisher import current_publisher
 
 
 async def _run(job: Callable[..., Awaitable[None]], row_id: uuid.UUID) -> None:
@@ -30,22 +28,23 @@ async def _run(job: Callable[..., Awaitable[None]], row_id: uuid.UUID) -> None:
         await engine.dispose()
 
 
-@celery_app.task(name=EVALUATION_RUN_TASK)
+@celery_app.task(name=EVALUATION_RUN_TASK, ignore_result=True)
 def run_evaluation_task(run_id: str) -> None:
     """Answers and judges every case of a queued Run, then completes it."""
     asyncio.run(_run(run_evaluation, uuid.UUID(run_id)))
 
 
 async def enqueue_run(run_id: uuid.UUID) -> None:
-    """Sends the task from a thread, as ``enqueue_ingestion`` does."""
-    await asyncio.to_thread(run_evaluation_task.delay, str(run_id))
+    """Sends the Evaluation Run job through the Job publisher."""
+    await current_publisher().run_evaluation(run_id)
 
 
-@celery_app.task(name=LIVE_VERDICT_TASK)
+@celery_app.task(name=LIVE_VERDICT_TASK, ignore_result=True)
 def judge_live_verdict_task(verdict_id: str) -> None:
     """Judges a chosen Visitor reply's pending Live Verdict."""
     asyncio.run(_run(judge_live_verdict, uuid.UUID(verdict_id)))
 
 
 async def enqueue_live_verdict(verdict_id: uuid.UUID) -> None:
-    await asyncio.to_thread(judge_live_verdict_task.delay, str(verdict_id))
+    """Sends the Live Verdict job through the Job publisher."""
+    await current_publisher().judge_live_verdict(verdict_id)
