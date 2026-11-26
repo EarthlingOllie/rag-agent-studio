@@ -65,7 +65,19 @@ Since ticket 22-04 the worker is two ECS services on the one backend image, each
 | `worker-general` | general: ingestion, Re-embeds, deletions, Live Verdicts, alert emails, the scheduled jobs and the sweeper | Fargate Spot (`worker_spot = false` moves it to regular Fargate) | 2 vCPU, 8 GB | the documents bucket and data key, decrypt with the credentials key |
 | `worker-runs` | runs: Evaluation Runs and Suggestion runs | regular Fargate | 1 vCPU, 6 GB | decrypt with the credentials key |
 
-The cluster has the `FARGATE` and `FARGATE_SPOT` capacity providers; every service other than the general pool uses `FARGATE`. ECS does not fall back from Spot to regular capacity by itself: during a Spot shortage ingestion waits until you set `worker_spot = false` in `infra/envs/demo` and deploy. Worker containers have a two-minute stop timeout (`stopTimeout = 120`, Fargate's most), so a short job finishes inside a Spot interruption warning. Both pools run two jobs at a time (`--concurrency=2`). The runs pool's 6 GB comes from a measurement: two worker processes with the local Embedding Model and the Guardrail classifier loaded peak at about 4.7 GB (ticket 22-04's evidence), more than the 4 GB first planned. Sizes and counts are the ecs module's `task_sizes` and `desired_counts` (one task each until autoscaling, ticket 22-05). The database admits the API, both pools and the migration and seed tasks; the cache admits every service and the seed task.
+The cluster has the `FARGATE` and `FARGATE_SPOT` capacity providers; every service other than the general pool uses `FARGATE`. ECS does not fall back from Spot to regular capacity by itself: during a Spot shortage ingestion waits until you set `worker_spot = false` in `infra/envs/demo` and deploy. Worker containers have a two-minute stop timeout (`stopTimeout = 120`, Fargate's most), so a short job finishes inside a Spot interruption warning. Both pools run two jobs at a time (`--concurrency=2`, the `jobs_per_task` of [autoscaling](#autoscaling)). The runs pool's 6 GB comes from a measurement: two worker processes with the local Embedding Model and the Guardrail classifier loaded peak at about 4.7 GB (ticket 22-04's evidence), more than the 4 GB first planned. Sizes are the ecs module's `task_sizes`. The database admits the API, both pools and the migration and seed tasks; the cache admits every service and the seed task.
+
+### Autoscaling
+
+Since ticket 22-05, Application Auto Scaling owns the task counts of the API and both worker pools ([ADR-0021](adr/0021-sqs-two-worker-pools-autoscaling.md)). Beat stays at one task.
+
+| Service | Tasks (default) | Scales on |
+|---|---|---|
+| `api` | 1 to 3 | average CPU, target tracking at 60% |
+| `worker-general` | 1 to 3 | its queue's jobs, waiting plus in flight |
+| `worker-runs` | 0 to 2 | its queue's jobs, waiting plus in flight |
+
+A worker deletes a message only when its job ends, so a job being worked on stays in flight and counts. While a pool's queue holds any job, the alarm `…-<pool>-jobs` keeps the pool at one task per two jobs (the slots a task has), up to its maximum: the runs pool starts its first task as soon as a Run is queued, which takes a few minutes for a cold Fargate task. Once the queue has held no job for five minutes, the alarm `…-<pool>-idle` returns the pool to its minimum, zero for the runs pool. Every minimum, maximum, target, cooldown and the idle time is in the ecs module's `scaling` input. `desired_counts` only sets each service's count when Terraform creates it; afterwards Terraform ignores it, so an apply never undoes a scale-out. The deploy role may manage scaling only on ECS services, and change only this project's services (`studio-*`).
 
 ## Seed (fill the demo with data)
 
@@ -119,4 +131,4 @@ Rough on-demand list prices for `eu-west-2` (London), in USD, with the default v
 
 - **Always on:** about 240 USD a month. The worker (sized for Docling) and the interface endpoints are about 60% of it.
 - **Apply for a day:** about 8 USD for 24 hours, plus a few cents for each migration task (0.25 vCPU for a minute or two) and each seed (1 vCPU and 4 GB for a few minutes, about 0.01 USD). Destroy afterwards and the only remaining cost is the bootstrap's state bucket and key, about 1 USD a month ([infra-bootstrap.md](infra-bootstrap.md#cost)).
-- **Cheaper:** every size is a variable. Setting `desired_counts["worker-general"] = 0` between uses saves about 78 USD a month (no ingestion while it is 0). The endpoints could be dropped in favour of NAT traffic, at the price of slower image pulls through `fck-nat`.
+- **Cheaper:** every size is a variable, and the runs pool already scales to zero between Runs. The general pool's minimum is one task (`scaling`), because it runs the sweeper and the scheduled jobs. The endpoints could be dropped in favour of NAT traffic, at the price of slower image pulls through `fck-nat`.

@@ -124,14 +124,14 @@ variable "task_sizes" {
 }
 
 variable "desired_counts" {
-  description = "Running task count per service. Fixed counts until autoscaling lands (ticket 22-05). Beat must be 0 or 1: two schedulers would run every periodic task twice."
+  description = "Task count of each service when Terraform creates it. Afterwards autoscaling owns the API's and the worker pools' counts and Terraform ignores changes here (ticket 22-05), so each must lie within that service's scaling bounds. Beat is not scaled and must be 0 or 1: two schedulers would run every periodic task twice."
   type = object({
     api            = number
     worker-general = number
     worker-runs    = number
     beat           = number
   })
-  default = { api = 1, "worker-general" = 1, "worker-runs" = 1, beat = 1 }
+  default = { api = 1, "worker-general" = 1, "worker-runs" = 0, beat = 1 }
 
   validation {
     condition     = alltrue([for n in values(var.desired_counts) : n >= 0 && floor(n) == n])
@@ -141,6 +141,76 @@ variable "desired_counts" {
   validation {
     condition     = var.desired_counts.beat <= 1
     error_message = "desired_counts.beat must be 0 or 1, so periodic tasks are scheduled once."
+  }
+
+  validation {
+    condition     = alltrue([for k in ["api", "worker-general", "worker-runs"] : var.desired_counts[k] >= var.scaling[k].min && var.desired_counts[k] <= var.scaling[k].max])
+    error_message = "desired_counts for api, worker-general and worker-runs must lie within that service's scaling minimum and maximum."
+  }
+}
+
+variable "scaling" {
+  description = <<-EOT
+    Application Auto Scaling bounds, targets and cooldowns (ticket 22-05, ADR-0021). Every attribute is optional.
+    api: min and max tasks, cpu_target (average CPU %, target tracking) and the scale-out and scale-in cooldowns (seconds).
+    worker-general and worker-runs: min and max tasks; jobs_per_task, the slots a task has (its Celery --concurrency),
+    so a pool runs one task per jobs_per_task jobs waiting or in flight on its queue; the cooldowns of stepping up and
+    of going back to the minimum; and idle_minutes, how long the queue must hold no job before the pool returns to its
+    minimum. The runs pool's minimum is zero; the general pool's is at least one, as it runs the sweeper and the
+    scheduled jobs. Beat is not scaled.
+  EOT
+  type = object({
+    api = optional(object({
+      min                = optional(number, 1)
+      max                = optional(number, 3)
+      cpu_target         = optional(number, 60)
+      scale_out_cooldown = optional(number, 60)
+      scale_in_cooldown  = optional(number, 300)
+    }), {})
+    worker-general = optional(object({
+      min                = optional(number, 1)
+      max                = optional(number, 3)
+      jobs_per_task      = optional(number, 2)
+      scale_out_cooldown = optional(number, 60)
+      scale_in_cooldown  = optional(number, 300)
+      idle_minutes       = optional(number, 5)
+    }), {})
+    worker-runs = optional(object({
+      min                = optional(number, 0)
+      max                = optional(number, 2)
+      jobs_per_task      = optional(number, 2)
+      scale_out_cooldown = optional(number, 60)
+      scale_in_cooldown  = optional(number, 300)
+      idle_minutes       = optional(number, 5)
+    }), {})
+  })
+  default  = {}
+  nullable = false
+
+  validation {
+    condition = alltrue([for s in values(var.scaling) : (
+      s.min >= 0 && floor(s.min) == s.min && s.max >= 1 && floor(s.max) == s.max && s.max >= s.min &&
+      s.scale_out_cooldown >= 0 && s.scale_in_cooldown >= 0
+    )])
+    error_message = "Each scaling minimum must be a whole number of zero or more, each maximum a whole number of at least one and no less than the minimum, and cooldowns zero or more seconds."
+  }
+
+  validation {
+    condition     = var.scaling["worker-general"].min >= 1
+    error_message = "scaling.worker-general.min must be at least 1: the general pool runs the sweeper and the scheduled jobs (ADR-0021)."
+  }
+
+  validation {
+    condition     = var.scaling.api.cpu_target > 0 && var.scaling.api.cpu_target <= 100
+    error_message = "scaling.api.cpu_target must be a CPU percentage above 0 and at most 100."
+  }
+
+  validation {
+    condition = alltrue([for k in ["worker-general", "worker-runs"] : (
+      var.scaling[k].jobs_per_task >= 1 && floor(var.scaling[k].jobs_per_task) == var.scaling[k].jobs_per_task &&
+      var.scaling[k].idle_minutes >= 1 && floor(var.scaling[k].idle_minutes) == var.scaling[k].idle_minutes
+    )])
+    error_message = "Each worker pool's jobs_per_task and idle_minutes must be whole numbers of at least 1."
   }
 }
 

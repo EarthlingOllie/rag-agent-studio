@@ -7,15 +7,42 @@
 **Blocked by:**
 - `22-04`
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Application Auto Scaling targets for `api`, `worker-general` and `worker-runs`; every minimum, maximum, target and cooldown is a variable
-- [ ] Defaults: `api` 1 to 3, `worker-general` 1 to 3, `worker-runs` 0 to 2, `beat` fixed at 1
-- [ ] `api` uses target tracking on average CPU
-- [ ] Workers scale on their queue's waiting plus in-flight messages, so a pool never scales in under a running job
-- [ ] `worker-runs` goes from zero to one when its queue holds anything and back to zero after it has been empty for several minutes; above one task, both pools track waiting messages per task
-- [ ] Terraform sets each service's task count at creation and ignores it afterwards, so an apply doesn't undo a scale-out
-- [ ] The deploy role may manage scaling targets and policies for this project's services only
-- [ ] `terraform test` asserts the targets, minimums and maximums, the runs pool's zero minimum, the metric each policy uses and that the task count is ignored
-- [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
-- [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+- [x] Application Auto Scaling targets for `api`, `worker-general` and `worker-runs`; every minimum, maximum, target and cooldown is a variable
+- [x] Defaults: `api` 1 to 3, `worker-general` 1 to 3, `worker-runs` 0 to 2, `beat` fixed at 1
+- [x] `api` uses target tracking on average CPU
+- [x] Workers scale on their queue's waiting plus in-flight messages, so a pool never scales in under a running job
+- [x] `worker-runs` goes from zero to one when its queue holds anything and back to zero after it has been empty for several minutes; above one task, both pools track waiting messages per task
+- [x] Terraform sets each service's task count at creation and ignores it afterwards, so an apply doesn't undo a scale-out
+- [x] The deploy role may manage scaling targets and policies for this project's services only
+- [x] `terraform test` asserts the targets, minimums and maximums, the runs pool's zero minimum, the metric each policy uses and that the task count is ignored
+- [x] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
+- [x] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed
+
+## Evidence
+
+Seams: the Terraform module contract with a mocked AWS provider (`infra/modules/ecs/tests/contract.tftest.hcl`, `infra/bootstrap/tests/bootstrap.tftest.hcl`, `infra/envs/demo/tests/demo.tftest.hcl`) ([shared test seams](../../specs/README.md#shared-test-seams): module seam). No backend code changed.
+
+TDD: the runs below were written first and seen failing ([tdd-red-terraform.log](22-05-evidence/tdd-red-terraform.log): the ecs suite on the undeclared `aws_appautoscaling_target` and `scalable_targets` output, the bootstrap suite on the missing deploy-role statements, the demo suite on the mock policy ARN the new alarms act on).
+
+1. **Targets for `api`, `worker-general` and `worker-runs`; every minimum, maximum, target and cooldown a variable.** New `infra/modules/ecs/autoscaling.tf`: `aws_appautoscaling_target.this` for the three services (namespace `ecs`, dimension `ecs:service:DesiredCount`, resource ID `service/<cluster>/<service>`). New `scaling` input (every attribute optional): `api` {`min`, `max`, `cpu_target`, `scale_out_cooldown`, `scale_in_cooldown`}, each pool {`min`, `max`, `jobs_per_task`, `scale_out_cooldown`, `scale_in_cooldown`, `idle_minutes`}, validated (whole numbers, max >= min, CPU 1-100 %, general pool minimum at least 1). New output `scalable_targets`. Runs `the_api_and_both_worker_pools_are_scalable_targets_with_their_default_bounds`, `every_minimum_maximum_target_and_cooldown_is_a_variable` (every attribute changed and seen on the targets, policies, alarms and worker command), `rejects_a_general_pool_that_scales_to_zero`, `rejects_a_maximum_below_the_minimum`.
+2. **Defaults: `api` 1-3, `worker-general` 1-3, `worker-runs` 0-2, `beat` fixed at 1.** The `scaling` defaults; Beat has no target, and `desired_counts.beat` stays 1 (and at most 1). `desired_counts` now defaults `worker-runs` to 0 and must lie within each scaled service's bounds (`rejects_a_starting_count_outside_the_scaling_bounds`). Runs `the_api_and_both_worker_pools_are_scalable_targets_with_their_default_bounds`, `runs_api_both_worker_pools_and_beat_on_arm64_fargate` (starting counts 1, 1, 0, 1).
+3. **`api` target tracking on average CPU.** `aws_appautoscaling_policy.api_cpu`: `TargetTrackingScaling`, `ECSServiceAverageCPUUtilization`, target 60 %, scale-out cooldown 60 s, scale-in 300 s. Run `the_api_tracks_average_cpu`.
+4. **Workers scale on waiting plus in-flight messages, so a pool never scales in under a running job.** Two CloudWatch alarms per pool (`aws_cloudwatch_metric_alarm.worker_jobs`, `.worker_idle`) on the metric math `waiting + in_flight` over the pool's own queue's `ApproximateNumberOfMessagesVisible` and `ApproximateNumberOfMessagesNotVisible` (one-minute maximum). Workers ack late (`task_acks_late=True`, `worker_prefetch_multiplier=1` in `app/worker/celery_app.py`), so a message stays in flight until its job ends: a running job keeps counting, the idle alarm cannot fire while any job runs, and the jobs policy never sets fewer tasks than the in-flight jobs need. Run `each_worker_pool_scales_on_its_queues_waiting_plus_in_flight_jobs`.
+5. **`worker-runs` 0 to 1 as soon as its queue holds anything, back to 0 after several minutes empty; above one task, both pools track jobs per task.** `aws_appautoscaling_policy.worker_jobs` (step, `ExactCapacity`) is driven by the jobs alarm (>= 1 job, one period): steps relative to that threshold give one task per `jobs_per_task` jobs (default 2, the worker's `--concurrency`, which now comes from the same attribute), so 1-2 jobs is one task, 3-4 two, up to the maximum. `aws_appautoscaling_policy.worker_idle` (step, `ExactCapacity` = the pool's minimum) is driven by the idle alarm (< 1 job for `idle_minutes` = 5 periods, missing data breaching, as SQS stops reporting an idle queue). Runs `a_worker_pool_steps_up_one_task_per_slots_worth_of_jobs`, `a_worker_pool_returns_to_its_minimum_after_its_queue_has_been_empty_for_five_minutes`, `the_runs_pool_scales_to_zero`.
+6. **Terraform sets each count at creation and ignores it afterwards.** `aws_ecs_service.this` `lifecycle.ignore_changes = [task_definition, desired_count]`. Runs `terraform_sets_each_task_count_when_it_creates_the_service` (apply in its own state with counts 2/3/1/0) then `terraform_ignores_task_counts_after_creation_so_an_apply_keeps_a_scale_out` (plan with counts 1/1/0/1 on that state still shows 2/3/1/0).
+7. **The deploy role may manage scaling targets and policies for this project's services only.** `infra/bootstrap/main.tf` deploy policy: `ManageScalingOfEcsServices` (the Application Auto Scaling target, policy, describe and tag actions, condition `application-autoscaling:service-namespace = ecs`), `UpdateProjectServices` (`ecs:DescribeServices`, `ecs:UpdateService` on `arn:aws:ecs:*:<account>:service/studio-*/studio-*`, which Application Auto Scaling requires of the caller to register an ECS service's target), and two denies over PowerUserAccess: `NoOtherServices` (`ecs:UpdateService`, `ecs:DeleteService` on every other service, so no target can be registered on one) and `NoScalingOfOtherResources` (target and policy changes outside the `ecs` namespace). Run `lets_the_deploy_role_manage_scaling_of_this_projects_services_only`.
+8. **`terraform test` asserts targets, bounds, the zero minimum, each policy's metric and the ignored count.** Rows 1-6: ecs suite 81 runs (was 69), bootstrap 10, demo 9 ([infra-check.log](22-05-evidence/infra-check.log)).
+9. **Highest seam, 100% coverage.** Module seam above. No backend, script or function code changed, so backend and node coverage are as at 22-04 (100%); full gate below.
+10. **GLOSSARY / ADRs.** No new domain terms (scaling is infrastructure, which the glossary does not cover). ADR-0021 already says both pools scale on queue depth, the API on CPU and Beat stays one task; nothing here changes a decision. Docs: `docs/deploy-demo.md` gains an Autoscaling section (and drops the advice to set the general pool's count to 0); `docs/development.md` has the 22-05 paragraph.
+
+**Gate (2026-11-26, local):** `make infra-check` exit 0 (TFLint clean, Checkov 277 passed, 0 failed; ecs 81 runs, bootstrap 10, demo 9; deploy, destroy, seed and smoke shell tests; node function coverage 100%). `make link-check` clean. Backend unchanged since 22-04's gate (3311 passed, 100%); the full backend gate is rerun with 22-06 (see that ticket).
+
+## Gaps and best guesses
+
+- **Deferred (needs a live deploy, ticket 22-09):** that the alarms fire and the policies move real task counts (the runs pool's cold start from zero, scale-in after five idle minutes), that SQS's metric gaps on an idle queue behave as "breaching", that the deploy role can register the targets with these permissions (in particular that `application-autoscaling:service-namespace` is in the request context, and that the `NoOtherServices` deny is what blocks registering a target on another service). None of this can be shown offline.
+- **"Waiting messages per task against the slots a task has" read as jobs per slot.** The spec's per-task tracking would need a running-task-count metric, which only Container Insights publishes (off, to keep the demo free of custom metrics). Step scaling with `ExactCapacity` gives the same shape without it: the count is ceil(jobs / `jobs_per_task`), counting in-flight jobs too, so the slots held by running jobs are never taken away. The jobs policy follows the count down as jobs drain; ticket 22-06's task protection makes ECS stop an idle task rather than a busy one.
+- **`jobs_per_task` drives the worker's `--concurrency`.** One attribute is both the scaling step and the slots a task really has, so they cannot drift apart. Defaults stay 2, matching 22-04's sizes.
+- **Beat's count is ignored after creation too.** `ignore_changes` cannot differ between instances of one `for_each` resource; Beat has no scalable target, so its count changes only when the service is created (or by hand).
+- **Demo environment.** `infra/envs/demo` uses the module's scaling defaults and does not expose `scaling`; 23-02 may add environment inputs.

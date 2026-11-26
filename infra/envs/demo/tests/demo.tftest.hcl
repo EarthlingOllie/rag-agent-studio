@@ -41,6 +41,13 @@ mock_provider "aws" {
     }
   }
 
+  # Real-looking scaling policy ARNs: the worker pools' alarms act on them (ticket 22-05).
+  mock_resource "aws_appautoscaling_policy" {
+    defaults = {
+      arn = "arn:aws:autoscaling:eu-west-2:123456789012:scalingPolicy:00000000-0000-0000-0000-000000000000:resource/ecs/service/studio-demo-ecs/mocked:policyName/mocked"
+    }
+  }
+
   mock_resource "aws_lb" {
     defaults = {
       arn      = "arn:aws:elasticloadbalancing:eu-west-2:123456789012:loadbalancer/app/studio-demo-ecs/0123456789abcdef"

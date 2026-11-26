@@ -214,6 +214,61 @@ run "lets_the_deploy_role_manage_queues_named_for_this_project_only" {
   }
 }
 
+run "lets_the_deploy_role_manage_scaling_of_this_projects_services_only" {
+  command = plan
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "ManageScalingOfEcsServices"] == [{
+      Sid    = "ManageScalingOfEcsServices"
+      Effect = "Allow"
+      Action = [
+        "application-autoscaling:DeleteScalingPolicy", "application-autoscaling:DeregisterScalableTarget",
+        "application-autoscaling:DescribeScalableTargets", "application-autoscaling:DescribeScalingActivities",
+        "application-autoscaling:DescribeScalingPolicies", "application-autoscaling:ListTagsForResource",
+        "application-autoscaling:PutScalingPolicy", "application-autoscaling:RegisterScalableTarget",
+        "application-autoscaling:TagResource", "application-autoscaling:UntagResource",
+      ]
+      Resource  = "*"
+      Condition = { StringEquals = { "application-autoscaling:service-namespace" = "ecs" } }
+    }]
+    error_message = "The deploy role may manage scalable targets and scaling policies of ECS services (ticket 22-05)."
+  }
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "UpdateProjectServices"] == [{
+      Sid      = "UpdateProjectServices"
+      Effect   = "Allow"
+      Action   = ["ecs:DescribeServices", "ecs:UpdateService"]
+      Resource = "arn:aws:ecs:*:123456789012:service/studio-*/studio-*"
+    }]
+    error_message = "Registering an ECS service's scalable target needs DescribeServices and UpdateService on that service: allowed on this project's services."
+  }
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "NoOtherServices"] == [{
+      Sid         = "NoOtherServices"
+      Effect      = "Deny"
+      Action      = ["ecs:DeleteService", "ecs:UpdateService"]
+      NotResource = "arn:aws:ecs:*:123456789012:service/studio-*/studio-*"
+    }]
+    error_message = "PowerUserAccess would otherwise let CI change, or register scaling on, any ECS service: every service not named for this project must be denied."
+  }
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "NoScalingOfOtherResources"] == [{
+      Sid    = "NoScalingOfOtherResources"
+      Effect = "Deny"
+      Action = [
+        "application-autoscaling:DeleteScalingPolicy", "application-autoscaling:DeregisterScalableTarget",
+        "application-autoscaling:PutScalingPolicy", "application-autoscaling:RegisterScalableTarget",
+      ]
+      Resource  = "*"
+      Condition = { StringNotEqualsIfExists = { "application-autoscaling:service-namespace" = "ecs" } }
+    }]
+    error_message = "CI may not change scaling of anything but ECS services."
+  }
+}
+
 run "rejects_a_name_prefix_that_would_let_the_role_manage_itself" {
   command = plan
 

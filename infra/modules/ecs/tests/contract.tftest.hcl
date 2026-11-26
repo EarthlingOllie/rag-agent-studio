@@ -50,6 +50,12 @@ mock_provider "aws" {
     }
   }
 
+  mock_resource "aws_appautoscaling_policy" {
+    defaults = {
+      arn = "arn:aws:autoscaling:eu-west-2:123456789012:scalingPolicy:00000000-0000-0000-0000-000000000000:resource/ecs/service/studio-demo-ecs/mocked:policyName/mocked"
+    }
+  }
+
   mock_resource "aws_cloudwatch_log_group" {
     defaults = {
       arn = "arn:aws:logs:eu-west-2:123456789012:log-group:/ecs/studio-demo-ecs/mocked"
@@ -166,8 +172,8 @@ run "runs_api_both_worker_pools_and_beat_on_arm64_fargate" {
   }
 
   assert {
-    condition     = { for k, s in aws_ecs_service.this : k => s.desired_count } == { api = 1, "worker-general" = 1, "worker-runs" = 1, beat = 1 }
-    error_message = "Each service must run one task by default (22-05 adds autoscaling)."
+    condition     = { for k, s in aws_ecs_service.this : k => s.desired_count } == { api = 1, "worker-general" = 1, "worker-runs" = 0, beat = 1 }
+    error_message = "Each service starts with one task by default, except the runs pool, which starts at its scaling minimum of zero (ticket 22-05)."
   }
 }
 
@@ -236,7 +242,7 @@ run "worker_tasks_get_two_minutes_to_stop" {
   }
 }
 
-run "task_sizes_and_counts_are_variables" {
+run "task_sizes_are_variables" {
   command = plan
 
   variables {
@@ -246,7 +252,6 @@ run "task_sizes_and_counts_are_variables" {
       "worker-runs"    = { cpu = 2048, memory = 6144 }
       beat             = { cpu = 256, memory = 1024 }
     }
-    desired_counts = { api = 2, "worker-general" = 3, "worker-runs" = 0, beat = 0 }
   }
 
   assert {
@@ -257,11 +262,6 @@ run "task_sizes_and_counts_are_variables" {
       beat             = ["256", "1024"]
     }
     error_message = "task_sizes must reach each task definition."
-  }
-
-  assert {
-    condition     = { for k, s in aws_ecs_service.this : k => s.desired_count } == { api = 2, "worker-general" = 3, "worker-runs" = 0, beat = 0 }
-    error_message = "desired_counts must reach each service."
   }
 }
 
@@ -1742,5 +1742,254 @@ run "a_seed_logfire_token_is_injected_when_given" {
   assert {
     condition     = { for s in jsondecode(aws_ecs_task_definition.seed.container_definitions)[0].secrets : s.name => s.valueFrom }["LOGFIRE_TOKEN"] == "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo/logfire-CCCCCC"
     error_message = "The seed task must trace to Logfire like the services when a token is given."
+  }
+}
+
+# --- Autoscaling (ticket 22-05): the API on CPU, the worker pools on their queue's jobs, Beat fixed --------------------
+
+run "the_api_and_both_worker_pools_are_scalable_targets_with_their_default_bounds" {
+  command = apply
+
+  assert {
+    condition = { for k, t in aws_appautoscaling_target.this : k => [t.min_capacity, t.max_capacity] } == {
+      api              = [1, 3]
+      "worker-general" = [1, 3]
+      "worker-runs"    = [0, 2]
+    }
+    error_message = "api scales 1 to 3, worker-general 1 to 3 and worker-runs 0 to 2 by default; beat has no scalable target (spec 22)."
+  }
+
+  assert {
+    condition = alltrue([for k, t in aws_appautoscaling_target.this : (
+      t.service_namespace == "ecs" &&
+      t.scalable_dimension == "ecs:service:DesiredCount" &&
+      t.resource_id == "service/${aws_ecs_cluster.this.name}/${aws_ecs_service.this[k].name}"
+    )])
+    error_message = "Each scalable target must be its own ECS service's desired count."
+  }
+
+  assert {
+    condition     = output.scalable_targets["worker-runs"] == { resource_id = "service/studio-demo-ecs/studio-demo-ecs-worker-runs", min = 0, max = 2 }
+    error_message = "The module must output each scalable target's resource ID and bounds (the scaling script reads them)."
+  }
+}
+
+run "the_runs_pool_scales_to_zero" {
+  command = plan
+
+  assert {
+    condition     = aws_appautoscaling_target.this["worker-runs"].min_capacity == 0 && var.desired_counts["worker-runs"] == 0
+    error_message = "The runs pool's minimum and starting count must be zero, so it costs nothing between Runs (spec 22 story 13)."
+  }
+}
+
+run "the_api_tracks_average_cpu" {
+  command = plan
+
+  assert {
+    condition = (
+      aws_appautoscaling_policy.api_cpu.policy_type == "TargetTrackingScaling" &&
+      one(aws_appautoscaling_policy.api_cpu.target_tracking_scaling_policy_configuration).target_value == 60 &&
+      one(one(aws_appautoscaling_policy.api_cpu.target_tracking_scaling_policy_configuration).predefined_metric_specification).predefined_metric_type == "ECSServiceAverageCPUUtilization"
+    )
+    error_message = "The API must track average CPU, at 60% by default (spec 22 story 19)."
+  }
+
+  assert {
+    condition = [
+      one(aws_appautoscaling_policy.api_cpu.target_tracking_scaling_policy_configuration).scale_out_cooldown,
+      one(aws_appautoscaling_policy.api_cpu.target_tracking_scaling_policy_configuration).scale_in_cooldown,
+    ] == [60, 300]
+    error_message = "The API scales out after a minute's cooldown and in after five by default."
+  }
+}
+
+run "each_worker_pool_scales_on_its_queues_waiting_plus_in_flight_jobs" {
+  command = plan
+
+  assert {
+    condition = { for k, a in aws_cloudwatch_metric_alarm.worker_jobs : k => {
+      metrics                                     = sort([for q in a.metric_query : "${one(q.metric).namespace}/${one(q.metric).metric_name}/${one(q.metric).dimensions["QueueName"]}/${one(q.metric).stat}/${one(q.metric).period}" if length(q.metric) > 0])
+      expression                                  = one([for q in a.metric_query : q.expression if q.return_data == true])
+      } } == { for k, queue in { "worker-general" = "studio-demo-queue-general", "worker-runs" = "studio-demo-queue-runs" } : k => {
+      metrics = sort([
+        "AWS/SQS/ApproximateNumberOfMessagesNotVisible/${queue}/Maximum/60",
+        "AWS/SQS/ApproximateNumberOfMessagesVisible/${queue}/Maximum/60",
+      ])
+      expression = "waiting + in_flight"
+    } }
+    error_message = "Each pool must scale on its own queue's waiting (visible) plus in-flight (not visible) messages, so jobs being worked on count too (spec 22 story 18)."
+  }
+
+  assert {
+    condition     = { for k, a in aws_cloudwatch_metric_alarm.worker_idle : k => one([for q in a.metric_query : q.expression if q.return_data == true]) } == { "worker-general" = "waiting + in_flight", "worker-runs" = "waiting + in_flight" }
+    error_message = "A pool is idle only when its queue has neither waiting nor in-flight jobs, so it never scales in under a running job."
+  }
+}
+
+run "a_worker_pool_steps_up_one_task_per_slots_worth_of_jobs" {
+  command = plan
+
+  assert {
+    condition = alltrue([for k, a in aws_cloudwatch_metric_alarm.worker_jobs : (
+      a.comparison_operator == "GreaterThanOrEqualToThreshold" && a.threshold == 1 && a.evaluation_periods == 1 &&
+      a.treat_missing_data == "notBreaching" && a.alarm_actions == toset([aws_appautoscaling_policy.worker_jobs[k].arn])
+    )])
+    error_message = "A pool's jobs alarm fires as soon as its queue holds a job, and drives its jobs policy."
+  }
+
+  assert {
+    condition = jsonencode({ for k, p in aws_appautoscaling_policy.worker_jobs : k => sort([
+      for s in one(p.step_scaling_policy_configuration).step_adjustment : "${coalesce(s.metric_interval_lower_bound, "-inf")}..${coalesce(s.metric_interval_upper_bound, "inf")}=${s.scaling_adjustment}"
+      ]) }) == jsonencode({
+      # Bounds are relative to the threshold of one job: 1-2 jobs one task, 3-4 two, 5 or more three (two slots a task).
+      "worker-general" = ["0..2=1", "2..4=2", "4..inf=3"]
+      "worker-runs"    = ["0..2=1", "2..inf=2"]
+    })
+    error_message = "Above zero, a pool runs one task per two jobs (the slots a task has), up to its maximum: worker-runs goes from zero to one as soon as its queue holds anything."
+  }
+
+  assert {
+    condition = alltrue([for k, p in aws_appautoscaling_policy.worker_jobs : (
+      p.policy_type == "StepScaling" && one(p.step_scaling_policy_configuration).adjustment_type == "ExactCapacity" &&
+      one(p.step_scaling_policy_configuration).cooldown == 60
+    )])
+    error_message = "The jobs policy sets the pool's exact task count, with a minute's cooldown by default."
+  }
+}
+
+run "a_worker_pool_returns_to_its_minimum_after_its_queue_has_been_empty_for_five_minutes" {
+  command = plan
+
+  assert {
+    condition = alltrue([for k, a in aws_cloudwatch_metric_alarm.worker_idle : (
+      a.comparison_operator == "LessThanThreshold" && a.threshold == 1 && a.evaluation_periods == 5 &&
+      a.treat_missing_data == "breaching" && a.alarm_actions == toset([aws_appautoscaling_policy.worker_idle[k].arn])
+    )])
+    error_message = "A pool's idle alarm fires once its queue has held no job for five minutes (SQS sends no data for an idle queue, which counts as empty)."
+  }
+
+  assert {
+    condition = jsonencode({ for k, p in aws_appautoscaling_policy.worker_idle : k => sort([
+      for s in one(p.step_scaling_policy_configuration).step_adjustment : "${coalesce(s.metric_interval_lower_bound, "-inf")}..${coalesce(s.metric_interval_upper_bound, "inf")}=${s.scaling_adjustment}"
+    ]) }) == jsonencode({ "worker-general" = ["-inf..0=1"], "worker-runs" = ["-inf..0=0"] })
+    error_message = "An idle pool goes back to its minimum: worker-runs to zero, worker-general to one."
+  }
+
+  assert {
+    condition     = alltrue([for k, p in aws_appautoscaling_policy.worker_idle : one(p.step_scaling_policy_configuration).adjustment_type == "ExactCapacity" && one(p.step_scaling_policy_configuration).cooldown == 300])
+    error_message = "The idle policy sets the pool's minimum exactly, with a five-minute cooldown by default."
+  }
+}
+
+run "every_minimum_maximum_target_and_cooldown_is_a_variable" {
+  command = plan
+
+  variables {
+    scaling = {
+      api              = { min = 2, max = 6, cpu_target = 45, scale_out_cooldown = 30, scale_in_cooldown = 600 }
+      "worker-general" = { min = 2, max = 4, jobs_per_task = 3, scale_out_cooldown = 90, scale_in_cooldown = 120, idle_minutes = 10 }
+      "worker-runs"    = { min = 0, max = 1, jobs_per_task = 1, scale_out_cooldown = 0, scale_in_cooldown = 60, idle_minutes = 3 }
+    }
+    desired_counts = { api = 2, "worker-general" = 2, "worker-runs" = 0, beat = 1 }
+  }
+
+  assert {
+    condition = { for k, t in aws_appautoscaling_target.this : k => [t.min_capacity, t.max_capacity] } == {
+      api = [2, 6], "worker-general" = [2, 4], "worker-runs" = [0, 1]
+    }
+    error_message = "scaling must set each target's minimum and maximum."
+  }
+
+  assert {
+    condition = [
+      one(aws_appautoscaling_policy.api_cpu.target_tracking_scaling_policy_configuration).target_value,
+      one(aws_appautoscaling_policy.api_cpu.target_tracking_scaling_policy_configuration).scale_out_cooldown,
+      one(aws_appautoscaling_policy.api_cpu.target_tracking_scaling_policy_configuration).scale_in_cooldown,
+    ] == [45, 30, 600]
+    error_message = "scaling.api must set the CPU target and both cooldowns."
+  }
+
+  assert {
+    condition = jsonencode({ for k, p in aws_appautoscaling_policy.worker_jobs : k => sort([
+      for s in one(p.step_scaling_policy_configuration).step_adjustment : "${coalesce(s.metric_interval_lower_bound, "-inf")}..${coalesce(s.metric_interval_upper_bound, "inf")}=${s.scaling_adjustment}"
+    ]) }) == jsonencode({ "worker-general" = ["0..3=1", "3..6=2", "6..9=3", "9..inf=4"], "worker-runs" = ["0..inf=1"] })
+    error_message = "scaling's jobs_per_task and max must set the steps."
+  }
+
+  assert {
+    condition = (
+      { for k, p in aws_appautoscaling_policy.worker_jobs : k => one(p.step_scaling_policy_configuration).cooldown } == { "worker-general" = 90, "worker-runs" = 0 } &&
+      { for k, p in aws_appautoscaling_policy.worker_idle : k => one(p.step_scaling_policy_configuration).cooldown } == { "worker-general" = 120, "worker-runs" = 60 } &&
+      { for k, a in aws_cloudwatch_metric_alarm.worker_idle : k => a.evaluation_periods } == { "worker-general" = 10, "worker-runs" = 3 } &&
+      { for k, p in aws_appautoscaling_policy.worker_idle : k => one(one(p.step_scaling_policy_configuration).step_adjustment).scaling_adjustment } == { "worker-general" = 2, "worker-runs" = 0 }
+    )
+    error_message = "scaling must set the workers' cooldowns, idle time and the minimum an idle pool returns to."
+  }
+
+  assert {
+    condition = { for k in ["worker-general", "worker-runs"] : k => one([for a in jsondecode(aws_ecs_task_definition.this[k].container_definitions)[0].command : a if startswith(a, "--concurrency=")]) } == {
+      "worker-general" = "--concurrency=3", "worker-runs" = "--concurrency=1"
+    }
+    error_message = "A worker runs as many jobs at once as the slots its pool scales by (jobs_per_task)."
+  }
+}
+
+run "rejects_a_general_pool_that_scales_to_zero" {
+  command = plan
+
+  variables {
+    scaling = { "worker-general" = { min = 0 } }
+  }
+
+  expect_failures = [var.scaling]
+}
+
+run "rejects_a_maximum_below_the_minimum" {
+  command = plan
+
+  variables {
+    scaling = { api = { min = 3, max = 2 } }
+  }
+
+  expect_failures = [var.scaling]
+}
+
+run "rejects_a_starting_count_outside_the_scaling_bounds" {
+  command = plan
+
+  variables {
+    desired_counts = { api = 4, "worker-general" = 1, "worker-runs" = 0, beat = 1 }
+  }
+
+  expect_failures = [var.desired_counts]
+}
+
+# A state of its own, so these two runs create the services fresh and then change the counts.
+run "terraform_sets_each_task_count_when_it_creates_the_service" {
+  command   = apply
+  state_key = "task_counts"
+
+  variables {
+    desired_counts = { api = 2, "worker-general" = 3, "worker-runs" = 1, beat = 0 }
+  }
+
+  assert {
+    condition     = { for k, s in aws_ecs_service.this : k => s.desired_count } == { api = 2, "worker-general" = 3, "worker-runs" = 1, beat = 0 }
+    error_message = "desired_counts must set each service's task count when the service is created."
+  }
+}
+
+run "terraform_ignores_task_counts_after_creation_so_an_apply_keeps_a_scale_out" {
+  command   = plan
+  state_key = "task_counts"
+
+  variables {
+    desired_counts = { api = 1, "worker-general" = 1, "worker-runs" = 0, beat = 1 }
+  }
+
+  assert {
+    condition     = { for k, s in aws_ecs_service.this : k => s.desired_count } == { api = 2, "worker-general" = 3, "worker-runs" = 1, beat = 0 }
+    error_message = "Once a service exists, autoscaling owns its task count: Terraform must ignore desired_count changes (spec 22 story 21)."
   }
 }

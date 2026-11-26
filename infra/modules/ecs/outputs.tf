@@ -130,3 +130,8 @@ output "capacity_providers" {
   description = "Capacity provider each service runs on, keyed by service: FARGATE_SPOT for the general worker pool unless worker_spot is false, FARGATE for the rest (ticket 22-04)."
   value       = local.capacity_providers
 }
+
+output "scalable_targets" {
+  description = "Each autoscaled service's Application Auto Scaling resource ID and its minimum and maximum task counts, keyed by service (ticket 22-05). Beat is not scaled."
+  value       = { for k, t in aws_appautoscaling_target.this : k => { resource_id = t.resource_id, min = t.min_capacity, max = t.max_capacity } }
+}

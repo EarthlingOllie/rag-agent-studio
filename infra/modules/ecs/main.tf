@@ -12,12 +12,12 @@ locals {
 
   # The same commands as docker-compose.yml, minus the API's `alembic upgrade head`: in AWS, migrations run as
   # a one-off task before services roll (spec 09, ticket 09-06). Locally one worker serves both queues; here each
-  # pool serves only its own (spec 22 story 39).
-  worker_command = ["celery", "-A", "app.worker.main", "--quiet", "worker", "--loglevel=INFO", "--concurrency=2"]
+  # pool serves only its own (spec 22 story 39), running as many jobs at once as the slots its pool scales by.
+  worker_command = ["celery", "-A", "app.worker.main", "--quiet", "worker", "--loglevel=INFO"]
   commands = {
     api              = ["python", "-m", "app.serve"]
-    "worker-general" = concat(local.worker_command, ["--queues=${var.queues.general.name}"])
-    "worker-runs"    = concat(local.worker_command, ["--queues=${var.queues.runs.name}"])
+    "worker-general" = concat(local.worker_command, ["--concurrency=${var.scaling["worker-general"].jobs_per_task}", "--queues=${var.queues.general.name}"])
+    "worker-runs"    = concat(local.worker_command, ["--concurrency=${var.scaling["worker-runs"].jobs_per_task}", "--queues=${var.queues.runs.name}"])
     beat             = ["celery", "-A", "app.worker.main", "--quiet", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
   }
   services = toset(keys(local.commands))
@@ -663,7 +663,9 @@ resource "aws_ecs_service" "this" {
   # An apply at a new image tag registers new task definitions but does not roll the services: the deploy
   # workflow first runs the migration task, then points each service at its new task definition and waits for
   # it to stabilise (spec 09 story 26). Terraform still sets the task definition when it creates a service.
+  # The task count likewise: desired_counts starts each service, then autoscaling owns it (autoscaling.tf), so an
+  # apply never undoes a scale-out (spec 22 story 21).
   lifecycle {
-    ignore_changes = [task_definition]
+    ignore_changes = [task_definition, desired_count]
   }
 }
