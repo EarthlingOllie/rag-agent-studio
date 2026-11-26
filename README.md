@@ -169,7 +169,7 @@ The AWS demo is applied on demand from GitHub Actions and destroyed after use; n
 4. **Show it scale (optional):** `scripts/deploy/scale.sh` puts uploads, Evaluation Runs and API traffic on a seeded demo and prints a timeline of each queue's jobs and each service's tasks growing and shrinking ([showing it scale](docs/deploy-demo.md#showing-it-scale)).
 5. **Destroy:** Actions → **destroy**, typing `destroy demo` to confirm. Everything goes except the state bucket and deploy role. From a laptop: `scripts/deploy/destroy.sh "destroy demo"`.
 
-**Expected cost** (on-demand, `eu-west-2`, default sizes, almost no traffic; [the breakdown](docs/deploy-demo.md#expected-cost)): about **0.17 USD an hour** at rest (the runs pool at zero, the general pool on Spot), about **4 USD for a day** of demo or about 120 USD a month left on. After destroy, about 1 USD a month remains.
+**Expected cost** (list prices, general pool on Spot, `eu-west-2`, default sizes, almost no traffic; [the breakdown](docs/deploy-demo.md#expected-cost)): about **0.17 USD an hour** at rest (the runs pool at zero, the general pool on Spot), about **4 USD for a day** of demo or about 120 USD a month left on. After destroy, about 1 USD a month remains.
 
 ## Documentation
 

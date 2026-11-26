@@ -140,7 +140,7 @@ Rough list prices for `eu-west-2` (London), in USD, with the default variables, 
 | Public IPv4 addresses | ALB (2) and fck-nat (1); tasks have none | 0.015 | 11 |
 | fck-nat | `t4g.nano` and its volume | 0.005 | 4 |
 | KMS keys | 2 environment keys | 0.003 | 2 |
-| Secrets Manager | 4 secrets | 0.002 | 2 |
+| Secrets Manager | 5 secrets (database master password, cache auth token, and the origin-header, session and key-wrapper secrets) | about 0.003 | about 2 |
 | SQS and CloudWatch alarms | 2 queues and 2 dead-letter queues (an idle general worker's long polls, Beat's sends: well under a million requests a month); 8 alarms (2 dead-letter, 4 queue-depth, 2 API target tracking) | about 0.002 | about 1.5 |
 | CloudFront, S3, ECR storage, CloudWatch Logs, NAT data | small at demo traffic | about 0.005 | about 3 |
 | **Total** | | **about 0.17** | **about 120** |
@@ -151,4 +151,4 @@ Rough list prices for `eu-west-2` (London), in USD, with the default variables, 
 - **Without Spot:** `worker_spot = false` puts the general pool on regular Fargate at 0.107 USD an hour, about 175 USD a month always on.
 - **Cheaper:** every size, minimum and maximum is a variable (`task_sizes`, `scaling`). The general pool's minimum stays at one task, because it runs the sweeper and the scheduled jobs (ADR-0021).
 
-Assumptions: Fargate ARM64 in `eu-west-2` at 0.03725 USD per vCPU-hour and 0.00409 USD per GB-hour (x86 less 20%); Fargate Spot about 70% below that, which is typical but varies by hour and availability, and assumes Spot capacity is offered for ARM64 tasks (ticket 22-09 checks this on AWS; if it is not, `worker_spot = false` gives the "without Spot" figure); a CloudWatch alarm at 0.10 USD a month per metric it reads (the queue-depth alarms read two); SQS at 0.40 USD per million requests after the free million; data between tasks and AWS services in the region free except for crossing zones to the one `fck-nat`. The bill for a real day is evidence for ticket 22-09.
+Assumptions: Fargate ARM64 in `eu-west-2` at 0.03725 USD per vCPU-hour and 0.00409 USD per GB-hour (x86 less 20%); Fargate Spot about 70% below that, which is typical but varies by hour and availability, and assumes Spot capacity is offered for ARM64 tasks (ticket 22-09 checks this on AWS; if it is not, `worker_spot = false` gives the "without Spot" figure); a CloudWatch alarm at 0.10 USD a month per metric it reads (the queue-depth alarms read two); a Secrets Manager secret at 0.40 USD a month; SQS at 0.40 USD per million requests after the free million; data between tasks and AWS services in the region free except for crossing zones to the one `fck-nat`. The bill for a real day is evidence for ticket 22-09.
