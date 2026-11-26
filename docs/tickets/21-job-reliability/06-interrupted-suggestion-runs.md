@@ -44,4 +44,4 @@ Seams: the API seam with the task seam ([shared test seams](../../specs/README.m
 - **Best guess:** a not-checked Suggestion whose check stopped keeps `state` `not_checked` and is told apart from "no Evaluation Set" by its `evaluation_run_id`; no new check state was added.
 - **Best guess:** gathering reads no fake, so the gathering kill replaces the job's evidence step (`_gather`) with one raising `JobKilled`.
 - **Changed test:** 21-02's `test_a_suggestion_run_that_finds_its_check_run_in_progress_fails_and_ends_it` expected a second delivery of a checking run to fail it; a second delivery now does nothing (the sweeper settles it), so it became `test_a_suggestion_run_that_raises_before_its_check_starts_fails_and_ends_it`, which still covers the check Run failing with its Suggestion.
-- **Migration numbering:** `0067_suggestion_run_claims` revises `0066_alert_emails`; integration may renumber it beside 21-10.
+- **Migration numbering:** `0067_suggestion_run_claims` revises `0066_alert_emails`; at the wave-8 integration it kept 0067 and 21-10's migration became `0068_project_deletions`.

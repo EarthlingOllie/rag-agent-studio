@@ -1,8 +1,8 @@
 """Deleting a Project (spec 21, ADR-0020): the deleting mark on a Project, and who asked, set in
 the request's transaction, so the sweeper finishes a deletion whose job was lost.
 
-Revision ID: 0067_project_deletions
-Revises: 0066_alert_emails
+Revision ID: 0068_project_deletions
+Revises: 0067_suggestion_run_claims
 Create Date: 2026-11-26
 """
 
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0067_project_deletions"
-down_revision: str | None = "0066_alert_emails"
+revision: str = "0068_project_deletions"
+down_revision: str | None = "0067_suggestion_run_claims"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
