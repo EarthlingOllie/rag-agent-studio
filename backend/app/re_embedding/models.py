@@ -61,3 +61,14 @@ class ReEmbedJob(IdMixin, Base):
     error_message: Mapped[str | None] = mapped_column(Text)
     started_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey(Member.id, ondelete="SET NULL"))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Job reliability (ADR-0020, ``app.jobs.reliability``): when the running job was last put
+    # on queued (or, waiting on a retry, when the retry is due), the claim of the copy working on
+    # it and that copy's last heartbeat. A running job without a claim is queued. Only the
+    # reliability module and the re-embed job type's policy read them.
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    claim_id: Mapped[uuid.UUID | None] = mapped_column()
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Interruptions in a row with no new Chunks embedded in between, and how many Chunks had the
+    # pending model's vector at the last one (``app.re_embedding.jobs``).
+    interruptions: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    chunks_at_interruption: Mapped[int | None] = mapped_column(Integer)

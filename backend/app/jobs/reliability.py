@@ -81,7 +81,10 @@ class JobTable:
     column that records when a queued row's next attempt is due (``retry_at``). A job whose stale
     rows are never restarted (a paid job, which its policy ends instead) claims queued rows only
     (``reclaims_stale``). A job type whose rows go stale by other rules overrides ``stale_rows``
-    and ``overdue_rows``, and names its reason for the traces."""
+    and ``overdue_rows``, and names its reason for the traces.
+
+    A job type whose rows have one status for both (a Re-embed is ``running`` throughout) gives
+    it as both: the claim then tells them apart, a row without one being queued."""
 
     model: type[Any]
     key: Any
@@ -101,10 +104,22 @@ class JobTable:
         ``queued_too_long``, or waiting for an automatic retry that is due."""
         return self._overdue(now, timings.queued_too_long)
 
+    def _queued(self) -> ColumnElement[bool]:
+        status: ColumnElement[bool] = self.model.status == self.queued
+        if self.queued == self.in_progress:
+            return and_(status, self.model.claim_id.is_(None))
+        return status
+
+    def _in_progress(self) -> ColumnElement[bool]:
+        status: ColumnElement[bool] = self.model.status == self.in_progress
+        if self.queued == self.in_progress:
+            return and_(status, self.model.claim_id.is_not(None))
+        return status
+
     def _stale(self, before: datetime) -> ColumnElement[bool]:
         model = self.model
         return and_(
-            model.status == self.in_progress,
+            self._in_progress(),
             or_(model.heartbeat_at.is_(None), model.heartbeat_at < before),
         )
 
@@ -124,7 +139,7 @@ class JobTable:
         waited = or_(model.queued_at.is_(None), model.queued_at < now - queued_too_long)
         not_waiting = or_(self.retry_at.is_(None), self.retry_at <= now)
         return and_(
-            model.status == self.queued,
+            self._queued(),
             or_(self._retry_due(now), and_(waited, not_waiting)),
         )
 
@@ -154,7 +169,7 @@ async def claim(
     without doing anything."""
     claim_id = uuid.uuid4()
     model = table.model
-    claimable = model.status == table.queued
+    claimable = table._queued()
     if table.reclaims_stale:
         claimable = or_(claimable, table._stale(now - dead_after))
     claimed = await session.scalar(

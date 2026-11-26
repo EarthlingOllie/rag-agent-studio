@@ -11,10 +11,11 @@ from app.documents.jobs import INGESTION
 from app.evaluation.jobs import EVALUATION_RUNS
 from app.evaluation.live_jobs import LIVE_VERDICTS
 from app.jobs.reliability import JobPolicy, Timings, sweep
+from app.re_embedding.jobs import RE_EMBED
 from app.worker.celery_app import SWEEP_TASK, celery_app
 
 # Every job type the sweeper looks after.
-POLICIES: tuple[JobPolicy, ...] = (INGESTION, EVALUATION_RUNS, LIVE_VERDICTS)
+POLICIES: tuple[JobPolicy, ...] = (INGESTION, EVALUATION_RUNS, LIVE_VERDICTS, RE_EMBED)
 
 
 async def _sweep(at: datetime) -> int | None:

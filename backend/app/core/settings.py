@@ -199,6 +199,9 @@ class Settings(BaseSettings):
     # How many Chunks a re-embed job embeds and writes at a time; each batch shows as progress.
     # Provider failures during a re-embed are retried like ingestion's.
     re_embed_batch_size: int = Field(default=64, gt=0)
+    # A re-embed job interrupted this many times in a row, with no new Chunks embedded in
+    # between, fails instead of restarting (job reliability, ADR-0020).
+    re_embed_max_interruptions: int = Field(default=3, ge=1)
     # Traces go to Logfire when a token is set, and to the console as JSON otherwise.
     logfire_token: SecretStr | None = None
     # Only needed for a self-hosted Logfire; otherwise the region is read from the token.
