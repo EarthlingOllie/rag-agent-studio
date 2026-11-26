@@ -20,10 +20,12 @@ the case result an error with its reason; a Guardrail block is an answer, and is
 
 Each answer commits with the Run's progress, so the Studio can poll it. A Run cancelled meanwhile
 stops before its next answer and keeps what it answered and spent. A Run where every answer
-errored (so every case is an Error) ends ``failed``, with the most common error as its message.
+errored (so every case is an Error) ends ``failed``, with the most common error as its message,
+and so does a Run whose job raised an unexpected error, with a reason saying so.
 """
 
 import functools
+import logging
 import uuid
 from collections import Counter
 from dataclasses import dataclass
@@ -48,6 +50,7 @@ from app.evaluation.judge import (
     judge,
 )
 from app.evaluation.models import (
+    IN_PROGRESS,
     EvaluationCaseResult,
     EvaluationExpectedSource,
     EvaluationRun,
@@ -69,6 +72,10 @@ from app.projects.models import InstructionsVersion, Project
 from app.retrieval.service import Candidate, Excluded, RetrievalResult, retrieve
 from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
 from app.runtime.runtime import DoneEvent
+
+UNEXPECTED = "The Run stopped on an unexpected error. What it answered is kept; run it again."
+
+logger = logging.getLogger(__name__)
 
 
 def _chunk(found: Candidate | Excluded, cited: set[uuid.UUID]) -> TracedChunkOut:
@@ -382,7 +389,28 @@ async def run_evaluation(
     clock: Clock,
 ) -> None:
     """Runs a queued Run to its end, or until it is cancelled. A Run that isn't queued (already
-    picked up, or cancelled before it was) is left."""
+    picked up, or cancelled before it was) is left. An unexpected error ends the Run ``failed``
+    with a reason, keeping what it answered and spent, so it never stays in progress."""
+    try:
+        await _run_to_end(sessionmaker, ports, gateway, run_id, clock)
+    except Exception:
+        logger.exception("Evaluation Run failed", extra={"evaluation_run_id": str(run_id)})
+        async with sessionmaker() as session:
+            await session.execute(
+                update(EvaluationRun)
+                .where(EvaluationRun.id == run_id, EvaluationRun.status.in_(IN_PROGRESS))
+                .values(status=RunStatus.FAILED, error_message=UNEXPECTED, finished_at=clock.now())
+            )
+            await session.commit()
+
+
+async def _run_to_end(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    ports: EvaluationPorts,
+    gateway: ModelGateway,
+    run_id: uuid.UUID,
+    clock: Clock,
+) -> None:
     async with sessionmaker() as session:
         run = await session.get_one(EvaluationRun, run_id, with_for_update=True)
         if run.status != RunStatus.QUEUED:
@@ -404,9 +432,9 @@ async def run_evaluation(
         for case in cases:
             for repeat in range(1, run.repeats + 1):
                 for side in sides:
-                    # Cancelled meanwhile: stop before the next answer.
+                    # Cancelled (or ended) meanwhile: stop before the next answer.
                     await session.refresh(run, ["status"])
-                    if run.status == RunStatus.CANCELLED:
+                    if run.status != RunStatus.RUNNING:
                         return
                     result = await _answer_and_judge(
                         session, ports, gateway, run, side, project, case, repeat, clock
@@ -414,9 +442,9 @@ async def run_evaluation(
                     errors[result.error_reason] += result.status == ResultStatus.ERROR
                     run.answers_done += 1
                     await session.commit()
-        # Cancelled during the last answer: it stays cancelled.
+        # Cancelled (or ended) during the last answer: it stays so.
         await session.refresh(run, ["status"], with_for_update=True)
-        if run.status == RunStatus.CANCELLED:
+        if run.status != RunStatus.RUNNING:
             return
         if errors.total() == run.answers_done:
             run.status = RunStatus.FAILED

@@ -339,7 +339,8 @@ class LiveStatus(enum.StrEnum):
     # Chosen; its judging task hasn't finished.
     PENDING = "pending"
     JUDGED = "judged"
-    # The Evaluation Model failed or timed out; left out of the Live score.
+    # The Evaluation Model failed or timed out, or judging hit an unexpected error; left out of
+    # the Live score.
     ERROR = "error"
     # Its text was Purged before it was judged.
     SKIPPED = "skipped"

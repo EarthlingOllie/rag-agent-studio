@@ -98,6 +98,16 @@ async def stop_check(session: AsyncSession, run_id: uuid.UUID, now: datetime) ->
         run.finished_at = now
 
 
+async def fail_check(session: AsyncSession, run_id: uuid.UUID, reason: str, now: datetime) -> None:
+    """Ends the check ``failed`` with ``reason`` if it is still queued or running, for the caller
+    to commit: its Suggestion run hit an unexpected error. What it answered so far is kept."""
+    run = await session.get_one(EvaluationRun, run_id, with_for_update=True)
+    if run.status in IN_PROGRESS:
+        run.status = RunStatus.FAILED
+        run.error_message = reason
+        run.finished_at = now
+
+
 async def check_cost(session: AsyncSession, run_id: uuid.UUID) -> Decimal | None:
     """What the check has spent, answering and judging, at the prices frozen as each ran: nothing
     before its first answer, and None when it answered but no price was known."""
