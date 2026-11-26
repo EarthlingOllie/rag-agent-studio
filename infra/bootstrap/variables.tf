@@ -34,7 +34,7 @@ variable "deploy_managed_policy_arns" {
 }
 
 variable "managed_resource_prefix" {
-  description = "Name prefix of the IAM roles and policies environments create (environments use studio-<env>)."
+  description = "Name prefix of the IAM roles and policies and the SQS queues environments create (environments use studio-<env>)."
   type        = string
   default     = "studio-"
 

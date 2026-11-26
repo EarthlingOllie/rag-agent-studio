@@ -9,6 +9,7 @@ The deploy role gets `PowerUserAccess` (every service except IAM), plus an inlin
 
 - use the state bucket, its lock files and the state key;
 - manage IAM roles and policies whose names start with `studio-` (each environment's task roles), and nothing else in IAM, including itself;
+- manage SQS queues whose names start with `studio-` (each environment's job queues), and touch no other queue (an explicit deny, since `PowerUserAccess` allows every queue);
 - not delete, re-policy, unversion or decrypt-disable the state bucket or its key (an explicit deny).
 
 Environments keep their state in that bucket through the S3 backend with **native locking** (`use_lockfile = true` in `infra/envs/<env>/backend.tf`). Terraform writes `<key>.tflock` next to the state with a conditional put, so a second run fails with `Error acquiring the state lock` instead of corrupting state. No DynamoDB table is needed. The backend sets neither `encrypt` nor `kms_key_id`, so every state object gets the bucket's default KMS encryption.

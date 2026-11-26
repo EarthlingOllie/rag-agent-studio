@@ -82,6 +82,24 @@ mock_provider "aws" {
   }
 }
 
+# Real-looking queue ARNs and URLs (ticket 22-02), so the compute module's queue validation and policies run against a
+# mocked apply. The mock provider would otherwise give both queues the same random values.
+override_resource {
+  target = module.queue.aws_sqs_queue.this["general"]
+  values = {
+    arn = "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-general"
+    url = "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-general"
+  }
+}
+
+override_resource {
+  target = module.queue.aws_sqs_queue.this["runs"]
+  values = {
+    arn = "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs"
+    url = "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-runs"
+  }
+}
+
 run "wires_every_module_with_the_environment_prefix" {
   command = plan
 
@@ -94,6 +112,7 @@ run "wires_every_module_with_the_environment_prefix" {
       ecs      = "studio-demo-ecs"
       kms      = "studio-demo-kms"
       network  = "studio-demo-network"
+      queue    = "studio-demo-queue"
       storage  = "studio-demo-storage"
     }
     error_message = "Every module must be named from the demo prefix."
@@ -165,6 +184,32 @@ run "wires_the_compute_module_into_the_data_modules" {
   assert {
     condition     = keys(module.ecs.service_names) == ["api", "beat", "worker"] && var.image_tag == "bootstrap"
     error_message = "The demo must run the three services, at the bootstrap tag until the deploy workflow sets one."
+  }
+}
+
+run "wires_the_queues_into_the_services_settings_and_task_roles" {
+  command = apply
+
+  assert {
+    condition     = { for k, q in module.queue.queues : k => q.name } == { general = "studio-demo-queue-general", runs = "studio-demo-queue-runs" }
+    error_message = "The demo must have the general and runs queues, named from the demo prefix."
+  }
+
+  assert {
+    condition = alltrue([for env in values(module.ecs.task_environment) :
+      env.GENERAL_QUEUE_NAME == module.queue.queues.general.name && env.RUNS_QUEUE_NAME == module.queue.queues.runs.name &&
+      env.GENERAL_QUEUE_URL == module.queue.queues.general.url && env.RUNS_QUEUE_URL == module.queue.queues.runs.url
+    ])
+    error_message = "Every service must be given the demo's queue names and URLs as settings."
+  }
+
+  assert {
+    condition = alltrue([
+      contains(module.ecs.task_role_policies.api.Statement, { Sid = "SendJobsToBothQueues", Effect = "Allow", Action = ["sqs:SendMessage"], Resource = [module.queue.queues.general.arn, module.queue.queues.runs.arn] }),
+      contains(module.ecs.task_role_policies.worker.Statement, { Sid = "SendJobsToBothQueues", Effect = "Allow", Action = ["sqs:SendMessage"], Resource = [module.queue.queues.general.arn, module.queue.queues.runs.arn] }),
+      module.ecs.task_role_policies.beat.Statement[0].Resource == module.queue.queues.general.arn,
+    ])
+    error_message = "The task roles must name the demo's own queues."
   }
 }
 

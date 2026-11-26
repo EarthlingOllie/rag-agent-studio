@@ -207,6 +207,21 @@ variable "cache" {
   })
 }
 
+variable "queues" {
+  description = "The queue module's general and runs queues: name and URL (the services' settings) and ARN (task role policies)."
+  type = object({
+    general = object({ name = string, url = string, arn = string })
+    runs    = object({ name = string, url = string, arn = string })
+  })
+
+  validation {
+    condition = alltrue([for q in values(var.queues) :
+      can(regex("^arn:aws[a-z-]*:sqs:[a-z0-9-]+:[0-9]{12}:[A-Za-z0-9_-]{1,80}$", q.arn)) && endswith(q.arn, ":${q.name}") && startswith(q.url, "https://") && endswith(q.url, "/${q.name}")
+    ])
+    error_message = "queues must give each queue's name, its https URL and its SQS queue ARN, all for the same queue."
+  }
+}
+
 variable "logfire_token_secret_arn" {
   description = "Optional Secrets Manager secret holding a Logfire write token. When set, every service gets LOGFIRE_TOKEN from it (spec 09 story 23)."
   type        = string

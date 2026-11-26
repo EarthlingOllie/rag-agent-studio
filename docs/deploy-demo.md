@@ -1,6 +1,6 @@
 # Demo environment: deploy, destroy and cost
 
-`infra/envs/demo` composes every module in `infra/modules` (network, kms, database, cache, storage, ecr, ecs, cdn) into one environment. The one module it does not compose is `ci-oidc`: the GitHub OIDC deploy role has to exist before CI can plan or apply anything, so `infra/bootstrap` owns it ([infra-bootstrap.md](infra-bootstrap.md)). `infra/tests/compose.test.sh` checks both.
+`infra/envs/demo` composes every module in `infra/modules` (network, kms, database, cache, queue, storage, ecr, ecs, cdn) into one environment. The one module it does not compose is `ci-oidc`: the GitHub OIDC deploy role has to exist before CI can plan or apply anything, so `infra/bootstrap` owns it ([infra-bootstrap.md](infra-bootstrap.md)). `infra/tests/compose.test.sh` checks both.
 
 Before the first deploy, apply the bootstrap and set the `AWS_DEPLOY_ROLE_ARN` secret and the `TF_STATE_BUCKET` variable ([infra-bootstrap.md](infra-bootstrap.md), steps 1 and 2). Create a GitHub environment called `demo` (Settings, Environments) if you want required reviewers on deploys and destroys; both workflows run in it.
 
@@ -43,7 +43,7 @@ The API, worker, Beat, migration task and seed task run the same backend image, 
 
 | Container | Environment | Secrets |
 |---|---|---|
-| all five | `ENVIRONMENT`, `AWS_REGION`, `DATABASE_HOST/PORT/NAME/USER`, `DATABASE_TLS=true`, `REDIS_HOST/PORT`, `REDIS_TLS=true` | `LOCAL_KEY_WRAPPER_KEY` (signs widget tokens) |
+| all five | `ENVIRONMENT`, `AWS_REGION`, `DATABASE_HOST/PORT/NAME/USER`, `DATABASE_TLS=true`, `REDIS_HOST/PORT`, `REDIS_TLS=true`, `GENERAL_QUEUE_NAME/URL`, `RUNS_QUEUE_NAME/URL` (the queue module's queues) | `LOCAL_KEY_WRAPPER_KEY` (signs widget tokens) |
 | API, worker and seed | `OBJECT_STORE=s3`, `OBJECT_STORE_BUCKET/REGION`, `KEY_WRAPPER=kms`, `KMS_KEY_ID` (the credentials key), `STUDIO_URL` (the CloudFront URL) | `DATABASE_PASSWORD`, `REDIS_AUTH_TOKEN` |
 | API only | `BEDROCK_PLATFORM_PRINCIPAL` (its own task role) | `SESSION_SECRET` |
 | Beat | | `REDIS_AUTH_TOKEN` |
@@ -51,6 +51,10 @@ The API, worker, Beat, migration task and seed task run the same backend image, 
 | seed | | `SESSION_SECRET` (it runs the API in process) |
 
 The settings build `DATABASE_URL` (`postgresql+asyncpg://…?ssl=require`) and `REDIS_URL` (`rediss://…?ssl_cert_reqs=required`) from the parts. Beat and the migration task get the addresses they never connect to because every process loads the same settings. [`infra/modules/ecs/tests/task-settings.json`](../infra/modules/ecs/tests/task-settings.json) records this table; the ecs module's `terraform test` and the backend's `tests/unit/test_aws_task_settings.py` both check against it, so a change on either side that would stop the tasks starting fails a test. Bump the ecs module's `key_wrapper_secret_version` for a new `LOCAL_KEY_WRAPPER_KEY` (issued widget tokens stop working).
+
+### Job queues
+
+The queue module (ticket 22-02, [ADR-0021](adr/0021-sqs-two-worker-pools-autoscaling.md)) creates two standard SQS queues, `studio-demo-queue-general` and `studio-demo-queue-runs`, encrypted at rest with SSE-SQS. A received message stays hidden for an hour on general and twelve hours (the SQS maximum) on runs (`general_visibility_timeout_seconds`, `runs_visibility_timeout_seconds`). After five failed deliveries (`max_receive_count`) a message moves to the queue's dead-letter queue (`…-dlq`, kept 14 days), and the CloudWatch alarm `…-dlq-depth` goes into alarm while that queue holds anything. The alarms notify no one: look at them in the console. Nothing sends to the queues yet; ticket 22-03 moves jobs onto them. The task roles already allow it: the API may send to both queues, the worker may receive from and send to both, and Beat may send to the general queue only, its first AWS permission. Sending needs no KMS permission, because the queues use SSE-SQS.
 
 ## Seed (fill the demo with data)
 

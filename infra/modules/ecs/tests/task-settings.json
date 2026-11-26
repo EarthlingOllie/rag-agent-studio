@@ -12,6 +12,10 @@
       "REDIS_HOST": "master.studio-demo-cache.abc.euw2.cache.amazonaws.com",
       "REDIS_PORT": "6379",
       "REDIS_TLS": "true",
+      "GENERAL_QUEUE_NAME": "studio-demo-queue-general",
+      "GENERAL_QUEUE_URL": "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-general",
+      "RUNS_QUEUE_NAME": "studio-demo-queue-runs",
+      "RUNS_QUEUE_URL": "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-runs",
       "OBJECT_STORE": "s3",
       "OBJECT_STORE_BUCKET": "studio-demo-documents-123456789012",
       "OBJECT_STORE_REGION": "eu-west-2",
@@ -35,6 +39,10 @@
       "REDIS_HOST": "master.studio-demo-cache.abc.euw2.cache.amazonaws.com",
       "REDIS_PORT": "6379",
       "REDIS_TLS": "true",
+      "GENERAL_QUEUE_NAME": "studio-demo-queue-general",
+      "GENERAL_QUEUE_URL": "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-general",
+      "RUNS_QUEUE_NAME": "studio-demo-queue-runs",
+      "RUNS_QUEUE_URL": "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-runs",
       "OBJECT_STORE": "s3",
       "OBJECT_STORE_BUCKET": "studio-demo-documents-123456789012",
       "OBJECT_STORE_REGION": "eu-west-2",
@@ -55,7 +63,11 @@
       "DATABASE_TLS": "true",
       "REDIS_HOST": "master.studio-demo-cache.abc.euw2.cache.amazonaws.com",
       "REDIS_PORT": "6379",
-      "REDIS_TLS": "true"
+      "REDIS_TLS": "true",
+      "GENERAL_QUEUE_NAME": "studio-demo-queue-general",
+      "GENERAL_QUEUE_URL": "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-general",
+      "RUNS_QUEUE_NAME": "studio-demo-queue-runs",
+      "RUNS_QUEUE_URL": "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-runs"
     },
     "secrets": ["LOCAL_KEY_WRAPPER_KEY", "REDIS_AUTH_TOKEN"]
   },
@@ -70,7 +82,11 @@
       "DATABASE_TLS": "true",
       "REDIS_HOST": "master.studio-demo-cache.abc.euw2.cache.amazonaws.com",
       "REDIS_PORT": "6379",
-      "REDIS_TLS": "true"
+      "REDIS_TLS": "true",
+      "GENERAL_QUEUE_NAME": "studio-demo-queue-general",
+      "GENERAL_QUEUE_URL": "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-general",
+      "RUNS_QUEUE_NAME": "studio-demo-queue-runs",
+      "RUNS_QUEUE_URL": "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-runs"
     },
     "secrets": ["DATABASE_PASSWORD", "LOCAL_KEY_WRAPPER_KEY"]
   },
@@ -86,6 +102,10 @@
       "REDIS_HOST": "master.studio-demo-cache.abc.euw2.cache.amazonaws.com",
       "REDIS_PORT": "6379",
       "REDIS_TLS": "true",
+      "GENERAL_QUEUE_NAME": "studio-demo-queue-general",
+      "GENERAL_QUEUE_URL": "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-general",
+      "RUNS_QUEUE_NAME": "studio-demo-queue-runs",
+      "RUNS_QUEUE_URL": "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-runs",
       "OBJECT_STORE": "s3",
       "OBJECT_STORE_BUCKET": "studio-demo-documents-123456789012",
       "OBJECT_STORE_REGION": "eu-west-2",

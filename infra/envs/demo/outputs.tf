@@ -8,6 +8,7 @@ output "module_names" {
     ecs      = module.ecs.name
     kms      = module.kms.name
     network  = module.network.name
+    queue    = module.queue.name
     storage  = module.storage.name
   }
 }
