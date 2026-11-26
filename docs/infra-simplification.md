@@ -9,7 +9,8 @@ The AWS demo will serve a handful of clients, but it is also an interview showca
 > - The worker splits into a general pool on Fargate Spot (1 to 3) and a runs pool on regular Fargate (0 to 2). Beat stays its own service.
 > - Secrets Manager and both KMS keys stay.
 > - Interruptible workers need the application work in [spec 21](specs/21-job-reliability-spec.md) first. The claim below that ingestion is safe on Spot because "Celery acks late" was wrong: it does not, and a job cut short was lost or left stuck.
-> - Expected cost is about 120 USD a month left on, not the 75 to 100 below.
+> - Expected cost is about 120 USD a month left on, not the 75 to 100 below: the recomputed table is in the deploy guide's [expected cost](deploy-demo.md#expected-cost) (ticket [22-08](tickets/22-lean-scalable-infrastructure/08-docs-and-cost.md)).
+> - Section 1 maps the shape before spec 22 (one worker, fixed counts, interface endpoints). The [scale-out view](#scale-out-view-same-terraform-different-variables) below is updated for what was built: ticket [22-08](tickets/22-lean-scalable-infrastructure/08-docs-and-cost.md) marks each of its rows as a variable today or as future work. What runs now is in the [deploy guide](deploy-demo.md#worker-pools), and how to show it scaling in [showing it scale](deploy-demo.md#showing-it-scale).
 > - Rehearsing the deployment locally is [spec 23](specs/23-floci-rehearsal-spec.md).
 
 Sources: `infra/envs/demo/main.tf`, `infra/modules/*`, `docker-compose.yml`, [ADR-0010](adr/0010-aws-runtime-shape.md), [ADR-0011](adr/0011-single-cloudfront-origin.md) and the [cost table](deploy-demo.md#expected-cost).
@@ -146,31 +147,40 @@ flowchart TB
 
 ### Scale-out view (same Terraform, different variables)
 
-This is how to show scale without paying for it: the variables that turn Option A into a production-sized shape.
+This is how to show scale without paying for it: the variables that turn the demo into a production-sized shape. It is updated for what spec 22 built (ticket 22-08): two worker pools on SQS queues instead of one worker on a Redis queue, and tasks kept in private subnets. Each row says whether it is a **variable today** (an input of a module in `infra/modules`, changed in `infra/envs/demo` and applied) or **future work** (not built; the change it needs is named).
 
 ```mermaid
 flowchart TB
-  user(["Many clients"]) --> cf["CloudFront + WAF"]
+  user(["Many clients"]) --> cf["CloudFront (+ WAF: future work)"]
   cf --> static[("S3 static")]
-  cf --> alb["ALB, 2+ AZs"]
-  alb --> api1["api ×N (autoscaled)"]
+  cf --> alb["ALB, 2 AZs"]
+  alb --> api1["api ×N (CPU target tracking)"]
   redis[("ElastiCache: primary + replica")]
-  q{{"Redis queue: ingest"}} --> w1["worker ×N on Spot (backlog scaling)"]
-  api1 -- enqueue --> q
-  beat["beat ×1 (singleton)"] --> q
-  api1 & w1 --> rds[("RDS / Aurora Postgres: Multi-AZ writer")]
-  api1 -. "reads, search" .-> rr[("Read replica(s)")]
-  api1 & w1 --> redis
-  api1 & w1 --> docs[("S3 Documents")]
+  api1 -- "enqueue" --> qg{{"SQS general queue"}} & qr{{"SQS runs queue"}}
+  beat["beat ×1 (singleton)"] --> qg
+  qg --> wg["worker-general ×N on Fargate Spot (queue-depth scaling)"]
+  qr --> wr["worker-runs 0..N on Fargate (queue-depth scaling)"]
+  api1 & wg & wr --> rds[("RDS Postgres: Multi-AZ writer (Aurora: future work)")]
+  api1 -. "reads, search (future work)" .-> rr[("Read replica(s)")]
+  api1 & wg & wr --> redis
+  api1 & wg --> docs[("S3 Documents")]
 ```
 
-| Variable | Demo | Scaled |
-|---|---|---|
-| `autoscaling.api` (min/max) | 1 / 3 | 2 / 20 |
-| `autoscaling.worker` (min/max, spot) | 0 / 3, Spot | 1 / 30, Spot + on-demand base |
-| `database.instance_class`, `multi_az`, `read_replicas` | t4g.micro, false, 0 | r7g.large, true, 1+ |
-| `cache.node_type`, `replicas` | t4g.micro, 0 | r7g.large, 1 |
-| `private_networking` | false | true (restores NAT and endpoints) |
+| Setting | Demo | Scaled | Status |
+|---|---|---|---|
+| `scaling.api` (min / max, `cpu_target`), ecs module | 1 / 3, 60% | 2 / 20, 60% | Variable today (ticket 22-05) |
+| `scaling.worker-general` (min / max, `jobs_per_task`), ecs module | 1 / 3, 2 | 2 / 30, 2 | Variable today (ticket 22-05); the minimum must stay at least 1 |
+| `scaling.worker-runs` (min / max, `jobs_per_task`), ecs module | 0 / 2, 2 | 0 / 10, 2 | Variable today (ticket 22-05) |
+| `task_sizes` per service, ecs module | api 0.5 vCPU / 1 GB, general 2 / 8, runs 1 / 6, beat 0.25 / 0.5 | larger API tasks, the same workers | Variable today (ticket 22-04) |
+| `worker_spot`, ecs module and `infra/envs/demo` | true (all of the general pool on Spot) | true | Variable today (ticket 22-04): it moves the whole pool between Spot and regular Fargate |
+| A regular-Fargate base under the Spot general pool | none | 1 task on regular Fargate, the rest on Spot | Future work: each service has one capacity provider strategy; a `base` on `FARGATE` beside `FARGATE_SPOT` is not built |
+| `database.instance_class`, `multi_az`, database module | `db.t4g.micro`, false | `db.r7g.large`, true | Variable today |
+| Read replicas, or Aurora | none | 1+ replicas | Future work: the application would have to route reads (ADR-0021) |
+| `cache.node_type`, `replicas`, cache module | `cache.t4g.micro`, 0 | `cache.r7g.large`, 1 | Variable today |
+| `managed_nat`, network module | false (`fck-nat`) | true (a managed NAT gateway) | Variable today; tasks stay in private subnets in both (ADR-0021) |
+| `availability_zones`, network module | 2 | 3 | Future work: the variable names the zones, but its validation allows exactly two |
+| WAF on CloudFront | none | a web ACL | Future work (out of scope in spec 22) |
+| Notifications from the dead-letter alarms | none (console only) | an SNS topic to on-call | Future work (out of scope in spec 22) |
 
 ## 4. Option B: single host (cheapest, for comparison)
 

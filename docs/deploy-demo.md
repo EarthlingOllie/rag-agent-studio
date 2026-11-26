@@ -111,26 +111,44 @@ Actions, **destroy**, Run workflow, and type `destroy demo` into the confirmatio
 
 From a laptop: `TF_STATE_BUCKET=<state_bucket_name> AWS_REGION=eu-west-2 scripts/deploy/destroy.sh "destroy demo"`.
 
+## Showing it scale
+
+Ticket 22-07's scaling script, `scripts/deploy/scale.sh`, lives with the deploy scripts. It needs a deployed and seeded demo (above), the CloudFront URL, the demo Owner's email and password, and, like `seed.sh`, the state bucket and AWS credentials: it reads the cluster, the services and the job queues from the `deploy` output and asks ECS and CloudWatch for task counts and queue depth. It creates a throwaway Project, uploads the seed Documents several times over under different names (general pool), starts Evaluation Runs on the seeded Agents (runs pool) and sends API requests for a few minutes (API). The load sizes and durations are arguments, with defaults that finish in about fifteen minutes. When it finishes, or is interrupted, it deletes its Project, so it can be run again.
+
+While it runs it prints a timeline, one line per poll: the time since it started, each queue's jobs (waiting plus in flight, the number the pools scale on) and each service's running tasks out of its desired count. Read it in four phases:
+
+1. **Load arrives.** The general queue's jobs jump as the uploads are confirmed, and the runs queue's as the Runs start. Nothing has scaled yet: CloudWatch reports queue depth once a minute.
+2. **Scale-out.** Within a minute or two of a queue holding jobs, its `…-jobs` alarm sets the pool's desired count to one task per two jobs, up to its maximum (3 for general, 2 for runs). The general pool's new tasks appear quickly; the runs pool goes from 0 to 1 and then 2, and its first task takes a few minutes to show as running, because a cold Fargate task pulls the multi-gigabyte backend image (the cold start the real-AWS run measures). The API's desired count follows its average CPU (target 60%) and rises after about three minutes of load.
+3. **Drain.** The jobs fall to zero as the pools work through them. A pool does not shrink while a job is still in flight: in-flight jobs count, and a worker holding a job protects its task from scale-in ([autoscaling](#autoscaling)).
+4. **Scale-in.** Five minutes after a queue last held a job, its `…-idle` alarm returns the pool to its minimum: the general pool to 1 and the runs pool to 0. The API drifts back to 1 more slowly, as target tracking scales in cautiously.
+
+The script stops once every service is back at its minimum. It exits non-zero, naming the service, if a pool or the API never scaled out. A timeline from a real run is evidence for ticket 22-09 ([prove it on real AWS](tickets/22-lean-scalable-infrastructure/09-prove-it-on-real-aws.md)), which summarises it here once it exists.
+
 ## Expected cost
 
-Rough on-demand list prices for `eu-west-2` (London), in USD, with the default variables, no free tier and almost no traffic. This table predates the two worker pools and Spot (ticket 22-04) and the removed interface endpoints (ticket 22-01); ticket 22-08 recomputes it. Treat them as an order of magnitude and check the [AWS Pricing Calculator](https://calculator.aws/) before relying on them: prices change and differ by region.
+Rough list prices for `eu-west-2` (London), in USD, with the default variables, no free tier and almost no traffic, as of November 2026 (ticket 22-08 recomputed them from the Terraform defaults; nothing was measured on AWS). Treat them as an order of magnitude and check the [AWS Pricing Calculator](https://calculator.aws/) before relying on them: prices change and differ by region. The rows are the shape at rest: every scaled service at its minimum, so the runs pool is at zero tasks.
 
 | Item | Sizing (default) | Per hour | Always on, per month (730 h) |
 |---|---|---|---|
-| Fargate, worker (general pool; the runs pool is not in this table yet) | 2 vCPU, 8 GB, ARM64 | 0.107 | 78 |
-| Fargate, API | 0.5 vCPU, 1 GB, ARM64 | 0.023 | 17 |
-| Fargate, Beat | 0.25 vCPU, 0.5 GB, ARM64 | 0.011 | 8 |
-| VPC interface endpoints | ECR API, ECR Docker, Logs, Secrets Manager, in 2 AZs (8 ENIs) | 0.088 | 64 |
+| Fargate Spot, `worker-general` | 1 task, 2 vCPU, 8 GB, ARM64; about 70% below on-demand (0.107) | about 0.032 | about 23 |
+| Fargate, `worker-runs` | 0 tasks at rest (1 vCPU, 6 GB, ARM64: 0.062 per task-hour when running) | 0 | 0 |
+| Fargate, `api` | 1 task, 0.5 vCPU, 1 GB, ARM64 | 0.023 | 17 |
+| Fargate, `beat` | 1 task, 0.25 vCPU, 0.5 GB, ARM64 | 0.011 | 8 |
 | Application Load Balancer | 1 ALB, minimal LCUs | 0.027 | 20 |
 | RDS Postgres 16 | `db.t4g.micro`, single-AZ, 20 GB gp3 | 0.022 | 16 |
 | ElastiCache Redis | `cache.t4g.micro`, 1 node | 0.018 | 13 |
-| Public IPv4 addresses | ALB (2) and fck-nat (1) | 0.015 | 11 |
+| Public IPv4 addresses | ALB (2) and fck-nat (1); tasks have none | 0.015 | 11 |
 | fck-nat | `t4g.nano` and its volume | 0.005 | 4 |
 | KMS keys | 2 environment keys | 0.003 | 2 |
 | Secrets Manager | 4 secrets | 0.002 | 2 |
+| SQS and CloudWatch alarms | 2 queues and 2 dead-letter queues (an idle general worker's long polls, Beat's sends: well under a million requests a month); 8 alarms (2 dead-letter, 4 queue-depth, 2 API target tracking) | about 0.002 | about 1.5 |
 | CloudFront, S3, ECR storage, CloudWatch Logs, NAT data | small at demo traffic | about 0.005 | about 3 |
-| **Total** | | **about 0.33** | **about 240** |
+| **Total** | | **about 0.17** | **about 120** |
 
-- **Always on:** about 240 USD a month. The worker (sized for Docling) and the interface endpoints are about 60% of it.
-- **Apply for a day:** about 8 USD for 24 hours, plus a few cents for each migration task (0.25 vCPU for a minute or two) and each seed (1 vCPU and 4 GB for a few minutes, about 0.01 USD). Destroy afterwards and the only remaining cost is the bootstrap's state bucket and key, about 1 USD a month ([infra-bootstrap.md](infra-bootstrap.md#cost)).
-- **Cheaper:** every size is a variable, and the runs pool already scales to zero between Runs. The general pool's minimum is one task (`scaling`), because it runs the sweeper and the scheduled jobs. The endpoints could be dropped in favour of NAT traffic, at the price of slower image pulls through `fck-nat`.
+- **Always on:** about 120 USD a month with the runs pool idle, against about 240 before spec 22. The four VPC interface endpoints (64 USD) are gone (ticket 22-01; ECR's API, Logs, Secrets Manager, SQS and KMS now go through `fck-nat`, and image layers still through the free S3 gateway endpoint), and Spot takes about 55 USD off the general pool (ticket 22-04).
+- **Apply for a day:** about 4 USD for 24 hours at rest. Add 0.062 USD for each hour a runs-pool task runs (an Evaluation Run of half an hour costs about 3 cents of Fargate, plus its model calls, which the Organisation pays), a few cents for each migration task (0.25 vCPU for a minute or two) and each seed (1 vCPU and 4 GB for a few minutes, about 0.01 USD), and a few cents for a run of the [scaling script](#showing-it-scale) (fifteen minutes with up to two extra general tasks, two runs tasks and two extra API tasks). Destroy afterwards and the only remaining cost is the bootstrap's state bucket and key, about 1 USD a month ([infra-bootstrap.md](infra-bootstrap.md#cost)).
+- **Scaled out:** with every scaled service at its maximum (3 API, 3 general, 2 runs tasks) Fargate costs about 0.30 USD an hour instead of 0.07, about 0.40 USD an hour in all. Autoscaling holds that only while the queues hold jobs or the API is busy.
+- **Without Spot:** `worker_spot = false` puts the general pool on regular Fargate at 0.107 USD an hour, about 175 USD a month always on.
+- **Cheaper:** every size, minimum and maximum is a variable (`task_sizes`, `scaling`). The general pool's minimum stays at one task, because it runs the sweeper and the scheduled jobs (ADR-0021).
+
+Assumptions: Fargate ARM64 in `eu-west-2` at 0.03725 USD per vCPU-hour and 0.00409 USD per GB-hour (x86 less 20%); Fargate Spot about 70% below that, which is typical but varies by hour and availability, and assumes Spot capacity is offered for ARM64 tasks (ticket 22-09 checks this on AWS; if it is not, `worker_spot = false` gives the "without Spot" figure); a CloudWatch alarm at 0.10 USD a month per metric it reads (the queue-depth alarms read two); SQS at 0.40 USD per million requests after the free million; data between tasks and AWS services in the region free except for crossing zones to the one `fck-nat`. The bill for a real day is evidence for ticket 22-09.
