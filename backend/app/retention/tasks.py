@@ -1,6 +1,6 @@
-"""The retention purge Beat task: daily, after the usage rollup has finalised the previous day,
-it purges Message text and feedback comments older than each Organisation's Retention Window
-(``app.retention.service``)."""
+"""The retention purge Beat task: hourly, half an hour after each usage rollup (the one just
+after midnight finalises the previous day), it purges Message text and feedback comments older
+than each Organisation's Retention Window (``app.retention.service``)."""
 
 import asyncio
 from datetime import datetime

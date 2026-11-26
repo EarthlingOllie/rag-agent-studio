@@ -18,7 +18,7 @@ DELETE_PROJECT_TASK = "projects.delete"
 CLEAR_BUDGET_ALERTS_TASK = "embed.clear_budget_alerts"
 # The usage rollup (app.analytics.tasks), which Beat runs hourly.
 ROLL_UP_TASK = "analytics.roll_up_usage"
-# The retention purge (app.retention.tasks), which Beat runs daily.
+# The retention purge (app.retention.tasks), which Beat runs hourly.
 PURGE_TASK = "retention.purge_expired"
 
 celery_app = Celery(
@@ -50,20 +50,19 @@ def configure_celery(settings: Settings) -> Celery:
         broker_connection_retry_on_startup=True,
         beat_schedule={
             "worker-health-check": {"task": HEALTH_CHECK_TASK, "schedule": 300.0},
-            # A new UTC date starts a new Token Budget; its alert flags go too.
+            # A new UTC date starts a new Token Budget; its alert flags go too. Hourly, so the
+            # run after a midnight Beat missed still resets the day that ended.
             "clear-token-budget-alerts": {
                 "task": CLEAR_BUDGET_ALERTS_TASK,
-                "schedule": crontab(minute="0", hour="0"),
+                "schedule": crontab(minute="0"),
             },
             # Hourly, a few minutes past the hour: the current day's usage rollups, and the
             # previous day's finalised once it is over.
             "usage-rollup": {"task": ROLL_UP_TASK, "schedule": crontab(minute=5)},
-            # Daily, after the 00:05 rollup has finalised the previous day: Message text and
-            # feedback comments older than each Retention Window.
-            "retention-purge": {
-                "task": PURGE_TASK,
-                "schedule": crontab(minute="35", hour="0"),
-            },
+            # Hourly, half an hour after each rollup (the 00:05 one finalises the previous
+            # day): Message text and feedback comments older than each Retention Window. A
+            # missed run leaves text at most an hour past its window.
+            "retention-purge": {"task": PURGE_TASK, "schedule": crontab(minute="35")},
         },
     )
     return celery_app

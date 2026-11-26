@@ -625,7 +625,7 @@ The maximum tokens an Agent's Visitor replies may use per UTC date (1,000,000 by
 _Avoid_: Quota, spend limit (cost is tracked separately)
 
 **Budget alert**:
-The flag an Agent carries once its Token Budget is spent for the day, raised by the first reply that reaches it or the first message it refuses. The Studio shows it as a "Budget exhausted" badge on the Agent list and the Agent page, and raising it emails every Owner once per Agent per day. A Beat task clears the flags at midnight UTC.
+The flag an Agent carries once its Token Budget is spent for the day, raised by the first reply that reaches it or the first message it refuses. The Studio shows it as a "Budget exhausted" badge on the Agent list and the Agent page, and raising it emails every Owner once per Agent per day. An hourly Beat task clears the flags raised before the current UTC date, so midnight's run clears them, or the next run after a midnight Beat missed.
 _Avoid_: Budget warning, alarm
 
 **Allowed Origins**:
@@ -764,7 +764,7 @@ The share of an Agent Version's Visitor replies that were its refusal text becau
 _Avoid_: Attack rate, refusal rate
 
 **Block rate alert**:
-The flag an Agent carries while its Block rate spikes, as in an attack. After each hourly rollup, the Agent's Visitor messages in the hour up to that run are compared with its baseline, the week before that hour: at least 5 blocked messages, at least 20% of the hour's messages and at least three times the baseline's rate is a spike. Raising it emails every Owner once (with a link to the Conversations viewer filtered to the Agent's blocked messages); the Studio shows a "Block rate spike" badge on the Agent list and the Agent page, the same badge mechanism as the Budget alert. The first hourly run that no longer finds a spike clears it, and a new spike alerts again.
+The flag an Agent carries while its Block rate spikes, as in an attack. After each hourly rollup, the Agent's Visitor messages in the hour up to that run are compared with its baseline, the week before that hour: at least 5 blocked messages, at least 20% of the hour's messages and at least three times the baseline's rate is a spike. Raising it emails every Owner once (with a link to the Conversations viewer filtered to the Agent's blocked messages); the Studio shows a "Block rate spike" badge on the Agent list and the Agent page, the same badge mechanism as the Budget alert. The first hourly run that no longer finds a spike clears it, and a new spike alerts again. Each Agent records the last hour the check covered; a run after Beat was down also checks every hour since, oldest first, so a spike during the outage is still alerted on.
 _Avoid_: Attack alarm, spike warning
 
 **Wilson interval**:
@@ -772,7 +772,7 @@ The 95% Wilson score interval of a rate (the thumbs-up rate, the Live score), wo
 _Avoid_: Error bars, margin
 
 **Purge**:
-Clearing a Message's text, the reasons in its Guardrail outcomes, the queries of its Searches (the model writes them from the Visitor's words), the comment of any Message Feedback on it and the reasons of its Live Verdict, and stamping it (and its Live Verdict) purged-at, while every number and attribution (tokens, Cost, latency, Agent Version, thumbs, Conversation Rating, Message retrievals, its Searches and their count, each Guardrail outcome's verdict, the Live Verdict's outcomes and Cost) stays, so the Version KPIs read the same before and after. A daily Beat task (00:35 UTC) purges the Messages older than each Organisation's Retention Window, but a Visitor reply only once the Usage rollup of its day is final (rollups come before purges). Deleting a Conversation purges its Messages at once, through the same path. The Conversations viewer shows a purged Message as "Text purged" with when and why.
+Clearing a Message's text, the reasons in its Guardrail outcomes, the queries of its Searches (the model writes them from the Visitor's words), the comment of any Message Feedback on it and the reasons of its Live Verdict, and stamping it (and its Live Verdict) purged-at, while every number and attribution (tokens, Cost, latency, Agent Version, thumbs, Conversation Rating, Message retrievals, its Searches and their count, each Guardrail outcome's verdict, the Live Verdict's outcomes and Cost) stays, so the Version KPIs read the same before and after. An hourly Beat task (at 35 minutes past, half an hour after each rollup) purges the Messages older than each Organisation's Retention Window, but a Visitor reply only once the Usage rollup of its day is final (rollups come before purges). Deleting a Conversation purges its Messages at once, through the same path. The Conversations viewer shows a purged Message as "Text purged" with when and why.
 _Avoid_: Deletion, cleanup, expiry
 
 **Deleting a Conversation**:

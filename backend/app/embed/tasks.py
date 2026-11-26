@@ -1,5 +1,7 @@
-"""The Token Budget's midnight job, a Celery Beat task: a new UTC date starts a new budget (its
-counter is keyed by date), so the alert flags raised for the day before are cleared."""
+"""The Token Budget's alert reset, an hourly Celery Beat task: a new UTC date starts a new budget
+(its counter is keyed by date), so the alert flags raised before it are cleared. Keyed on the
+UTC date, the first run after midnight resets the day that ended, even when Beat missed
+midnight itself."""
 
 import asyncio
 from datetime import UTC, datetime
@@ -21,7 +23,7 @@ async def _clear(now: datetime) -> int:
 
 @celery_app.task(name=CLEAR_BUDGET_ALERTS_TASK)
 def clear_budget_alerts(now: str | None = None) -> int:
-    """Clears every Agent's budget alert raised before today (UTC); Beat runs it at midnight
-    UTC. ``now`` (ISO 8601) stands in for the system clock. Returns how many it cleared."""
+    """Clears every Agent's budget alert raised before today (UTC); Beat runs it hourly, on the
+    hour. ``now`` (ISO 8601) stands in for the system clock. Returns how many it cleared."""
     moment = datetime.now(UTC) if now is None else datetime.fromisoformat(now)
     return asyncio.run(_clear(moment))
