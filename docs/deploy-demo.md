@@ -15,9 +15,9 @@ The job builds the Studio and widget (`pnpm build`), builds the images for `linu
 
 1. `terraform init` against the state bucket, then `terraform apply -target=module.ecr`, so that a first run creates the ECR repositories before pushing to them.
 2. Push `rag-agent-studio/api` and `rag-agent-studio/studio` at the tag, unless ECR already has it. The job builds them for `linux/arm64` under QEMU, because the tasks run on ARM64 Fargate (ADR-0010); the script refuses to push an image of any other architecture. A tag that is neither in ECR nor built in the job fails here, before anything else changes.
-3. `terraform apply -var=image_tag=<tag>`. This registers new task definitions for the API, worker, Beat and the migration task. It does **not** roll the services: they ignore task definition changes after creation (`lifecycle.ignore_changes` in the ecs module), so code never runs against an old schema.
+3. `terraform apply -var=image_tag=<tag>`. This registers new task definitions for the API, the two worker pools, Beat and the migration task. It does **not** roll the services: they ignore task definition changes after creation (`lifecycle.ignore_changes` in the ecs module), so code never runs against an old schema.
 4. Run the migration task (`alembic upgrade head`, its own least-privilege roles and security group, in the private subnets), wait for it to stop, and read its exit code. Anything but 0 stops the deploy; services keep running the old version.
-5. Point each service at its new task definition (`aws ecs update-service`) and wait until all three are stable (`aws ecs wait services-stable`). A service that cannot stabilise is rolled back by its deployment circuit breaker, and the run fails.
+5. Point each of the four services (`api`, `worker-general`, `worker-runs`, `beat`) at its new task definition (`aws ecs update-service`), then wait for each in turn (`aws ecs wait services-stable`) and print `<service> is stable`. A service that cannot stabilise is rolled back by its deployment circuit breaker, and the run fails naming it.
 6. Upload the Studio build (`frontend/apps/studio/dist`) and the widget build (`frontend/apps/widget/dist`: `embed.js` and `widget/assets/`) to the static bucket with `aws s3 sync --delete`. Content-hashed files are cached for a year; `index.html`, `embed.js` and the unhashed `widget/assets/widget.js` are uploaded with `Cache-Control: no-cache`.
 7. Invalidate `/`, `/index.html`, `/embed.js` and `/widget/assets/widget.js` and wait for the invalidation.
 8. Smoke check the CloudFront URL with [`scripts/deploy/smoke.sh`](../scripts/deploy/smoke.sh): `GET /api/health` answers 200 with `"status": "ok"`, `GET /` is the Studio's `index.html`, and `GET /widget/a/<id>` answers with a `Content-Security-Policy` containing `frame-ancestors`. Each check is retried 20 times, 15 seconds apart. The URL is printed and added to the job summary.
@@ -39,12 +39,12 @@ The GitHub deploy role ARN (the principal GitHub Actions assumes) is the bootstr
 
 ### What the tasks are given
 
-The API, worker, Beat, migration task and seed task run the same backend image, and their settings are validated at start (`backend/app/core/settings.py`). The ecs module gives each container plain values as environment variables and secrets by reference to Secrets Manager:
+The API, the two worker pools, Beat, the migration task and the seed task run the same backend image, and their settings are validated at start (`backend/app/core/settings.py`). The ecs module gives each container plain values as environment variables and secrets by reference to Secrets Manager:
 
 | Container | Environment | Secrets |
 |---|---|---|
-| all five | `ENVIRONMENT`, `AWS_REGION`, `DATABASE_HOST/PORT/NAME/USER`, `DATABASE_TLS=true`, `REDIS_HOST/PORT`, `REDIS_TLS=true`, `GENERAL_QUEUE_NAME/URL`, `RUNS_QUEUE_NAME/URL` (the queue module's queues) | `LOCAL_KEY_WRAPPER_KEY` (signs widget tokens) |
-| API, worker and seed | `OBJECT_STORE=s3`, `OBJECT_STORE_BUCKET/REGION`, `KEY_WRAPPER=kms`, `KMS_KEY_ID` (the credentials key), `STUDIO_URL` (the CloudFront URL) | `DATABASE_PASSWORD`, `REDIS_AUTH_TOKEN` |
+| all six | `ENVIRONMENT`, `AWS_REGION`, `DATABASE_HOST/PORT/NAME/USER`, `DATABASE_TLS=true`, `REDIS_HOST/PORT`, `REDIS_TLS=true`, `GENERAL_QUEUE_NAME/URL`, `RUNS_QUEUE_NAME/URL` (the queue module's queues) | `LOCAL_KEY_WRAPPER_KEY` (signs widget tokens) |
+| API, both worker pools and seed | `OBJECT_STORE=s3`, `OBJECT_STORE_BUCKET/REGION`, `KEY_WRAPPER=kms`, `KMS_KEY_ID` (the credentials key), `STUDIO_URL` (the CloudFront URL) | `DATABASE_PASSWORD`, `REDIS_AUTH_TOKEN` |
 | API only | `BEDROCK_PLATFORM_PRINCIPAL` (its own task role) | `SESSION_SECRET` |
 | Beat | | `REDIS_AUTH_TOKEN` |
 | migration | | `DATABASE_PASSWORD` |
@@ -54,13 +54,24 @@ The settings build `DATABASE_URL` (`postgresql+asyncpg://…?ssl=require`) and `
 
 ### Job queues
 
-The queue module (ticket 22-02, [ADR-0021](adr/0021-sqs-two-worker-pools-autoscaling.md)) creates two standard SQS queues, `studio-demo-queue-general` and `studio-demo-queue-runs`, encrypted at rest with SSE-SQS. A received message stays hidden for an hour on general and twelve hours (the SQS maximum) on runs (`general_visibility_timeout_seconds`, `runs_visibility_timeout_seconds`). After five failed deliveries (`max_receive_count`) a message moves to the queue's dead-letter queue (`…-dlq`, kept 14 days), and the CloudWatch alarm `…-dlq-depth` goes into alarm while that queue holds anything. The alarms notify no one: look at them in the console. Nothing sends to the queues yet; ticket 22-03 moves jobs onto them. The task roles already allow it: the API may send to both queues, the worker may receive from and send to both, and Beat may send to the general queue only, its first AWS permission. Sending needs no KMS permission, because the queues use SSE-SQS.
+The queue module (ticket 22-02, [ADR-0021](adr/0021-sqs-two-worker-pools-autoscaling.md)) creates two standard SQS queues, `studio-demo-queue-general` and `studio-demo-queue-runs`, encrypted at rest with SSE-SQS. A received message stays hidden for an hour on general and twelve hours (the SQS maximum) on runs (`general_visibility_timeout_seconds`, `runs_visibility_timeout_seconds`). After five failed deliveries (`max_receive_count`) a message moves to the queue's dead-letter queue (`…-dlq`, kept 14 days), and the CloudWatch alarm `…-dlq-depth` goes into alarm while that queue holds anything. The alarms notify no one: look at them in the console. Since ticket 22-03 every job goes through them. The API and the seed task may send to both queues, each worker pool may receive only from its own queue and send to both, and Beat may send to the general queue only. Sending needs no KMS permission, because the queues use SSE-SQS.
+
+### Worker pools
+
+Since ticket 22-04 the worker is two ECS services on the one backend image, each started with `--queues=` its own queue ([ADR-0021](adr/0021-sqs-two-worker-pools-autoscaling.md)):
+
+| Service | Queue and jobs | Capacity | Size (default) | Task role beyond the queues |
+|---|---|---|---|---|
+| `worker-general` | general: ingestion, Re-embeds, deletions, Live Verdicts, alert emails, the scheduled jobs and the sweeper | Fargate Spot (`worker_spot = false` moves it to regular Fargate) | 2 vCPU, 8 GB | the documents bucket and data key, decrypt with the credentials key |
+| `worker-runs` | runs: Evaluation Runs and Suggestion runs | regular Fargate | 1 vCPU, 6 GB | decrypt with the credentials key |
+
+The cluster has the `FARGATE` and `FARGATE_SPOT` capacity providers; every service other than the general pool uses `FARGATE`. ECS does not fall back from Spot to regular capacity by itself: during a Spot shortage ingestion waits until you set `worker_spot = false` in `infra/envs/demo` and deploy. Worker containers have a two-minute stop timeout (`stopTimeout = 120`, Fargate's most), so a short job finishes inside a Spot interruption warning. Both pools run two jobs at a time (`--concurrency=2`). The runs pool's 6 GB comes from a measurement: two worker processes with the local Embedding Model and the Guardrail classifier loaded peak at about 4.7 GB (ticket 22-04's evidence), more than the 4 GB first planned. Sizes and counts are the ecs module's `task_sizes` and `desired_counts` (one task each until autoscaling, ticket 22-05). The database admits the API, both pools and the migration and seed tasks; the cache admits every service and the seed task.
 
 ## Seed (fill the demo with data)
 
 An empty Studio shows nothing, so after a deploy, seed the demo with the same Demo Organisation `make seed` builds locally (spec 10 story 4; ticket 10-05):
 
-1. Deploy first (above). The seed runs on the image the deploy applied, needs the migrations it ran, and relies on the worker service to ingest the demo Documents.
+1. Deploy first (above). The seed runs on the image the deploy applied, needs the migrations it ran, and relies on the general worker pool to ingest the demo Documents, which the seed queues on the general queue.
 2. Actions, **seed**, Run workflow. Leave `reset` unticked to seed (or complete) the demo; tick it to erase the Demo Organisation, and only that one, and build it again, like `make seed-reset`.
 3. Wait for the run: a fresh seed plays four weeks of Seeded history, which takes a few minutes. The run log and the job summary show the seed's output: the CloudFront URL, the demo Owner's and Editor's sign-in details, and the demo pages' address (`<cloudfront_url>/demo/`).
 4. Sign in at the CloudFront URL as the demo Owner or Editor, or open `/demo/` to meet the Product FAQ as a Visitor.
@@ -88,11 +99,11 @@ From a laptop: `TF_STATE_BUCKET=<state_bucket_name> AWS_REGION=eu-west-2 scripts
 
 ## Expected cost
 
-Rough on-demand list prices for `eu-west-2` (London), in USD, with the default variables, no free tier and almost no traffic. Treat them as an order of magnitude and check the [AWS Pricing Calculator](https://calculator.aws/) before relying on them: prices change and differ by region.
+Rough on-demand list prices for `eu-west-2` (London), in USD, with the default variables, no free tier and almost no traffic. This table predates the two worker pools and Spot (ticket 22-04) and the removed interface endpoints (ticket 22-01); ticket 22-08 recomputes it. Treat them as an order of magnitude and check the [AWS Pricing Calculator](https://calculator.aws/) before relying on them: prices change and differ by region.
 
 | Item | Sizing (default) | Per hour | Always on, per month (730 h) |
 |---|---|---|---|
-| Fargate, worker | 2 vCPU, 8 GB, ARM64 | 0.107 | 78 |
+| Fargate, worker (general pool; the runs pool is not in this table yet) | 2 vCPU, 8 GB, ARM64 | 0.107 | 78 |
 | Fargate, API | 0.5 vCPU, 1 GB, ARM64 | 0.023 | 17 |
 | Fargate, Beat | 0.25 vCPU, 0.5 GB, ARM64 | 0.011 | 8 |
 | VPC interface endpoints | ECR API, ECR Docker, Logs, Secrets Manager, in 2 AZs (8 ENIs) | 0.088 | 64 |
@@ -108,4 +119,4 @@ Rough on-demand list prices for `eu-west-2` (London), in USD, with the default v
 
 - **Always on:** about 240 USD a month. The worker (sized for Docling) and the interface endpoints are about 60% of it.
 - **Apply for a day:** about 8 USD for 24 hours, plus a few cents for each migration task (0.25 vCPU for a minute or two) and each seed (1 vCPU and 4 GB for a few minutes, about 0.01 USD). Destroy afterwards and the only remaining cost is the bootstrap's state bucket and key, about 1 USD a month ([infra-bootstrap.md](infra-bootstrap.md#cost)).
-- **Cheaper:** every size is a variable. Setting `desired_counts.worker = 0` between uses saves about 78 USD a month (no ingestion while it is 0). The endpoints could be dropped in favour of NAT traffic, at the price of slower image pulls through `fck-nat`.
+- **Cheaper:** every size is a variable. Setting `desired_counts["worker-general"] = 0` between uses saves about 78 USD a month (no ingestion while it is 0). The endpoints could be dropped in favour of NAT traffic, at the price of slower image pulls through `fck-nat`.

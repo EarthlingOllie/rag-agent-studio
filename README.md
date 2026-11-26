@@ -160,7 +160,7 @@ Backend and frontend are held at **100% line and branch coverage**, enforced in 
 The AWS demo is applied on demand from GitHub Actions and destroyed after use; nothing is always on. Full details are in [docs/deploy-demo.md](docs/deploy-demo.md) and, once per account, [docs/infra-bootstrap.md](docs/infra-bootstrap.md).
 
 1. **Bootstrap (once):** apply `infra/bootstrap` (the Terraform state bucket and the GitHub OIDC deploy role), then set the `AWS_DEPLOY_ROLE_ARN` secret and the `TF_STATE_BUCKET` variable.
-2. **Deploy:** Actions → **deploy**. It builds and pushes ARM64 images, applies `infra/envs/demo`, runs migrations, rolls the API, worker and Beat services, uploads the static apps and smoke-checks the CloudFront URL it prints. From a laptop: `TF_STATE_BUCKET=… AWS_REGION=eu-west-2 scripts/deploy/deploy.sh <tag>`.
+2. **Deploy:** Actions → **deploy**. It builds and pushes ARM64 images, applies `infra/envs/demo`, runs migrations, rolls the API, the two worker pools and Beat, uploads the static apps and smoke-checks the CloudFront URL it prints. From a laptop: `TF_STATE_BUCKET=… AWS_REGION=eu-west-2 scripts/deploy/deploy.sh <tag>`.
 3. **Seed:** Actions → **seed**. Runs the same seed as `make seed` as a one-off ECS task and prints the URL and sign-in details; tick `reset` to rebuild the demo Organisation. From a laptop: `scripts/deploy/seed.sh [--reset]`.
 4. **Destroy:** Actions → **destroy**, typing `destroy demo` to confirm. Everything goes except the state bucket and deploy role. From a laptop: `scripts/deploy/destroy.sh "destroy demo"`.
 
