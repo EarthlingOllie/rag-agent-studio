@@ -34,7 +34,7 @@ from tests.integration.test_interrupted_ingestion import (
     held_converter,
     only_document,
     recovered,
-    settle_jobs_left_in_flight,
+    settle_jobs_in_flight,
     sweep,
 )
 
@@ -64,7 +64,7 @@ async def app(
 @pytest.fixture(autouse=True)
 async def no_jobs_left_by_earlier_tests(app: FastAPI) -> None:
     """Each sweep sees only the test's own rows (see ``test_interrupted_ingestion``)."""
-    await settle_jobs_left_in_flight(app)
+    await settle_jobs_in_flight(app)
 
 
 async def retry(member: SignedUpMember, project_id: str, document_id: str) -> httpx.Response:

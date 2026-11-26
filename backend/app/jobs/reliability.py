@@ -80,7 +80,8 @@ class JobTable:
     statuses that mean queued and in progress. A job type that retries automatically names the
     column that records when a queued row's next attempt is due (``retry_at``). A job whose stale
     rows are never restarted (a paid job, which its policy ends instead) claims queued rows only
-    (``reclaims_stale``)."""
+    (``reclaims_stale``). A job type whose rows go stale by other rules overrides ``stale_rows``
+    and ``overdue_rows``, and names its reason for the traces."""
 
     model: type[Any]
     key: Any
@@ -88,6 +89,17 @@ class JobTable:
     in_progress: str
     retry_at: Any = field(default_factory=null)
     reclaims_stale: bool = True
+    stale_reason: str = NO_HEARTBEAT
+
+    def stale_rows(self, now: datetime, timings: Timings) -> ColumnElement[bool]:
+        """The rows the sweeper hands to the policy's ``recover``: by default, in progress with
+        no heartbeat for ``dead_after``."""
+        return self._stale(now - timings.dead_after)
+
+    def overdue_rows(self, now: datetime, timings: Timings) -> ColumnElement[bool]:
+        """The rows the sweeper sends again as they are: by default, queued for longer than
+        ``queued_too_long``, or waiting for an automatic retry that is due."""
+        return self._overdue(now, timings.queued_too_long)
 
     def _stale(self, before: datetime) -> ColumnElement[bool]:
         model = self.model
@@ -275,18 +287,18 @@ async def _sweep_policy(
         stale = (
             await session.scalars(
                 select(table.key)
-                .where(table._stale(now - timings.dead_after))
+                .where(table.stale_rows(now, timings))
                 .with_for_update(skip_locked=True)
             )
         ).all()
         for row_id in stale:
-            recoveries.append(Recovery(policy.job, row_id, NO_HEARTBEAT))
+            recoveries.append(Recovery(policy.job, row_id, table.stale_reason))
             await policy.recover(session, table, row_id, now)
             to_send.append(row_id)
         overdue = (
             await session.execute(
                 select(table.key, table._retry_due(now))
-                .where(table._overdue(now, timings.queued_too_long))
+                .where(table.overdue_rows(now, timings))
                 .with_for_update(skip_locked=True)
             )
         ).all()
