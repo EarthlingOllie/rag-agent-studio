@@ -108,7 +108,9 @@ async def run_reaper(now: datetime | None = None) -> int:
     many it ended (Calls other tests left open count too)."""
     kwargs = {} if now is None else {"now": now.isoformat()}
     result = await asyncio.to_thread(end_idle_calls.apply, kwargs=kwargs)
-    ended: int = result.get()
+    # The eager result is already in hand; the pool thread may still carry another eager task's
+    # state, which would make a blocking get() refuse.
+    ended: int = result.get(disable_sync_subtasks=False)
     return ended
 
 

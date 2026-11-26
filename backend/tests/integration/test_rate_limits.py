@@ -130,6 +130,7 @@ async def test_an_editor_sets_the_rate_limits_and_the_change_is_audited(
         "spoken_greeting": "",
         "max_call_minutes": 10,
         "call_minutes_budget": 60,
+        "calls_failing": False,
     }
     assert (await editor.client.get(path)).json() == response.json()
     events = await audit_events(owner, CHANGED)
