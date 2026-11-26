@@ -6,8 +6,8 @@ Running jobs take their start as the time they were queued, with no claim, so th
 sends again every Re-embed left running (and stuck) before this shipped for longer than the
 queued-too-long time; it resumes from the Chunks it had not yet done.
 
-Revision ID: 0061_re_embed_claims
-Revises: 0060_ingestion_claims
+Revision ID: 0064_re_embed_claims
+Revises: 0063_live_verdict_claims
 Create Date: 2026-11-26
 """
 
@@ -16,8 +16,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0061_re_embed_claims"
-down_revision: str | None = "0060_ingestion_claims"
+revision: str = "0064_re_embed_claims"
+down_revision: str | None = "0063_live_verdict_claims"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 

@@ -4,8 +4,8 @@ judging job again, how many times it has, and the claim of the copy of the job j
 Live Verdicts already Pending keep no send time and no claim, so the first sweep takes them as
 Pending since they were created and sends them again by the same rules as any other.
 
-Revision ID: 0061_live_verdict_claims
-Revises: 0060_ingestion_claims
+Revision ID: 0063_live_verdict_claims
+Revises: 0062_evaluation_run_claims
 Create Date: 2026-11-26
 """
 
@@ -14,8 +14,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0061_live_verdict_claims"
-down_revision: str | None = "0060_ingestion_claims"
+revision: str = "0063_live_verdict_claims"
+down_revision: str | None = "0062_evaluation_run_claims"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
