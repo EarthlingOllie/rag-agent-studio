@@ -40,10 +40,11 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.config import AgentConfig
 from app.agents.models import Agent, AgentVersion
+from app.alert_emails.delivery import send_alert_emails
 from app.conversations.models import Message, MessageRole
 from app.conversations.service import traced_chunks
 from app.core.clock import Clock
-from app.evaluation.budget import add_spend, email_owners, read_budget
+from app.evaluation.budget import add_spend, raise_budget_spent, read_budget
 from app.evaluation.from_message import question_of
 from app.evaluation.judge import CitedExcerpt, JudgeError, JudgeRequest, judge
 from app.evaluation.models import LiveStatus, LiveVerdict, VerdictOutcome
@@ -311,15 +312,15 @@ async def _judge_pending(
         spent = cost_usd is not None and await add_spend(
             session, verdict.organisation_id, cost_usd, now
         )
-        await session.commit()
-        if spent:
-            await email_owners(
-                session,
-                verdict.organisation_id,
-                now,
-                mailer=ports.mailer,
-                studio_url=ports.studio_url,
+        emails = (
+            await raise_budget_spent(
+                session, verdict.organisation_id, now, studio_url=ports.studio_url
             )
+            if spent
+            else []
+        )
+        await session.commit()
+        await send_alert_emails(session, ports.mailer, now=now, ids=emails)
 
 
 async def judge_live_verdict(

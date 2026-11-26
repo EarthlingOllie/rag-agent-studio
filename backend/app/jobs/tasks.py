@@ -1,7 +1,8 @@
 """The job sweeper task (ADR-0020): Beat runs it every minute, and each worker sends it once as
 it starts. It sweeps every job type's rows (``app.jobs.reliability.sweep``), then drains the
-deletions table (``app.jobs.deletions``) and finishes the work after a new edition that an
-ingestion which died didn't get to."""
+deletions table (``app.jobs.deletions``), finishes the work after a new edition that an
+ingestion which died didn't get to, and sends the alert emails raised and not yet sent
+(``app.alert_emails``)."""
 
 import asyncio
 from datetime import datetime
@@ -9,6 +10,7 @@ from functools import partial
 
 import logfire
 
+from app.alert_emails.delivery import send_alert_emails
 from app.core.clock import SystemClock
 from app.core.db import create_engine, create_sessionmaker
 from app.core.settings import load_settings
@@ -20,6 +22,7 @@ from app.evaluation.jobs import EVALUATION_RUNS
 from app.evaluation.live_jobs import LIVE_VERDICTS
 from app.jobs import deletions
 from app.jobs.reliability import JobPolicy, Timings, sweep
+from app.mail.factory import build_mailer
 from app.re_embedding.jobs import RE_EMBED
 from app.worker.celery_app import SWEEP_TASK, celery_app
 
@@ -46,6 +49,8 @@ async def _sweep(at: datetime) -> int | None:
                     deleted=deleted,
                     finished=finished,
                 )
+        async with sessionmaker() as session:
+            await send_alert_emails(session, build_mailer(settings), now=at)
     finally:
         await engine.dispose()
     return None if recoveries is None else len(recoveries)

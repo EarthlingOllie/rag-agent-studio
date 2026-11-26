@@ -420,5 +420,6 @@ class EvaluationSpend(IdMixin, Base):
     month: Mapped[date] = mapped_column(Date)
     # US dollars, the sum of the month's Live Verdicts' frozen Costs.
     spent_usd: Mapped[Decimal] = mapped_column(Numeric(18, 9), server_default=text("0"))
-    # Set by the judgement that took the spend to or past the budget, which emailed the Owners.
+    # Set by the judgement that took the spend to or past the budget, which raised the alert
+    # emailing the Owners (``app.alert_emails``).
     budget_spent_emailed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

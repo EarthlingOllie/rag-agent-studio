@@ -111,9 +111,11 @@ async def exhaust_budget(
     if agent is None or agent.public_id != public_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Not found.")
     now = clock.now()
+    # Read before the alert commits, which expires the Agent.
+    budget = agent.daily_token_budget
     used = await admission.tokens_used(public_id, utc_date(now))
-    if used < agent.daily_token_budget:
-        used = await admission.record_usage(public_id, agent.daily_token_budget - used)
+    if used < budget:
+        used = await admission.record_usage(public_id, budget - used)
     await service.budget_exhausted(
         db,
         agent.id,
@@ -121,4 +123,4 @@ async def exhaust_budget(
         studio_url=str(request.app.state.settings.studio_url),
         now=now,
     )
-    return ExhaustedOut(tokens_used=used, daily_token_budget=agent.daily_token_budget)
+    return ExhaustedOut(tokens_used=used, daily_token_budget=budget)

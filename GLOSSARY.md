@@ -632,6 +632,10 @@ _Avoid_: Quota, spend limit (cost is tracked separately)
 The flag an Agent carries once its Token Budget is spent for the day, raised by the first reply that reaches it or the first message it refuses. The Studio shows it as a "Budget exhausted" badge on the Agent list and the Agent page, and raising it emails every Owner once per Agent per day. An hourly Beat task clears the flags raised before the current UTC date, so midnight's run clears them, or the next run after a midnight Beat missed.
 _Avoid_: Budget warning, alarm
 
+**Alert email**:
+The email that tells each Owner of an Organisation an alert was raised: the Budget alert (Token Budget exhausted), the Evaluation budget spent, the Block rate alert or the Live score drop alert. It is recorded for each Owner in the same step that raises the alert, and marked sent when it has gone, so an email the process died before sending, or a send that failed for some Owners, is sent by the job sweeper within a minute. An alert is still raised once per period; an Owner gets a second copy only if the process died between sending and marking it sent. Password reset and invite emails are not Alert emails and are sent once, as before.
+_Avoid_: Notification, alarm email
+
 **Allowed Origins**:
 The sites permitted to display an Agent through its Embed Snippet, each a scheme, host and optional port (`https://www.example.com`, `http://localhost:8080`). A host may start with a subdomain wildcard over a named site (`https://*.example.com` is every subdomain of example.com, but not example.com itself, and never a bare `*.com`), and localhost (`localhost`, `127.0.0.1`, `[::1]`) may take any port as `http://localhost:*`, for development. The Widget shell's `frame-ancestors` policy lists them; with none, no site may show the Agent. Part of the Operational Settings: changes apply to the next page load, without publishing, and are audited.
 
