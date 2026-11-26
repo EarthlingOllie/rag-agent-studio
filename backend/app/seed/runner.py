@@ -28,6 +28,7 @@ from fastapi import FastAPI
 from sqlalchemy import select
 
 from app.credentials.registry import PROVIDERS, Provider
+from app.jobs.reliability import sweeper_paused
 from app.seed import content, live_evaluation, suggestions
 from app.seed.client import SeedApi, new_client
 from app.seed.client import SeedError as SeedError
@@ -363,7 +364,13 @@ async def seed(
             await live_evaluation.set_up(api, project, agents)
             await suggestions.retention_window(api)
             if fresh:
-                await generate(app, api, clock, start, project, agents, history or content.HISTORY)
+                # The history's jobs (its Evaluation Runs, Suggestion runs and Live Verdicts run
+                # in this process) carry the seed's clock, weeks back: the stack's sweeper would
+                # take them for dead, so it waits until the history is written.
+                async with sweeper_paused(app.state.sessionmaker):
+                    await generate(
+                        app, api, clock, start, project, agents, history or content.HISTORY
+                    )
                 default_model = await _default_model(api, real)
             elif agents[content.HR_AGENT]["live_version"] is None:
                 raise SeedError(

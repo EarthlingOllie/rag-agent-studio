@@ -5,6 +5,7 @@ Most tests seed a light history (a Conversation a day); the interviewer's walkth
 full one, whose fixed random seed makes the comparison tell its story.
 """
 
+import asyncio
 import itertools
 import uuid
 from datetime import UTC, date, datetime, time, timedelta
@@ -18,7 +19,9 @@ from app.analytics.models import UsageDaily, UsageRollupState
 from app.audit.models import AuditEvent
 from app.core.clock import SystemClock
 from app.credentials.registry import Provider
-from app.seed import content
+from app.jobs.tasks import sweep_jobs
+from app.seed import content, runner
+from app.seed import history as seed_history
 from app.seed.runner import RealCredential, SeedError, erase_demo, seed
 from tests.conftest import ClientFactory, SignedUpMember
 from tests.integration.test_seed import ASSETS, demo_project, get, signed_in
@@ -666,3 +669,26 @@ async def test_the_seed_stops_when_the_suggestion_run_does_not_complete(
 
     assert isinstance(app.state.clock, SystemClock)
     await erase_demo(app)
+
+
+async def test_no_sweep_runs_while_the_seed_writes_its_history(
+    app: FastAPI, new_client: ClientFactory, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The history's jobs carry the seed's clock, weeks back, which a sweep by today's clock would
+    take for jobs long dead (ticket 22-03: on the compose stack Beat's sweep ended a seeded
+    Evaluation Run Interrupted). Beat's sweep, run meanwhile, finds the sweeper's lock taken."""
+    sweeps: list[int | None] = []
+    generate = seed_history.generate
+
+    async def sweeping_first(*args: Any, **kwargs: Any) -> None:
+        sweeps.append(await asyncio.to_thread(lambda: sweep_jobs.apply().get()))
+        await generate(*args, **kwargs)
+
+    monkeypatch.setattr(runner, "generate", sweeping_first)
+    await erase_demo(app)
+
+    await seed(app, ASSETS, history=LIGHT)
+
+    assert sweeps == [None]
+    # Once the history is written, sweeps run again.
+    assert await asyncio.to_thread(lambda: sweep_jobs.apply().get()) is not None

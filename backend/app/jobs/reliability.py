@@ -370,3 +370,18 @@ async def sweep(
         finally:
             await locked.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": SWEEPER_LOCK_KEY})
             await locked.commit()
+
+
+@asynccontextmanager
+async def sweeper_paused(sessionmaker: async_sessionmaker[AsyncSession]) -> AsyncIterator[None]:
+    """No sweep runs meanwhile: this holds the sweeper's lock (waiting for a sweep under way to
+    finish). For the seed, whose history writes jobs' times by a clock set weeks back, which a
+    sweep by today's clock would take for jobs long dead or queued."""
+    async with sessionmaker() as locked:
+        await locked.execute(text("SELECT pg_advisory_lock(:key)"), {"key": SWEEPER_LOCK_KEY})
+        await locked.commit()
+        try:
+            yield
+        finally:
+            await locked.execute(text("SELECT pg_advisory_unlock(:key)"), {"key": SWEEPER_LOCK_KEY})
+            await locked.commit()
