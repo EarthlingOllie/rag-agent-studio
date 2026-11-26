@@ -86,6 +86,7 @@ from app.evaluation.settings import judge_model
 from app.projects.instructions import project_version
 from app.projects.models import InstructionsVersion, Project
 from app.projects.service import active_project
+from app.suggestions.jobs import check_stopped
 from app.suggestions.reads import suggestion_in_progress
 from app.tenancy.models import Organisation
 from app.tenancy.repository import OrganisationScope
@@ -989,7 +990,8 @@ async def cancel_run(
     now: datetime,
 ) -> None:
     """Cancels a queued or running Run (``RunFinishedError`` otherwise). Its task stops before
-    its next answer; what it answered and spent so far is kept."""
+    its next answer; what it answered and spent so far is kept. A Suggestion's check that is
+    cancelled settles its Suggestion as not checked."""
     found = await _agent(session, scope, project_id, agent_id, change=False)
     run = await session.scalar(
         select(EvaluationRun)
@@ -1002,6 +1004,8 @@ async def cancel_run(
         raise RunFinishedError
     run.status = RunStatus.CANCELLED
     run.finished_at = now
+    if run.kind == RunKind.SUGGESTION:
+        await check_stopped(session, run.id, now)
     await session.commit()
 
 

@@ -42,6 +42,7 @@ from app.agents.service import AgentArchivedError, AgentWithDraft, active_agent,
 from app.conversations.models import Message
 from app.conversations.service import TracedChunk, searches_of, traced_chunks
 from app.core.clock import Clock
+from app.core.settings import load_settings
 from app.credentials.models import ProviderCredential
 from app.default_model.service import CurrentDefault
 from app.evaluation.estimate import NANO
@@ -63,7 +64,7 @@ from app.evaluation.service import EmptySetError, SideChoice, plan_run, run_in_p
 from app.evaluation.settings import judge_model
 from app.evaluation.suggestion_check import (
     CheckResult,
-    check_cost,
+    CheckState,
     fail_check,
     read_check,
     start_check,
@@ -71,10 +72,13 @@ from app.evaluation.suggestion_check import (
 )
 from app.feedback.service import low_rated_replies, thumbs_down_replies
 from app.gateway.gateway import ModelGateway
+from app.jobs import reliability
+from app.jobs.reliability import Claim, Timings
 from app.pricing.service import credential_pricing, price_table
 from app.pricing.table import TokenUsage, cost
 from app.projects.service import ProjectArchivedError, active_project
 from app.retrieval.service import ExcludedReason
+from app.suggestions.jobs import SUGGESTION_ROWS, check_cost
 from app.suggestions.models import (
     IN_PROGRESS,
     EvidenceKind,
@@ -350,6 +354,7 @@ async def start_suggestion(
         estimated_proposing_cost_usd=plan.estimate.proposing_usd,
         estimated_checking_cost_usd=plan.estimate.checking_usd,
         created_at=now,
+        queued_at=now,
     )
     session.add(suggestion)
     await session.commit()
@@ -677,6 +682,7 @@ async def _finish(
             # Cancelled meanwhile.
             return
         suggestion.finished_at = now
+        reliability.released(suggestion)
         if error is not None:
             suggestion.status = SuggestionStatus.FAILED
             suggestion.error_message = error
@@ -760,6 +766,7 @@ async def _proposed(
         if check_run_id is None:
             suggestion.status = SuggestionStatus.COMPLETED
             suggestion.finished_at = now
+            reliability.released(suggestion)
         else:
             suggestion.status = SuggestionStatus.CHECKING
             suggestion.check_run_id = check_run_id
@@ -781,6 +788,7 @@ async def _checked(
         if suggestion.status == SuggestionStatus.CHECKING:
             suggestion.status = SuggestionStatus.COMPLETED
             suggestion.finished_at = now
+            reliability.released(suggestion)
         await session.commit()
 
 
@@ -818,6 +826,7 @@ async def _failed_unexpectedly(
         suggestion.status = SuggestionStatus.FAILED
         suggestion.error_message = UNEXPECTED
         suggestion.finished_at = now
+        reliability.released(suggestion)
         if suggestion.check_run_id is not None:
             await fail_check(session, suggestion.check_run_id, UNEXPECTED, now)
         await session.commit()
@@ -833,9 +842,27 @@ async def run_suggestion(
     """Gathers the queued Suggestion run's evidence and proposes its Suggestion, then checks a
     configuration change against the Evaluation Set when the Agent has one. A run cancelled
     meanwhile stops before its next phase, keeping what it spent. An unexpected error ends the
-    run ``failed``, and its check Run with it, so it never stays in progress."""
+    run ``failed``, and its check Run with it, so it never stays in progress.
+
+    The job claims the run from Queued only (``app.suggestions.jobs``, ADR-0020): a run already
+    picked up, cancelled or finished is left, so a second delivery adds nothing and pays for no
+    proposal. While it holds the claim it writes a heartbeat in the background, through
+    gathering, proposing and checking; a run whose heartbeat stops is settled by the sweeper."""
+    timings = Timings.from_settings(load_settings())
     try:
-        await _run(sessionmaker, ports, gateway, suggestion_id, clock)
+        async with sessionmaker() as session:
+            found = await reliability.claim(
+                session,
+                SUGGESTION_ROWS,
+                suggestion_id,
+                now=clock.now(),
+                dead_after=timings.dead_after,
+            )
+            await session.commit()
+        if found is None:
+            return
+        async with reliability.heartbeat(sessionmaker, found, clock, timings.heartbeat_seconds):
+            await _run(sessionmaker, ports, gateway, found, clock)
     except Exception:
         logger.exception("Suggestion run failed", extra={"suggestion_id": str(suggestion_id)})
         await _failed_unexpectedly(sessionmaker, suggestion_id, clock.now())
@@ -845,11 +872,10 @@ async def _run(
     sessionmaker: async_sessionmaker[AsyncSession],
     ports: EvaluationPorts,
     gateway: ModelGateway,
-    suggestion_id: uuid.UUID,
+    found: Claim,
     clock: Clock,
 ) -> None:
-    if not await _set_status(sessionmaker, suggestion_id, SuggestionStatus.GATHERING):
-        return
+    suggestion_id = found.row_id
     evidence = await _gather(sessionmaker, suggestion_id)
     if not evidence:
         await _finish(sessionmaker, suggestion_id, clock.now(), explanation=NO_EVIDENCE)
@@ -948,8 +974,9 @@ class EvidenceRead:
         return cast(datetime, cast(EvaluationRun, self.run).finished_at)
 
 
-# A completed Suggestion with a configuration change that had no check: the Agent had no
-# Evaluation Set.
+# A completed Suggestion with a configuration change that had no check (the Agent had no
+# Evaluation Set), or whose check stopped before it finished (its Run was cancelled directly, or
+# interrupted).
 NOT_CHECKED = "not_checked"
 
 
@@ -957,7 +984,7 @@ NOT_CHECKED = "not_checked"
 class SuggestionCheck:
     # ``not_checked``, else the check's ``CheckState``.
     state: str
-    # The check; None when not checked.
+    # The check; None when there was none.
     result: CheckResult | None
 
 
@@ -993,6 +1020,9 @@ async def _check_of(
 ) -> SuggestionCheck | None:
     if suggestion.check_run_id is not None:
         result = await read_check(session, scope, project_id, agent_id, suggestion.check_run_id)
+        if result.state == CheckState.CANCELLED and suggestion.status == SuggestionStatus.COMPLETED:
+            # The check stopped before it finished, but the Suggestion wasn't cancelled.
+            return SuggestionCheck(NOT_CHECKED, result)
         return SuggestionCheck(result.state, result)
     if (
         suggestion.status == SuggestionStatus.COMPLETED

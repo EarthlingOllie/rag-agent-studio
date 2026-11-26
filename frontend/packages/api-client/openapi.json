@@ -9123,6 +9123,14 @@
         "title": "SuggestionEstimateOut",
         "type": "object"
       },
+      "SuggestionFailure": {
+        "description": "Why a failed run failed, when it was not the Evaluation Model or an error of its own.",
+        "enum": [
+          "interrupted"
+        ],
+        "title": "SuggestionFailure",
+        "type": "string"
+      },
       "SuggestionOut": {
         "properties": {
           "applied_at": {
@@ -9214,6 +9222,16 @@
             ],
             "title": "Explanation"
           },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionFailure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "finished_at": {
             "anyOf": [
               {
@@ -9284,6 +9302,7 @@
           "outcome",
           "evidence_total",
           "error_message",
+          "failure_reason",
           "cost",
           "created_at",
           "finished_at",
@@ -9419,6 +9438,16 @@
             "title": "Evidence Total",
             "type": "integer"
           },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionFailure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "finished_at": {
             "anyOf": [
               {
@@ -9474,6 +9503,7 @@
           "outcome",
           "evidence_total",
           "error_message",
+          "failure_reason",
           "cost",
           "created_at",
           "finished_at",
