@@ -85,12 +85,16 @@ class Agent(IdMixin, Base):
     # Live Verdict (``app.evaluation.live``). 0, the default, judges nothing.
     live_sample_rate: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     # The budget alert flag: when the day's Token Budget ran out, shown as the Studio's alert
-    # badge. Beat clears it at midnight UTC; None when there is no alert.
+    # badge. Beat's first run after midnight UTC clears it; None when there is no alert.
     budget_exhausted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The Block rate alert flag: when the hourly rollup found the input Guardrail's block rate
     # spiking, shown as the Studio's alert badge. The first run that finds no spike clears it;
     # None when there is no alert.
     block_rate_alert_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The end of the last hour the Block rate alert check covered for this Agent: the next run
+    # also checks every hour since, so a spike while Beat was down is still alerted on. None
+    # until its first check.
+    block_rate_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The Live score drop alert flag: when the hourly check found the Live Version's Live score
     # clearly lower than the previous Live Version's (``app.analytics.alerts``), shown as the
     # Studio's alert badge, and the Live Version it was raised against. A run that no longer

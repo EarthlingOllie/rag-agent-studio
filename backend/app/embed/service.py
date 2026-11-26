@@ -422,7 +422,7 @@ async def budget_exhausted(
 
 
 async def clear_budget_alerts(session: AsyncSession, *, now: datetime) -> int:
-    """Clears the budget alert flags raised before today (UTC), for Beat at midnight; returns
+    """Clears the budget alert flags raised before today (UTC), for Beat each hour; returns
     how many it cleared. A flag raised today stays: today's budget is still spent."""
     cleared = await session.execute(
         update(Agent)

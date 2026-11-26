@@ -167,6 +167,17 @@ The API, worker and Beat are traced with OpenTelemetry through the Logfire SDK (
 - **Logs.** Every service writes JSON lines to stdout: `timestamp`, `level`, `logger`, `message`, `service` (`api`, `worker`, `beat` or `migrations`), any `extra` fields, `exception` when there is one, and `trace_id`/`span_id` inside a traced operation. Extra fields with sensitive names, and the task arguments and results Celery logs, are written as `[Redacted]`.
 - **Entrypoints.** The API runs as `python -m app.serve`, so uvicorn's own lines are JSON too. Celery runs with `--quiet` so it skips its text banner; the one line Celery still prints outside logging is its `worker: Warm shutdown (MainProcess)` notice on SIGTERM.
 
+## Scheduled jobs
+
+Beat runs these on UTC schedules (`backend/app/worker/celery_app.py`); each catches up on runs a stopped Beat missed (ticket 21-12), so a deploy never skips one:
+
+| Job | Schedule | Catching up |
+|---|---|---|
+| Usage rollup (`analytics.roll_up_usage`) | hourly, :05 | finalises every day not yet final, from the raw tables (idempotent) |
+| Block rate alert check (after each rollup, `app/analytics/alerts.py`) | hourly, :05 | each Agent records the end of the last hour covered (`agents.block_rate_checked_at`, migration `0059_block_rate_checked_at`); the next run checks every hour since that has Visitor replies of the Agent, oldest first, then the hour up to the run. A run by hand for an earlier time never moves it back |
+| Purge (`retention.purge_expired`) | hourly, :35 | purges everything past its Retention Window, so a missed run leaves text at most an hour longer |
+| Token Budget alert reset (`embed.clear_budget_alerts`) | hourly, :00 | clears the flags raised before the current UTC date, so the first run after a missed midnight resets the day that ended |
+
 ## Tests
 
 Backend tests run against real Postgres and Redis. With `make services` running they use the `studio_test` database and Redis database 15; override with `TEST_DATABASE_URL` and `TEST_REDIS_URL`.

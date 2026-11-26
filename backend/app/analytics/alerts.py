@@ -6,7 +6,9 @@ Block rate alert: every Agent's Guardrail block rate over the last hour is compa
 baseline, the week before that hour. A spike is at least ``SPIKE_MIN_BLOCKS`` blocked Visitor
 messages in the hour, making up at least ``SPIKE_MIN_RATE`` of the hour's Visitor messages and at
 least ``SPIKE_FACTOR`` times the baseline's block rate. Only Visitor Conversations count: the
-Playground never does.
+Playground never does. Each Agent records the end of the last hour it was checked for; a run
+also checks each hour since then (one with Visitor replies of the Agent), oldest first, so a
+spike while Beat was down is still alerted on.
 
 Live score drop alert: once an Agent's Live Version has ``DROP_MIN_JUDGED`` judged Live Verdicts
 on replies since it became Live, its Live score is compared with the previous Live Version's (the
@@ -16,10 +18,23 @@ pooled two-proportion z-test at 95%. Any change of the Live Version also clears 
 (``app.agents.versions``)."""
 
 import uuid
+from collections.abc import Collection
 from dataclasses import dataclass, replace
 from datetime import datetime, timedelta
 
-from sqlalchemy import ColumnElement, Select, and_, case, func, select, update
+from sqlalchemy import (
+    ColumnElement,
+    DateTime,
+    Integer,
+    Select,
+    and_,
+    case,
+    func,
+    or_,
+    select,
+    type_coerce,
+    update,
+)
 from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -72,9 +87,21 @@ def _count(condition: ColumnElement[bool]) -> ColumnElement[int]:
     return func.count(case((condition, 1)))
 
 
-async def _rates(session: AsyncSession, at: datetime) -> dict[uuid.UUID, Rates]:
-    """Each Agent with Visitor replies in the hour up to ``at``: its rates."""
+def _visitor_replies() -> list[ColumnElement[bool]]:
+    return [
+        Message.role == MessageRole.ASSISTANT,
+        Message.agent_version_id.is_not(None),
+        Conversation.is_playground.is_(False),
+    ]
+
+
+async def _rates(
+    session: AsyncSession, at: datetime, agents: Collection[uuid.UUID] | None
+) -> dict[uuid.UUID, Rates]:
+    """Each Agent with Visitor replies in the hour up to ``at`` (of ``agents``, or all): its
+    rates."""
     start = at - WINDOW
+    only = [] if agents is None else [Conversation.agent_id.in_(agents)]
     in_window = Message.created_at > start
     is_block = Message.guardrail_outcomes.contains([{"layer": "input", "action": "blocked"}])
     rows = await session.execute(
@@ -87,9 +114,8 @@ async def _rates(session: AsyncSession, at: datetime) -> dict[uuid.UUID, Rates]:
         )
         .join(Conversation, Conversation.id == Message.conversation_id)
         .where(
-            Message.role == MessageRole.ASSISTANT,
-            Message.agent_version_id.is_not(None),
-            Conversation.is_playground.is_(False),
+            *_visitor_replies(),
+            *only,
             Message.created_at > start - BASELINE,
             Message.created_at <= at,
         )
@@ -139,17 +165,66 @@ async def _email_owners(
         )
 
 
+async def _missed_hours(session: AsyncSession, at: datetime) -> dict[datetime, set[uuid.UUID]]:
+    """The hours a stopped Beat missed: for each Agent checked before, every hour since the
+    end of its last checked hour, in steps of an hour, that holds Visitor replies of the Agent
+    and ended before ``at`` (the last may overlap the hour up to ``at``, which is checked
+    anyway). Each hour's end, with its Agents."""
+    since = Agent.block_rate_checked_at
+    hours = func.ceil(func.extract("epoch", Message.created_at - since) / WINDOW.total_seconds())
+    # Never None: only Agents checked before have hours since.
+    end = type_coerce(
+        since + func.make_interval(0, 0, 0, 0, hours.cast(Integer)), DateTime(timezone=True)
+    )
+    rows = await session.execute(
+        select(Conversation.agent_id, end)
+        .distinct()
+        .select_from(Message)
+        .join(Conversation, Conversation.id == Message.conversation_id)
+        .join(Agent, Agent.id == Conversation.agent_id)
+        .where(*_visitor_replies(), Message.created_at > since, end < at)
+    )
+    missed: dict[datetime, set[uuid.UUID]] = {}
+    for agent_id, hour_end in rows:
+        missed.setdefault(hour_end, set()).add(agent_id)
+    return missed
+
+
 async def check_block_rates(
     session: AsyncSession, at: datetime, *, mailer: Mailer, studio_url: str
 ) -> None:
-    """Raises the Block rate alert of every Agent whose block rate spiked in the hour before
-    ``at`` (emailing its Owners), and clears it on every other Agent. An Agent already
-    alerted is not emailed again while the spike lasts."""
-    rates = await _rates(session, at)
-    spiking = {agent_id for agent_id, found in rates.items() if found.spike}
+    """Checks every hour each Agent missed since it was last checked (``_missed_hours``), oldest
+    first, then the hour before ``at`` for every Agent, and records ``at`` as the end of the
+    last hour covered (a run by hand for an earlier time leaves a later one)."""
+    missed = await _missed_hours(session, at)
+    for hour_end in sorted(missed):
+        await _check_hour(session, hour_end, missed[hour_end], mailer=mailer, studio_url=studio_url)
+    await _check_hour(session, at, None, mailer=mailer, studio_url=studio_url)
     await session.execute(
         update(Agent)
-        .where(Agent.block_rate_alert_at.is_not(None), Agent.id.not_in(spiking))
+        .where(or_(Agent.block_rate_checked_at.is_(None), Agent.block_rate_checked_at < at))
+        .values(block_rate_checked_at=at)
+    )
+    await session.commit()
+
+
+async def _check_hour(
+    session: AsyncSession,
+    at: datetime,
+    agents: Collection[uuid.UUID] | None,
+    *,
+    mailer: Mailer,
+    studio_url: str,
+) -> None:
+    """Raises the Block rate alert of every Agent (of ``agents``, or all) whose block rate
+    spiked in the hour before ``at`` (emailing its Owners), and clears it on every other one.
+    An Agent already alerted is not emailed again while the spike lasts."""
+    rates = await _rates(session, at, agents)
+    spiking = {agent_id for agent_id, found in rates.items() if found.spike}
+    only = [] if agents is None else [Agent.id.in_(agents)]
+    await session.execute(
+        update(Agent)
+        .where(Agent.block_rate_alert_at.is_not(None), Agent.id.not_in(spiking), *only)
         .values(block_rate_alert_at=None)
     )
     raised = list(
