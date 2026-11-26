@@ -464,7 +464,7 @@ locals {
   )
 }
 
-# HTTPS reaches AWS APIs (through the VPC endpoints) and model providers (through NAT). Data stores only for
+# HTTPS reaches AWS APIs and model providers (through the NAT; S3 through its gateway endpoint). Data stores only for
 # the services that use them: Beat never talks to Postgres.
 resource "aws_vpc_security_group_egress_rule" "service" {
   for_each = local.service_egress

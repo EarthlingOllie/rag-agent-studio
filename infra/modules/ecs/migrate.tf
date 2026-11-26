@@ -88,7 +88,7 @@ resource "aws_security_group" "migrate" {
   tags = merge(local.tags, { Name = "${local.name}-migrate" })
 }
 
-# HTTPS for image pulls, logs and the secret (through the VPC endpoints); Postgres for the migrations themselves.
+# HTTPS for image pulls, logs and the secret (through the NAT); Postgres for the migrations themselves.
 resource "aws_vpc_security_group_egress_rule" "migrate" {
   for_each = {
     https    = { port = 443, cidr = "0.0.0.0/0", security_group = null }

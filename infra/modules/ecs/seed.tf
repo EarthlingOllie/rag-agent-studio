@@ -106,7 +106,7 @@ resource "aws_security_group" "seed" {
   tags = merge(local.tags, { Name = "${local.name}-seed" })
 }
 
-# HTTPS for image pulls, logs, secrets, S3 and KMS (through the VPC endpoints); Postgres and Redis for the in-process API.
+# HTTPS for image pulls, logs, secrets, S3 and KMS (through the NAT and the S3 gateway endpoint); Postgres and Redis for the in-process API.
 resource "aws_vpc_security_group_egress_rule" "seed" {
   for_each = {
     https    = { port = 443, cidr = "0.0.0.0/0", security_group = null }
