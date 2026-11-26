@@ -28,6 +28,7 @@ from app.worker.celery_app import (
     LIVE_VERDICT_TASK,
     RE_EMBED_TASK,
     SUGGESTION_RUN_TASK,
+    SWEEP_TASK,
     celery_app,
 )
 from app.worker.tasks import health_check
@@ -47,7 +48,7 @@ class Job:
     @property
     def identifier(self) -> str:
         """What the job is about, for logs: the row it runs for, or the objects it deletes."""
-        return str(self.args[0])
+        return str(self.args[0]) if self.args else ""
 
 
 class JobPublisher(abc.ABC):
@@ -101,6 +102,10 @@ class JobPublisher(abc.ABC):
     ) -> None:
         args = (str(project_id), str(actor_id), requested_at.isoformat())
         await self._publish(Job(DELETE_PROJECT_TASK, args))
+
+    async def sweep(self) -> None:
+        """The job sweeper, which a worker sends once as it starts (Beat sends the rest)."""
+        await self._publish(Job(SWEEP_TASK, ()))
 
     async def probe_worker(self) -> "AsyncResult[Any]":
         """The worker health probe. Unlike every other job, a failed send is raised, and the

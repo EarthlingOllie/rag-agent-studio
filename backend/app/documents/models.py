@@ -87,6 +87,12 @@ class Document(IdMixin, Base):
     # The converted markdown in the object store, once converted.
     markdown_key: Mapped[str | None] = mapped_column(Text)
     edition: Mapped[int] = mapped_column(Integer, default=1)
+    # Job reliability (ADR-0020, ``app.jobs.reliability``): when the edition was last put on
+    # Queued, the claim of the ingestion that holds it while Processing, and that ingestion's
+    # last heartbeat. Only the reliability module reads them.
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    claim_id: Mapped[uuid.UUID | None] = mapped_column()
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -118,6 +124,12 @@ class StagedEdition(Base):
     # A ``FailureCategory``, while the staged edition is Failed.
     error_category: Mapped[str | None] = mapped_column(String(30))
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    # Job reliability (ADR-0020, ``app.jobs.reliability``): when the edition was last put on
+    # Queued, the claim of the ingestion that holds it while Processing, and that ingestion's
+    # last heartbeat. Only the reliability module reads them.
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    claim_id: Mapped[uuid.UUID | None] = mapped_column()
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

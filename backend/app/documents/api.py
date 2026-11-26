@@ -439,6 +439,7 @@ async def confirm_upload(
     redis: RedisDep,
     store: StoreDep,
     settings: SettingsDep,
+    clock: ClockDep,
 ) -> DocumentOut | JSONResponse:
     """Records the uploaded file's content hash, creates the Document as Queued and starts
     ingestion. The Document then moves to Processing and Ready (or Failed). A file whose content
@@ -453,6 +454,7 @@ async def confirm_upload(
             upload_id=body.upload_id,
             content_hash=body.content_hash,
             max_bytes=settings.max_upload_bytes,
+            queued_at=clock.now(),
         )
     except ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
@@ -692,6 +694,7 @@ async def replace_document(
     redis: RedisDep,
     store: StoreDep,
     settings: SettingsDep,
+    clock: ClockDep,
 ) -> DocumentOut | JSONResponse:
     """Confirms an uploaded file as the Document's newer edition and starts ingesting it. The
     current edition keeps serving until the new one is Ready; then the new one replaces it in
@@ -707,6 +710,7 @@ async def replace_document(
             upload_id=body.upload_id,
             content_hash=body.content_hash,
             max_bytes=settings.max_upload_bytes,
+            queued_at=clock.now(),
         )
     except (ProjectNotFoundError, service.DocumentNotFoundError):
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
@@ -752,14 +756,16 @@ async def replace_document(
     },
 )
 async def retry_document(
-    project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db
+    project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db, clock: ClockDep
 ) -> DocumentOut | JSONResponse:
     """Processes a Document again from its stored file: it goes back to Queued. When the
     Document's newer edition is what failed, that edition is retried instead; a Ready Document
     is processed again with the Project's current settings (such as OCR), its Chunks serving
     until the new ones replace them."""
     try:
-        document, staged = await service.retry_document(db, scope, project_id, document_id)
+        document, staged = await service.retry_document(
+            db, scope, project_id, document_id, queued_at=clock.now()
+        )
     except (ProjectNotFoundError, service.DocumentNotFoundError):
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except ProjectArchivedError:

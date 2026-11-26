@@ -243,9 +243,11 @@ async def confirm_upload(
     upload_id: uuid.UUID,
     content_hash: str | None,
     max_bytes: int,
+    queued_at: datetime,
 ) -> Document:
-    """Creates the Document as Queued; the caller enqueues ingestion after this commits. The
-    Project stays locked until then, so concurrent confirms can't overfill its quota."""
+    """Creates the Document as Queued, since ``queued_at``; the caller enqueues ingestion after
+    this commits. The Project stays locked until then, so concurrent confirms can't overfill its
+    quota."""
     project = await projects.active_project(session, scope, project_id, lock=True)
     await _check_quota(session, project)
     received = await _receive(
@@ -266,6 +268,7 @@ async def confirm_upload(
         content_hash=received.content_hash,
         object_key=received.object_key,
         status=DocumentStatus.QUEUED,
+        queued_at=queued_at,
         attempt_count=0,
         edition=1,
     )
@@ -310,7 +313,12 @@ async def set_document_quota(
 
 
 async def retry_document(
-    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, document_id: uuid.UUID
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    document_id: uuid.UUID,
+    *,
+    queued_at: datetime,
 ) -> tuple[Document, StagedEdition | None]:
     """Puts what failed back to Queued, for the caller to enqueue ingestion once this commits:
     a Failed Document, or, when the Document is Ready and its newer edition is what failed,
@@ -340,6 +348,7 @@ async def retry_document(
         if duplicate is not None and duplicate.id != document.id:
             raise DuplicateDocumentError(duplicate)
     retried.status = DocumentStatus.QUEUED
+    retried.queued_at = queued_at
     retried.error_message = None
     retried.error_category = None
     retried.updated_at = func.now()
@@ -682,6 +691,7 @@ async def replace_document(
     upload_id: uuid.UUID,
     content_hash: str | None,
     max_bytes: int,
+    queued_at: datetime,
 ) -> Replacement:
     """Stages the uploaded file as the Document's next edition, Queued; the caller enqueues
     ingestion after this commits. The current edition keeps serving until the staged one is
@@ -724,6 +734,7 @@ async def replace_document(
     staged.content_hash = received.content_hash
     staged.object_key = received.object_key
     staged.status = DocumentStatus.QUEUED
+    staged.queued_at = queued_at
     staged.error_message = None
     staged.error_category = None
     staged.attempt_count = 0

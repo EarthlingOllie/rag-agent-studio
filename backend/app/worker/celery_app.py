@@ -20,6 +20,9 @@ CLEAR_BUDGET_ALERTS_TASK = "embed.clear_budget_alerts"
 ROLL_UP_TASK = "analytics.roll_up_usage"
 # The retention purge (app.retention.tasks), which Beat runs hourly.
 PURGE_TASK = "retention.purge_expired"
+# The job sweeper (app.jobs.tasks, ADR-0020), which Beat runs every minute and each worker sends
+# once as it starts.
+SWEEP_TASK = "jobs.sweep"
 
 celery_app = Celery(
     "rag_agent_studio",
@@ -33,6 +36,7 @@ celery_app = Celery(
         "app.embed.tasks",
         "app.retention.tasks",
         "app.suggestions.tasks",
+        "app.jobs.tasks",
     ],
 )
 # Schedules are in UTC: the Token Budget's day is the UTC date.
@@ -48,6 +52,12 @@ def configure_celery(settings: Settings) -> Celery:
         task_always_eager=settings.celery_task_always_eager,
         task_eager_propagates=True,
         broker_connection_retry_on_startup=True,
+        # A worker takes one message at a time and acknowledges it once the task has run, so a
+        # message waiting behind a long job can go to another worker. A message whose worker was
+        # lost is not put back on the queue: the sweeper restarts the job, with a cap (ADR-0020).
+        worker_prefetch_multiplier=1,
+        task_acks_late=True,
+        task_reject_on_worker_lost=False,
         beat_schedule={
             "worker-health-check": {"task": HEALTH_CHECK_TASK, "schedule": 300.0},
             # A new UTC date starts a new Token Budget; its alert flags go too. Hourly, so the
@@ -63,6 +73,9 @@ def configure_celery(settings: Settings) -> Celery:
             # day): Message text and feedback comments older than each Retention Window. A
             # missed run leaves text at most an hour past its window.
             "retention-purge": {"task": PURGE_TASK, "schedule": crontab(minute="35")},
+            # Every minute: send again jobs queued too long, and deal with jobs whose heartbeat
+            # stopped (ADR-0020).
+            "job-sweeper": {"task": SWEEP_TASK, "schedule": 60.0},
         },
     )
     return celery_app

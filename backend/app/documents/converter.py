@@ -21,6 +21,8 @@ from docling_core.types.doc.document import DoclingDocument
 from docling_core.types.doc.labels import DocItemLabel
 from docling_core.types.io import DocumentStream
 
+from app.jobs.faults import KillSwitch
+
 
 class UnsupportedContentError(Exception):
     """The file's content can't be read: encrypted, damaged, or not what its type says."""
@@ -80,12 +82,15 @@ class FakeConverter:
     form feed starts a new page. A first line starting ``%PDF-`` (a PDF's header) is skipped.
     A file starting with ``SCANNED_MARKER`` stands for a scanned
     one: its text is read only with ``ocr`` on, and otherwise its pages are empty, as Docling's
-    are. Set ``failure`` to make the next conversions raise it."""
+    are. Set ``failure`` to make the next conversions raise it; arm ``kill`` at ``"convert"`` to
+    kill the job at its next conversion."""
 
     def __init__(self) -> None:
         self.failure: Exception | None = None
+        self.kill = KillSwitch()
 
     def convert(self, data: bytes, filename: str, *, ocr: bool) -> DoclingDocument:
+        self.kill.check("convert")
         if self.failure is not None:
             raise self.failure
         document = DoclingDocument(name=PurePath(filename).stem)

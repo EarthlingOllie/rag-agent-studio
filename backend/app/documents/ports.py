@@ -12,6 +12,7 @@ from dataclasses import dataclass
 
 import httpx2
 
+from app.core.clock import Clock, SystemClock
 from app.core.settings import Settings
 from app.crypto.envelope import EnvelopeEncryption
 from app.documents.converter import DoclingConverter, DocumentConverter, FakeConverter
@@ -39,6 +40,9 @@ class IngestionPorts:
     open_gateway: Callable[[httpx2.AsyncClient], ModelGateway]
     # Flags Chunks that look like instructions aimed at an AI.
     classifier: InjectionClassifier
+    # The clock claims and heartbeats are timed by (job reliability, ADR-0020). The API points
+    # it at its own clock, so tests that move theirs move ingestion's too.
+    clock: Callable[[], Clock] = SystemClock
 
 
 def _local_embedder(settings: Settings) -> Embedder:

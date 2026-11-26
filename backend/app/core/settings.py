@@ -177,6 +177,12 @@ class Settings(BaseSettings):
     ingestion_max_attempts: int = Field(default=4, ge=1)
     ingestion_retry_base_seconds: float = Field(default=10.0, gt=0)
     ingestion_retry_max_seconds: float = Field(default=300.0, gt=0)
+    # Job reliability (ADR-0020): a job writes a heartbeat this often while it holds its claim;
+    # one with no heartbeat for the dead-after time counts as dead, and the sweeper deals with
+    # it; a job queued longer than the queued-too-long time is sent again. In seconds.
+    job_heartbeat_seconds: float = Field(default=30.0, gt=0)
+    job_dead_after_seconds: float = Field(default=300.0, gt=0)
+    job_queued_too_long_seconds: float = Field(default=900.0, gt=0)
     # How many Chunks a re-embed job embeds and writes at a time; each batch shows as progress.
     # Provider failures during a re-embed are retried like ingestion's.
     re_embed_batch_size: int = Field(default=64, gt=0)

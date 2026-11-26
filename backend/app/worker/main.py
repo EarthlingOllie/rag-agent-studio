@@ -4,10 +4,11 @@ Settings are validated on import, so a misconfigured worker exits before it conn
 and telemetry are configured here too, under the service name of the command being run.
 """
 
+import asyncio
 import sys
 from typing import Any
 
-from celery.signals import setup_logging, worker_process_init
+from celery.signals import setup_logging, worker_process_init, worker_ready
 
 from app.core.clock import SystemClock
 from app.core.logs import configure_logging
@@ -20,6 +21,7 @@ from app.gateway.adapters import build_model_gateway
 from app.guardrails.pipeline import build_pipeline
 from app.mail.factory import build_mailer
 from app.worker.celery_app import configure_celery
+from app.worker.publisher import current_publisher
 
 SERVICE_NAME = "beat" if "beat" in sys.argv else "worker"
 
@@ -55,3 +57,10 @@ def _warm_up(**_: Any) -> None:
     """Each worker process loads the ingestion scan's local model as it starts (after the fork:
     an ONNX Runtime session isn't fork-safe), not in the middle of its first ingestion."""
     warm_up(current_ports())
+
+
+@worker_ready.connect(weak=False, dispatch_uid="app.worker.main.sweep")
+def _sweep_on_start(**_: Any) -> None:
+    """A worker that starts sends the job sweeper once, so jobs left behind by a worker that died
+    are dealt with now rather than at Beat's next minute (ADR-0020)."""
+    asyncio.run(current_publisher().sweep())

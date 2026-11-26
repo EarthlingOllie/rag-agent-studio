@@ -147,6 +147,7 @@ def _lifespan(
         # Ingestion tasks enqueued from here run in the worker; in tests they run eagerly in
         # this process and use these same adapters.
         app.state.ingestion = build_ports(settings, app.state.envelope)
+        app.state.ingestion.clock = lambda: app.state.clock
         install_ports(app.state.ingestion)
         # The Guardrails around the Agent runtime: the input classifier checks every message.
         app.state.guardrails = build_pipeline(settings)

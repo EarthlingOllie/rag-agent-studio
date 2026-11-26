@@ -2,13 +2,17 @@
 
 It records every job sent, then hands it on to the adapter it wraps (in tests, Celery in eager
 mode, so the job runs at once). Told to, it loses the next job (as a broker that dropped it
-would), holds it until released (as a busy worker would), or fails to send it."""
+would), holds it until released (as a busy worker would), or fails to send it.
+
+A job killed through an adapter fake's kill switch (``app.jobs.faults``) stops where it was: the
+fake swallows ``JobKilled`` as the broker forgets a dead worker's message."""
 
 import asyncio
 from typing import Any
 
 from celery.result import AsyncResult
 
+from app.jobs.faults import JobKilled
 from app.worker.publisher import Job, JobPublisher
 
 
@@ -18,6 +22,7 @@ class RecordingJobPublisher(JobPublisher):
         self.sent: list[Job] = []
         self.lost: list[Job] = []
         self.held: list[Job] = []
+        self.killed: list[Job] = []
         self._next: list[str] = []
         self._failure: Exception | None = None
 
@@ -43,7 +48,7 @@ class RecordingJobPublisher(JobPublisher):
         elif fate == "hold":
             self.held.append(job)
         else:
-            self._deliver_to.send(job)
+            self._deliver(job)
 
     def probe(self) -> "AsyncResult[Any]":
         self._raise_failure()
@@ -53,7 +58,13 @@ class RecordingJobPublisher(JobPublisher):
         """Delivers the held jobs, in the order they were sent."""
         held, self.held = self.held, []
         for job in held:
-            await asyncio.to_thread(self._deliver_to.send, job)
+            await asyncio.to_thread(self._deliver, job)
+
+    def _deliver(self, job: Job) -> None:
+        try:
+            self._deliver_to.send(job)
+        except JobKilled:
+            self.killed.append(job)
 
     def _raise_failure(self) -> None:
         failure, self._failure = self._failure, None

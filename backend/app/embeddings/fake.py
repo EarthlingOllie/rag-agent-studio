@@ -14,6 +14,7 @@ from typing import Any
 from docling_core.transforms.chunker.tokenizer.base import BaseTokenizer
 
 from app.embeddings.registry import LOCAL_MODEL, EmbeddingModel
+from app.jobs.faults import KillSwitch
 
 
 class WordTokenizer(BaseTokenizer):
@@ -46,11 +47,13 @@ def hash_vector(text: str, dimension: int) -> list[float]:
 
 class HashEmbedder:
     """Stands in for an Embedding Model (the local one unless told otherwise). Put errors in
-    ``failures`` to make the next calls raise them, one per call."""
+    ``failures`` to make the next calls raise them, one per call; arm ``kill`` at ``"embed"`` to
+    kill the job at its next embedding call."""
 
     def __init__(self, model: EmbeddingModel = LOCAL_MODEL) -> None:
         self._model = model
         self.failures: list[Exception] = []
+        self.kill = KillSwitch()
 
     @property
     def model(self) -> EmbeddingModel:
@@ -60,6 +63,7 @@ class HashEmbedder:
         return WordTokenizer(max_tokens=max_tokens)
 
     async def embed_passages(self, texts: list[str]) -> list[list[float]]:
+        self.kill.check("embed")
         if self.failures:
             raise self.failures.pop(0)
         prefix = self._model.passage_prefix

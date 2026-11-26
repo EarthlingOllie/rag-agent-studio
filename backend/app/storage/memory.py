@@ -2,17 +2,19 @@
 
 from urllib.parse import quote, urlencode
 
+from app.jobs.faults import KillSwitch
 from app.storage.port import ObjectNotFoundError, attachment_disposition
 
 
 class InMemoryObjectStore:
     """Objects in a dict. Presigned URLs use the ``memory://`` scheme; a test "uploads" by
     calling ``put`` with the key, as the browser would PUT to the URL. Set ``failure`` to make
-    reads raise it."""
+    reads raise it; arm ``kill`` at ``"put"`` to kill the job at its next write."""
 
     def __init__(self) -> None:
         self.objects: dict[str, tuple[bytes, str]] = {}
         self.failure: Exception | None = None
+        self.kill = KillSwitch()
 
     async def prepare(self) -> None:
         return None
@@ -31,6 +33,7 @@ class InMemoryObjectStore:
         return f"memory://objects/{quote(key)}?{query}"
 
     async def put(self, key: str, data: bytes, *, content_type: str) -> None:
+        self.kill.check("put")
         self.objects[key] = (data, content_type)
 
     async def get(self, key: str) -> bytes:

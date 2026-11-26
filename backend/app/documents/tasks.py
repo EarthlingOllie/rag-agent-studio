@@ -12,6 +12,7 @@ from app.core.settings import load_settings
 from app.documents import pipeline
 from app.documents.ports import current_ports
 from app.evaluation.expectations import recheck_document
+from app.jobs.reliability import Timings
 from app.worker.celery_app import DELETE_OBJECTS_TASK, INGEST_TASK, celery_app
 from app.worker.publisher import current_publisher
 
@@ -45,6 +46,8 @@ async def _run_ingestion(document_id: uuid.UUID, attempt_number: int) -> float |
                     retry_base_seconds=settings.ingestion_retry_base_seconds,
                     retry_max_seconds=settings.ingestion_retry_max_seconds,
                 ),
+                clock=ports.clock(),
+                timings=Timings.from_settings(settings),
             )
     finally:
         await engine.dispose()
