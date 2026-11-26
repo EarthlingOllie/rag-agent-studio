@@ -12,6 +12,10 @@ is ignored, since the Conversation holds every earlier turn, typed or spoken. Th
 served exactly as a typed widget message is (``app.embed.visitor_turn.serve_turn``), so the
 reply has its Trace, Cost and Message attribution, and both sides are saved as Spoken Messages
 of the Call. The reply streams back as OpenAI chat completion chunks over Server-Sent Events.
+
+A Playground Call token's turns are an Editor's, in a Playground Call (``app.playground.calls``):
+they are answered by the Draft with the Call's Project Instructions, outside the Visitor limits,
+and saved as Spoken Messages of the Playground Conversation.
 """
 
 import json
@@ -25,12 +29,14 @@ from pydantic import BaseModel, ConfigDict, StringConstraints
 
 from app.agents.api import ClockDep
 from app.agents.resolution import NoDefaultModelError, ProviderCredentialGoneError
+from app.agents.service import AgentArchivedError
 from app.agents.serving import AgentNotLiveError, AgentNotServedError
 from app.auth.api import Db
 from app.embed import calls, service
 from app.embed.api import Serving, Signer, _errors, _event_stream
 from app.embed.speech import SEARCHING_STATUS, Speech
 from app.embed.visitor_turn import ServedTurn, serve_turn
+from app.playground import calls as playground_calls
 from app.playground.api import QUESTION_MAX
 from app.playground.service import CallEndedError
 from app.voice.api import Voice
@@ -160,21 +166,27 @@ async def chat_completions(
     unavailable = await service.unavailable_text(db, public_id)
     call_id, conversation_id = found.call.id, found.conversation.id
     try:
-        turn = await serve_turn(
-            db,
-            found.agent,
-            found.conversation,
-            words,
-            found.call.ip,
-            ports=serving,
-            call_id=call_id,
-        )
+        if found.playground:
+            turn = await playground_calls.serve_turn(
+                db, found.agent, found.conversation, found.call, words, ports=serving
+            )
+        else:
+            turn = await serve_turn(
+                db,
+                found.agent,
+                found.conversation,
+                words,
+                found.call.ip,
+                ports=serving,
+                call_id=call_id,
+            )
     except CallEndedError:
         # The Call ended after its turn was checked.
         raise HTTPException(status.HTTP_403_FORBIDDEN, INVALID_CALL) from None
     except (
         AgentNotServedError,
         AgentNotLiveError,
+        AgentArchivedError,
         NoDefaultModelError,
         ProviderCredentialGoneError,
     ):

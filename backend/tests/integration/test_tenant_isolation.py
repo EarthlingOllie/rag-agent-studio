@@ -493,6 +493,24 @@ async def _a_playground_conversation(owner: SignedUpMember, add_member: MemberFa
     return params | {"conversation_id": started.json()["id"]}, None
 
 
+async def _a_calling_playground_conversation(
+    owner: SignedUpMember, add_member: MemberFactory
+) -> Prepared:
+    """A Playground Conversation with an Agent whose calling is on (the fake voice layer)."""
+    params, _ = await _a_playground_conversation(owner, add_member)
+    credential, _ = await _a_voice_credential(owner, add_member)
+    turned_on = await owner.client.patch(
+        _AGENT.format(organisation_id=owner.organisation_id, **params) + "/operational-settings",
+        json={
+            "calls_enabled": True,
+            "call_credential_id": credential["credential_id"],
+            "call_voice_id": "fake-voice-ada",
+        },
+    )
+    assert turned_on.status_code == 200, turned_on.text
+    return params, None
+
+
 async def _a_playground_question(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     # Answering needs a Default Model; the gateway's fake chat model answers.
     params, body = await _a_chat_model_choice(owner, add_member)
@@ -786,6 +804,8 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute(
         "GET", _CONVERSATION + "/messages/{message_id}/trace", EDITOR, _a_playground_answer
     ),
+    ScopedRoute("POST", _CONVERSATION + "/calls", EDITOR, _a_calling_playground_conversation),
+    ScopedRoute("DELETE", _CONVERSATION + "/calls/current", EDITOR, _a_playground_conversation),
     ScopedRoute("GET", _EVALUATION + "/cases", EDITOR, _an_agent),
     ScopedRoute("POST", _EVALUATION + "/cases", EDITOR, _an_evaluation_case),
     ScopedRoute("GET", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),

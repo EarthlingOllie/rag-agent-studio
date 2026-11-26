@@ -74,6 +74,9 @@ importers:
 
   apps/studio:
     dependencies:
+      '@elevenlabs/client':
+        specifier: 1.36.0
+        version: 1.36.0(@types/dom-mediacapture-record@1.0.22)
       '@studio/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client

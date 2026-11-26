@@ -5,7 +5,8 @@ voice layer listening, taking turns and speaking, and our runtime writing every 
   Call (its Conversation, when it started and the Version that was Live), asks the voice layer
   to start it, and issues the Call token the widget hands the voice layer.
 - ``turn_call`` checks a turn the voice layer sends to the turn endpoint: the Agent's per-Agent
-  secret, then a good Call token for an open Call of one of that Agent's Conversations. A turn
+  secret, then a good Call token for an open Call of one of that Agent's Conversations (or a
+  Playground Call token for one of its Playground Calls, ``app.playground.calls``). A turn
   that fails either check is refused before anything is answered.
 - ``end_call`` (the widget, with the Conversation token) ends the Conversation's open Call.
 - ``end_unavailable`` ends a Call whose turn the Agent couldn't answer.
@@ -169,6 +170,11 @@ class CallTurn:
     conversation: Conversation
     call: Call
 
+    @property
+    def playground(self) -> bool:
+        """A Playground Call: the Draft answers its turns, outside the Visitor limits."""
+        return self.conversation.is_playground
+
 
 async def turn_call(
     session: AsyncSession,
@@ -182,7 +188,9 @@ async def turn_call(
 ) -> CallTurn:
     """The open Call a turn the voice layer sent belongs to. Raises ``InvalidSecretError``
     unless ``secret`` is the Agent's per-Agent secret, and ``InvalidCallError`` unless
-    ``call_token`` is a good Call token for an open Call in one of the Agent's Conversations.
+    ``call_token`` is a good Call token for an open Call in one of the Agent's Visitor
+    Conversations, or a good Playground Call token for an open Call in one of its Playground
+    Conversations (``CallTurn.playground``).
     A Call past its deadline (``call_limits.deadline``) that Beat hasn't ended yet is ended
     here, then, and the turn refused. Saving the Visitor's words checks again, under the
     Call's lock, that it is still open (``app.playground.service.save_question``), so a Call
@@ -193,7 +201,11 @@ async def turn_call(
         raise InvalidSecretError
     if not hmac.compare_digest(expected.encode(), secret.encode()):
         raise InvalidSecretError
+    playground = False
     ids = signer.call_ids(call_token, now=now)
+    if ids is None:
+        playground = True
+        ids = signer.playground_call_ids(call_token, now=now)
     if ids is None:
         raise InvalidCallError
     call_id, conversation_id = ids
@@ -205,6 +217,9 @@ async def turn_call(
                 Call.id == call_id,
                 Call.conversation_id == conversation_id,
                 Conversation.agent_id == agent.id,
+                # A Call token stands only for a Visitor's Call, and a Playground Call token
+                # only for a Playground Call.
+                Conversation.is_playground.is_(playground),
             )
             # Locks the Call, so it can't end between here and the commit: a turn racing its
             # end waits, then finds it ended.

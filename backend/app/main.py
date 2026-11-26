@@ -49,6 +49,7 @@ from app.gateway.adapters import build_model_gateway
 from app.guardrails.pipeline import build_pipeline
 from app.mail.factory import build_mailer
 from app.playground import api as playground_api
+from app.playground import calls_api as playground_calls_api
 from app.pricing import api as pricing_api
 from app.projects import api as projects_api
 from app.projects import embedding_api, instructions_api
@@ -97,6 +98,7 @@ ROUTERS: Sequence[APIRouter] = (
     agent_versions_api.router,
     bulk_api.router,
     playground_api.router,
+    playground_calls_api.router,
     evaluation_api.router,
     evaluation_api.documents_router,
     evaluation_rollout_api.router,

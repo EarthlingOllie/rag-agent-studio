@@ -89,10 +89,20 @@ class Call(IdMixin, Base):
     conversation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey(Conversation.id, ondelete="CASCADE"), index=True
     )
-    # The Version that was Live when the Call started. Versions only go with their Agent, which
-    # takes its Conversations and Calls with it.
-    agent_version_id: Mapped[uuid.UUID] = mapped_column(
+    # The Version that was Live when the Call started; None for a Playground Call, which the
+    # Draft answers. Versions only go with their Agent, which takes its Conversations and Calls
+    # with it.
+    agent_version_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("agent_versions.id", ondelete="CASCADE")
+    )
+    # A Playground Call's Project Instructions: the Instructions Version the Editor picked, or
+    # None for the Instructions Draft. Always None for a Visitor's Call (its Version pins them).
+    instructions_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "project_instructions_versions.id",
+            name="fk_calls_instructions_version",
+            ondelete="CASCADE",
+        )
     )
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

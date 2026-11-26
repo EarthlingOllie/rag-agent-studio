@@ -256,8 +256,8 @@ async def get_version_metrics(
 
 class CostAmountsOut(BaseModel):
     # In US dollars, at the prices frozen when each reply was made: Visitor replies, Playground
-    # replies, Evaluation Runs (their answers and judging), Visitor Calls' Voice Cost (frozen
-    # when each Call ended), and all of them.
+    # replies, Evaluation Runs (their answers and judging), the Voice Cost of Visitor and
+    # Playground Calls (frozen when each Call ended), and all of them.
     visitor_usd: Dollars
     playground_usd: Dollars
     evaluation_usd: Dollars
@@ -295,8 +295,9 @@ async def get_organisation_cost(
     end: EndQuery = None,
 ) -> OrgCostOut:
     """What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most
-    366 days), including today's so far, by Project or by Agent. Playground usage, Evaluation
-    Runs and Visitor Calls' Voice Cost are each in their own column. Owners only."""
+    366 days), including today's so far, by Project or by Agent. Playground replies, Evaluation
+    Runs and Calls' Voice Cost (Visitor and Playground Calls) are each in their own column.
+    Owners only."""
     today = clock.now().astimezone(UTC).date()
     first, last = _range(start, end, today)
     lines = await service.org_cost(db, scope, group_by, first, last, today)

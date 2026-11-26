@@ -1939,6 +1939,10 @@
             "title": "Agent Id",
             "type": "string"
           },
+          "call_open": {
+            "title": "Call Open",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1960,7 +1964,7 @@
           },
           "messages": {
             "items": {
-              "$ref": "#/components/schemas/MessageOut"
+              "$ref": "#/components/schemas/PlaygroundMessageOut"
             },
             "title": "Messages",
             "type": "array"
@@ -1972,7 +1976,8 @@
           "is_playground",
           "created_at",
           "last_activity_at",
-          "messages"
+          "messages",
+          "call_open"
         ],
         "title": "ConversationOut",
         "type": "object"
@@ -5913,186 +5918,6 @@
         "title": "MessageFeedbackRead",
         "type": "object"
       },
-      "MessageOut": {
-        "properties": {
-          "agent_version_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Agent Version Id"
-          },
-          "config_source": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Config Source"
-          },
-          "content": {
-            "title": "Content",
-            "type": "string"
-          },
-          "cost_usd": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cost Usd"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "first_token_ms": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Token Ms"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "input_tokens": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Input Tokens"
-          },
-          "instructions_source": {
-            "anyOf": [
-              {
-                "enum": [
-                  "draft",
-                  "version"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Instructions Source"
-          },
-          "instructions_version_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Instructions Version Id"
-          },
-          "instructions_version_number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Instructions Version Number"
-          },
-          "latency_ms": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latency Ms"
-          },
-          "model_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model Name"
-          },
-          "model_provider": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model Provider"
-          },
-          "output_tokens": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Output Tokens"
-          },
-          "role": {
-            "title": "Role",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "role",
-          "content",
-          "created_at",
-          "config_source",
-          "instructions_source",
-          "instructions_version_id",
-          "instructions_version_number",
-          "agent_version_id",
-          "model_provider",
-          "model_name",
-          "input_tokens",
-          "output_tokens",
-          "first_token_ms",
-          "latency_ms",
-          "cost_usd"
-        ],
-        "title": "MessageOut",
-        "type": "object"
-      },
       "MetricRowOut": {
         "properties": {
           "a": {
@@ -6951,6 +6776,263 @@
           "name"
         ],
         "title": "PersonOut",
+        "type": "object"
+      },
+      "PlaygroundCitationOut": {
+        "properties": {
+          "chunk_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "document_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Name"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "label",
+          "chunk_id",
+          "document_id",
+          "document_name",
+          "rank"
+        ],
+        "title": "PlaygroundCitationOut",
+        "type": "object"
+      },
+      "PlaygroundMessageOut": {
+        "properties": {
+          "agent_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Id"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/PlaygroundCitationOut"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "config_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Source"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "first_token_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Token Ms"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "instructions_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "draft",
+                  "version"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Source"
+          },
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          },
+          "instructions_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Number"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "model_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Provider"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "searches": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Searches",
+            "type": "array"
+          },
+          "spoken": {
+            "title": "Spoken",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "created_at",
+          "config_source",
+          "instructions_source",
+          "instructions_version_id",
+          "instructions_version_number",
+          "agent_version_id",
+          "model_provider",
+          "model_name",
+          "input_tokens",
+          "output_tokens",
+          "first_token_ms",
+          "latency_ms",
+          "cost_usd",
+          "spoken",
+          "searches",
+          "citations"
+        ],
+        "title": "PlaygroundMessageOut",
         "type": "object"
       },
       "PrefillOut": {
@@ -8905,6 +8987,24 @@
           "expires_at"
         ],
         "title": "StartImageUploadResponse",
+        "type": "object"
+      },
+      "StartPlaygroundCallRequest": {
+        "properties": {
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          }
+        },
+        "title": "StartPlaygroundCallRequest",
         "type": "object"
       },
       "StartUploadRequest": {
@@ -13027,7 +13127,7 @@
     },
     "/api/organisations/{organisation_id}/cost": {
       "get": {
-        "description": "What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most\n366 days), including today's so far, by Project or by Agent. Playground usage, Evaluation\nRuns and Visitor Calls' Voice Cost are each in their own column. Owners only.",
+        "description": "What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most\n366 days), including today's so far, by Project or by Agent. Playground replies, Evaluation\nRuns and Calls' Voice Cost (Visitor and Playground Calls) are each in their own column.\nOwners only.",
         "operationId": "getOrganisationCost",
         "parameters": [
           {
@@ -18788,7 +18888,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}": {
       "get": {
-        "description": "The Playground Conversation and its Messages, oldest first.",
+        "description": "The Playground Conversation and its Messages, oldest first, each answer with its\nKnowledge Searches' queries and the Chunks it cited, and whether a Playground Call is open\nin it. Messages said in a Playground Call are marked spoken.",
         "operationId": "getPlaygroundConversation",
         "parameters": [
           {
@@ -18865,6 +18965,197 @@
           }
         },
         "summary": "Get Conversation",
+        "tags": [
+          "playground"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/calls": {
+      "post": {
+        "description": "Starts a Call with the Agent's Draft in the Playground Conversation, with the Agent's Call\nsettings, answering with the Instructions Draft or the chosen Instructions Version. The\nspoken greeting opens a Conversation with no Messages. The Call token returned is a\nPlayground Call token: its turns are answered by the Draft and are kept out of metrics, the\nToken Budget and the Call minutes budget. An Agent with calling off refuses with a 409.",
+        "operationId": "startPlaygroundCall",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/StartPlaygroundCallRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartedCallOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Project or Agent is archived, the Agent's calling is off, or the Conversation already has a Call open."
+          },
+          "422": {
+            "description": "The Instructions Version isn't one of the Project's."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "ElevenLabs couldn't be reached with this credential. Check the credential in Organisation settings, Credentials, or try again shortly."
+          }
+        },
+        "summary": "Start Call",
+        "tags": [
+          "playground"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/calls/current": {
+      "delete": {
+        "description": "Ends the Playground Conversation's open Call, freezing its minutes and Voice Cost; with no\nCall open, nothing changes. What was said stays as Spoken Messages.",
+        "operationId": "endPlaygroundCall",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "End Call",
         "tags": [
           "playground"
         ]

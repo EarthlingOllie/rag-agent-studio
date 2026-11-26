@@ -565,7 +565,7 @@ What a Playground answer records in place of a Version when it ran with a Draft:
 A Conversation held in the Playground. It is flagged as such, so metrics and the Token Budget leave it out; its cost still counts.
 
 **Playground reset**:
-Starting a new Playground Conversation, so the Draft is tested from a clean slate with no remembered turns. The earlier Playground Conversation is kept as it was.
+Starting a new Playground Conversation, so the Draft is tested from a clean slate with no remembered turns. The earlier Playground Conversation is kept as it was. A reset during a Playground Call ends the Call first.
 _Avoid_: Clear, restart, new chat
 
 **Provider error**:
@@ -695,6 +695,13 @@ _Avoid_: Voice chat, voice session, phone call
 **Call token**:
 A short-lived, signed token the widget is given when a Call starts, bound to the Call and its Conversation and lasting the Maximum Call length in force when the Call started. The widget hands it to the Voice layer, which presents it with every spoken turn (as its custom LLM's extra body), together with the Remote agent's secret; a turn is answered only when both are good and the Call is still open.
 _Avoid_: Voice token, session key
+
+**Playground Call**:
+A Call a Member holds with the Agent's Draft from the Playground, offered only while the Agent's calling is on. It speaks with the Agent's Call settings and Remote agent and goes through the same turn endpoint as a Visitor's Call, with a Playground Call token; the Draft answers with the Project Instructions picked in the Instructions picker when it started. Both sides are saved as Spoken Messages of the Playground Conversation, each reply with its Trace, its Searches' queries and its sources. It passes no Admission control and stays out of metrics, the Token Budget and the Call minutes budget; its Voice Cost and its replies' model Cost count in Organisation cost. It ends as any Call does (End call, a Playground reset, the Maximum Call length, the Silence cut-off, a reply the Draft can't give), recorded as ended in the Playground when the Member ends it.
+_Avoid_: Test call, Draft call
+
+**Playground Call token**:
+The Call token of a Playground Call: signed like a Call token but of its own kind, so neither stands for the other. The turn endpoint answers its turns with the Draft, outside the Visitor limits.
 
 **Calls failing alert**:
 An Agent's alert that Visitors' Calls can't start because the voice layer refuses them (its agent is gone, the key was revoked, the provider is down). Visitors get the Unavailable text and messaging keeps working; saving the Call settings sets the voice layer up again.

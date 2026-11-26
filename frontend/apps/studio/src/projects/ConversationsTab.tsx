@@ -588,6 +588,7 @@ function RatingNote({ rating }: { rating: ConversationDetail["rating"] }) {
 
 const CALL_ENDS: Record<string, string> = {
   visitor: "ended by the Visitor",
+  editor: "ended in the Playground",
   max_length: "ended at the Maximum Call length",
   silence: "ended after a minute of silence",
   conversation_ended: "ended with the Conversation",

@@ -21,9 +21,9 @@ import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, overload
+from typing import Literal, cast, overload
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.config import AgentConfig, Retrieval
@@ -59,7 +59,7 @@ from app.projects.service import active_project
 from app.retention.service import purge_messages
 from app.retrieval.service import Candidate, Excluded, RetrievalResult, retrieve
 from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
-from app.runtime.prompt import Turn
+from app.runtime.prompt import Turn, chunk_label
 from app.runtime.runtime import (
     CitationEvent,
     DoneEvent,
@@ -125,6 +125,64 @@ async def get_conversation(
         select(Message).where(Message.conversation_id == conversation.id).order_by(Message.seq)
     )
     return conversation, list(messages)
+
+
+@dataclass(frozen=True)
+class CitedChunk:
+    label: str
+    # Both None once the Chunk's Document is deleted.
+    chunk_id: uuid.UUID | None
+    document_id: uuid.UUID | None
+    document_name: str | None
+    rank: int
+
+
+@dataclass(frozen=True)
+class ConversationExtras:
+    """What the Playground shows beside a Conversation's Messages."""
+
+    # Each answer's Knowledge Search queries, in order.
+    searches: dict[uuid.UUID, list[str]]
+    # Each answer's cited Chunks, in label order.
+    citations: dict[uuid.UUID, list[CitedChunk]]
+    # Whether a Playground Call is open in the Conversation.
+    call_open: bool
+
+
+async def conversation_extras(
+    session: AsyncSession, conversation: Conversation, messages: list[Message]
+) -> ConversationExtras:
+    """The answers' Searches and citations, and whether a Call is open, for the Playground to
+    show a Conversation read back (a Playground Call's replies arrive this way)."""
+    ids = [m.id for m in messages]
+    searches: dict[uuid.UUID, list[str]] = {}
+    for message_id, query in await session.execute(
+        select(Search.message_id, Search.query)
+        .where(Search.message_id.in_(ids))
+        .order_by(Search.message_id, Search.order)
+    ):
+        searches.setdefault(message_id, []).append(query)
+    citations: dict[uuid.UUID, list[CitedChunk]] = {}
+    cited = await session.scalars(
+        select(MessageRetrieval)
+        .where(MessageRetrieval.message_id.in_(ids), MessageRetrieval.cited.is_(True))
+        .order_by(MessageRetrieval.message_id, MessageRetrieval.rank)
+    )
+    seen: set[tuple[uuid.UUID, uuid.UUID | None]] = set()
+    for row in cited:
+        # A Chunk two Searches found is cited once, by its first label.
+        if row.chunk_id is not None and (row.message_id, row.chunk_id) in seen:
+            continue
+        seen.add((row.message_id, row.chunk_id))
+        # A cited Chunk was given to the model, so it has a rank.
+        rank = cast(int, row.rank)
+        citations.setdefault(row.message_id, []).append(
+            CitedChunk(chunk_label(rank), row.chunk_id, row.document_id, row.document_name, rank)
+        )
+    call_open = await session.scalar(
+        select(exists().where(Call.conversation_id == conversation.id, Call.ended_at.is_(None)))
+    )
+    return ConversationExtras(searches, citations, call_open=bool(call_open))
 
 
 def _turns(messages: list[Message]) -> list[Turn]:

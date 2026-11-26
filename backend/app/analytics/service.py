@@ -30,7 +30,7 @@ from app.analytics.models import UsageDaily
 from app.analytics.stats import Interval, wilson
 from app.analytics.usage import DOLLARS, Only, Usage, day_bounds, usage_on
 from app.audit.models import AuditEvent
-from app.conversations.models import Conversation, Message, MessageRole
+from app.conversations.models import Call, Conversation, Message, MessageRole
 from app.documents.models import Document
 from app.evaluation.service import evaluation_cost
 from app.projects.models import Project
@@ -182,7 +182,8 @@ class CostGroup(enum.StrEnum):
 class CostLine:
     """What one Project (or one Agent, with its Project) cost over the period: its Visitor
     replies and, separately, its Playground replies, its Evaluation Runs (answers and
-    judging) and its Visitor Calls' Voice Cost, at the prices frozen when each was made."""
+    judging) and its Calls' Voice Cost (Visitor and Playground Calls), at the prices frozen when
+    each was made."""
 
     project_id: uuid.UUID
     project_name: str
@@ -249,6 +250,28 @@ async def _playground_cost(
     return {agent_id: total or Decimal(0) for agent_id, total in rows}
 
 
+async def _playground_voice_cost(
+    session: AsyncSession, organisation_id: uuid.UUID, start: date, end: date
+) -> dict[uuid.UUID, Decimal]:
+    """Each Agent's Playground Calls' Voice Cost over the days, by when each Call ended, from
+    the raw Calls (the rollups leave the Playground out)."""
+    first, _ = day_bounds(start)
+    _, after = day_bounds(end)
+    rows = await session.execute(
+        select(Conversation.agent_id, func.sum(Call.voice_cost_usd))
+        .join(Conversation, Conversation.id == Call.conversation_id)
+        .where(
+            Call.organisation_id == organisation_id,
+            Conversation.is_playground.is_(True),
+            Call.ended_at >= first,
+            Call.ended_at < after,
+        )
+        .group_by(Conversation.agent_id)
+    )
+    # A Call with no known price adds nothing.
+    return {agent_id: total or Decimal(0) for agent_id, total in rows}
+
+
 async def org_cost(
     session: AsyncSession,
     scope: OrganisationScope,
@@ -261,11 +284,15 @@ async def org_cost(
     is the current UTC day), one line per Project or per Agent that replied in the period,
     most expensive first. Archived Projects and Agents are included: they spent it. An Agent
     that only ran Evaluation Runs or Suggestion runs in the period has a line too, as does one
-    whose Visitors only called. The Evaluation column holds Evaluation Runs, Live Verdicts and
-    Suggestion runs' proposing; the Voice column the Voice Cost of Visitor Calls that ended in
-    the period."""
+    whose Visitors or Editors only called. The Evaluation column holds Evaluation Runs, Live
+    Verdicts and Suggestion runs' proposing; the Voice column the Voice Cost of the Calls that
+    ended in the period, Visitors' and Playground Calls alike."""
     visitor, voice = await _visitor_cost(session, scope.organisation_id, start, end, today)
     playground = await _playground_cost(session, scope.organisation_id, start, end)
+    for agent_id, spent in (
+        await _playground_voice_cost(session, scope.organisation_id, start, end)
+    ).items():
+        voice[agent_id] = voice.get(agent_id, Decimal(0)) + spent
     first, _ = day_bounds(start)
     _, after = day_bounds(end)
     evaluation = await evaluation_cost(session, scope.organisation_id, first, after)

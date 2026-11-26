@@ -331,8 +331,9 @@ async def usage_on(session: AsyncSession, day: date, only: Only) -> dict[uuid.UU
         .group_by(Call.organisation_id, Conversation.agent_id, Call.agent_version_id)
     )
     for organisation_id, agent_id, version_id, voice in calls:
-        # A Call with no known price adds nothing.
-        at(organisation_id, agent_id, version_id).voice_cost_usd += voice or 0
+        # A Call with no known price adds nothing. A Visitor's Call names the Version that was
+        # Live (only Playground Calls name none, and they aren't counted here).
+        at(organisation_id, agent_id, cast(uuid.UUID, version_id)).voice_cost_usd += voice or 0
 
     first = _first_replies(day, only, per_version=False).subquery()
     ratings = await session.execute(

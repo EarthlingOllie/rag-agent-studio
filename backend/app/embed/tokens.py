@@ -8,6 +8,9 @@ anything is looked up.
   custom LLM's extra body), so the turn endpoint knows which Call a turn belongs to. It lasts
   the Agent's Maximum Call length from when the Call started (its expiry is signed into it);
   the service still checks the Call is open.
+- The **Playground Call token** is a Call token for a Call an Editor holds in the Playground
+  with the Agent's Draft. It is its own kind, so neither token stands for the other: the turn
+  endpoint answers a Playground Call token's turns with the Draft, outside the Visitor limits.
 - The **Conversation token** is opaque, bound to one Visitor Conversation (and through it to the
   Agent), and carries a random nonce. Only its SHA-256 hash is stored, on the Conversation, so a
   copy of the database can't be replayed. It expires 24 hours after the Conversation's last
@@ -31,6 +34,7 @@ _BOOTSTRAP = "wb1"
 _CONVERSATION = "wc1"
 # wk1 Call tokens (20-04) signed when the Call started, not when it expires: refused.
 _CALL = "wk2"
+_PLAYGROUND_CALL = "wp1"
 
 
 def _b64(raw: bytes) -> str:
@@ -80,12 +84,32 @@ class TokenSigner:
         return uuid.UUID(hex=parts[0])
 
     def call(self, call_id: uuid.UUID, conversation_id: uuid.UUID, *, expires_at: datetime) -> str:
-        return self._sign(_CALL, call_id.hex, conversation_id.hex, str(int(expires_at.timestamp())))
+        return self._call(_CALL, call_id, conversation_id, expires_at)
 
     def call_ids(self, token: str, *, now: datetime) -> tuple[uuid.UUID, uuid.UUID] | None:
         """The Call and the Conversation a Call token was issued for, or None when it is
         tampered with or has expired."""
-        parts = self._verify(token, _CALL, 3)
+        return self._call_ids(_CALL, token, now)
+
+    def playground_call(
+        self, call_id: uuid.UUID, conversation_id: uuid.UUID, *, expires_at: datetime
+    ) -> str:
+        return self._call(_PLAYGROUND_CALL, call_id, conversation_id, expires_at)
+
+    def playground_call_ids(
+        self, token: str, *, now: datetime
+    ) -> tuple[uuid.UUID, uuid.UUID] | None:
+        """The Playground Call and its Conversation a Playground Call token was issued for, or
+        None when it is tampered with, has expired or is another kind of token."""
+        return self._call_ids(_PLAYGROUND_CALL, token, now)
+
+    def _call(
+        self, kind: str, call_id: uuid.UUID, conversation_id: uuid.UUID, expires_at: datetime
+    ) -> str:
+        return self._sign(kind, call_id.hex, conversation_id.hex, str(int(expires_at.timestamp())))
+
+    def _call_ids(self, kind: str, token: str, now: datetime) -> tuple[uuid.UUID, uuid.UUID] | None:
+        parts = self._verify(token, kind, 3)
         if parts is None:
             return None
         # A correctly signed token is one this signer issued, so its parts are well formed.

@@ -473,8 +473,9 @@ export interface paths {
         /**
          * Get Organisation Cost
          * @description What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most
-         *     366 days), including today's so far, by Project or by Agent. Playground usage, Evaluation
-         *     Runs and Visitor Calls' Voice Cost are each in their own column. Owners only.
+         *     366 days), including today's so far, by Project or by Agent. Playground replies, Evaluation
+         *     Runs and Calls' Voice Cost (Visitor and Playground Calls) are each in their own column.
+         *     Owners only.
          */
         get: operations["getOrganisationCost"];
         put?: never;
@@ -1627,12 +1628,59 @@ export interface paths {
         };
         /**
          * Get Conversation
-         * @description The Playground Conversation and its Messages, oldest first.
+         * @description The Playground Conversation and its Messages, oldest first, each answer with its
+         *     Knowledge Searches' queries and the Chunks it cited, and whether a Playground Call is open
+         *     in it. Messages said in a Playground Call are marked spoken.
          */
         get: operations["getPlaygroundConversation"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Call
+         * @description Starts a Call with the Agent's Draft in the Playground Conversation, with the Agent's Call
+         *     settings, answering with the Instructions Draft or the chosen Instructions Version. The
+         *     spoken greeting opens a Conversation with no Messages. The Call token returned is a
+         *     Playground Call token: its turns are answered by the Draft and are kept out of metrics, the
+         *     Token Budget and the Call minutes budget. An Agent with calling off refuses with a 409.
+         */
+        post: operations["startPlaygroundCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/calls/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * End Call
+         * @description Ends the Playground Conversation's open Call, freezing its minutes and Voice Cost; with no
+         *     Call open, nothing changes. What was said stays as Spoken Messages.
+         */
+        delete: operations["endPlaygroundCall"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3748,6 +3796,8 @@ export interface components {
              * Format: uuid
              */
             agent_id: string;
+            /** Call Open */
+            call_open: boolean;
             /**
              * Created At
              * Format: date-time
@@ -3766,7 +3816,7 @@ export interface components {
              */
             last_activity_at: string;
             /** Messages */
-            messages: components["schemas"]["MessageOut"][];
+            messages: components["schemas"]["PlaygroundMessageOut"][];
         };
         /** ConversationPageOut */
         ConversationPageOut: {
@@ -5195,47 +5245,6 @@ export interface components {
              */
             updated_at: string;
         };
-        /** MessageOut */
-        MessageOut: {
-            /** Agent Version Id */
-            agent_version_id: string | null;
-            /** Config Source */
-            config_source: string | null;
-            /** Content */
-            content: string;
-            /** Cost Usd */
-            cost_usd: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** First Token Ms */
-            first_token_ms: number | null;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Input Tokens */
-            input_tokens: number | null;
-            /** Instructions Source */
-            instructions_source: ("draft" | "version") | null;
-            /** Instructions Version Id */
-            instructions_version_id: string | null;
-            /** Instructions Version Number */
-            instructions_version_number: number | null;
-            /** Latency Ms */
-            latency_ms: number | null;
-            /** Model Name */
-            model_name: string | null;
-            /** Model Provider */
-            model_provider: string | null;
-            /** Output Tokens */
-            output_tokens: number | null;
-            /** Role */
-            role: string;
-        };
         /** MetricRowOut */
         MetricRowOut: {
             /** A */
@@ -5527,6 +5536,66 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** PlaygroundCitationOut */
+        PlaygroundCitationOut: {
+            /** Chunk Id */
+            chunk_id: string | null;
+            /** Document Id */
+            document_id: string | null;
+            /** Document Name */
+            document_name: string | null;
+            /** Label */
+            label: string;
+            /** Rank */
+            rank: number;
+        };
+        /** PlaygroundMessageOut */
+        PlaygroundMessageOut: {
+            /** Agent Version Id */
+            agent_version_id: string | null;
+            /** Citations */
+            citations: components["schemas"]["PlaygroundCitationOut"][];
+            /** Config Source */
+            config_source: string | null;
+            /** Content */
+            content: string;
+            /** Cost Usd */
+            cost_usd: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** First Token Ms */
+            first_token_ms: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Input Tokens */
+            input_tokens: number | null;
+            /** Instructions Source */
+            instructions_source: ("draft" | "version") | null;
+            /** Instructions Version Id */
+            instructions_version_id: string | null;
+            /** Instructions Version Number */
+            instructions_version_number: number | null;
+            /** Latency Ms */
+            latency_ms: number | null;
+            /** Model Name */
+            model_name: string | null;
+            /** Model Provider */
+            model_provider: string | null;
+            /** Output Tokens */
+            output_tokens: number | null;
+            /** Role */
+            role: string;
+            /** Searches */
+            searches: string[];
+            /** Spoken */
+            spoken: boolean;
         };
         /** PrefillOut */
         PrefillOut: {
@@ -6252,6 +6321,11 @@ export interface components {
             upload_id: string;
             /** Url */
             url: string;
+        };
+        /** StartPlaygroundCallRequest */
+        StartPlaygroundCallRequest: {
+            /** Instructions Version Id */
+            instructions_version_id?: string | null;
         };
         /** StartUploadRequest */
         StartUploadRequest: {
@@ -11689,6 +11763,110 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ConversationOut"];
                 };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startPlaygroundCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                conversation_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["StartPlaygroundCallRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartedCallOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Project or Agent is archived, the Agent's calling is off, or the Conversation already has a Call open. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Instructions Version isn't one of the Project's. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ElevenLabs couldn't be reached with this credential. Check the credential in Organisation settings, Credentials, or try again shortly. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    endPlaygroundCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                conversation_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Not found */
             404: {

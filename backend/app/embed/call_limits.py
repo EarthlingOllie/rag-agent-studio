@@ -52,6 +52,8 @@ class CallEnd(enum.StrEnum):
     """Why a Call ended."""
 
     VISITOR = "visitor"
+    # The Editor ended a Playground Call (End call, or Reset).
+    EDITOR = "editor"
     MAX_LENGTH = "max_length"
     SILENCE = "silence"
     CONVERSATION_ENDED = "conversation_ended"

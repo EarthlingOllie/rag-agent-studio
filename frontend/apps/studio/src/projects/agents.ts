@@ -8,6 +8,8 @@ import { ProjectRequestError } from "./projects";
 export type Agent = Schemas["AgentOut"];
 export type AgentDraft = Schemas["AgentConfig-Output"];
 export type Conversation = Schemas["ConversationOut"];
+/** A Playground Call the API started: what the Studio joins the voice layer with. */
+export type StartedCall = Schemas["StartedCallOut"];
 export type Trace = Schemas["TraceOut"];
 
 /** A `citation` event: the answer cites the Chunk the model was given labelled `label`. */
@@ -76,11 +78,12 @@ function failed(response: Response, error: unknown): ProjectRequestError {
 export function agentFailure(error: Error | null): string | undefined {
   if (error === null) return undefined;
   if (error instanceof ProviderError) return error.message;
-  // A 409, or a 422 with one reason (an Instructions Version not in the Project), says why.
+  // A 409, a 422 with one reason (an Instructions Version not in the Project), or a voice layer
+  // that couldn't start a Playground Call (502) says why.
   if (
     error instanceof ProjectRequestError &&
     error.detail &&
-    (error.status === 409 || error.status === 422)
+    (error.status === 409 || error.status === 422 || error.status === 502)
   )
     return error.detail;
   if (error instanceof ProjectRequestError && error.status === 422)
@@ -318,6 +321,42 @@ export async function startConversation(
   );
   if (!data) throw failed(response, error);
   return data;
+}
+
+type ConversationPath = AgentPath & { conversation_id: string };
+
+/** The Playground Conversation as saved: its Messages, each answer's Searches and sources, and
+ * whether a Playground Call is open in it. */
+export async function readConversation(path: ConversationPath): Promise<Conversation> {
+  const { data, error, response } = await api.GET(
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}",
+    { params: { path } },
+  );
+  if (!data) throw failed(response, error);
+  return data;
+}
+
+/** Starts a Call with the Draft in the Playground Conversation, answering with the Instructions
+ * Version named (null: the Instructions Draft). */
+export async function startPlaygroundCall(
+  path: ConversationPath,
+  instructionsVersionId: string | null,
+): Promise<StartedCall> {
+  const { data, error, response } = await api.POST(
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/calls",
+    { params: { path }, body: { instructions_version_id: instructionsVersionId } },
+  );
+  if (!data) throw failed(response, error);
+  return data;
+}
+
+/** Ends the Playground Conversation's open Call; with none open, nothing changes. */
+export async function endPlaygroundCall(path: ConversationPath): Promise<void> {
+  const { error, response } = await api.DELETE(
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/calls/current",
+    { params: { path } },
+  );
+  if (!response.ok) throw failed(response, error);
 }
 
 /** One Server-Sent Event: its name and its JSON data. */
