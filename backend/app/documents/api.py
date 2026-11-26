@@ -661,12 +661,12 @@ async def delete_document(
     """Deletes the Document and its Chunks: it stops being retrieved at once. Its stored files
     are deleted in the background. Records ``document.deleted``."""
     try:
-        keys = await service.delete_document(db, scope, project_id, document_id, now=clock.now())
+        await service.delete_document(db, scope, project_id, document_id, now=clock.now())
     except (ProjectNotFoundError, service.DocumentNotFoundError):
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except ProjectArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
-    await enqueue_object_deletion(keys)
+    await enqueue_object_deletion()
 
 
 @router.post(
@@ -738,7 +738,7 @@ async def replace_document(
         replacement.staged,
     )
     if replacement.discarded:
-        await enqueue_object_deletion(replacement.discarded)
+        await enqueue_object_deletion()
     await enqueue_ingestion(document.id)
     return accepted
 

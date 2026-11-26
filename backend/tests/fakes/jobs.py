@@ -24,6 +24,7 @@ class RecordingJobPublisher(JobPublisher):
         self.held: list[Job] = []
         self.killed: list[Job] = []
         self._next: list[str] = []
+        self._kill_senders_of: set[str] = set()
         self._failure: Exception | None = None
 
     def deliver_next(self) -> None:
@@ -36,6 +37,10 @@ class RecordingJobPublisher(JobPublisher):
     def hold_next(self) -> None:
         self._next.append("hold")
 
+    def kill_when_sending(self, task: str) -> None:
+        """The next job that sends ``task`` dies there, before it is sent."""
+        self._kill_senders_of.add(task)
+
     def fail_next(self, error: Exception) -> None:
         """The next send (the health probe's included) raises ``error``."""
         self._failure = error
@@ -45,6 +50,9 @@ class RecordingJobPublisher(JobPublisher):
 
     def send(self, job: Job) -> None:
         self._raise_failure()
+        if job.task in self._kill_senders_of:
+            self._kill_senders_of.discard(job.task)
+            raise JobKilled(f"sending {job.task}")
         self.sent.append(job)
         fate = self._next.pop(0) if self._next else "deliver"
         if fate == "lose":

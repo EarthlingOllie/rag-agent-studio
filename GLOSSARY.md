@@ -338,6 +338,10 @@ _Avoid_: Document version, revision
 A newer Edition being ingested. Its Chunks are written under its own Edition number while the current Edition keeps serving; when it is Ready it is swapped in, and the old Chunks removed, in one transaction. A Failed one leaves the Document as it was.
 _Avoid_: Draft edition, pending upload, shadow copy
 
+**Deletions table**:
+The list of stored files waiting to be deleted: object keys, or a prefix for everything under it. A deleted Document's files, a replaced Edition's and a discarded Failed Staged edition's are written to it in the same transaction that removes the last reference to them; the object-deletion job and the sweeper then delete each from storage and only then cross it off, so deleted content is really gone even when a first attempt fails or its worker dies (ADR-0020).
+_Avoid_: Cleanup queue, garbage list, trash
+
 **Tag**:
 A label on Documents that an Agent can use to limit which Documents it retrieves from. A Tag belongs to one Project, and its name is unique in that Project, ignoring case. A Document can carry several Tags; Editors apply them one Document at a time or to many Documents at once (bulk tagging). Renaming a Tag keeps it on its Documents; deleting it takes it off them, and the Documents stay. In the Studio, Tags are created, renamed and deleted under Manage tags on the Documents toolbar, filtered by with the Tag chips, set on one Document from its ⋯ menu (Edit Tags), and added or removed in bulk from the bulk bar.
 _Avoid_: Category, folder, label

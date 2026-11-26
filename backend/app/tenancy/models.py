@@ -28,8 +28,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.core.db import Base, IdMixin
 
 # Tables that belong to no single Organisation: Organisations themselves, Members (who can
-# belong to several), per-Member auth state such as password reset tokens and MFA, and the
-# platform price table.
+# belong to several), per-Member auth state such as password reset tokens and MFA, the
+# platform price table, and the deletions table (its entries must outlive the Organisation whose
+# stored files they delete).
 PLATFORM_TABLES = frozenset(
     {
         "organisations",
@@ -38,6 +39,7 @@ PLATFORM_TABLES = frozenset(
         "mfa_factors",
         "mfa_recovery_codes",
         "model_prices",
+        "object_deletions",
     }
 )
 

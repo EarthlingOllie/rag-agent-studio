@@ -1,15 +1,24 @@
 """The job sweeper task (ADR-0020): Beat runs it every minute, and each worker sends it once as
-it starts. It sweeps every job type's rows (``app.jobs.reliability.sweep``)."""
+it starts. It sweeps every job type's rows (``app.jobs.reliability.sweep``), then drains the
+deletions table (``app.jobs.deletions``) and finishes the work after a new edition that an
+ingestion which died didn't get to."""
 
 import asyncio
 from datetime import datetime
+from functools import partial
+
+import logfire
 
 from app.core.clock import SystemClock
 from app.core.db import create_engine, create_sessionmaker
 from app.core.settings import load_settings
 from app.documents.jobs import INGESTION
+from app.documents.pipeline import finish_new_editions
+from app.documents.ports import current_ports
+from app.evaluation.expectations import recheck_document
 from app.evaluation.jobs import EVALUATION_RUNS
 from app.evaluation.live_jobs import LIVE_VERDICTS
+from app.jobs import deletions
 from app.jobs.reliability import JobPolicy, Timings, sweep
 from app.re_embedding.jobs import RE_EMBED
 from app.worker.celery_app import SWEEP_TASK, celery_app
@@ -21,13 +30,22 @@ POLICIES: tuple[JobPolicy, ...] = (INGESTION, EVALUATION_RUNS, LIVE_VERDICTS, RE
 async def _sweep(at: datetime) -> int | None:
     settings = load_settings()
     engine = create_engine(settings)
+    sessionmaker = create_sessionmaker(engine)
     try:
         recoveries = await sweep(
-            create_sessionmaker(engine),
-            POLICIES,
-            now=at,
-            timings=Timings.from_settings(settings),
+            sessionmaker, POLICIES, now=at, timings=Timings.from_settings(settings)
         )
+        if recoveries is not None:
+            deleted = await deletions.drain(sessionmaker, current_ports().object_store)
+            finished = await finish_new_editions(
+                sessionmaker, partial(recheck_document, sessionmaker)
+            )
+            if deleted or finished:
+                logfire.info(
+                    "Sweeper finished {deleted} object deletions and {finished} new editions",
+                    deleted=deleted,
+                    finished=finished,
+                )
     finally:
         await engine.dispose()
     return None if recoveries is None else len(recoveries)

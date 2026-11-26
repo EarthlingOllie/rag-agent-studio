@@ -13,6 +13,7 @@ from app.core.settings import load_settings
 from app.documents import pipeline
 from app.documents.ports import current_ports
 from app.evaluation.expectations import recheck_document
+from app.jobs import deletions
 from app.jobs.reliability import Timings
 from app.worker.celery_app import DELETE_OBJECTS_TASK, INGEST_TASK, celery_app
 from app.worker.publisher import current_publisher
@@ -67,19 +68,23 @@ async def enqueue_ingestion(document_id: uuid.UUID) -> None:
     await current_publisher().ingest_document(document_id)
 
 
-async def _delete_objects(keys: list[str]) -> None:
-    store = current_ports().object_store
-    for key in keys:
-        await store.delete(key)
+async def _delete_objects() -> None:
+    engine = create_engine(load_settings())
+    try:
+        await deletions.drain(create_sessionmaker(engine), current_ports().object_store)
+    finally:
+        await engine.dispose()
 
 
 @celery_app.task(name=DELETE_OBJECTS_TASK, ignore_result=True)
-def delete_stored_objects(keys: list[str]) -> None:
-    """Deletes stored objects (originals and converted markdown) nothing refers to any more:
-    a deleted Document's, or a replaced edition's. Deleting a missing object is not an error."""
-    asyncio.run(_delete_objects(keys))
+def delete_stored_objects() -> None:
+    """Deletes the stored objects the deletions table holds (originals and converted markdown
+    nothing refers to any more: a deleted Document's, a replaced or discarded edition's). The
+    message carries no keys; whatever this misses, every sweep deletes."""
+    asyncio.run(_delete_objects())
 
 
-async def enqueue_object_deletion(keys: list[str]) -> None:
-    """Schedules deletion of the objects through the Job publisher."""
-    await current_publisher().delete_objects(keys)
+async def enqueue_object_deletion() -> None:
+    """Sends the object-deletion job through the Job publisher, once the keys to delete are
+    committed to the deletions table."""
+    await current_publisher().delete_objects()

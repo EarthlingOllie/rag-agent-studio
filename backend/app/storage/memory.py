@@ -9,7 +9,8 @@ from app.storage.port import ObjectNotFoundError, attachment_disposition
 class InMemoryObjectStore:
     """Objects in a dict. Presigned URLs use the ``memory://`` scheme; a test "uploads" by
     calling ``put`` with the key, as the browser would PUT to the URL. Set ``failure`` to make
-    reads raise it; arm ``kill`` at ``"put"`` to kill the job at its next write."""
+    reads and deletes raise it; arm ``kill`` at ``"put"`` or ``"delete"`` to kill the job at its
+    next write or delete."""
 
     def __init__(self) -> None:
         self.objects: dict[str, tuple[bytes, str]] = {}
@@ -51,8 +52,14 @@ class InMemoryObjectStore:
             raise ObjectNotFoundError(key) from None
 
     async def delete(self, key: str) -> None:
+        self.kill.check("delete")
+        if self.failure is not None:
+            raise self.failure
         self.objects.pop(key, None)
 
     async def delete_prefix(self, prefix: str) -> None:
+        self.kill.check("delete")
+        if self.failure is not None:
+            raise self.failure
         for key in [key for key in self.objects if key.startswith(prefix)]:
             del self.objects[key]

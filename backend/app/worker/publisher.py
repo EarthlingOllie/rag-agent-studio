@@ -2,7 +2,7 @@
 
 It has one operation per job the application queues. The API sends through it once the job's
 row is committed, and tasks send follow-on work through it (an ingestion's next attempt, the
-objects it no longer needs). A send that fails is logged with the job and its identifier and
+object deletions it committed). A send that fails is logged with the job and its identifier and
 never fails the caller: the committed row is the record of the job. The worker health probe is
 the exception, since reporting whether a job gets through is its whole purpose.
 
@@ -47,7 +47,8 @@ class Job:
 
     @property
     def identifier(self) -> str:
-        """What the job is about, for logs: the row it runs for, or the objects it deletes."""
+        """What the job is about, for logs: the row it runs for (none for the object-deletion
+        job and the sweeper)."""
         return str(self.args[0]) if self.args else ""
 
 
@@ -79,8 +80,10 @@ class JobPublisher(abc.ABC):
         # The attempt number is the Document's row's, so the message doesn't carry it.
         await self._publish(Job(INGEST_TASK, (str(document_id),), countdown=countdown))
 
-    async def delete_objects(self, keys: list[str]) -> None:
-        await self._publish(Job(DELETE_OBJECTS_TASK, (keys,)))
+    async def delete_objects(self) -> None:
+        """The object-deletion job, which deletes what the deletions table holds: it carries no
+        keys, which are committed to the table before it is sent."""
+        await self._publish(Job(DELETE_OBJECTS_TASK, ()))
 
     async def run_evaluation(self, run_id: uuid.UUID) -> None:
         await self._publish(Job(EVALUATION_RUN_TASK, (str(run_id),)))
