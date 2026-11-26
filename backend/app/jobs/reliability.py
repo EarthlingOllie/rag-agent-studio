@@ -74,12 +74,14 @@ class JobRow(Protocol):
 @dataclass(frozen=True)
 class JobTable:
     """A table whose rows are jobs: its mapped class, the column that identifies a row, and the
-    statuses that mean queued and in progress."""
+    statuses that mean queued and in progress. A job whose stale rows are never restarted (a paid
+    job, which its policy ends instead) claims queued rows only (``reclaims_stale``)."""
 
     model: type[Any]
     key: Any
     queued: str
     in_progress: str
+    reclaims_stale: bool = True
 
     def _stale(self, before: datetime) -> ColumnElement[bool]:
         model = self.model
@@ -115,17 +117,18 @@ async def claim(
     values: dict[str, Any] | None = None,
 ) -> Claim | None:
     """Claims the row with one conditional update, in the caller's transaction: a queued row, or
-    an in-progress one whose heartbeat is older than ``dead_after``. It becomes in progress under
-    a new claim, with ``values`` set too (such as an attempt count). ``None`` if the row isn't
-    there or another job holds it; the job then exits without doing anything."""
+    (when the table ``reclaims_stale``) an in-progress one whose heartbeat is older than
+    ``dead_after``. It becomes in progress under a new claim, with ``values`` set too (such as an
+    attempt count). ``None`` if the row isn't there or another job holds it; the job then exits
+    without doing anything."""
     claim_id = uuid.uuid4()
     model = table.model
+    claimable = model.status == table.queued
+    if table.reclaims_stale:
+        claimable = or_(claimable, table._stale(now - dead_after))
     claimed = await session.scalar(
         update(model)
-        .where(
-            table.key == row_id,
-            or_(model.status == table.queued, table._stale(now - dead_after)),
-        )
+        .where(table.key == row_id, claimable)
         .values(status=table.in_progress, claim_id=claim_id, heartbeat_at=now, **(values or {}))
         .returning(table.key)
         .execution_options(synchronize_session=False)
@@ -161,16 +164,21 @@ def released(row: JobRow) -> None:
     row.heartbeat_at = None
 
 
+async def beat(session: AsyncSession, found: Claim, now: datetime) -> None:
+    """Writes a heartbeat in the caller's transaction, if the row still carries the claim (a copy
+    given up for dead and replaced changes nothing): for a job that also beats as it commits
+    each step."""
+    await session.execute(
+        update(found.table.model)
+        .where(holding(found))
+        .values(heartbeat_at=now)
+        .execution_options(synchronize_session=False)
+    )
+
+
 async def _beat(sessionmaker: async_sessionmaker[AsyncSession], found: Claim, clock: Clock) -> None:
-    """Writes the time to the row, if it still carries the claim (a copy given up for dead and
-    replaced changes nothing)."""
     async with sessionmaker() as session, session.begin():
-        await session.execute(
-            update(found.table.model)
-            .where(holding(found))
-            .values(heartbeat_at=clock.now())
-            .execution_options(synchronize_session=False)
-        )
+        await beat(session, found, clock.now())
 
 
 @asynccontextmanager

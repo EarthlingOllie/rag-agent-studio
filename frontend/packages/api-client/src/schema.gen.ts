@@ -1388,7 +1388,7 @@ export interface paths {
          * Start Run
          * @description Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft
          *     (the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll
-         *     it until it is ``completed``, ``failed`` or ``cancelled``.
+         *     it until it is ``completed``, ``failed``, ``cancelled`` or ``interrupted``.
          */
         post: operations["startEvaluationRun"];
         delete?: never;

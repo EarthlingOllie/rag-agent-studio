@@ -17196,7 +17196,7 @@
         ]
       },
       "post": {
-        "description": "Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft\n(the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll\nit until it is ``completed``, ``failed`` or ``cancelled``.",
+        "description": "Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft\n(the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll\nit until it is ``completed``, ``failed``, ``cancelled`` or ``interrupted``.",
         "operationId": "startEvaluationRun",
         "parameters": [
           {
