@@ -160,7 +160,7 @@ run "rejects_an_unknown_nat_instance_type_family" {
   expect_failures = [var.fck_nat_instance_type]
 }
 
-run "vpc_endpoints_keep_aws_traffic_off_the_nat" {
+run "s3_is_the_only_vpc_endpoint" {
   command = apply
 
   assert {
@@ -174,41 +174,12 @@ run "vpc_endpoints_keep_aws_traffic_off_the_nat" {
   }
 
   assert {
-    condition = toset([for e in aws_vpc_endpoint.interface : e.service_name]) == toset([
-      "com.amazonaws.eu-west-2.ecr.api",
-      "com.amazonaws.eu-west-2.ecr.dkr",
-      "com.amazonaws.eu-west-2.logs",
-      "com.amazonaws.eu-west-2.secretsmanager",
-    ])
-    error_message = "There must be interface endpoints for ECR (API and Docker), CloudWatch Logs and Secrets Manager."
-  }
-
-  assert {
-    condition = alltrue([for e in aws_vpc_endpoint.interface :
-      e.vpc_endpoint_type == "Interface" && e.private_dns_enabled &&
-      e.subnet_ids == toset(aws_subnet.private[*].id) &&
-      e.security_group_ids == toset([aws_security_group.endpoints.id])
-    ])
-    error_message = "Interface endpoints must use private DNS, sit in both private subnets and use the endpoint security group."
-  }
-
-  assert {
-    condition = (
-      aws_vpc_security_group_ingress_rule.endpoints_https.cidr_ipv4 == "10.0.0.0/16" &&
-      aws_vpc_security_group_ingress_rule.endpoints_https.from_port == 443 &&
-      aws_vpc_security_group_ingress_rule.endpoints_https.to_port == 443 &&
-      aws_vpc_security_group_ingress_rule.endpoints_https.ip_protocol == "tcp"
-    )
-    error_message = "Endpoints must accept only HTTPS, and only from inside the VPC."
-  }
-
-  assert {
-    condition     = output.endpoint_security_group_id == aws_security_group.endpoints.id
-    error_message = "The module must output the endpoint security group."
+    condition     = output.vpc_endpoints == { "com.amazonaws.eu-west-2.s3" = "Gateway" }
+    error_message = "There must be no interface endpoints (ADR-0021): ECR, Logs and Secrets Manager are reached through the NAT."
   }
 }
 
-run "endpoints_are_the_same_with_a_managed_nat" {
+run "s3_is_the_only_vpc_endpoint_with_a_managed_nat" {
   command = plan
 
   variables {
@@ -216,8 +187,8 @@ run "endpoints_are_the_same_with_a_managed_nat" {
   }
 
   assert {
-    condition     = length(aws_vpc_endpoint.interface) == 4
-    error_message = "The NAT toggle must not change the VPC endpoints."
+    condition     = output.vpc_endpoints == { "com.amazonaws.eu-west-2.s3" = "Gateway" }
+    error_message = "The NAT toggle must not add VPC endpoints."
   }
 }
 
@@ -241,16 +212,15 @@ run "every_fck_nat_mode_resource_carries_the_standard_tags" {
   assert {
     condition = alltrue([for r in [
       aws_vpc.this, aws_internet_gateway.this, aws_route_table.public, aws_route_table.private, aws_eip.nat,
-      aws_default_security_group.this, aws_security_group.endpoints, aws_vpc_security_group_ingress_rule.endpoints_https,
-      aws_vpc_endpoint.s3, aws_security_group.fck_nat[0], aws_vpc_security_group_ingress_rule.fck_nat_from_vpc[0],
+      aws_default_security_group.this, aws_vpc_endpoint.s3, aws_security_group.fck_nat[0], aws_vpc_security_group_ingress_rule.fck_nat_from_vpc[0],
       aws_vpc_security_group_egress_rule.fck_nat_to_internet[0], aws_network_interface.fck_nat[0], aws_instance.fck_nat[0],
     ] : alltrue([for k, v in output.tags : lookup(r.tags, k, "") == v])])
     error_message = "Every resource must carry the standard tags."
   }
 
   assert {
-    condition     = alltrue([for r in concat(aws_subnet.public, aws_subnet.private, values(aws_vpc_endpoint.interface)) : alltrue([for k, v in output.tags : lookup(r.tags, k, "") == v])])
-    error_message = "Every subnet and interface endpoint must carry the standard tags."
+    condition     = alltrue([for r in concat(aws_subnet.public, aws_subnet.private) : alltrue([for k, v in output.tags : lookup(r.tags, k, "") == v])])
+    error_message = "Every subnet must carry the standard tags."
   }
 
   assert {
