@@ -5,15 +5,17 @@ signs up the Editor, adds the demo model's credential (and a real one, if given)
 Default Model and the Theme, creates the Project, its Tags, Documents and Agents, and publishes
 the Agents the demo pages embed with the shop origin in their Allowed Origins (ticket 10-03),
 among them the attack panel's Guardrail demo Agent, on the naive demo model (ticket 10-04).
+Given an ElevenLabs key and with a public base URL set, it also adds the voice-capable
+credential and turns calling on for the Product FAQ (spec 20); otherwise calling stays off.
 So the seeded data is valid by construction. Files go to the object store through presigned URLs,
 as a browser's do, and ingestion runs wherever the app sends it (the worker, or eagerly in tests).
 
 It is idempotent: it finds the demo Organisation through the demo Owner's account and only
 adds what is missing or changes what differs, so running it again changes nothing.
 
-``reset`` erases the demo Organisation and the demo accounts (``app.tenancy.erasure``), then
-seeds again. It touches no other Organisation, and refuses to run if a demo account has joined
-one.
+``reset`` removes the demo Agents' remote agents from the voice layer, erases the demo
+Organisation and the demo accounts (``app.tenancy.erasure``), then seeds again. It touches no
+other Organisation, and refuses to run if a demo account has joined one.
 """
 
 import uuid
@@ -27,6 +29,7 @@ import httpx
 from fastapi import FastAPI
 from sqlalchemy import select
 
+from app.agents.models import Agent
 from app.credentials.registry import PROVIDERS, Provider
 from app.seed import content, live_evaluation, suggestions
 from app.seed.client import SeedApi, new_client
@@ -35,6 +38,8 @@ from app.seed.history import ShiftedClock, generate, history_start
 from app.storage.memory import InMemoryObjectStore
 from app.tenancy.erasure import erase_member, erase_organisation
 from app.tenancy.models import Member, Membership, Organisation, Role
+from app.voice import remote
+from app.voice.remote import VoicePorts
 
 
 @dataclass(frozen=True)
@@ -64,6 +69,11 @@ def real_credential_from_env(environ: Mapping[str, str]) -> RealCredential | Non
     return RealCredential(chosen, api_key, model)
 
 
+def elevenlabs_key_from_env(environ: Mapping[str, str]) -> str | None:
+    """``SEED_ELEVENLABS_API_KEY``: with a public base URL set, the Product FAQ takes Calls."""
+    return environ.get("SEED_ELEVENLABS_API_KEY", "").strip() or None
+
+
 @dataclass(frozen=True)
 class SeedReport:
     organisation_id: str
@@ -71,8 +81,11 @@ class SeedReport:
     default_model: str
     documents: int
     demo_pages_url: str
+    # Which Agent takes Calls, and with which voice; None while calling stays off.
+    calls: str | None = None
 
     def lines(self) -> list[str]:
+        calls = [] if self.calls is None else [f"Calls: {self.calls}."]
         return [
             f"Seeded the demo Organisation {content.ORGANISATION_NAME!r}.",
             f"Studio: {self.studio_url}",
@@ -82,6 +95,7 @@ class SeedReport:
             "(ingestion may take a minute).",
             f"Default Model: {self.default_model}",
             f"Demo pages: {self.demo_pages_url}",
+            *calls,
         ]
 
 
@@ -322,6 +336,32 @@ async def _agents(api: SeedApi, project: str, tags: dict[str, str], origin: str)
     return existing
 
 
+async def _calls(api: SeedApi, project: str, agents: dict[str, Any], voice_key: str) -> str:
+    """Adds the ElevenLabs credential and turns calling on for the Product FAQ, with the
+    account's first voice and the spoken greeting; saving sets up its remote agent."""
+    credential = await _credential(api, content.VOICE_CREDENTIAL, Provider.ELEVENLABS, voice_key)
+    voices = await api.call("GET", api.path("credentials", credential, "voices"))
+    if not voices:
+        raise SeedError(
+            f"The ElevenLabs account of SEED_ELEVENLABS_API_KEY offers no voices, so "
+            f"{content.SHOP_AGENT} can't take Calls. Add a voice there, or unset the key."
+        )
+    voice = voices[0]
+    wanted = {
+        "calls_enabled": True,
+        "call_credential_id": credential,
+        "call_voice_id": voice["id"],
+        "spoken_greeting": content.SPOKEN_GREETING,
+    }
+    settings_path = api.path(
+        "projects", project, "agents", agents[content.SHOP_AGENT]["id"], "operational-settings"
+    )
+    current = await api.call("GET", settings_path)
+    if {key: current[key] for key in wanted} != wanted:
+        await api.call("PATCH", settings_path, body=wanted)
+    return f"{content.SHOP_AGENT} takes Calls (voice {voice['name']})"
+
+
 async def _demo_owner_exists(app: FastAPI) -> bool:
     async with app.state.sessionmaker() as session:
         found = await session.scalar(select(Member.id).where(Member.email == content.OWNER.email))
@@ -333,6 +373,8 @@ async def seed(
     assets: Path,
     real: RealCredential | None = None,
     history: content.History | None = None,
+    *,
+    voice_key: str | None = None,
 ) -> SeedReport:
     """Builds, or completes, the demo Organisation. ``assets`` is the ``seed`` folder.
 
@@ -340,8 +382,14 @@ async def seed(
     in the past, under a clock the seed sets back, and lives through the story to today. The
     history always runs on the demo model; a real credential becomes the Default Model after
     it. Seeding again only puts the foundation back; the history is never replayed. ``history``
-    says how much to make: ``content.HISTORY`` unless given."""
+    says how much to make: ``content.HISTORY`` unless given.
+
+    With ``voice_key`` (an ElevenLabs API key) and the platform's public base URL set, the
+    Product FAQ takes Calls; it is set up after the history, which has none. Without both,
+    calling stays off and nothing about Calls is seeded."""
     system_clock = app.state.clock
+    calling_key = voice_key if app.state.settings.public_base_url is not None else None
+    calls = None
     fresh = not await _demo_owner_exists(app)
     start = history_start(system_clock.now())
     clock = ShiftedClock(start)
@@ -370,6 +418,9 @@ async def seed(
                     f"{content.HR_AGENT} has no Versions, so the demo history is missing. "
                     "Run `make seed-reset` to recreate the demo Organisation with it."
                 )
+            app.state.clock = system_clock
+            if calling_key is not None:
+                calls = await _calls(api, project, agents, calling_key)
     finally:
         app.state.clock = system_clock
     return SeedReport(
@@ -378,11 +429,13 @@ async def seed(
         default_model=default_model,
         documents=documents,
         demo_pages_url=f"{origin}/demo/",
+        calls=calls,
     )
 
 
 async def erase_demo(app: FastAPI) -> None:
-    """Erases the demo Organisation and the demo accounts; nothing else."""
+    """Erases the demo Organisation and the demo accounts; nothing else. Its Agents' remote
+    agents are removed from the voice layer first (best effort, as when an Agent is deleted)."""
     async with app.state.sessionmaker() as session:
         emails = [content.OWNER.email, content.EDITOR.email]
         ids = list(await session.scalars(select(Member.id).where(Member.email.in_(emails))))
@@ -409,13 +462,31 @@ async def erase_demo(app: FastAPI) -> None:
                 f"The demo account {elsewhere} belongs to another Organisation too. "
                 "Remove it there first; nothing was erased."
             )
+        calling = await session.scalars(
+            select(Agent).where(Agent.organisation_id.in_(demo), Agent.remote_agent_id.is_not(None))
+        )
+        voice = VoicePorts(
+            layer=app.state.voice_layer,
+            envelope=app.state.envelope,
+            public_base_url=str(
+                app.state.settings.public_base_url or app.state.settings.studio_url
+            ),
+        )
+        for agent in list(calling):
+            await remote.remove(session, voice, agent, agent.call_credential_id)
         for organisation_id in demo:
             await erase_organisation(session, app.state.ingestion.object_store, organisation_id)
         for member_id in ids:
             await erase_member(session, member_id)
 
 
-async def reset(app: FastAPI, assets: Path, real: RealCredential | None = None) -> SeedReport:
+async def reset(
+    app: FastAPI,
+    assets: Path,
+    real: RealCredential | None = None,
+    *,
+    voice_key: str | None = None,
+) -> SeedReport:
     """Erases the demo Organisation and seeds it again."""
     await erase_demo(app)
-    return await seed(app, assets, real)
+    return await seed(app, assets, real, voice_key=voice_key)

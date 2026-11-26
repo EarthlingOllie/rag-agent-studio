@@ -10,7 +10,14 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from app.main import create_app
-from app.seed.runner import SeedError, SeedReport, real_credential_from_env, reset, seed
+from app.seed.runner import (
+    SeedError,
+    SeedReport,
+    elevenlabs_key_from_env,
+    real_credential_from_env,
+    reset,
+    seed,
+)
 
 # The repository's ``seed`` folder; in the API image it is mounted at /seed.
 DEFAULT_ASSETS = Path(__file__).resolve().parents[3] / "seed"
@@ -18,9 +25,10 @@ DEFAULT_ASSETS = Path(__file__).resolve().parents[3] / "seed"
 
 async def _run(assets: Path, *, wipe: bool) -> SeedReport:
     real = real_credential_from_env(os.environ)
+    voice_key = elevenlabs_key_from_env(os.environ)
     app = create_app()
     async with app.router.lifespan_context(app):
-        return await (reset if wipe else seed)(app, assets, real)
+        return await (reset if wipe else seed)(app, assets, real, voice_key=voice_key)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

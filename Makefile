@@ -66,10 +66,12 @@ migrate: ## Apply database migrations to the running stack
 # The seed runs the API in a one-off container beside the running stack (`make dev`), with the
 # repo's seed folder mounted at /seed. Files go to RustFS by its internal address. Set
 # SEED_CREDENTIAL_PROVIDER (anthropic or openai) and SEED_CREDENTIAL_API_KEY (and optionally
-# SEED_CREDENTIAL_MODEL) to answer with a real model instead of the demo one.
+# SEED_CREDENTIAL_MODEL) to answer with a real model instead of the demo one. Set
+# SEED_ELEVENLABS_API_KEY, with PUBLIC_BASE_URL in .env, for the Product FAQ to take Calls.
 SEED_RUN = $(COMPOSE) run --rm --no-deps -v "$(CURDIR)/seed:/seed:ro" \
 	-e OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://rustfs:9000 \
-	-e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL api
+	-e SEED_CREDENTIAL_PROVIDER -e SEED_CREDENTIAL_API_KEY -e SEED_CREDENTIAL_MODEL \
+	-e SEED_ELEVENLABS_API_KEY api
 
 seed: ## Create the demo Organisation in the running stack and print its sign-in details (idempotent)
 	$(SEED_RUN) sh -c "alembic upgrade head && python -m app.seed"
