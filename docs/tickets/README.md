@@ -1,7 +1,7 @@
 # Tickets
 
 Tracer-bullet tickets split from the [slice specs](../specs/README.md). Ticket IDs are `<spec>-<NN>`, and blockers can point into other specs.
-Work the **frontier**: any ticket whose blockers are all done. `01-01`, `11-01`, `15-01`, `16-01`, `18-01`, `19-01`, `20-01` and `20-02` are the only tickets with no blockers.
+Work the **frontier**: any ticket whose blockers are all done. `01-01`, `11-01`, `15-01`, `16-01`, `18-01`, `19-01`, `20-01`, `20-02`, `21-01`, `21-02`, `21-12`, `22-01` and `22-02` are the only tickets with no blockers.
 
 New tickets start from [TEMPLATE.md](./TEMPLATE.md). Its standing criteria apply to every ticket: new Studio UI uses the [design system](../design/README.md) (the palette ratchet enforces it), tests sit at the highest seam with 100% coverage, and the glossary and ADRs stay current.
 
@@ -280,3 +280,51 @@ A Visitor chooses Message or Call; a Call is the same Agent with ElevenLabs spea
 | `20-12` | [Reviewing Calls in the Studio](./20-calls/12-reviewing-calls-in-the-studio.md) | 20-07 |
 | `20-13` | [Playground Calls](./20-calls/13-playground-calls.md) | 20-06 |
 | `20-14` | [Seed, demo and docs](./20-calls/14-seed-demo-docs.md) | 20-05, 20-07 |
+
+## 21: Job reliability
+
+Every background job finishes or ends in a state a person can see, and is safe to run twice (ADR-0020). 21-01 (a prefactor), 21-02 and 21-12 have no blockers; 21-03 is the tracer that builds the claim, heartbeat and sweeper, and seven tickets open up behind it.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `21-01` | [Prefactor: one Job publisher port](./21-job-reliability/01-job-publisher-port.md) | none |
+| `21-02` | [No job stays in progress after an error](./21-job-reliability/02-no-job-stays-in-progress-after-an-error.md) | none |
+| `21-03` | [Tracer: interrupted ingestion restarts](./21-job-reliability/03-interrupted-ingestion-restarts.md) | 21-01 |
+| `21-04` | [Ingestion limits: interruption cap, conversion limit and durable retries](./21-job-reliability/04-ingestion-limits.md) | 21-03 |
+| `21-05` | [Interrupted Evaluation Runs](./21-job-reliability/05-interrupted-evaluation-runs.md) | 21-02, 21-03 |
+| `21-06` | [Interrupted Suggestion runs](./21-job-reliability/06-interrupted-suggestion-runs.md) | 21-05 |
+| `21-07` | [Lost Live Verdicts](./21-job-reliability/07-lost-live-verdicts.md) | 21-02, 21-03 |
+| `21-08` | [A Re-embed survives interruption](./21-job-reliability/08-re-embed-survives-interruption.md) | 21-03 |
+| `21-09` | [Deleted files are really deleted](./21-job-reliability/09-deleted-files-are-really-deleted.md) | 21-03 |
+| `21-10` | [Deleting a Project](./21-job-reliability/10-deleting-a-project.md) | 21-09 |
+| `21-11` | [Alert emails always arrive](./21-job-reliability/11-alert-emails-always-arrive.md) | 21-03 |
+| `21-12` | [Scheduled jobs catch up](./21-job-reliability/12-scheduled-jobs-catch-up.md) | none |
+
+## 22: Lean, scalable infrastructure
+
+SQS, two autoscaled worker pools and no interface endpoints (ADR-0021). 22-01 and 22-02 have no blockers and can run beside spec 21; 22-03 needs all of spec 21. 22-09 is a real deploy by the repository owner and is `ready-for-human`.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `22-01` | [Remove the VPC interface endpoints](./22-lean-scalable-infrastructure/01-remove-interface-endpoints.md) | none |
+| `22-02` | [Queue module](./22-lean-scalable-infrastructure/02-queue-module.md) | none |
+| `22-03` | [Jobs go through SQS](./22-lean-scalable-infrastructure/03-jobs-go-through-sqs.md) | 21-01, 21-02, 21-03, 21-04, 21-05, 21-06, 21-07, 21-08, 21-09, 21-10, 21-11, 21-12, 22-02 |
+| `22-04` | [Two worker pools](./22-lean-scalable-infrastructure/04-two-worker-pools.md) | 22-03 |
+| `22-05` | [Autoscaling](./22-lean-scalable-infrastructure/05-autoscaling.md) | 22-04 |
+| `22-06` | [Scaling and deploys never cut a job short](./22-lean-scalable-infrastructure/06-scaling-and-deploys-never-cut-a-job-short.md) | 22-04 |
+| `22-07` | [Scaling demonstration script](./22-lean-scalable-infrastructure/07-scaling-demonstration-script.md) | 22-05 |
+| `22-08` | [Docs and cost](./22-lean-scalable-infrastructure/08-docs-and-cost.md) | 22-05 |
+| `22-09` | [Prove it on real AWS](./22-lean-scalable-infrastructure/09-prove-it-on-real-aws.md) | 22-06, 22-07, 22-08 |
+
+## 23: Rehearsing the AWS deployment on Floci
+
+The same Terraform and deploy scripts, run on a laptop against an AWS emulator. 23-01 is a spike that corrects the spec before anything is built.
+
+| Ticket | Title | Blocked by |
+|---|---|---|
+| `23-01` | [Spike: get `terraform apply` through on Floci](./23-floci-rehearsal/01-spike-terraform-apply-on-floci.md) | 22-05 |
+| `23-02` | [Module inputs for a local environment](./23-floci-rehearsal/02-module-inputs-for-a-local-environment.md) | 23-01 |
+| `23-03` | [`make rehearse` reaches a passing smoke check](./23-floci-rehearsal/03-make-rehearse.md) | 23-02 |
+| `23-04` | [The rehearsal is a usable Studio](./23-floci-rehearsal/04-the-rehearsal-is-a-usable-studio.md) | 23-03 |
+| `23-05` | [`make rehearse-scale`](./23-floci-rehearsal/05-make-rehearse-scale.md) | 23-04 |
+| `23-06` | [On-demand CI job and guide](./23-floci-rehearsal/06-on-demand-ci-job-and-guide.md) | 23-04 |
