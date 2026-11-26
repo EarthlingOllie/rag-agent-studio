@@ -16,7 +16,7 @@ const boot: Boot = {
   avatar_url: null,
   greeting: "",
   starter_questions: [],
-  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null, searching_status: null },
+  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null, searching_status: null, message_choice: null, call_choice: null },
   citations: true,
   rating_prompt_after: 0,
   calls: false,
@@ -296,7 +296,7 @@ test("the UI text overrides replace the built-in Send button and unavailable mes
   fakeWidgetApi(() =>
     HttpResponse.json({ detail: "This assistant is temporarily unavailable. Please try again later." }, { status: 503 }),
   );
-  const ui_text = { send_button: "Ask", rate_conversation: null, unavailable_message: "Hana is on a break.", searching_status: null };
+  const ui_text = { send_button: "Ask", rate_conversation: null, unavailable_message: "Hana is on a break.", searching_status: null, message_choice: null, call_choice: null };
   render(<Widget boot={{ ...boot, ui_text }} />);
 
   await userEvent.setup().type(screen.getByLabelText("Message"), "Hello");
@@ -308,7 +308,7 @@ test("the UI text overrides replace the built-in Send button and unavailable mes
 
 test("the searching status override replaces the built-in text", async () => {
   fakeWidgetApi(() => sse([["search", {}]]));
-  const ui_text = { send_button: null, rate_conversation: null, unavailable_message: null, searching_status: "Hana is looking that up…" };
+  const ui_text = { send_button: null, rate_conversation: null, unavailable_message: null, searching_status: "Hana is looking that up…", message_choice: null, call_choice: null };
   render(<Widget boot={{ ...boot, ui_text }} />);
 
   await ask("How much leave?");
@@ -321,7 +321,7 @@ test("the searching status override replaces the built-in text", async () => {
 
 test("a provider failure mid-answer shows the Agent's unavailable message too", async () => {
   fakeWidgetApi(() => sse([["error", { code: "provider_error", message: "Temporarily unavailable." }]]));
-  const ui_text = { send_button: null, rate_conversation: null, unavailable_message: "Hana is on a break.", searching_status: null };
+  const ui_text = { send_button: null, rate_conversation: null, unavailable_message: "Hana is on a break.", searching_status: null, message_choice: null, call_choice: null };
   render(<Widget boot={{ ...boot, ui_text }} />);
 
   await ask("Hello");
@@ -343,7 +343,7 @@ test("a message over the rate limit shows the unavailable text the API sends", a
 
 test("a message over the rate limit shows the Agent's unavailable message when it has one", async () => {
   fakeWidgetApi(() => sse([["unavailable", { reason: "rate_limited", message: "Temporarily unavailable." }]]));
-  const ui_text = { send_button: null, rate_conversation: null, unavailable_message: "Hana is on a break.", searching_status: null };
+  const ui_text = { send_button: null, rate_conversation: null, unavailable_message: "Hana is on a break.", searching_status: null, message_choice: null, call_choice: null };
   render(<Widget boot={{ ...boot, ui_text }} />);
 
   await ask("Hello");
@@ -364,7 +364,7 @@ test("a message once the Token Budget is spent shows the unavailable text the AP
 
 test("other refusals keep their own message even with an unavailable message set", async () => {
   fakeWidgetApi(() => HttpResponse.json({ detail: "This chat has expired. Reload the page to start a new one." }, { status: 401 }));
-  const ui_text = { send_button: null, rate_conversation: null, unavailable_message: "Hana is on a break.", searching_status: null };
+  const ui_text = { send_button: null, rate_conversation: null, unavailable_message: "Hana is on a break.", searching_status: null, message_choice: null, call_choice: null };
   render(<Widget boot={{ ...boot, ui_text }} />);
 
   await ask("Hello");

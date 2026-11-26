@@ -573,10 +573,10 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
               focusInput.current = true;
             }}
           >
-            Message
+            {boot.ui_text.message_choice ?? "Message"}
           </button>
           <button type="button" onClick={() => void startTalking()}>
-            Call
+            {boot.ui_text.call_choice ?? "Call"}
           </button>
         </div>
       </div>

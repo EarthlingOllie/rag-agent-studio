@@ -21,7 +21,7 @@ export const PAGE_SIZE = 25;
  * Feedback (a reply with a thumbs up or down, any feedback, or none), their Conversation Rating
  * (one score, rated, or not rated), their Guardrail outcomes (a reply whose Guardrail took one
  * action, any Guardrail outcome, or none), their replies' Live Verdicts (a reply that passed, failed, couldn't be
- * judged, or wasn't chosen to be judged) and the page.
+ * judged, or wasn't chosen to be judged), whether they had a Call (`yes` or `no`) and the page.
  */
 export interface ConversationFilters {
   agent?: string;
@@ -33,8 +33,12 @@ export interface ConversationFilters {
   rating?: RatingFilter;
   guardrail?: GuardrailFilter;
   live?: LiveVerdictFilter;
+  call?: CallFilter;
   page?: number;
 }
+
+/** With a Call (open or ended), or without one. */
+export type CallFilter = "yes" | "no";
 
 export type GuardrailFilter = Schemas["GuardrailFilter"];
 const GUARDRAIL_FILTERS: readonly unknown[] = [
@@ -72,6 +76,7 @@ export function conversationFilters(search: Record<string, unknown>): Conversati
   if (RATING_FILTERS.includes(rating)) filters.rating = rating as RatingFilter;
   if (GUARDRAIL_FILTERS.includes(search.guardrail)) filters.guardrail = search.guardrail as GuardrailFilter;
   if (LIVE_VERDICT_FILTERS.includes(search.live)) filters.live = search.live as LiveVerdictFilter;
+  if (search.call === "yes" || search.call === "no") filters.call = search.call;
   const page = Number(search.page);
   if (Number.isInteger(page) && page > 1) filters.page = page;
   return filters;
@@ -96,6 +101,7 @@ function listQuery(filters: ConversationFilters) {
     ...(filters.rating && { rating: String(filters.rating) as Schemas["RatingFilter"] }),
     ...(filters.guardrail && { guardrail: filters.guardrail }),
     ...(filters.live && { live_verdict: filters.live }),
+    ...(filters.call && { has_call: filters.call === "yes" }),
   };
 }
 

@@ -64,6 +64,9 @@ class ConversationSummaryOut(BaseModel):
     guardrail_events: int
     # How many of its replies failed their Live Verdict.
     failed_live_verdicts: int
+    # How many Calls it had (open or ended), and the minutes of those that ended.
+    calls: int
+    call_minutes: int
 
 
 class ConversationPageOut(BaseModel):
@@ -130,6 +133,10 @@ async def list_conversations(
             )
         ),
     ] = None,
+    has_call: Annotated[
+        bool | None,
+        Query(description="true: only those with a Call, open or ended; false: only those without"),
+    ] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 25,
 ) -> ConversationPageOut:
@@ -144,6 +151,7 @@ async def list_conversations(
         rating=rating,
         guardrail=guardrail,
         live_verdict=live_verdict,
+        has_call=has_call,
     )
     try:
         result = await service.list_conversations(
@@ -169,6 +177,8 @@ async def list_conversations(
                 deleted_at=row.conversation.deleted_at,
                 guardrail_events=row.guardrail_events,
                 failed_live_verdicts=row.failed_live_verdicts,
+                calls=row.calls,
+                call_minutes=row.call_minutes,
             )
             for row in result.rows
         ],
@@ -197,6 +207,13 @@ class ConversationMessageOut(MessageOut):
     # When its text (and any feedback comment) was purged, by the Retention Window or the
     # Conversation's deletion: ``content`` is then empty. Null while it is kept.
     purged_at: datetime | None
+    # A Spoken Message: said in a Call (the Visitor's transcribed words, or the reply the Agent
+    # spoke) rather than typed; ``call_id`` names the Call (one of ``calls``), null when typed.
+    spoken: bool
+    call_id: uuid.UUID | None
+    # An interrupted reply: the Visitor talked over this spoken Agent Message. Its ``content``
+    # still holds the whole reply.
+    interrupted: bool
 
 
 class RatingChangeRead(BaseModel):
@@ -328,6 +345,9 @@ async def get_conversation(
                 fallback=m.fallback,
                 feedback=_feedback_read(read.feedback.get(m.id), read.version_numbers),
                 purged_at=m.purged_at,
+                spoken=m.spoken,
+                call_id=m.call_id,
+                interrupted=m.interrupted,
             )
             for m in read.messages
         ],

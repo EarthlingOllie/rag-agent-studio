@@ -1741,6 +1741,18 @@
             ],
             "title": "Agent Version Number"
           },
+          "call_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Id"
+          },
           "config_source": {
             "anyOf": [
               {
@@ -1851,6 +1863,10 @@
             ],
             "title": "Instructions Version Number"
           },
+          "interrupted": {
+            "title": "Interrupted",
+            "type": "boolean"
+          },
           "latency_ms": {
             "anyOf": [
               {
@@ -1910,6 +1926,10 @@
           "role": {
             "title": "Role",
             "type": "string"
+          },
+          "spoken": {
+            "title": "Spoken",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1932,7 +1952,10 @@
           "agent_version_number",
           "fallback",
           "feedback",
-          "purged_at"
+          "purged_at",
+          "spoken",
+          "call_id",
+          "interrupted"
         ],
         "title": "ConversationMessageOut",
         "type": "object"
@@ -2128,6 +2151,14 @@
             "title": "Agent Name",
             "type": "string"
           },
+          "call_minutes": {
+            "title": "Call Minutes",
+            "type": "integer"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2224,7 +2255,9 @@
           "rating",
           "deleted_at",
           "guardrail_events",
-          "failed_live_verdicts"
+          "failed_live_verdicts",
+          "calls",
+          "call_minutes"
         ],
         "title": "ConversationSummaryOut",
         "type": "object"
@@ -10467,7 +10500,9 @@
           "mean_rating",
           "fallback_rate",
           "p95_latency_ms",
-          "live_score"
+          "live_score",
+          "calls",
+          "call_minutes"
         ],
         "title": "TimeSeriesMetric",
         "type": "string"
@@ -10963,6 +10998,32 @@
         "additionalProperties": false,
         "description": "Overrides of the widget's built-in text. None keeps the built-in text.",
         "properties": {
+          "call_choice": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Choice"
+          },
+          "message_choice": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Choice"
+          },
           "rate_conversation": {
             "anyOf": [
               {
@@ -11023,6 +11084,32 @@
         "additionalProperties": false,
         "description": "Overrides of the widget's built-in text. None keeps the built-in text.",
         "properties": {
+          "call_choice": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Choice"
+          },
+          "message_choice": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Choice"
+          },
           "rate_conversation": {
             "anyOf": [
               {
@@ -11080,7 +11167,9 @@
           "send_button",
           "rate_conversation",
           "unavailable_message",
-          "searching_status"
+          "searching_status",
+          "message_choice",
+          "call_choice"
         ],
         "title": "UiText",
         "type": "object"
@@ -21606,6 +21695,24 @@
               ],
               "description": "Only those with a reply whose Live Verdict passed (`passed`), failed (`failed`) or couldn't be judged (`error`), or with a reply that wasn't chosen to be judged (`not_judged`)",
               "title": "Live Verdict"
+            }
+          },
+          {
+            "description": "true: only those with a Call, open or ended; false: only those without",
+            "in": "query",
+            "name": "has_call",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true: only those with a Call, open or ended; false: only those without",
+              "title": "Has Call"
             }
           },
           {

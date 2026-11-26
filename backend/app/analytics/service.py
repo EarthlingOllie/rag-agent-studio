@@ -353,6 +353,9 @@ class TimeSeriesMetric(enum.StrEnum):
     FALLBACK_RATE = "fallback_rate"
     P95_LATENCY_MS = "p95_latency_ms"
     LIVE_SCORE = "live_score"
+    # Visitor Calls that ended in the period, and their minutes.
+    CALLS = "calls"
+    CALL_MINUTES = "call_minutes"
 
 
 class TimeSeriesGranularity(enum.StrEnum):
@@ -380,6 +383,8 @@ _MEASURES: dict[TimeSeriesMetric, Callable[[Usage], tuple[float | None, int]]] =
         u.latency_histogram.count,
     ),
     TimeSeriesMetric.LIVE_SCORE: lambda u: _rate(u.live_passed, u.live_judged),
+    TimeSeriesMetric.CALLS: lambda u: (u.calls, u.calls),
+    TimeSeriesMetric.CALL_MINUTES: lambda u: (u.call_minutes, u.calls),
 }
 
 # The first day of the period (day, ISO week or month) a day is in.

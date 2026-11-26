@@ -32,6 +32,8 @@ export const visitorConversation: Summary = {
   deleted_at: null,
   guardrail_events: 2,
   failed_live_verdicts: 0,
+  calls: 0,
+  call_minutes: 0,
 };
 
 /** An Editor trying HR helper's Draft in the Playground. */
@@ -51,6 +53,8 @@ export const playgroundConversation: Summary = {
   deleted_at: null,
   guardrail_events: 0,
   failed_live_verdicts: 0,
+  calls: 0,
+  call_minutes: 0,
 };
 
 const unanswered = {
@@ -70,6 +74,9 @@ const unanswered = {
   fallback: false,
   feedback: null,
   purged_at: null,
+  spoken: false,
+  call_id: null,
+  interrupted: false,
 };
 
 function question(id: string, content: string, created_at: string): Message {
@@ -192,7 +199,7 @@ export const judgedVerdict: LiveVerdict = {
 
 /**
  * Serves the Conversations viewer's routes from these Conversations. The list keeps those of the
- * Agent asked for and the Playground, feedback, rating, Guardrail and failed Live Verdict filters, like the API;
+ * Agent asked for and the Playground, feedback, rating, Guardrail, failed Live Verdict and Has a Call filters, like the API;
  * other filters are only recorded. Every list query is recorded, as are Trace reads.
  */
 export function fakeConversationsApi(
@@ -233,6 +240,8 @@ export function fakeConversationsApi(
         if (guardrail === null) return true;
         return guardrail === "none" ? events === 0 : events > 0;
       };
+      const hasCall = query.get("has_call");
+      const called = ({ calls }: Summary) => hasCall === null || (calls > 0) === (hasCall === "true");
       // Only how many replies failed their Live Verdict is known here: other Live Verdicts keep them all.
       const liveVerdict = query.get("live_verdict");
       const judged = ({ failed_live_verdicts: failed }: Summary) => liveVerdict !== "failed" || failed > 0;
@@ -256,7 +265,8 @@ export function fakeConversationsApi(
           given(conversation) &&
           rated(conversation) &&
           guarded(conversation) &&
-          judged(conversation),
+          judged(conversation) &&
+          called(conversation),
       );
       return HttpResponse.json({
         items,

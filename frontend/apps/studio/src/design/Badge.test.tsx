@@ -13,6 +13,7 @@ it.each([
   ["callMinutesSpent", "Call minutes spent"],
   ["callsFailing", "Calls failing"],
   ["spoken", "Spoken"],
+  ["interrupted", "Interrupted"],
   ["blocked", "Blocked by guardrail"],
   ["liveScoreDrop", "Live score drop"],
   ["lowSample", "Low sample"],

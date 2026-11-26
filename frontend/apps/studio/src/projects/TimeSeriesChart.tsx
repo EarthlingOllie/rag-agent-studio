@@ -28,6 +28,9 @@ const METRICS: Record<TimeSeriesMetric, { label: string; format: (value: number)
     sample: "replies",
   },
   live_score: { label: "Live score", format: percent, sample: "judged replies" },
+  // Visitor Calls that ended in the period, and their minutes (each Call's rounded up).
+  calls: { label: "Calls", format: whole, sample: "Calls" },
+  call_minutes: { label: "Call minutes", format: (value) => `${whole(value)} min`, sample: "Calls" },
 };
 
 const GRANULARITIES: Record<TimeSeriesGranularity, string> = { day: "Day", week: "Week", month: "Month" };

@@ -10,8 +10,8 @@ number belongs to a day by a time that doesn't move once it exists:
 - a Conversation: when this Version first replied in it (so it counts once per Version);
 - a Conversation Rating: when the Conversation's first reply was made;
 - a judged Live Verdict: when the reply it judges was made (not when it was judged);
-- a Call's Voice Cost: when the Call ended (its Voice Cost is frozen then), on the Version that
-  was Live when it started.
+- a Call, its minutes and its Voice Cost: when the Call ended (its minutes and Voice Cost are
+  known then), on the Version that was Live when it started.
 """
 
 import uuid
@@ -46,6 +46,8 @@ class Usage:
     tokens_histogram: Histogram = field(default_factory=Histogram)
     cost_usd: Decimal = Decimal(0)
     voice_cost_usd: Decimal = Decimal(0)
+    calls: int = 0
+    call_minutes: int = 0
     thumbs_up: int = 0
     thumbs_down: int = 0
     rating_sum: int = 0
@@ -66,6 +68,8 @@ class Usage:
         self.tokens_histogram = self.tokens_histogram.merged(other.tokens_histogram)
         self.cost_usd += other.cost_usd
         self.voice_cost_usd += other.voice_cost_usd
+        self.calls += other.calls
+        self.call_minutes += other.call_minutes
         self.thumbs_up += other.thumbs_up
         self.thumbs_down += other.thumbs_down
         self.rating_sum += other.rating_sum
@@ -88,6 +92,8 @@ class Usage:
             tokens_histogram=Histogram.from_stored(row.tokens_histogram),
             cost_usd=row.cost_usd,
             voice_cost_usd=row.voice_cost_usd,
+            calls=row.calls,
+            call_minutes=row.call_minutes,
             thumbs_up=row.thumbs_up,
             thumbs_down=row.thumbs_down,
             rating_sum=row.rating_sum,
@@ -116,6 +122,8 @@ class Usage:
             tokens_histogram=self.tokens_histogram.stored(),
             cost_usd=self.cost_usd.quantize(DOLLARS),
             voice_cost_usd=self.voice_cost_usd.quantize(DOLLARS),
+            calls=self.calls,
+            call_minutes=self.call_minutes,
             thumbs_up=self.thumbs_up,
             thumbs_down=self.thumbs_down,
             rating_sum=self.rating_sum,
@@ -325,15 +333,21 @@ async def usage_on(session: AsyncSession, day: date, only: Only) -> dict[uuid.UU
             Conversation.agent_id,
             Call.agent_version_id,
             func.sum(Call.voice_cost_usd),
+            func.count(),
+            func.sum(Call.minutes),
         )
         .join(Conversation, Conversation.id == Call.conversation_id)
         .where(*_visitor_calls(day, only))
         .group_by(Call.organisation_id, Conversation.agent_id, Call.agent_version_id)
     )
-    for organisation_id, agent_id, version_id, voice in calls:
-        # A Call with no known price adds nothing. A Visitor's Call names the Version that was
-        # Live (only Playground Calls name none, and they aren't counted here).
-        at(organisation_id, agent_id, cast(uuid.UUID, version_id)).voice_cost_usd += voice or 0
+    for organisation_id, agent_id, version_id, voice, count, minutes in calls:
+        # A Visitor's Call names the Version that was Live (only Playground Calls name none, and
+        # they aren't counted here).
+        usage = at(organisation_id, agent_id, cast(uuid.UUID, version_id))
+        # A Call with no known price adds nothing.
+        usage.voice_cost_usd += voice or 0
+        usage.calls += count
+        usage.call_minutes += minutes or 0
 
     first = _first_replies(day, only, per_version=False).subquery()
     ratings = await session.execute(

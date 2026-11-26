@@ -40,6 +40,8 @@ export const defaultDraft: Draft = {
       rate_conversation: null,
       unavailable_message: null,
       searching_status: null,
+      message_choice: null,
+      call_choice: null,
     },
     rating_prompt_after: 3,
   },

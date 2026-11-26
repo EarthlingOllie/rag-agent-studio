@@ -31,6 +31,9 @@ export type Boot = {
     rate_conversation: string | null;
     unavailable_message: string | null;
     searching_status: string | null;
+    /** The choice screen's two buttons, reworded per Agent; null keeps "Message" and "Call". */
+    message_choice: string | null;
+    call_choice: string | null;
   };
   citations: boolean;
   /** After how many replies the Visitor is asked to rate the Conversation; 0 asks only when they end the chat. */

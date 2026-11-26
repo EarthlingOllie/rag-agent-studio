@@ -3771,6 +3771,8 @@ export interface components {
             agent_version_id: string | null;
             /** Agent Version Number */
             agent_version_number: number | null;
+            /** Call Id */
+            call_id: string | null;
             /** Config Source */
             config_source: string | null;
             /** Content */
@@ -3800,6 +3802,8 @@ export interface components {
             instructions_version_id: string | null;
             /** Instructions Version Number */
             instructions_version_number: number | null;
+            /** Interrupted */
+            interrupted: boolean;
             /** Latency Ms */
             latency_ms: number | null;
             /** Model Name */
@@ -3812,6 +3816,8 @@ export interface components {
             purged_at: string | null;
             /** Role */
             role: string;
+            /** Spoken */
+            spoken: boolean;
         };
         /** ConversationOut */
         ConversationOut: {
@@ -3887,6 +3893,10 @@ export interface components {
             agent_id: string;
             /** Agent Name */
             agent_name: string;
+            /** Call Minutes */
+            call_minutes: number;
+            /** Calls */
+            calls: number;
             /**
              * Created At
              * Format: date-time
@@ -6837,7 +6847,7 @@ export interface components {
          * @description What a time series measures, over each of its periods.
          * @enum {string}
          */
-        TimeSeriesMetric: "conversations" | "replies" | "cost_usd" | "mean_tokens" | "thumbs_up_rate" | "mean_rating" | "fallback_rate" | "p95_latency_ms" | "live_score";
+        TimeSeriesMetric: "conversations" | "replies" | "cost_usd" | "mean_tokens" | "thumbs_up_rate" | "mean_rating" | "fallback_rate" | "p95_latency_ms" | "live_score" | "calls" | "call_minutes";
         /** TimeSeriesOut */
         TimeSeriesOut: {
             /**
@@ -6986,6 +6996,10 @@ export interface components {
          * @description Overrides of the widget's built-in text. None keeps the built-in text.
          */
         "UiText-Input": {
+            /** Call Choice */
+            call_choice?: string | null;
+            /** Message Choice */
+            message_choice?: string | null;
             /** Rate Conversation */
             rate_conversation?: string | null;
             /** Searching Status */
@@ -7000,6 +7014,10 @@ export interface components {
          * @description Overrides of the widget's built-in text. None keeps the built-in text.
          */
         "UiText-Output": {
+            /** Call Choice */
+            call_choice: string | null;
+            /** Message Choice */
+            message_choice: string | null;
             /** Rate Conversation */
             rate_conversation: string | null;
             /** Searching Status */
@@ -13200,6 +13218,8 @@ export interface operations {
                 guardrail?: components["schemas"]["GuardrailFilter"] | null;
                 /** @description Only those with a reply whose Live Verdict passed (`passed`), failed (`failed`) or couldn't be judged (`error`), or with a reply that wasn't chosen to be judged (`not_judged`) */
                 live_verdict?: components["schemas"]["LiveVerdictFilter"] | null;
+                /** @description true: only those with a Call, open or ended; false: only those without */
+                has_call?: boolean | null;
                 page?: number;
                 page_size?: number;
             };

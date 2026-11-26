@@ -17,7 +17,7 @@ const boot: Boot = {
   avatar_url: null,
   greeting: "Hi!",
   starter_questions: [],
-  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null, searching_status: null },
+  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null, searching_status: null, message_choice: null, call_choice: null },
   citations: true,
   rating_prompt_after: 0,
   calls: false,

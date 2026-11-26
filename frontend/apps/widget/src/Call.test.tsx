@@ -24,7 +24,7 @@ const boot: Boot = {
   avatar_url: null,
   greeting: "",
   starter_questions: ["How much leave do I get?"],
-  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null, searching_status: null },
+  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null, searching_status: null, message_choice: null, call_choice: null },
   citations: true,
   rating_prompt_after: 0,
   calls: true,
@@ -138,6 +138,17 @@ test("with calling on the panel opens on a choice, and Message opens the chat", 
   expect(screen.getByLabelText("Message")).toHaveFocus();
   expect(screen.getByRole("list", { name: "Suggested questions" })).toBeInTheDocument();
   expect(screen.queryByRole("group", { name: "How would you like to ask?" })).not.toBeInTheDocument();
+});
+
+test("the Agent's UI text rewords the two choices", async () => {
+  fakeCallApi();
+  render(<Widget boot={{ ...boot, ui_text: { ...boot.ui_text, message_choice: "Type to Hana", call_choice: "Talk to Hana" } }} />);
+  const choice = screen.getByRole("group", { name: "How would you like to ask?" });
+  expect(within(choice).getAllByRole("button").map((button) => button.textContent)).toEqual(["Type to Hana", "Talk to Hana"]);
+
+  await userEvent.setup().click(within(choice).getByRole("button", { name: "Type to Hana" }));
+
+  expect(screen.getByLabelText("Message")).toHaveFocus();
 });
 
 test("a Visitor holds a scripted Call: the log fills with what was said, then End call returns to the chat", async () => {
