@@ -39,7 +39,7 @@ TDD: every test below was written first and seen failing ([tdd-red-terraform.log
 10. **Highest seam, 100% coverage.** The module contract and deploy-script seams above, and the settings seam: `test_aws_task_settings.py` now names the `worker-general` and `worker-runs` containers and loads both into `Settings` (KMS, S3, SQS, TLS clients). Full gate below.
 11. **GLOSSARY / ADRs.** No new domain terms: worker pools and capacity providers are infrastructure, which the glossary does not cover. ADR-0021 already records the two pools, Spot and the stop-on-deploy behaviour; nothing here changes a decision. The runs pool's size is a spec default, corrected in the spec's sizes line.
 
-**Gate (2026-11-26, local):** `make infra-check` exit 0 (TFLint clean, Checkov 273 passed, 0 failed; ecs 69 runs, demo 9; deploy, destroy, seed and smoke shell tests; node function coverage 100%). `make link-check` clean. Backend: ruff, `ruff format --check` and `mypy --strict` (521 files) pass; GATE_BACKEND_LINE.
+**Gate (2026-11-26, local):** `make infra-check` exit 0 (TFLint clean, Checkov 273 passed, 0 failed; ecs 69 runs, demo 9; deploy, destroy, seed and smoke shell tests; node function coverage 100%). `make link-check` clean. Backend: ruff, `ruff format --check` and `mypy --strict` (521 files) pass; `make check-client` up to date. Backend suite in 12 chunks of `pytest -n 3` (Postgres, Redis, RustFS and Floci running) on `aa23cbb`: 3311 passed, 0 failed, every chunk on its first attempt; combined coverage 100% (17169 statements, 2178 branches, none missed). Frontend unchanged; lint, typecheck, Vitest (1292 passed), embed size and palette ratchet rerun and pass.
 
 ## Gaps and best guesses
 
