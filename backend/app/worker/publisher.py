@@ -15,7 +15,6 @@ import asyncio
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any
 
 from celery.result import AsyncResult
@@ -100,11 +99,8 @@ class JobPublisher(abc.ABC):
         kwargs = {"attempt": attempt} if attempt > 1 else {}
         await self._publish(Job(RE_EMBED_TASK, (str(job_id),), kwargs, countdown))
 
-    async def delete_project(
-        self, project_id: uuid.UUID, *, actor_id: uuid.UUID, requested_at: datetime
-    ) -> None:
-        args = (str(project_id), str(actor_id), requested_at.isoformat())
-        await self._publish(Job(DELETE_PROJECT_TASK, args))
+    async def delete_project(self, project_id: uuid.UUID) -> None:
+        await self._publish(Job(DELETE_PROJECT_TASK, (str(project_id),)))
 
     async def sweep(self) -> None:
         """The job sweeper, which a worker sends once as it starts (Beat sends the rest)."""

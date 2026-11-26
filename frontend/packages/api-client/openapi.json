@@ -6792,6 +6792,10 @@
             "title": "Created At",
             "type": "string"
           },
+          "deleting": {
+            "title": "Deleting",
+            "type": "boolean"
+          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -6839,6 +6843,7 @@
           "description",
           "created_at",
           "archived_at",
+          "deleting",
           "document_count",
           "agent_count",
           "embedding_model_id",
@@ -14684,7 +14689,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}": {
       "delete": {
-        "description": "Permanently deletes an archived Project (Owners only), once ``confirm_name`` is its\nname. A Celery task removes the Project and everything in it (Documents, Chunks, stored\nfiles, Agents and Conversations) and records ``project.deleted``. This can't be undone.",
+        "description": "Permanently deletes an archived Project (Owners only), once ``confirm_name`` is its\nname. The Project is Deleting at once (hidden from normal use, and it can't be restored);\na job, finished by the sweeper if it is lost, then removes it and everything in it\n(Documents, Chunks, stored files, Agents and Conversations) and records\n``project.deleted``. Asking again while it is Deleting is accepted and changes nothing.\nThis can't be undone.",
         "operationId": "deleteProject",
         "parameters": [
           {
@@ -22925,7 +22930,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/restore": {
       "post": {
-        "description": "Restores an archived Project to the main list (Owners only). Records\n``project.restored``.",
+        "description": "Restores an archived Project to the main list (Owners only). Records\n``project.restored``. A Project being deleted can't be restored.",
         "operationId": "restoreProject",
         "parameters": [
           {
@@ -22988,7 +22993,7 @@
                 }
               }
             },
-            "description": "This Project isn't archived."
+            "description": "This Project isn't archived. Or: This Project is being deleted. A deleted Project can't be restored."
           },
           "422": {
             "content": {

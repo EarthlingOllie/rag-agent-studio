@@ -31,10 +31,12 @@ from tests.agents import (
 from tests.conftest import ClientFactory, SignedUpMember
 from tests.documents import create_project, project_path
 from tests.fakes.clock import ControllableClock
+from tests.fakes.jobs import RecordingJobPublisher
 from tests.integration.test_agent_archive import archive as archive_agent
 from tests.integration.test_agent_versions import knowledgeable_project, published
 from tests.integration.test_playground import LEAVE, delete_credential_row
 from tests.integration.test_playground_errors import INVALID_KEY, failing
+from tests.integration.test_project_deletion import delete_permanently as delete_project
 from tests.integration.test_project_instructions_versions import published as instructions
 from tests.integration.test_projects import archive as archive_project
 from tests.integration.test_provider_credentials import VOYAGE_KEY, added
@@ -138,6 +140,24 @@ async def test_an_agent_that_is_not_live_gets_the_no_longer_available_shell(
         assert "widget-boot" not in shell.text
         assert "widget.js" not in shell.text
         assert shell.headers["content-security-policy"] == "frame-ancestors *"
+
+
+async def test_a_deleting_projects_agents_answer_no_visitor(
+    owner: SignedUpMember, visitor: httpx.AsyncClient, jobs: RecordingJobPublisher
+) -> None:
+    agent = await live_agent(owner)
+    token = await conversation_token(visitor, agent["public_id"])
+    assert (await archive_project(owner, agent["project_id"])).status_code == 200
+    # The deletion's job is lost, so the Project stays Deleting.
+    jobs.lose_next()
+    assert (await delete_project(owner, agent["project_id"], "Handbook")).status_code == 202
+
+    shell = await visitor.get(f"/widget/a/{agent['public_id']}")
+    answered = await send(visitor, agent["public_id"], token, "How much leave?")
+
+    assert shell.status_code == 404
+    assert "This assistant is no longer available." in shell.text
+    assert answered.status_code == 404
 
 
 async def test_the_agent_name_cannot_break_out_of_the_shell(

@@ -10,6 +10,7 @@ import logfire
 from fastapi import APIRouter, FastAPI
 from opentelemetry.sdk.trace import SpanProcessor
 from redis.asyncio import Redis
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.agents import api as agents_api
 from app.agents import bulk_api
@@ -193,6 +194,8 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     app.state.credential_references.register(evaluation_model_references)
     for router in ROUTERS:
         app.include_router(router)
+    # A refusal because the Project is being deleted says so (``app.projects.api``).
+    app.add_exception_handler(StarletteHTTPException, projects_api.refuse_with_the_reason)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.
     logfire.instrument_fastapi(app, capture_headers=True)
     return app
