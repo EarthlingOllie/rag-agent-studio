@@ -69,6 +69,11 @@ async def no_jobs_left_by_earlier_tests(app: FastAPI) -> None:
     tests may have left Documents or replacements Queued or Processing (a lost job, a kill).
     The sweeper would recover those too, so each test here starts with them settled as Failed:
     every sweep then sees only the test's own rows."""
+    await settle_jobs_left_in_flight(app)
+
+
+async def settle_jobs_left_in_flight(app: FastAPI) -> None:
+    """Sets every Document and replacement still Queued or Processing to Failed."""
     in_flight = (DocumentStatus.QUEUED, DocumentStatus.PROCESSING)
     async with app.state.sessionmaker() as session, session.begin():
         for model in (Document, StagedEdition):

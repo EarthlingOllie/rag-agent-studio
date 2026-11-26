@@ -74,10 +74,10 @@ class JobPublisher(abc.ABC):
             )
 
     async def ingest_document(
-        self, document_id: uuid.UUID, *, attempt: int = 1, countdown: float | None = None
+        self, document_id: uuid.UUID, *, countdown: float | None = None
     ) -> None:
-        kwargs = {"attempt": attempt} if attempt > 1 else {}
-        await self._publish(Job(INGEST_TASK, (str(document_id),), kwargs, countdown))
+        # The attempt number is the Document's row's, so the message doesn't carry it.
+        await self._publish(Job(INGEST_TASK, (str(document_id),), countdown=countdown))
 
     async def delete_objects(self, keys: list[str]) -> None:
         await self._publish(Job(DELETE_OBJECTS_TASK, (keys,)))

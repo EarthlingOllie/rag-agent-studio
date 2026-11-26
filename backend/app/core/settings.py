@@ -142,6 +142,9 @@ class Settings(BaseSettings):
     max_theme_image_bytes: int = Field(default=1024 * 1024, gt=0)
     # Converts uploaded files to markdown and structure: Docling, or the fake (tests).
     document_converter: Literal["docling", "fake"] = "docling"
+    # Test-only: puts the fake converter's interruption switch (``INTERRUPT_MARKER``) in front of
+    # the converter, so the end-to-end suite can interrupt an ingestion. Never on in production.
+    converter_test_interrupts: bool = False
     # Embeds Chunks for the local Embedding Model: fastembed's multilingual-e5-small, or the
     # deterministic hash-based fake (tests, and stacks that can't download the model).
     embedder: Literal["local", "fake"] = "local"
@@ -177,6 +180,11 @@ class Settings(BaseSettings):
     ingestion_max_attempts: int = Field(default=4, ge=1)
     ingestion_retry_base_seconds: float = Field(default=10.0, gt=0)
     ingestion_retry_max_seconds: float = Field(default=300.0, gt=0)
+    # A Document whose ingestion is cut short this many times (counted apart from the
+    # automatic retries) is Failed as interrupted; conversion running longer than the limit
+    # (in seconds) is stopped and the Document is Failed with a conversion error.
+    ingestion_max_interruptions: int = Field(default=3, ge=1)
+    ingestion_conversion_timeout_seconds: float = Field(default=1800.0, gt=0)
     # Job reliability (ADR-0020): a job writes a heartbeat this often while it holds its claim;
     # one with no heartbeat for the dead-after time counts as dead, and the sweeper deals with
     # it; a job queued longer than the queued-too-long time is sent again. In seconds.

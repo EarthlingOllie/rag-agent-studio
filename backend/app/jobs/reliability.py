@@ -12,9 +12,11 @@ The database row is the record that a job must run; the broker's message only wa
   the row still carries its claim (``holds``): a copy that was given up for dead and replaced
   can't write over the copy that replaced it.
 - **The sweeper.** Every minute (and once when a worker starts), under an advisory lock so two
-  sweeps never overlap: rows queued for longer than ``queued_too_long`` are sent again, and rows
-  in progress with no heartbeat for ``dead_after`` are handed to their job type's policy (for
-  ingestion: back to queued, and sent again). Each recovery is recorded in the traces.
+  sweeps never overlap: rows queued for longer than ``queued_too_long``, or waiting for an
+  automatic retry whose time has passed (the row records when it is due, so a retry whose
+  message was lost still happens), are sent again, and rows in progress with no heartbeat for
+  ``dead_after`` are handed to their job type's policy (for ingestion: back to queued, and sent
+  again). Each recovery is recorded in the traces.
 
 A job type supplies only its policy (``JobPolicy``): which tables hold its rows, what their
 queued and in-progress statuses are, what to do with a stale row and how to send the job again.
@@ -25,12 +27,12 @@ import asyncio
 import uuid
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 
 import logfire
-from sqlalchemy import ColumnElement, and_, or_, select, text, update
+from sqlalchemy import ColumnElement, and_, null, or_, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.clock import Clock
@@ -40,6 +42,7 @@ from app.core.settings import Settings
 SWEEPER_LOCK_KEY = 0x7377656570
 
 QUEUED_TOO_LONG = "queued too long"
+RETRY_DUE = "retry due"
 NO_HEARTBEAT = "no heartbeat"
 
 
@@ -74,12 +77,14 @@ class JobRow(Protocol):
 @dataclass(frozen=True)
 class JobTable:
     """A table whose rows are jobs: its mapped class, the column that identifies a row, and the
-    statuses that mean queued and in progress."""
+    statuses that mean queued and in progress. A job type that retries automatically names the
+    column that records when a queued row's next attempt is due (``retry_at``)."""
 
     model: type[Any]
     key: Any
     queued: str
     in_progress: str
+    retry_at: Any = field(default_factory=null)
 
     def _stale(self, before: datetime) -> ColumnElement[bool]:
         model = self.model
@@ -88,11 +93,24 @@ class JobTable:
             or_(model.heartbeat_at.is_(None), model.heartbeat_at < before),
         )
 
-    def _overdue(self, before: datetime) -> ColumnElement[bool]:
+    def _retry_due(self, now: datetime) -> ColumnElement[bool]:
+        """A queued row whose automatic retry is due and hasn't been sent since it fell due."""
         model = self.model
         return and_(
+            self.retry_at.is_not(None),
+            self.retry_at <= now,
+            or_(model.queued_at.is_(None), model.queued_at < self.retry_at),
+        )
+
+    def _overdue(self, now: datetime, queued_too_long: timedelta) -> ColumnElement[bool]:
+        """A queued row to send again: its retry is due, or it has been queued too long (and
+        isn't waiting for a retry that isn't due yet)."""
+        model = self.model
+        waited = or_(model.queued_at.is_(None), model.queued_at < now - queued_too_long)
+        not_waiting = or_(self.retry_at.is_(None), self.retry_at <= now)
+        return and_(
             model.status == self.queued,
-            or_(model.queued_at.is_(None), model.queued_at < before),
+            or_(self._retry_due(now), and_(waited, not_waiting)),
         )
 
 
@@ -257,21 +275,23 @@ async def _sweep_policy(
             await policy.recover(session, table, row_id, now)
             to_send.append(row_id)
         overdue = (
-            await session.scalars(
-                select(table.key)
-                .where(table._overdue(now - timings.queued_too_long))
+            await session.execute(
+                select(table.key, table._retry_due(now))
+                .where(table._overdue(now, timings.queued_too_long))
                 .with_for_update(skip_locked=True)
             )
         ).all()
         if overdue:
             await session.execute(
                 update(table.model)
-                .where(table.key.in_(overdue))
+                .where(table.key.in_([row_id for row_id, _ in overdue]))
                 .values(queued_at=now)
                 .execution_options(synchronize_session=False)
             )
-        for row_id in overdue:
-            recoveries.append(Recovery(policy.job, row_id, QUEUED_TOO_LONG))
+        for row_id, retry_due in overdue:
+            recoveries.append(
+                Recovery(policy.job, row_id, RETRY_DUE if retry_due else QUEUED_TOO_LONG)
+            )
             to_send.append(row_id)
     return recoveries, list(dict.fromkeys(to_send))
 

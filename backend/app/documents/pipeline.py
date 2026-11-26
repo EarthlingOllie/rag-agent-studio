@@ -23,19 +23,25 @@ in one step. Once that commits, ``on_new_edition`` is told, so the Document's Ex
 matched again at once. Until then, and if the replacement fails, the old edition keeps serving. A
 replacement doesn't add a Document, so the quota doesn't apply to it.
 
-A failure sets Failed with a ``FailureCategory`` and a readable message. A transient failure
-(the Embedding Model's provider failing) instead puts the edition back to Queued and asks the
-task to run again after a backoff, until the last attempt.
+A failure sets Failed with a ``FailureCategory`` and a readable message. Conversion that runs
+longer than its limit is stopped (the job stops waiting for it) and fails as a conversion error.
+A transient failure (the Embedding Model's provider failing) instead puts the edition back to
+Queued, recording when the next attempt is due, and asks the task to run again after a backoff,
+until the last attempt. Which attempt a run is comes from the edition's row (each claim counts
+one), never from the message, so a lost, late or repeated message can't add attempts.
 """
 
 import asyncio
+import dataclasses
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import partial
 
+from docling_core.types.doc.document import DoclingDocument
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -43,7 +49,7 @@ from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
 from app.documents import limits
 from app.documents.chunking import ChunkDraft, chunk_document
-from app.documents.converter import UnsupportedContentError
+from app.documents.converter import DocumentConverter, UnsupportedContentError
 from app.documents.jobs import DOCUMENT_ROWS, STAGED_ROWS
 from app.documents.models import Chunk, Document, DocumentStatus, FailureCategory, StagedEdition
 from app.documents.ports import IngestionPorts
@@ -73,7 +79,8 @@ modules that check text against its Chunks (the evaluation module's Expected sou
 
 @dataclass(frozen=True)
 class Attempt:
-    """Which automatic attempt this run is (from 1), of how many, and the backoff between."""
+    """Which automatic attempt this run is (from 1), of how many, and the backoff between.
+    Ingestion takes the number from the edition's row when it claims it."""
 
     number: int = 1
     max_attempts: int = 1
@@ -107,6 +114,8 @@ class _Job:
     staged: bool
     # The ingestion's hold on the edition's row (job reliability, ADR-0020).
     claim: Claim
+    # Which automatic attempt this is, from the row (its claims, interrupted ones not counted).
+    attempt_number: int
     # The Project's settings, read when the edition is claimed.
     embedding_model_id: str
     ocr: bool
@@ -147,7 +156,11 @@ async def _start(
         document_id,
         now=now,
         dead_after=timings.dead_after,
-        values={"attempt_count": Document.attempt_count + 1, "updated_at": func.now()},
+        values={
+            "attempt_count": Document.attempt_count + 1,
+            "retry_at": None,
+            "updated_at": func.now(),
+        },
     )
     if claim is not None:
         claimed = await session.get_one(Document, document_id, populate_existing=True)
@@ -166,7 +179,11 @@ async def _start(
             document_id,
             now=now,
             dead_after=timings.dead_after,
-            values={"attempt_count": StagedEdition.attempt_count + 1, "updated_at": func.now()},
+            values={
+                "attempt_count": StagedEdition.attempt_count + 1,
+                "retry_at": None,
+                "updated_at": func.now(),
+            },
         )
         if claim is None:
             await session.rollback()
@@ -192,6 +209,7 @@ async def _start(
         object_key=claimed.object_key,
         staged=claim.table is STAGED_ROWS,
         claim=claim,
+        attempt_number=claimed.attempt_count,
         embedding_model_id=project.embedding_model_id,
         ocr=project.ocr_enabled,
         credential=credential,
@@ -210,8 +228,29 @@ async def _embed(embedder: Embedder, drafts: list[ChunkDraft]) -> list[list[floa
     return vectors
 
 
+async def _convert(
+    converter: DocumentConverter, original: bytes, job: _Job, *, timeout_seconds: float
+) -> DoclingDocument:
+    """Converts in a thread of its own, waiting at most ``timeout_seconds``. Past the limit
+    the job stops waiting and raises ``TimeoutError``; the thread is abandoned, not joined, so
+    the job ends and its worker is free for the next one."""
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="convert")
+    try:
+        conversion = asyncio.get_running_loop().run_in_executor(
+            executor, partial(converter.convert, ocr=job.ocr), original, job.name
+        )
+        return await asyncio.wait_for(conversion, timeout_seconds)
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+
 async def _process(
-    ports: IngestionPorts, gateway: ModelGateway, job: _Job, *, chunk_max_tokens: int
+    ports: IngestionPorts,
+    gateway: ModelGateway,
+    job: _Job,
+    *,
+    chunk_max_tokens: int,
+    conversion_timeout_seconds: float,
 ) -> tuple[list[ChunkDraft], dict[str, list[list[float]]], list[InjectionFlag | None]]:
     """Steps 2 to 6. Raises ``IngestionFailedError`` for a failure that isn't transient. The
     vectors are by Embedding Model: the active one's, and the pending one's when made."""
@@ -224,9 +263,18 @@ async def _process(
             FailureCategory.UNSUPPORTED_CONTENT, limits.wrong_type_message(job.mime_type)
         )
     try:
-        converted = await asyncio.to_thread(
-            partial(ports.converter.convert, ocr=job.ocr), original, job.name
+        converted = await _convert(
+            ports.converter, original, job, timeout_seconds=conversion_timeout_seconds
         )
+    except TimeoutError:
+        logger.warning(
+            "Conversion ran past its limit and was stopped",
+            extra={
+                "document_id": str(job.document_id),
+                "limit_seconds": conversion_timeout_seconds,
+            },
+        )
+        raise IngestionFailedError(FailureCategory.CONVERSION, limits.CONVERSION_FAILED) from None
     except UnsupportedContentError:
         raise IngestionFailedError(
             FailureCategory.UNSUPPORTED_CONTENT, limits.UNREADABLE_CONTENT
@@ -297,6 +345,7 @@ async def ingest(
     document_id: uuid.UUID,
     *,
     chunk_max_tokens: int,
+    conversion_timeout_seconds: float,
     delete_objects: DeleteObjects,
     on_new_edition: NewEdition,
     attempt: Attempt,
@@ -305,7 +354,8 @@ async def ingest(
 ) -> float | None:
     """Processes the Document's Queued edition. Returns the seconds to wait before running
     again when a transient failure should be retried, and ``None`` otherwise. A heartbeat is
-    written for as long as the edition is claimed, through conversion and embedding."""
+    written for as long as the edition is claimed, through conversion and embedding.
+    ``attempt`` gives the limits of the automatic retries; its number is the row's."""
     async with sessionmaker() as session:
         job = await _start(session, document_id, now=clock.now(), timings=timings)
     if job is None:
@@ -317,9 +367,10 @@ async def ingest(
             gateway,
             job,
             chunk_max_tokens=chunk_max_tokens,
+            conversion_timeout_seconds=conversion_timeout_seconds,
             delete_objects=delete_objects,
             on_new_edition=on_new_edition,
-            attempt=attempt,
+            attempt=dataclasses.replace(attempt, number=job.attempt_number),
             clock=clock,
         )
 
@@ -331,6 +382,7 @@ async def _ingest_claimed(
     job: _Job,
     *,
     chunk_max_tokens: int,
+    conversion_timeout_seconds: float,
     delete_objects: DeleteObjects,
     on_new_edition: NewEdition,
     attempt: Attempt,
@@ -340,7 +392,11 @@ async def _ingest_claimed(
     settle = partial(_settle, sessionmaker, job, delete_objects, clock)
     try:
         drafts, by_model, flags = await _process(
-            ports, gateway, job, chunk_max_tokens=chunk_max_tokens
+            ports,
+            gateway,
+            job,
+            chunk_max_tokens=chunk_max_tokens,
+            conversion_timeout_seconds=conversion_timeout_seconds,
         )
     except IngestionFailedError as failure:
         await settle(DocumentStatus.FAILED, failure.message, failure.category)
@@ -355,13 +411,14 @@ async def _ingest_claimed(
             await settle(DocumentStatus.FAILED, message, FailureCategory.PROVIDER)
             return None
         message = limits.provider_retrying_message(attempt.number + 1, attempt.max_attempts)
-        if not await settle(DocumentStatus.QUEUED, message, None):
-            return None
-        return limits.retry_delay(
+        delay = limits.retry_delay(
             attempt.number,
             base_seconds=attempt.retry_base_seconds,
             max_seconds=attempt.retry_max_seconds,
         )
+        if not await settle(DocumentStatus.QUEUED, message, None, retry_in=delay):
+            return None
+        return delay
     except Exception:
         logger.exception("Ingestion failed", extra={"document_id": str(document_id)})
         await settle(DocumentStatus.FAILED, limits.PROCESSING_FAILED, FailureCategory.CONVERSION)
@@ -421,7 +478,7 @@ async def _ingest_claimed(
         )
     elif stale:
         # The Project switched to a model this run didn't embed with: process it again.
-        await settle(DocumentStatus.QUEUED, limits.MODEL_CHANGED, None)
+        await settle(DocumentStatus.QUEUED, limits.MODEL_CHANGED, None, retry_in=0.0)
         return 0.0
     elif replaced:
         await delete_objects(replaced)
@@ -462,6 +519,7 @@ async def _swap(session: AsyncSession, document: Document) -> list[str]:
     document.content_hash = staged.content_hash
     document.object_key = staged.object_key
     document.attempt_count = staged.attempt_count
+    document.interruption_count = staged.interruption_count
     await session.delete(staged)
     return replaced
 
@@ -474,12 +532,15 @@ async def _settle(
     status: DocumentStatus,
     message: str,
     category: FailureCategory | None,
+    *,
+    retry_in: float = 0.0,
 ) -> bool:
     """Sets the job's edition (the Document, or its staged edition) to the status, with the
     message and category, if the job still holds its claim. A failed staged edition leaves the
     Document as it was, so its current edition keeps serving; a failed Document loses any Chunks
-    it had. Queued (for an automatic retry) records when. ``False`` if the Document was deleted
-    meanwhile, or another copy of the job has taken the edition over."""
+    it had. Queued (for an automatic retry) records when, and when the retry is due, ``retry_in``
+    seconds from now. ``False`` if the Document was deleted meanwhile, or another copy of the
+    job has taken the edition over."""
     async with sessionmaker() as session, session.begin():
         document = await session.get(Document, job.document_id, with_for_update=True)
         held = document is not None and await reliability.holds(session, job.claim)
@@ -497,6 +558,7 @@ async def _settle(
             reliability.released(settled)
             if status == DocumentStatus.QUEUED:
                 settled.queued_at = clock.now()
+                settled.retry_at = clock.now() + timedelta(seconds=retry_in)
     if document is None:
         await delete_objects(stored_keys(job.object_key))
     return held

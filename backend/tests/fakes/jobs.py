@@ -26,6 +26,10 @@ class RecordingJobPublisher(JobPublisher):
         self._next: list[str] = []
         self._failure: Exception | None = None
 
+    def deliver_next(self) -> None:
+        """The next job is delivered (so that a fate told after it applies to the one after)."""
+        self._next.append("deliver")
+
     def lose_next(self) -> None:
         self._next.append("lose")
 

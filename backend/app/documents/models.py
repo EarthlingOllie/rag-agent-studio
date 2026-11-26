@@ -61,6 +61,8 @@ class FailureCategory(enum.StrEnum):
     PROVIDER = "provider"
     # The Project already holds as many Documents as its quota allows.
     QUOTA = "quota"
+    # Its ingestion was cut short (the worker died) too many times in a row.
+    INTERRUPTED = "interrupted"
 
 
 class Document(IdMixin, Base):
@@ -93,6 +95,11 @@ class Document(IdMixin, Base):
     queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     claim_id: Mapped[uuid.UUID | None] = mapped_column()
     heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # How many times its ingestion was cut short since it was last queued by hand (kept apart
+    # from ``attempt_count``, which counts the automatic attempts that ran to an end), and,
+    # while Queued for an automatic retry, when that retry is due.
+    interruption_count: Mapped[int] = mapped_column(Integer, default=0)
+    retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -130,6 +137,11 @@ class StagedEdition(Base):
     queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     claim_id: Mapped[uuid.UUID | None] = mapped_column()
     heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # How many times its ingestion was cut short since it was last queued by hand (kept apart
+    # from ``attempt_count``, which counts the automatic attempts that ran to an end), and,
+    # while Queued for an automatic retry, when that retry is due.
+    interruption_count: Mapped[int] = mapped_column(Integer, default=0)
+    retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

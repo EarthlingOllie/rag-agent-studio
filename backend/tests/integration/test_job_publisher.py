@@ -99,11 +99,8 @@ async def test_an_automatic_retry_is_sent_through_the_publisher(
 
     first, second = jobs.sent
     assert first == Job(INGEST_TASK, (document["id"],))
-    assert (second.task, second.args, second.kwargs) == (
-        INGEST_TASK,
-        (document["id"],),
-        {"attempt": 2},
-    )
+    # The attempt number is read from the Document's row, so the message doesn't carry it.
+    assert (second.task, second.args, second.kwargs) == (INGEST_TASK, (document["id"],), {})
     assert second.countdown is not None
     assert second.countdown > 0
     assert await status_of(owner, project_id) == "ready"
@@ -163,7 +160,7 @@ def test_every_job_but_the_health_probe_ignores_its_result(broker: redis.Redis) 
     requested_at = datetime(2026, 11, 26, tzinfo=UTC).isoformat()
     for job in (
         Job(INGEST_TASK, ("document",)),
-        Job(INGEST_TASK, ("retried-document",), {"attempt": 2}, countdown=5),
+        Job(INGEST_TASK, ("retried-document",), countdown=5),
         Job(DELETE_OBJECTS_TASK, (["a", "b"],)),
         Job(EVALUATION_RUN_TASK, ("run",)),
         Job(LIVE_VERDICT_TASK, ("verdict",)),

@@ -102,6 +102,11 @@ def provider_failed_message(attempts: int) -> str:
     )
 
 
+def interrupted_message(interruptions: int) -> str:
+    times = "time" if interruptions == 1 else "times"
+    return f"Processing was interrupted {interruptions} {times}. Retry it, or upload it again."
+
+
 def provider_setup_message(reason: str) -> str:
     """The Embedding Model's provider can't be called with the Project's settings."""
     return f"The Embedding Model's provider can't be used: {reason} Retry once it is fixed."

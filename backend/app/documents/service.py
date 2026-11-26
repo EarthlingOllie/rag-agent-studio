@@ -349,6 +349,10 @@ async def retry_document(
             raise DuplicateDocumentError(duplicate)
     retried.status = DocumentStatus.QUEUED
     retried.queued_at = queued_at
+    # A manual Retry starts both counts again: fresh automatic attempts and interruptions.
+    retried.attempt_count = 0
+    retried.interruption_count = 0
+    retried.retry_at = None
     retried.error_message = None
     retried.error_category = None
     retried.updated_at = func.now()
@@ -738,6 +742,8 @@ async def replace_document(
     staged.error_message = None
     staged.error_category = None
     staged.attempt_count = 0
+    staged.interruption_count = 0
+    staged.retry_at = None
     staged.updated_at = func.now()
     await session.commit()
     await redis.delete(received.pending_key)
