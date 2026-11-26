@@ -252,7 +252,13 @@ async def test_an_entry_can_be_a_prefix_whose_every_object_is_deleted(
         await objects.put(key, key.encode(), content_type="text/plain")
     async with app.state.sessionmaker() as session, session.begin():
         deletions.schedule(session, ["organisations/a/"], prefix=True)
+    # The first attempt fails; the entry is kept for the next sweep.
+    objects.failure = OSError("storage unavailable")
+    await sweep(clock)
+    assert len(objects.objects) == 3
+    objects.failure = None
 
     await sweep(clock)
 
     assert sorted(objects.objects) == ["organisations/b/three"]
+    assert await entries(app) == 0
