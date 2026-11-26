@@ -22,7 +22,9 @@ from fastapi import FastAPI
 from app.core.clock import Clock
 from app.mail.outbox import OutboxMailer
 from app.main import create_app
+from app.worker.publisher import install_publisher
 from tests.fakes.clock import ControllableClock
+from tests.fakes.jobs import RecordingJobPublisher
 from tests.worker_resources import worker_database_url, worker_redis_url
 
 BASE_DATABASE_URL = os.environ.get(
@@ -101,6 +103,16 @@ def clock(app: FastAPI) -> ControllableClock:
     controllable = ControllableClock()
     app.state.clock = controllable
     return controllable
+
+
+@pytest.fixture
+def jobs(app: FastAPI) -> RecordingJobPublisher:
+    """Replaces the app's Job publisher with the fake, which records every job sent and can
+    lose, hold or fail one; jobs it delivers still run eagerly."""
+    fake = RecordingJobPublisher(deliver_to=app.state.jobs)
+    app.state.jobs = fake
+    install_publisher(fake)
+    return fake
 
 
 ClientFactory = Callable[[], Awaitable[httpx.AsyncClient]]

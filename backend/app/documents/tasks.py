@@ -12,13 +12,19 @@ from app.core.settings import load_settings
 from app.documents import pipeline
 from app.documents.ports import current_ports
 from app.evaluation.expectations import recheck_document
-from app.worker.celery_app import celery_app
-
-INGEST_TASK = "documents.ingest"
-DELETE_OBJECTS_TASK = "documents.delete_objects"
+from app.worker.celery_app import DELETE_OBJECTS_TASK, INGEST_TASK, celery_app
+from app.worker.publisher import current_publisher
 
 
-async def _ingest(document_id: uuid.UUID, attempt_number: int) -> float | None:
+async def _ingest(document_id: uuid.UUID, attempt_number: int) -> None:
+    delay = await _run_ingestion(document_id, attempt_number)
+    if delay is not None:
+        await current_publisher().ingest_document(
+            document_id, attempt=attempt_number + 1, countdown=delay
+        )
+
+
+async def _run_ingestion(document_id: uuid.UUID, attempt_number: int) -> float | None:
     settings = load_settings()
     engine = create_engine(settings)
     ports = current_ports()
@@ -44,20 +50,18 @@ async def _ingest(document_id: uuid.UUID, attempt_number: int) -> float | None:
         await engine.dispose()
 
 
-@celery_app.task(name=INGEST_TASK)
+@celery_app.task(name=INGEST_TASK, ignore_result=True)
 def ingest_document(document_id: str, attempt: int = 1) -> None:
     """Runs ingestion for one Document (Queued to Ready or Failed). After a transient failure,
-    the task sends itself again with the next attempt number, delayed by the backoff the
-    pipeline asks for. (In eager mode, in tests, the next attempt runs at once.)"""
-    delay = asyncio.run(_ingest(uuid.UUID(document_id), attempt))
-    if delay is not None:
-        ingest_document.apply_async((document_id,), {"attempt": attempt + 1}, countdown=delay)
+    the task sends itself again, through the Job publisher, with the next attempt number,
+    delayed by the backoff the pipeline asks for. (In eager mode, in tests, the next attempt
+    runs at once.)"""
+    asyncio.run(_ingest(uuid.UUID(document_id), attempt))
 
 
 async def enqueue_ingestion(document_id: uuid.UUID) -> None:
-    """Sends the task from a thread: sending blocks on the broker, and in eager mode (tests) the
-    task itself runs there, with its own event loop."""
-    await asyncio.to_thread(ingest_document.delay, str(document_id))
+    """Sends the ingestion job through the Job publisher."""
+    await current_publisher().ingest_document(document_id)
 
 
 async def _delete_objects(keys: list[str]) -> None:
@@ -66,7 +70,7 @@ async def _delete_objects(keys: list[str]) -> None:
         await store.delete(key)
 
 
-@celery_app.task(name=DELETE_OBJECTS_TASK)
+@celery_app.task(name=DELETE_OBJECTS_TASK, ignore_result=True)
 def delete_stored_objects(keys: list[str]) -> None:
     """Deletes stored objects (originals and converted markdown) nothing refers to any more:
     a deleted Document's, or a replaced edition's. Deleting a missing object is not an error."""
@@ -74,5 +78,5 @@ def delete_stored_objects(keys: list[str]) -> None:
 
 
 async def enqueue_object_deletion(keys: list[str]) -> None:
-    """Schedules deletion of the objects; sent from a thread, as ``enqueue_ingestion`` is."""
-    await asyncio.to_thread(delete_stored_objects.delay, keys)
+    """Schedules deletion of the objects through the Job publisher."""
+    await current_publisher().delete_objects(keys)

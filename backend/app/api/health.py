@@ -10,7 +10,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.core.settings import Settings
-from app.worker.tasks import health_check
+from app.worker.publisher import current_publisher
 
 CheckStatus = Literal["ok", "error"]
 
@@ -107,7 +107,13 @@ async def get_worker_health(
     # Poll rather than block on AsyncResult.get, so no pub/sub subscription is held per request.
     loop = asyncio.get_running_loop()
     deadline = loop.time() + settings.worker_health_timeout_seconds
-    result = await run_in_threadpool(health_check.delay)
+    # Unlike every other job, a probe that can't be sent is the failure this endpoint reports.
+    try:
+        result = await current_publisher().probe_worker()
+    except Exception:
+        logger.exception("Sending the worker health probe failed")
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return WorkerHealthResponse(status="error", reply=None)
     while not await run_in_threadpool(result.ready):
         if loop.time() >= deadline:
             response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE

@@ -1,4 +1,5 @@
-"""The Celery application shared by the API (to enqueue), the worker and Beat."""
+"""The Celery application shared by the API (to send jobs, through the Job publisher), the worker
+and Beat."""
 
 from celery import Celery
 from celery.schedules import crontab
@@ -6,6 +7,14 @@ from celery.schedules import crontab
 from app.core.settings import Settings
 
 HEALTH_CHECK_TASK = "worker.health_check"
+# The jobs the application queues, through the Job publisher (app.worker.publisher).
+INGEST_TASK = "documents.ingest"
+DELETE_OBJECTS_TASK = "documents.delete_objects"
+EVALUATION_RUN_TASK = "evaluation.run"
+LIVE_VERDICT_TASK = "evaluation.live_verdict"
+SUGGESTION_RUN_TASK = "suggestions.run"
+RE_EMBED_TASK = "projects.re_embed"
+DELETE_PROJECT_TASK = "projects.delete"
 CLEAR_BUDGET_ALERTS_TASK = "embed.clear_budget_alerts"
 # The usage rollup (app.analytics.tasks), which Beat runs hourly.
 ROLL_UP_TASK = "analytics.roll_up_usage"
