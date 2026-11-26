@@ -41,7 +41,7 @@ TDD ([tdd-red.log](22-06-evidence/tdd-red.log)): the task-seam tests were writte
 11. **Highest seam, 100% coverage.** Seams above; `app/jobs/protection.py` and the new lines in `app/jobs/reliability.py` and `app/worker/main.py` are covered (full gate below).
 12. **GLOSSARY / ADRs.** No new domain terms: scale-in protection is runtime infrastructure, like the claim and heartbeat of ADR-0020, which the glossary does not cover. ADR-0021 already records that a worker protects its task while it holds a job and that a deploy waits up to 30 minutes; nothing here changes a decision. Docs: `docs/deploy-demo.md` (deploy step 5 and the Autoscaling section), `docs/development.md` (22-06 paragraph).
 
-**Gate (2026-11-26, local):** GATE_PENDING
+**Gate (2026-11-26, local, at 95485e7):** backend suite with RustFS and Floci in 12 chunks: 3331 passed, 0 failed, every chunk on its first attempt, combined coverage 100% (17253 statements, 2186 branches); ruff, ruff format and mypy clean; `make infra-check` exit 0 ([infra-check.log](22-06-evidence/infra-check.log): TFLint clean, Checkov 277 passed, 0 failed; ecs 82 runs, bootstrap 11, demo 9; deploy, destroy, seed and smoke shell tests; node function coverage 100%); `make link-check` and `make check-client` clean. The frontend is unchanged since 22-04's gate (1292 passed).
 
 ## Gaps and best guesses
 
