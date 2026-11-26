@@ -22,6 +22,7 @@ from sqlalchemy import text
 from app.credentials.registry import Provider
 from app.embeddings.fake import HashEmbedder
 from app.gateway.fakes import FakeModelAdapters, HashEmbeddingModel
+from app.jobs.faults import JobKilled
 from tests.conftest import MemberFactory, SignedUpMember
 from tests.documents import chunks, create_project, documents, project_path, upload
 from tests.fakes.clock import ControllableClock
@@ -50,8 +51,9 @@ OFFICES = "Offices open at nine."
 
 class Script:
     """What the provider does on each passage-embedding call, in order: ``ok``, ``fail`` (an
-    error answer), ``wrong`` (vectors of the wrong size), or ``hold`` before any of them (wait
-    until the test releases it). Calls past the end are ``ok``. Queries aren't scripted."""
+    error answer), ``wrong`` (vectors of the wrong size), ``kill`` (the worker running the job
+    dies, ``app.jobs.faults``), or ``hold`` before any of them (wait until the test releases
+    it). Calls past the end are ``ok``. Queries aren't scripted."""
 
     def __init__(self, *steps: str) -> None:
         self.steps = list(steps)
@@ -86,9 +88,12 @@ class ScriptedEmbeddingModel(HashEmbeddingModel):
             step = self._script.next()
             if step.startswith("hold"):
                 self._script.held.set()
-                # The job runs in its own thread and event loop, so waiting blocks only it.
-                assert self._script.released.wait(timeout=10)
+                # Waiting off the job's event loop, as a provider call awaits, so its heartbeat
+                # keeps beating meanwhile.
+                assert await asyncio.to_thread(self._script.released.wait, 10)
                 step = step.removeprefix("hold-") if "-" in step else "ok"
+            if step == "kill":
+                raise JobKilled("embed")
             if step == "fail":
                 raise ModelHTTPError(503, self.model_name, {"error": "overloaded"})
             if step == "wrong":

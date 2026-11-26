@@ -10,6 +10,7 @@ from app.core.db import create_engine, create_sessionmaker
 from app.core.settings import load_settings
 from app.documents.pipeline import Attempt
 from app.documents.ports import current_ports
+from app.jobs.reliability import Timings
 from app.re_embedding.job import re_embed
 from app.worker.celery_app import RE_EMBED_TASK, celery_app
 from app.worker.publisher import current_publisher
@@ -39,6 +40,8 @@ async def _run_re_embed(job_id: uuid.UUID, attempt_number: int) -> float | None:
                     retry_base_seconds=settings.ingestion_retry_base_seconds,
                     retry_max_seconds=settings.ingestion_retry_max_seconds,
                 ),
+                clock=ports.clock(),
+                timings=Timings.from_settings(settings),
             )
     finally:
         await engine.dispose()

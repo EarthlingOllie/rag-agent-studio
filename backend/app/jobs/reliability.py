@@ -74,24 +74,39 @@ class JobRow(Protocol):
 @dataclass(frozen=True)
 class JobTable:
     """A table whose rows are jobs: its mapped class, the column that identifies a row, and the
-    statuses that mean queued and in progress."""
+    statuses that mean queued and in progress.
+
+    A job type whose rows have one status for both (a Re-embed is ``running`` throughout) gives
+    it as both: the claim then tells them apart, a row without one being queued."""
 
     model: type[Any]
     key: Any
     queued: str
     in_progress: str
 
+    def _queued(self) -> ColumnElement[bool]:
+        status: ColumnElement[bool] = self.model.status == self.queued
+        if self.queued == self.in_progress:
+            return and_(status, self.model.claim_id.is_(None))
+        return status
+
+    def _in_progress(self) -> ColumnElement[bool]:
+        status: ColumnElement[bool] = self.model.status == self.in_progress
+        if self.queued == self.in_progress:
+            return and_(status, self.model.claim_id.is_not(None))
+        return status
+
     def _stale(self, before: datetime) -> ColumnElement[bool]:
         model = self.model
         return and_(
-            model.status == self.in_progress,
+            self._in_progress(),
             or_(model.heartbeat_at.is_(None), model.heartbeat_at < before),
         )
 
     def _overdue(self, before: datetime) -> ColumnElement[bool]:
         model = self.model
         return and_(
-            model.status == self.queued,
+            self._queued(),
             or_(model.queued_at.is_(None), model.queued_at < before),
         )
 
@@ -124,7 +139,7 @@ async def claim(
         update(model)
         .where(
             table.key == row_id,
-            or_(model.status == table.queued, table._stale(now - dead_after)),
+            or_(table._queued(), table._stale(now - dead_after)),
         )
         .values(status=table.in_progress, claim_id=claim_id, heartbeat_at=now, **(values or {}))
         .returning(table.key)

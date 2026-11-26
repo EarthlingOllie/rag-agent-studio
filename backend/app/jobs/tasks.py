@@ -9,10 +9,11 @@ from app.core.db import create_engine, create_sessionmaker
 from app.core.settings import load_settings
 from app.documents.jobs import INGESTION
 from app.jobs.reliability import JobPolicy, Timings, sweep
+from app.re_embedding.jobs import RE_EMBED
 from app.worker.celery_app import SWEEP_TASK, celery_app
 
 # Every job type the sweeper looks after.
-POLICIES: tuple[JobPolicy, ...] = (INGESTION,)
+POLICIES: tuple[JobPolicy, ...] = (INGESTION, RE_EMBED)
 
 
 async def _sweep(at: datetime) -> int | None:

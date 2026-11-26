@@ -16,11 +16,18 @@ lock, so no upload writes Chunks between the last check and the switch.
 A failure leaves the Project on its active model: the job is marked failed with a readable
 message and the pending model's vectors are deleted. A provider that doesn't answer is retried
 with backoff, like ingestion, keeping the vectors written so far.
+
+The job claims its row and writes a heartbeat while it holds the claim (job reliability,
+ADR-0020, ``app.re_embedding.jobs``): a second copy can't claim it and exits, and every step
+checks the claim first, so a copy given up for dead and replaced writes nothing. Waiting on a
+retry, the job gives its claim up and records when the retry is due, so a lost retry is sent
+again by the sweeper.
 """
 
 import logging
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 
 from sqlalchemy import Row, Select, delete, exists, func, literal, select
 from sqlalchemy.dialects.postgresql import insert
@@ -28,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import aliased
 
 from app import audit
+from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
 from app.documents import limits
 from app.documents.chunking import embedding_text
@@ -38,9 +46,12 @@ from app.embeddings.port import EmbeddingProviderError
 from app.embeddings.provider import UNUSABLE_ERRORS, EmbeddingSizeError, resolve_embedder
 from app.embeddings.registry import embedding_model
 from app.gateway.gateway import ModelGateway
+from app.jobs import reliability
+from app.jobs.reliability import Claim, Timings
 from app.projects.models import Project
+from app.re_embedding.jobs import RE_EMBED_ROWS
 from app.re_embedding.models import ReEmbedJob, ReEmbedStatus
-from app.re_embedding.service import FAILED, end
+from app.re_embedding.service import end, fail
 
 logger = logging.getLogger(__name__)
 
@@ -67,6 +78,8 @@ class _Job:
     project_id: uuid.UUID
     from_model_id: str
     model_id: str
+    # The job's hold on its row (job reliability, ADR-0020).
+    claim: Claim
 
 
 def _missing(job: _Job) -> Select[uuid.UUID, str, list[str]]:
@@ -88,12 +101,12 @@ def _missing(job: _Job) -> Select[uuid.UUID, str, list[str]]:
     )
 
 
-async def _locked_running(session: AsyncSession, job_id: uuid.UUID) -> ReEmbedJob | None:
-    """The job, locked, if it is still running (it may have been cancelled meanwhile)."""
-    job = await session.get(ReEmbedJob, job_id, with_for_update=True)
-    if job is None or job.status != ReEmbedStatus.RUNNING:
+async def _held(session: AsyncSession, job: _Job) -> ReEmbedJob | None:
+    """The job's row, locked, if this copy still holds its claim: it may have been cancelled
+    meanwhile, or given up for dead and taken over by another copy."""
+    if not await reliability.holds(session, job.claim):
         return None
-    return job
+    return await session.get_one(ReEmbedJob, job.id)
 
 
 Embedded = list[tuple[uuid.UUID, list[float]]]
@@ -164,7 +177,7 @@ async def _step(
         # The Project before the job, as choosing a model locks them, so the two never deadlock;
         # holding the Project also keeps uploads from writing Chunks while the job switches.
         project = await session.get_one(Project, job.project_id, with_for_update=True)
-        running = await _locked_running(session, job.id)
+        running = await _held(session, job)
         if running is None:
             return None
         await _write(session, job, embedded)
@@ -200,21 +213,25 @@ def _id(value: uuid.UUID | None) -> str | None:
 
 
 async def _fail(sessionmaker: async_sessionmaker[AsyncSession], job: _Job, message: str) -> None:
-    """Marks the job failed with the message, deleting its vectors; the Project keeps its
-    active model. Records ``project.re_embed_failed``."""
+    """Marks the job failed with the message, if this copy still holds it (``service.fail``)."""
     async with sessionmaker() as session, session.begin():
-        running = await _locked_running(session, job.id)
+        running = await _held(session, job)
+        if running is not None:
+            await fail(session, running, message)
+
+
+async def _queue_retry(
+    sessionmaker: async_sessionmaker[AsyncSession], job: _Job, due: datetime
+) -> bool:
+    """Gives the claim up until the retry, due then. ``False`` if this copy no longer holds the
+    job (it was cancelled, or another copy took it over): no retry is sent."""
+    async with sessionmaker() as session, session.begin():
+        running = await _held(session, job)
         if running is None:
-            return
-        await end(session, running, ReEmbedStatus.FAILED, error=message)
-        await audit.record(
-            session,
-            organisation_id=running.organisation_id,
-            actor_id=None,
-            action=FAILED,
-            target=audit.AuditTarget("project", running.project_id),
-            after={"model_id": running.model_id, "error_message": message},
-        )
+            return False
+        reliability.released(running)
+        running.queued_at = due
+    return True
 
 
 async def re_embed(
@@ -225,21 +242,41 @@ async def re_embed(
     *,
     batch_size: int,
     attempt: Attempt,
+    clock: Clock,
+    timings: Timings,
 ) -> float | None:
     """Runs the job until it switches, fails or is cancelled. Returns the seconds to wait before
-    running again when the provider failed and attempts remain, and ``None`` otherwise."""
-    async with sessionmaker() as session:
-        row = (
+    running again when the provider failed and attempts remain, and ``None`` otherwise (also
+    when another copy holds the job, or it isn't running). A heartbeat is written for as long as
+    the job holds its claim."""
+    async with sessionmaker() as session, session.begin():
+        claim = await reliability.claim(
+            session, RE_EMBED_ROWS, job_id, now=clock.now(), dead_after=timings.dead_after
+        )
+        if claim is None:
+            return None
+        record, credential = (
             await session.execute(
                 select(ReEmbedJob, ProviderCredential)
                 .outerjoin(ProviderCredential, ProviderCredential.id == ReEmbedJob.credential_id)
-                .where(ReEmbedJob.id == job_id, ReEmbedJob.status == ReEmbedStatus.RUNNING)
+                .where(ReEmbedJob.id == job_id)
             )
-        ).one_or_none()
-    if row is None:
-        return None
-    record, credential = row
-    job = _Job(record.id, record.project_id, record.from_model_id, record.model_id)
+        ).one()
+    job = _Job(record.id, record.project_id, record.from_model_id, record.model_id, claim)
+    async with reliability.heartbeat(sessionmaker, claim, clock, timings.heartbeat_seconds):
+        return await _run(sessionmaker, ports, gateway, job, credential, batch_size, attempt, clock)
+
+
+async def _run(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    ports: IngestionPorts,
+    gateway: ModelGateway,
+    job: _Job,
+    credential: ProviderCredential | None,
+    batch_size: int,
+    attempt: Attempt,
+    clock: Clock,
+) -> float | None:
     try:
         embedder = resolve_embedder(
             embedding_model(job.model_id), credential, ports.embedders, gateway
@@ -261,19 +298,21 @@ async def re_embed(
     except EmbeddingProviderError:
         logger.warning(
             "Re-embedding: the provider failed",
-            extra={"re_embed_job_id": str(job_id), "attempt": attempt.number},
+            extra={"re_embed_job_id": str(job.id), "attempt": attempt.number},
         )
         if attempt.number >= attempt.max_attempts:
             message = PROVIDER_FAILED.format(attempts=attempt.max_attempts, model=job.from_model_id)
             await _fail(sessionmaker, job, message)
             return None
-        return limits.retry_delay(
+        delay = limits.retry_delay(
             attempt.number,
             base_seconds=attempt.retry_base_seconds,
             max_seconds=attempt.retry_max_seconds,
         )
+        due = clock.now() + timedelta(seconds=delay)
+        return delay if await _queue_retry(sessionmaker, job, due) else None
     except Exception:
-        logger.exception("Re-embedding failed", extra={"re_embed_job_id": str(job_id)})
+        logger.exception("Re-embedding failed", extra={"re_embed_job_id": str(job.id)})
         await _fail(sessionmaker, job, UNEXPECTED.format(model=job.from_model_id))
         return None
 
