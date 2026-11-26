@@ -172,7 +172,8 @@ class DocumentOut(BaseModel):
     error_message: str | None
     # What kind of failure it was, while Failed.
     error_category: FailureCategory | None
-    # How many times processing has started, automatic retries included.
+    # How many times processing has started since it was last queued by hand, automatic retries
+    # included and interrupted runs not.
     attempt_count: int
     edition: int
     chunk_count: int

@@ -1,5 +1,6 @@
 """The ingestion Celery task. The API enqueues it when an upload is confirmed or a Failed
-Document is retried; the task re-enqueues itself, after a backoff, for transient failures."""
+Document is retried; the task re-enqueues itself, after a backoff, for transient failures. The
+attempt number is read from the Document's row, never from the message."""
 
 import asyncio
 import uuid
@@ -17,15 +18,13 @@ from app.worker.celery_app import DELETE_OBJECTS_TASK, INGEST_TASK, celery_app
 from app.worker.publisher import current_publisher
 
 
-async def _ingest(document_id: uuid.UUID, attempt_number: int) -> None:
-    delay = await _run_ingestion(document_id, attempt_number)
+async def _ingest(document_id: uuid.UUID) -> None:
+    delay = await _run_ingestion(document_id)
     if delay is not None:
-        await current_publisher().ingest_document(
-            document_id, attempt=attempt_number + 1, countdown=delay
-        )
+        await current_publisher().ingest_document(document_id, countdown=delay)
 
 
-async def _run_ingestion(document_id: uuid.UUID, attempt_number: int) -> float | None:
+async def _run_ingestion(document_id: uuid.UUID) -> float | None:
     settings = load_settings()
     engine = create_engine(settings)
     ports = current_ports()
@@ -38,10 +37,10 @@ async def _run_ingestion(document_id: uuid.UUID, attempt_number: int) -> float |
                 ports.open_gateway(client),
                 document_id,
                 chunk_max_tokens=settings.chunk_max_tokens,
+                conversion_timeout_seconds=settings.ingestion_conversion_timeout_seconds,
                 delete_objects=enqueue_object_deletion,
                 on_new_edition=partial(recheck_document, sessionmaker),
                 attempt=pipeline.Attempt(
-                    number=attempt_number,
                     max_attempts=settings.ingestion_max_attempts,
                     retry_base_seconds=settings.ingestion_retry_base_seconds,
                     retry_max_seconds=settings.ingestion_retry_max_seconds,
@@ -54,12 +53,13 @@ async def _run_ingestion(document_id: uuid.UUID, attempt_number: int) -> float |
 
 
 @celery_app.task(name=INGEST_TASK, ignore_result=True)
-def ingest_document(document_id: str, attempt: int = 1) -> None:
+def ingest_document(document_id: str, attempt: int | None = None) -> None:
     """Runs ingestion for one Document (Queued to Ready or Failed). After a transient failure,
-    the task sends itself again, through the Job publisher, with the next attempt number,
-    delayed by the backoff the pipeline asks for. (In eager mode, in tests, the next attempt
-    runs at once.)"""
-    asyncio.run(_ingest(uuid.UUID(document_id), attempt))
+    the task sends itself again, through the Job publisher, delayed by the backoff the pipeline
+    asks for. (In eager mode, in tests, the next attempt runs at once.) ``attempt`` is ignored:
+    messages sent before the attempt number moved to the row carry it."""
+    del attempt
+    asyncio.run(_ingest(uuid.UUID(document_id)))
 
 
 async def enqueue_ingestion(document_id: uuid.UUID) -> None:

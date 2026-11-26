@@ -4361,7 +4361,7 @@ export interface components {
          * @description Why a Document failed, so an Editor knows whether to fix the file or retry it.
          * @enum {string}
          */
-        FailureCategory: "unsupported_content" | "conversion" | "provider" | "quota";
+        FailureCategory: "unsupported_content" | "conversion" | "provider" | "quota" | "interrupted";
         /** FallbackOut */
         FallbackOut: {
             /** Count */

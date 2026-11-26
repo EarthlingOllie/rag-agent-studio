@@ -130,8 +130,12 @@ image-scan: images ## Trivy scan of the built images; fails on any fixable HIGH 
 e2e-install: ## Install the Playwright browser the end-to-end suite uses
 	cd frontend && pnpm exec playwright install --with-deps chromium
 
+# The suite interrupts an ingestion through the converter's test-only switch, and waits for the
+# sweeper to recover it, so the stack runs with the switch on and a short dead-after time.
+E2E_STACK_ENV := CONVERTER_TEST_INTERRUPTS=true JOB_HEARTBEAT_SECONDS=2 JOB_DEAD_AFTER_SECONDS=20
+
 e2e: ## Start the stack, wait for health checks, seed the demo and run the Playwright suite against it
-	$(COMPOSE) up -d --build --wait
+	$(E2E_STACK_ENV) $(COMPOSE) up -d --build --wait
 	$(MAKE) seed
 	cd frontend && pnpm e2e
 

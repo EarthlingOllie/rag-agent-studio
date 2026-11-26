@@ -5,10 +5,12 @@ which the markdown and the Chunks come. Production uses Docling; tests use the f
 with it off, conversion skips OCR, which is much faster.
 """
 
+import hashlib
 import re
+import tempfile
 from functools import cached_property
 from io import BytesIO
-from pathlib import PurePath
+from pathlib import Path, PurePath
 from typing import Protocol
 
 from docling.datamodel.base_models import InputFormat
@@ -21,7 +23,7 @@ from docling_core.types.doc.document import DoclingDocument
 from docling_core.types.doc.labels import DocItemLabel
 from docling_core.types.io import DocumentStream
 
-from app.jobs.faults import KillSwitch
+from app.jobs.faults import JobKilled, KillSwitch
 
 
 class UnsupportedContentError(Exception):
@@ -68,6 +70,39 @@ class DoclingConverter:
         return self._converters[ocr].convert(stream).document
 
 
+# Test-only: a file whose first line starts with this is interrupted at its first conversion, as
+# if the worker died there (``JobKilled``, so no error handling runs), and converted normally
+# after that. The rest of the line can carry anything (a unique token, so each run's file is new).
+INTERRUPT_MARKER = "%INTERRUPT-ONCE "
+
+
+def interrupt_if_marked(data: bytes) -> bytes:
+    """Raises ``JobKilled`` the first time a file carrying ``INTERRUPT_MARKER`` is converted; on
+    later conversions returns it without the marker line. Which files have been interrupted is
+    kept in the temporary directory, so it holds across a worker's processes and restarts."""
+    if not data.startswith(INTERRUPT_MARKER.encode()):
+        return data
+    digest = hashlib.sha256(data).hexdigest()
+    sentinel = Path(tempfile.gettempdir()) / f"converter-interrupted-{digest}"
+    try:
+        sentinel.touch(exist_ok=False)
+    except FileExistsError:
+        return data.partition(b"\n")[2]
+    raise JobKilled("convert")
+
+
+class InterruptibleConverter:
+    """Test-only (``CONVERTER_TEST_INTERRUPTS``): any converter, with the fake converter's
+    ``INTERRUPT_MARKER`` switch in front, so an end-to-end test can interrupt an ingestion on a
+    stack that converts with Docling."""
+
+    def __init__(self, converter: DocumentConverter) -> None:
+        self.converter = converter
+
+    def convert(self, data: bytes, filename: str, *, ocr: bool) -> DoclingDocument:
+        return self.converter.convert(interrupt_if_marked(data), filename, ocr=ocr)
+
+
 _HEADING = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
 
 
@@ -83,7 +118,8 @@ class FakeConverter:
     A file starting with ``SCANNED_MARKER`` stands for a scanned
     one: its text is read only with ``ocr`` on, and otherwise its pages are empty, as Docling's
     are. Set ``failure`` to make the next conversions raise it; arm ``kill`` at ``"convert"`` to
-    kill the job at its next conversion."""
+    kill the job at its next conversion. A file starting with ``INTERRUPT_MARKER`` is
+    interrupted at its first conversion (``interrupt_if_marked``)."""
 
     def __init__(self) -> None:
         self.failure: Exception | None = None
@@ -93,6 +129,7 @@ class FakeConverter:
         self.kill.check("convert")
         if self.failure is not None:
             raise self.failure
+        data = interrupt_if_marked(data)
         document = DoclingDocument(name=PurePath(filename).stem)
         # Postgres text can't hold NUL, which binary files read as text would bring. A PDF's
         # header line is not content.

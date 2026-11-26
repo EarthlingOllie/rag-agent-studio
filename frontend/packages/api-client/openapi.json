@@ -4046,7 +4046,8 @@
           "unsupported_content",
           "conversion",
           "provider",
-          "quota"
+          "quota",
+          "interrupted"
         ],
         "title": "FailureCategory",
         "type": "string"

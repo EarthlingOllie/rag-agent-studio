@@ -381,7 +381,8 @@ async def test_an_editor_retries_a_failed_document_until_it_is_ready(
     assert failure_of(response.json()) == ("queued", None, None)
     document = await only_document(editor, project_id)
     assert failure_of(document) == ("ready", None, None)
-    assert (document["chunk_count"], document["attempt_count"]) == (1, 2)
+    # A manual Retry starts the attempt count again.
+    assert (document["chunk_count"], document["attempt_count"]) == (1, 1)
 
 
 async def test_a_ready_document_in_a_full_project_can_be_processed_again(

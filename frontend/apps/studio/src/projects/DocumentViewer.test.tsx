@@ -5,7 +5,7 @@ import { http, HttpResponse } from "msw";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { aChunk, aDocument, fakeDocumentViewerApi } from "../test/documents";
 import { breadcrumb, currentSection } from "../test/navigation";
-import { fakeProjectsApi, hrProject } from "../test/projects";
+import { fakeProjectsApi, hrProject, oldProject } from "../test/projects";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
 
@@ -319,6 +319,61 @@ test("a Document not converted yet says so instead of showing markdown and Chunk
   expect(
     await chunks.findByText("This Document has no Chunks yet."),
   ).toBeInTheDocument();
+});
+
+test("a Document interrupted too many times shows why, and an Editor retries it from the viewer", async () => {
+  signedIn();
+  const interrupted = "Processing was interrupted 3 times. Retry it, or upload it again.";
+  const { retried } = fakeDocumentViewerApi({
+    document: {
+      ...handbook,
+      status: "failed",
+      error_category: "interrupted",
+      error_message: interrupted,
+      chunk_count: 0,
+      markdown: null,
+    },
+    chunks: [],
+  });
+  renderStudio(viewer);
+
+  const details = within(await screen.findByRole("list", { name: "Document details" }, LOAD));
+  expect(details.getByText("Interrupted")).toHaveClass("text-danger");
+  expect(details.getByText(`Failed: ${interrupted}`)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+  expect(await details.findByText("Queued")).toBeInTheDocument();
+  expect(details.queryByText("Interrupted")).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+  expect(retried).toEqual([handbook.id]);
+});
+
+test("a retry the API refuses says why in the viewer", async () => {
+  signedIn();
+  fakeDocumentViewerApi({
+    document: { ...handbook, status: "failed", error_category: "conversion", error_message: "Broken.", markdown: null },
+    chunks: [],
+  });
+  server.use(
+    http.post(`${API_DOCUMENT}/retry`, () =>
+      HttpResponse.json({ detail: "This Project is archived. An Owner can restore it." }, { status: 409 }),
+    ),
+  );
+  renderStudio(viewer);
+
+  await userEvent.click(await screen.findByRole("button", { name: "Retry" }, LOAD));
+
+  expect(await screen.findByText("This Project is archived. An Owner can restore it.")).toBeInTheDocument();
+});
+
+test("a failed Document in an archived Project shows no Retry in the viewer", async () => {
+  signedIn();
+  const archived = aDocument({ name: "Old.pdf", status: "failed", error_category: "conversion", error_message: "Broken." });
+  fakeDocumentViewerApi({ document: { ...archived, markdown: null }, chunks: [] });
+  renderStudio(`/organisations/${organisationId}/projects/${oldProject.id}/documents/${archived.id}`);
+
+  expect(await screen.findByText("Conversion error", {}, LOAD)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
 });
 
 test("a Document still processing shows its status", async () => {

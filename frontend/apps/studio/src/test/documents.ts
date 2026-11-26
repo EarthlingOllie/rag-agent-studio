@@ -360,6 +360,8 @@ export function fakeDocumentViewerApi({
   const requests: { offset: number; limit: number }[] = [];
   // Clearing a flag (DELETE …/chunks/{id}/flag) takes it off the Chunk and the Document's count.
   const cleared: string[] = [];
+  // Retrying (POST …/retry) puts the Document back to Queued.
+  const retried: string[] = [];
   let current = document;
   let items = chunks;
   server.use(
@@ -368,6 +370,11 @@ export function fakeDocumentViewerApi({
     http.get("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId", ({ params }) =>
       params.documentId === document.id ? HttpResponse.json(current) : HttpResponse.json({ detail: "Not found" }, { status: 404 }),
     ),
+    http.post("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/retry", ({ params }) => {
+      retried.push(params.documentId as string);
+      current = { ...current, status: "queued", error_category: null, error_message: null };
+      return HttpResponse.json(listed(current), { status: 202 });
+    }),
     http.delete("*/api/organisations/:organisationId/projects/:projectId/documents/:documentId/chunks/:chunkId/flag", ({ params }) => {
       const chunkId = params.chunkId as string;
       cleared.push(chunkId);
@@ -383,5 +390,5 @@ export function fakeDocumentViewerApi({
       return HttpResponse.json({ items: items.slice(offset, offset + limit), total: items.length, offset, limit });
     }),
   );
-  return { requests, cleared };
+  return { requests, cleared, retried };
 }

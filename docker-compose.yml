@@ -48,6 +48,12 @@ x-backend: &backend
     # Docling converts uploads, and the local Embedding Model (bundled in the image) embeds
     # them. EMBEDDER=fake in .env uses the deterministic embedder instead (no model download).
     DOCUMENT_CONVERTER: ${DOCUMENT_CONVERTER:-docling}
+    # Test-only, set by `make e2e`: the converter's interruption switch (a file whose first line
+    # starts `%INTERRUPT-ONCE ` is interrupted at its first conversion) and short job-reliability
+    # timings, so the sweeper recovers an interrupted ingestion within a minute or two.
+    CONVERTER_TEST_INTERRUPTS: ${CONVERTER_TEST_INTERRUPTS:-false}
+    JOB_HEARTBEAT_SECONDS: ${JOB_HEARTBEAT_SECONDS:-30}
+    JOB_DEAD_AFTER_SECONDS: ${JOB_DEAD_AFTER_SECONDS:-300}
     EMBEDDER: ${EMBEDDER:-local}
     # The ingestion scan flags Chunks that look like instructions to an AI with the same local
     # ONNX prompt-injection model as the input Guardrail (bundled in the image). A stack built with

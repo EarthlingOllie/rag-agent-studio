@@ -432,6 +432,7 @@ test.each([
   ["conversion", "Conversion error"],
   ["provider", "Provider error"],
   ["quota", "Quota reached"],
+  ["interrupted", "Interrupted"],
 ] as const)("a %s failure is labelled %s", async (category, label) => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();
@@ -441,6 +442,25 @@ test.each([
   const row = rowOf(await documentsTable(), "broken.md");
   expect(row.getByText(label)).toBeInTheDocument();
   expect(row.getByText("Why it failed.")).toBeInTheDocument();
+});
+
+test("a Document interrupted too many times says so, suggests Retry and offers it", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const interrupted = "Processing was interrupted 3 times. Retry it, or upload it again.";
+  const { requests } = fakeDocumentsApi({ documents: [failedDocument("interrupted", interrupted)] });
+  renderStudio(documentsTab());
+  const table = await documentsTable();
+  const row = rowOf(table, "broken.md");
+
+  expect(row.getByText("Interrupted")).toHaveClass("text-danger");
+  expect(row.getByText(interrupted)).toBeInTheDocument();
+  expect(await actionsOf("broken.md")).toContain("Retry");
+  await chooseAction("broken.md", "Retry");
+
+  expect(await table.findByText("Queued")).toBeInTheDocument();
+  expect(table.queryByText("Interrupted")).not.toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "retry")).toHaveLength(1);
 });
 
 test("an Editor retries a failed Document and watches it go back to Ready", async () => {
