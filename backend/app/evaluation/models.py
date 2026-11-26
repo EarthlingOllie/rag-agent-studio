@@ -389,6 +389,12 @@ class LiveVerdict(IdMixin, Base):
     # When the Purge cleared its reasons, with its Message's text (``app.retention``): they can
     # quote the Visitor. Its outcomes, Cost and counts stay.
     purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Job reliability (ADR-0020, ``app.evaluation.live_jobs``): when the sweeper last sent its
+    # job again (None until then: it is Pending since it was created), how many times it has,
+    # and the claim of the copy of the job judging it.
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resends: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    claim_id: Mapped[uuid.UUID | None] = mapped_column()
 
 
 class EvaluationSpend(IdMixin, Base):

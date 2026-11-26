@@ -16,9 +16,12 @@ judge, asked for ``grounding`` and ``answers_question`` in one
 structured-output call at temperature 0. The system prompt and Project Instructions are never
 sent. The reply passes when both checks pass. A judge error or timeout makes the Live Verdict an
 ``error`` with its reason, as does any unexpected error; there is no retry, so an outage doesn't
-multiply spend. The job acts only on a ``pending`` Live Verdict, and stores its outcome with one
-conditional update that also gates the spend, so however often the job runs, and however many
-copies race, the judgement is charged once; no row is locked across the judge call. The judge's
+multiply spend. The job acts only on a ``pending`` Live Verdict it claims first, so a second
+message or a second copy while one judges asks the judge nothing, and stores its outcome with one
+conditional update, under its claim, that also gates the spend, so however often the job runs,
+and however many copies race, the judgement is charged once; no row is locked across the judge
+call. A verdict whose job was lost or whose worker died is sent again by the sweeper, then made
+an ``error`` (``app.evaluation.live_jobs``). The judge's
 Cost is frozen with the cost function and Price table in force when it is judged, and added to
 the Organisation's monthly spend; the judgement that spends the budget emails its Owners once.
 When the reply, its question or a Remembered turn has been Purged before judging, the Live
@@ -32,7 +35,7 @@ import random
 import uuid
 from typing import Any, cast
 
-from sqlalchemy import select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.config import AgentConfig
@@ -174,13 +177,38 @@ def _outcome(passed: bool) -> VerdictOutcome:
     return VerdictOutcome.PASS if passed else VerdictOutcome.FAIL
 
 
-async def _settle(session: AsyncSession, verdict_id: uuid.UUID, **values: Any) -> bool:
-    """Stores the Live Verdict's outcome only while it is still ``pending``, in the caller's
-    transaction; whether it did. The one conditional update a copy of the job wins: a copy
-    that finds it settled already stores nothing and records no spend."""
+async def _claim(session: AsyncSession, verdict_id: uuid.UUID, claim_id: uuid.UUID) -> bool:
+    """Claims the Live Verdict for this copy of the job, in the caller's transaction: only while
+    it is ``pending`` and no copy holds it (the sweeper clears a dead copy's claim when it sends
+    the job again). Whether it did; a copy that can't claim exits without judging."""
+    claimed = await session.scalar(
+        update(LiveVerdict)
+        .where(
+            LiveVerdict.id == verdict_id,
+            LiveVerdict.status == LiveStatus.PENDING,
+            LiveVerdict.claim_id.is_(None),
+        )
+        .values(claim_id=claim_id)
+        .returning(LiveVerdict.id)
+        .execution_options(synchronize_session=False)
+    )
+    return claimed is not None
+
+
+async def _settle(
+    session: AsyncSession, verdict_id: uuid.UUID, claim_id: uuid.UUID, **values: Any
+) -> bool:
+    """Stores the Live Verdict's outcome only while it is still ``pending`` and claimed by this
+    copy of the job, or by none since the sweeper sent it again, in the caller's transaction;
+    whether it did. The one conditional update a copy of the job wins: a copy that finds it
+    settled, or claimed by the copy sent after it, stores nothing and records no spend."""
     settled = await session.scalar(
         update(LiveVerdict)
-        .where(LiveVerdict.id == verdict_id, LiveVerdict.status == LiveStatus.PENDING)
+        .where(
+            LiveVerdict.id == verdict_id,
+            LiveVerdict.status == LiveStatus.PENDING,
+            or_(LiveVerdict.claim_id == claim_id, LiveVerdict.claim_id.is_(None)),
+        )
         .values(**values)
         .returning(LiveVerdict.id)
     )
@@ -192,24 +220,32 @@ async def _judge_pending(
     ports: EvaluationPorts,
     gateway: ModelGateway,
     verdict_id: uuid.UUID,
+    claim_id: uuid.UUID,
     clock: Clock,
 ) -> None:
     async with sessionmaker() as session:
-        verdict = await session.get_one(LiveVerdict, verdict_id)
-        if verdict.status != LiveStatus.PENDING:
-            # Settled by an earlier copy of the job: nothing is judged or charged again.
+        claimed = await _claim(session, verdict_id, claim_id)
+        await session.commit()
+        if not claimed:
+            # Settled by an earlier copy of the job, or another copy is judging it: nothing is
+            # judged or charged again.
             return
+        verdict = await session.get_one(LiveVerdict, verdict_id)
         reply = await session.get_one(Message, verdict.message_id)
         request = await _request(session, reply)
         if request is None:
             # Purged before it was judged: nothing is sent to the judge.
-            await _settle(session, verdict_id, status=LiveStatus.SKIPPED)
+            await _settle(session, verdict_id, claim_id, status=LiveStatus.SKIPPED)
             await session.commit()
             return
         chosen = await judge_model(session, verdict.organisation_id)
         if chosen is None:
             await _settle(
-                session, verdict_id, status=LiveStatus.ERROR, error_reason=NO_EVALUATION_MODEL
+                session,
+                verdict_id,
+                claim_id,
+                status=LiveStatus.ERROR,
+                error_reason=NO_EVALUATION_MODEL,
             )
             await session.commit()
             return
@@ -229,6 +265,7 @@ async def _judge_pending(
             await _settle(
                 session,
                 verdict_id,
+                claim_id,
                 status=LiveStatus.ERROR,
                 error_reason=error.message,
                 **judged_by,
@@ -242,6 +279,7 @@ async def _judge_pending(
         if not await _settle(
             session,
             verdict_id,
+            claim_id,
             status=LiveStatus.JUDGED,
             grounded=_outcome(grounded.passed),
             grounded_reason=grounded.reason,
@@ -254,7 +292,8 @@ async def _judge_pending(
             judged_at=now,
             **judged_by,
         ):
-            # Another copy settled it while this one judged: its spend is the one recorded.
+            # The copy sent after this one was given up for dead settled it, or holds it: its
+            # spend is the one recorded.
             await session.rollback()
             return
         # The reply may have been Purged while it was judged. The Purge clears the Live Verdict
@@ -294,14 +333,17 @@ async def judge_live_verdict(
     with why, or ``skipped`` when the text it needs was Purged first. One already settled is
     left, so a second run of the job judges and charges nothing. An unexpected error makes it an
     ``error`` too, never leaving it ``pending``."""
+    claim_id = uuid.uuid4()
     try:
-        await _judge_pending(sessionmaker, ports, gateway, verdict_id, clock)
+        await _judge_pending(sessionmaker, ports, gateway, verdict_id, claim_id, clock)
     except Exception:
         logger.exception(
             "Judging a Live Verdict failed", extra={"live_verdict_id": str(verdict_id)}
         )
         async with sessionmaker() as session:
-            await _settle(session, verdict_id, status=LiveStatus.ERROR, error_reason=UNEXPECTED)
+            await _settle(
+                session, verdict_id, claim_id, status=LiveStatus.ERROR, error_reason=UNEXPECTED
+            )
             await session.commit()
 
 

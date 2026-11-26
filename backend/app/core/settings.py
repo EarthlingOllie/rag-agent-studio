@@ -183,6 +183,11 @@ class Settings(BaseSettings):
     job_heartbeat_seconds: float = Field(default=30.0, gt=0)
     job_dead_after_seconds: float = Field(default=300.0, gt=0)
     job_queued_too_long_seconds: float = Field(default=900.0, gt=0)
+    # A Live Verdict still Pending this long after its job was sent (lost, or its worker died)
+    # is sent again by the sweeper, up to this many times; one still Pending after that is an
+    # Error. In seconds.
+    live_verdict_pending_seconds: float = Field(default=300.0, gt=0)
+    live_verdict_resends: int = Field(default=1, ge=0)
     # How many Chunks a re-embed job embeds and writes at a time; each batch shows as progress.
     # Provider failures during a re-embed are retried like ingestion's.
     re_embed_batch_size: int = Field(default=64, gt=0)

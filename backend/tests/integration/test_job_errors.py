@@ -1,8 +1,9 @@
 """API seam and task seam: no job stays in progress after an error (spec 21, ticket 21-02).
 
 A sampled reply's Live Verdict is judged and charged once however often its job runs: a second
-run after the first finished makes no judge call and records no spend, and two copies racing
-record the spend once, since it is stored in the one conditional update that stores the verdict.
+run after the first finished makes no judge call and records no spend, and a second copy while
+the first is judging finds it claimed and makes no judge call (ticket 21-07); the spend is stored
+in the one conditional update that stores the verdict.
 An Evaluation Run, Suggestion run or Live Verdict whose job raises an unexpected error ends in a
 state a person can see: a Failed Run with a reason that frees the Agent, a Failed Suggestion run
 whose check Run is ended too, and a Live Verdict that is an Error and left out of the Live score.
@@ -116,20 +117,22 @@ async def test_a_second_run_of_a_live_verdicts_job_makes_no_judge_call_and_recor
     assert await spent(owner) == once == (await judged_cost(owner, agent, message_id(events)))
 
 
-async def test_two_copies_of_a_live_verdicts_job_racing_record_its_spend_once(
+async def test_a_second_copy_of_a_live_verdicts_job_while_the_first_judges_makes_no_judge_call(
     app: FastAPI,
     owner: SignedUpMember,
     visitor: httpx.AsyncClient,
     held_back: list[uuid.UUID],
 ) -> None:
     calls: list[str] = []
-    # Both copies are asking the judge at once before either answers: neither holds a lock on
-    # the Live Verdict that would keep the other from getting there.
-    both_asking = threading.Barrier(2, timeout=30)
+    # The first copy is asking the judge, holding no lock on the Live Verdict, when the second
+    # copy starts: the first copy's claim makes the second exit (ticket 21-07).
+    asking = threading.Event()
+    answer = threading.Event()
     judging = counting(calls)
 
     def judgement(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        both_asking.wait()
+        asking.set()
+        assert answer.wait(timeout=30)
         return judging(messages, info)
 
     scripted(app, judgement=judgement)
@@ -138,9 +141,14 @@ async def test_two_copies_of_a_live_verdicts_job_racing_record_its_spend_once(
     events = await reply(visitor, agent)
     (verdict_id,) = held_back
 
-    await asyncio.gather(judge_now(verdict_id), judge_now(verdict_id))
+    first = asyncio.create_task(judge_now(verdict_id))
+    assert await asyncio.to_thread(asking.wait, 30)
+    await judge_now(verdict_id)
+    assert (await live_verdict(owner, agent, events) or {})["status"] == "pending"
+    answer.set()
+    await first
 
-    assert calls == ["judge", "judge"]
+    assert calls == ["judge"]
     cost = await judged_cost(owner, agent, message_id(events))
     assert cost > 0
     assert await spent(owner) == cost
