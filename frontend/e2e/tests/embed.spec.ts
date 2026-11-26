@@ -75,7 +75,7 @@ test.describe("Embed an Agent", () => {
 
     // The shell may be framed by that origin only.
     const shell = await page.request.get(`/widget/a/${publicId}`);
-    expect(shell.headers()["content-security-policy"]).toBe(`frame-ancestors ${hostOrigin}`);
+    expect(shell.headers()["content-security-policy"]).toBe(`frame-ancestors ${hostOrigin}; connect-src 'self'`);
 
     // A Visitor on the host page (another browser, no Studio session) chats through the widget.
     const visitor = await browser.newContext();

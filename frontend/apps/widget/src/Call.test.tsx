@@ -370,17 +370,6 @@ test("a Call refused by admission control shows the Agent's unavailable text, or
   expect(await screen.findByRole("alert")).toHaveTextContent("Calls are busy.");
 });
 
-test("a Call the widget can't hold yet says so", async () => {
-  fakeCallApi({
-    startCall: () => json({ call_id: "c1", call_token: "wk2.call", join: { voice_layer: "elevenlabs", conversation_token: "lk" } }, 201),
-  });
-  render(<Widget boot={boot} />);
-
-  await choose("Call");
-
-  expect(await screen.findByRole("alert")).toHaveTextContent("Calls aren't available here yet. You can still send a message.");
-});
-
 test("a Call that can't start a Conversation says so", async () => {
   const seen = fakeCallApi({ startConversation: () => json({ detail: "Nope." }, 500) });
   render(<Widget boot={boot} />);

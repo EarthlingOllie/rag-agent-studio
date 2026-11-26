@@ -188,7 +188,9 @@ async def widget_shell(public_id: str, db: Db, signer: Signer, clock: ClockDep) 
         ),
         headers={
             **_HEADERS,
-            "Content-Security-Policy": service.frame_ancestors(found.allowed_origins),
+            "Content-Security-Policy": service.shell_policy(
+                found.allowed_origins, calls=found.calls
+            ),
         },
     )
 

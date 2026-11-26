@@ -1,0 +1,130 @@
+[
+  {
+    "request": {
+      "method": "GET",
+      "url": "https://api.elevenlabs.io/v1/convai/agents/agent_01k9w3"
+    },
+    "response": {
+      "status": 200,
+      "json": {
+        "agent_id": "agent_01k9w3",
+        "name": "Front desk (agt_frontdesk)",
+        "conversation_config": {
+          "agent": {
+            "first_message": "Hello, how can I help?",
+            "language": "en",
+            "prompt": {
+              "prompt": "",
+              "llm": "custom-llm",
+              "custom_llm": {
+                "url": "https://calls.example.test/api/widget/agents/agt_frontdesk/llm/v1",
+                "api_key": {
+                  "secret_id": "sec_7Hq2"
+                }
+              }
+            }
+          },
+          "tts": {
+            "voice_id": "21m00Tcm4TlvDq8ikWAM"
+          }
+        },
+        "platform_settings": {
+          "overrides": {
+            "custom_llm_extra_body": true
+          }
+        },
+        "metadata": {
+          "created_at_unix_secs": 1764140000
+        },
+        "tags": []
+      }
+    }
+  },
+  {
+    "request": {
+      "method": "PATCH",
+      "url": "https://api.elevenlabs.io/v1/convai/secrets/sec_7Hq2",
+      "json": {
+        "type": "update",
+        "name": "Front desk (agt_frontdesk) turn endpoint key",
+        "value": "sssssssssssssssssssssssssssssssssssssssssss"
+      }
+    },
+    "response": {
+      "status": 200,
+      "json": {
+        "type": "stored",
+        "secret_id": "sec_7Hq2",
+        "name": "Front desk (agt_frontdesk) turn endpoint key"
+      }
+    }
+  },
+  {
+    "request": {
+      "method": "PATCH",
+      "url": "https://api.elevenlabs.io/v1/convai/agents/agent_01k9w3",
+      "json": {
+        "name": "Front desk (agt_frontdesk)",
+        "conversation_config": {
+          "agent": {
+            "first_message": "Hello, how can I help?",
+            "language": "en",
+            "prompt": {
+              "prompt": "",
+              "llm": "custom-llm",
+              "custom_llm": {
+                "url": "https://calls.example.test/api/widget/agents/agt_frontdesk/llm/v1",
+                "api_key": {
+                  "secret_id": "sec_7Hq2"
+                }
+              }
+            }
+          },
+          "tts": {
+            "voice_id": "21m00Tcm4TlvDq8ikWAM"
+          }
+        },
+        "platform_settings": {
+          "overrides": {
+            "custom_llm_extra_body": true
+          }
+        }
+      }
+    },
+    "response": {
+      "status": 200,
+      "json": {
+        "agent_id": "agent_01k9w3",
+        "name": "Front desk (agt_frontdesk)",
+        "conversation_config": {
+          "agent": {
+            "first_message": "Hello, how can I help?",
+            "language": "en",
+            "prompt": {
+              "prompt": "",
+              "llm": "custom-llm",
+              "custom_llm": {
+                "url": "https://calls.example.test/api/widget/agents/agt_frontdesk/llm/v1",
+                "api_key": {
+                  "secret_id": "sec_7Hq2"
+                }
+              }
+            }
+          },
+          "tts": {
+            "voice_id": "21m00Tcm4TlvDq8ikWAM"
+          }
+        },
+        "platform_settings": {
+          "overrides": {
+            "custom_llm_extra_body": true
+          }
+        },
+        "metadata": {
+          "created_at_unix_secs": 1764140000
+        },
+        "tags": []
+      }
+    }
+  }
+]

@@ -60,7 +60,8 @@ async def change(member: SignedUpMember, agent: dict[str, Any], **fields: Any) -
 async def csp(visitor: httpx.AsyncClient, agent: dict[str, Any]) -> str:
     shell = await visitor.get(f"/widget/a/{agent['public_id']}")
     assert shell.status_code == 200, shell.text
-    policy: str = shell.headers["content-security-policy"]
+    # Its frame-ancestors directive (connect-src is tested with Calls).
+    policy: str = shell.headers["content-security-policy"].split("; ")[0]
     return policy
 
 

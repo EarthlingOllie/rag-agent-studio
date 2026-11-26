@@ -5,10 +5,17 @@
  * listening. What the reply was (its text, sources and Message ID) the widget reads from our
  * API, so the Conversation log works as it does for a typed reply.
  *
+ * With ElevenLabs, the browser joins the Call over WebRTC with ElevenLabs' own client, which is
+ * loaded only when a Visitor picks Call, so Visitors who never call download none of it. It hands
+ * ElevenLabs the Call token as extra body, which ElevenLabs passes to our turn endpoint with
+ * every turn.
+ *
  * The scripted implementation plays a Call without audio. It is used when the stack runs the
  * fake voice layer (`docker compose` and tests): it "says" its script one turn at a time, and the
  * fake voice layer holds each turn through the platform's turn endpoint, as ElevenLabs would.
  */
+import type { VoiceConversation } from "@elevenlabs/client";
+
 import { type Boot, ChatError, type StartedCall } from "./chat";
 
 /** Whether the Agent is speaking, or listening to the Visitor. */
@@ -35,7 +42,6 @@ export type CallSession = {
 /** How long the scripted Call waits between what is said, so each state can be seen. */
 export const SCRIPT_PAUSE_MS = 400;
 
-const UNSUPPORTED = "Calls aren't available here yet. You can still send a message.";
 const DROPPED = "The Call dropped. You can still send a message.";
 
 /** What the scripted Visitor says: the Agent's first starter question, or a hello. */
@@ -99,11 +105,65 @@ function scripted(started: StartedCall, words: string[], handlers: CallHandlers)
   };
 }
 
-/**
- * Joins the Call the API started, with the call client for its voice layer. ElevenLabs' own
- * client comes with the real voice layer (ticket 20-05); until then such a Call can't be held.
- */
+/** Holds the Call with ElevenLabs' browser client, loaded now. */
+function elevenLabs(started: StartedCall, handlers: CallHandlers): CallSession {
+  let ended = false;
+  let muted = false;
+  let session: VoiceConversation | null = null;
+  const dropped = () => {
+    if (!ended) handlers.onFailure(new ChatError(DROPPED));
+  };
+
+  void import("@elevenlabs/client")
+    .then(({ Conversation }) =>
+      Conversation.startSession({
+        conversationToken: started.join.conversation_token,
+        connectionType: "webrtc",
+        textOnly: false,
+        // ElevenLabs sends it to our turn endpoint with every turn: which Call the turn is in.
+        customLlmExtraBody: { call_token: started.call_token },
+        onConnect: () => {
+          handlers.onMode("listening");
+        },
+        onModeChange: ({ mode }) => {
+          handlers.onMode(mode);
+        },
+        // The Visitor's transcribed words; for the Agent, only that it has replied (the
+        // reply itself, with its sources and Message ID, is read from our API).
+        onMessage: ({ role, message }) => {
+          if (role === "user") handlers.onVisitorWords(message);
+          else handlers.onReply();
+        },
+        onDisconnect: (details) => {
+          if (details.reason !== "user") dropped();
+        },
+      }),
+    )
+    .then((joined) => {
+      if (ended) {
+        void joined.endSession();
+        return;
+      }
+      session = joined;
+      joined.setMicMuted(muted);
+    })
+    // The client couldn't load, the microphone was refused, or ElevenLabs couldn't be joined.
+    .catch(dropped);
+  return {
+    setMuted(next) {
+      muted = next;
+      session?.setMicMuted(next);
+    },
+    end() {
+      ended = true;
+      void session?.endSession();
+      session = null;
+    },
+  };
+}
+
+/** Joins the Call the API started, with the call client for its voice layer. */
 export function joinCall(boot: Boot, started: StartedCall, handlers: CallHandlers): CallSession {
-  if (started.join.voice_layer !== "fake") throw new ChatError(UNSUPPORTED);
-  return scripted(started, script(boot), handlers);
+  if (started.join.voice_layer === "fake") return scripted(started, script(boot), handlers);
+  return elevenLabs(started, handlers);
 }

@@ -181,6 +181,23 @@ async def test_the_shell_says_whether_the_agent_takes_calls(
     assert (off["calls"], on["calls"]) == (False, True)
 
 
+async def test_the_shell_lets_the_widget_reach_elevenlabs_only_for_an_agent_that_takes_calls(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient
+) -> None:
+    typing_only = await live_agent(owner, "https://www.example.com")
+    calling = await calling_agent(app, owner)
+
+    off = await visitor.get(f"/widget/a/{typing_only['public_id']}")
+    on = await visitor.get(f"/widget/a/{calling['public_id']}")
+
+    assert off.headers["content-security-policy"] == (
+        "frame-ancestors https://www.example.com; connect-src 'self'"
+    )
+    assert on.headers["content-security-policy"].endswith(
+        "; connect-src 'self' https://*.elevenlabs.io wss://*.elevenlabs.io"
+    )
+
+
 # Starting a Call
 
 

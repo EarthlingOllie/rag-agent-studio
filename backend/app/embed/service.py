@@ -99,8 +99,19 @@ def normalise_origins(origins: list[str]) -> list[str]:
 
 
 def frame_ancestors(origins: list[str]) -> str:
-    """The ``Content-Security-Policy`` that lets only those origins frame the widget."""
+    """The ``Content-Security-Policy`` directive that lets only those origins frame the widget."""
     return "frame-ancestors " + (" ".join(origins) if origins else "'none'")
+
+
+# Where the ElevenLabs browser client connects during a Call: its API and its WebRTC servers.
+ELEVENLABS_CONNECT_SOURCES = "https://*.elevenlabs.io wss://*.elevenlabs.io"
+
+
+def shell_policy(origins: list[str], *, calls: bool) -> str:
+    """The widget shell's ``Content-Security-Policy``: framed only by the Allowed Origins, and
+    connecting only to the platform, and to ElevenLabs only for an Agent that takes Calls."""
+    connect = "connect-src 'self'" + (f" {ELEVENLABS_CONNECT_SOURCES}" if calls else "")
+    return f"{frame_ancestors(origins)}; {connect}"
 
 
 class EvaluationBudgetRequiredError(Exception):

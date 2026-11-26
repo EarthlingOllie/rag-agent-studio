@@ -64,7 +64,7 @@ test.describe("Operational Settings", () => {
     expect(after.live_version.number).toBe(1);
 
     const shell = await page.request.get(`/widget/a/${publicId}`);
-    expect(shell.headers()["content-security-policy"]).toBe(`frame-ancestors ${allowed.origin} https://*.example.com`);
+    expect(shell.headers()["content-security-policy"]).toBe(`frame-ancestors ${allowed.origin} https://*.example.com; connect-src 'self'`);
 
     // Both changes are Audit Events with their before and after values.
     const audit = await page.request.get(`${organisation}/audit-events`, {
