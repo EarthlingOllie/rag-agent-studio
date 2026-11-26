@@ -3,13 +3,14 @@ start a real worker. Each xdist worker has its own pair (``tests.conftest.TEST_Q
 
 import base64
 import json
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 from app.core.settings import load_settings
 from app.worker.queues import create_queues, sqs_client
-from tests.conftest import TEST_QUEUE_URLS, TEST_QUEUES
+from tests.conftest import TEST_SQS_ENDPOINT_URL
 
 if TYPE_CHECKING:
     from mypy_boto3_sqs import SQSClient
@@ -19,13 +20,33 @@ def client() -> "SQSClient":
     return sqs_client(load_settings())
 
 
-def empty_queues(names: Iterable[str] = TEST_QUEUES.values()) -> None:
-    """The queues (by default the test run's two) exist and hold nothing. Needs the test
-    environment (``settings_env``)."""
-    create_queues(load_settings())
+def queue_url(name: str) -> str:
+    return f"{TEST_SQS_ENDPOINT_URL}/000000000000/{name}"
+
+
+def empty_queues(names: Iterable[str] | None = None) -> None:
+    """The queues (by default the two the settings name) exist and hold nothing.
+
+    A worker stopped while it waits for a message (SQS long polling) can leave that wait open on
+    Floci for a few seconds, and the next message sent would go to it and stay hidden for the
+    queue's visibility timeout. So a few throwaway messages go first, to answer any such wait,
+    and the purge then removes them, taken or not."""
+    settings = load_settings()
+    create_queues(settings)
     sqs = client()
-    for name in names:
-        sqs.purge_queue(QueueUrl=sqs.get_queue_url(QueueName=name)["QueueUrl"])
+    urls = [
+        queue_url(name)
+        for name in (names or (settings.general_queue_name, settings.runs_queue_name))
+    ]
+    for url in urls:
+        for _ in range(_THROWAWAY_MESSAGES):
+            sqs.send_message(QueueUrl=url, MessageBody="throwaway")
+    time.sleep(0.2)
+    for url in urls:
+        sqs.purge_queue(QueueUrl=url)
+
+
+_THROWAWAY_MESSAGES = 3
 
 
 @dataclass(frozen=True)
@@ -45,8 +66,9 @@ class Message:
 
 def take_messages(queue: str) -> list[Message]:
     """Receives (and deletes) every message waiting on the ``general`` or ``runs`` queue."""
+    settings = load_settings()
     sqs = client()
-    url = TEST_QUEUE_URLS[queue]
+    url = str(settings.general_queue_url if queue == "general" else settings.runs_queue_url)
     messages: list[Message] = []
     while True:
         received = sqs.receive_message(QueueUrl=url, MaxNumberOfMessages=10, WaitTimeSeconds=1)

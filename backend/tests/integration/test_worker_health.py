@@ -19,7 +19,7 @@ from tests.sqs import empty_queues
 
 @pytest.fixture(autouse=True)
 def empty_broker(settings_env: pytest.MonkeyPatch) -> Iterator[None]:
-    """Unanswered health tasks must not leak into the next test's queue."""
+    """The test queues on Floci start and end empty; the replies in Redis go too."""
     empty_queues()
     yield
     empty_queues()
