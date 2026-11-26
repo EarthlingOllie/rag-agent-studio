@@ -28,13 +28,11 @@ from app.agents.resolution import NoDefaultModelError, ProviderCredentialGoneErr
 from app.agents.serving import AgentNotLiveError, AgentNotServedError
 from app.auth.api import Db
 from app.embed import calls, service
-from app.embed.api import NO_LONGER_AVAILABLE, Serving, Signer, _errors, _event_stream, _gone
-from app.embed.visitor_turn import Unavailable, VisitorTurnEvent, serve_turn
-from app.guardrails.pipeline import RefusalEvent
+from app.embed.api import Serving, Signer, _errors, _event_stream
+from app.embed.speech import SEARCHING_STATUS, Speech
+from app.embed.visitor_turn import ServedTurn, serve_turn
 from app.playground.api import QUESTION_MAX
 from app.playground.service import CallEndedError
-from app.runtime.errors import ErrorEvent
-from app.runtime.runtime import ReplaceEvent, TokenEvent
 from app.voice.api import Voice
 
 router = APIRouter(prefix="/api/widget/agents/{public_id}/llm/v1", tags=["widget"])
@@ -105,16 +103,6 @@ def _chunk(completion: str, created: int, content: str | None) -> str:
     return f"data: {json.dumps(data)}\n\n"
 
 
-def _spoken(event: VisitorTurnEvent, unavailable: str) -> str | None:
-    """What the voice layer speaks for one event of the turn, or None for nothing: sources and
-    the Searching status are not read out."""
-    if isinstance(event, TokenEvent | ReplaceEvent | RefusalEvent):
-        return event.text
-    if isinstance(event, Unavailable | ErrorEvent):
-        return unavailable
-    return None
-
-
 _RESPONSES: dict[int | str, dict[str, Any]] = {
     200: {
         "content": {"text/event-stream": {"schema": {"type": "string"}}},
@@ -128,8 +116,6 @@ _RESPONSES: dict[int | str, dict[str, Any]] = {
     **_errors(
         (401, INVALID_SECRET),
         (403, INVALID_CALL),
-        (404, NO_LONGER_AVAILABLE),
-        (503, "The Agent's unavailable text: it has no model to answer with."),
     ),
 }
 
@@ -172,6 +158,7 @@ async def chat_completions(
         raise HTTPException(status.HTTP_403_FORBIDDEN, INVALID_CALL) from None
     words = _words(body.messages)
     unavailable = await service.unavailable_text(db, public_id)
+    call_id, conversation_id = found.call.id, found.conversation.id
     try:
         turn = await serve_turn(
             db,
@@ -180,24 +167,48 @@ async def chat_completions(
             words,
             found.call.ip,
             ports=serving,
-            call_id=found.call.id,
+            call_id=call_id,
         )
     except CallEndedError:
         # The Call ended after its turn was checked.
         raise HTTPException(status.HTTP_403_FORBIDDEN, INVALID_CALL) from None
-    except (AgentNotServedError, AgentNotLiveError):
-        raise _gone() from None
-    except (NoDefaultModelError, ProviderCredentialGoneError):
-        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, unavailable) from None
-    completion = f"chatcmpl-{found.call.id.hex}-{time.monotonic_ns()}"
+    except (
+        AgentNotServedError,
+        AgentNotLiveError,
+        NoDefaultModelError,
+        ProviderCredentialGoneError,
+    ):
+        # The Agent was retired, or has no model to answer with: the Visitor hears why.
+        await db.rollback()
+        turn = None
+    completion = f"chatcmpl-{call_id.hex}-{time.monotonic_ns()}"
     created = int(clock.now().timestamp())
+    speech = Speech(
+        retractable=turn is not None and turn.retractable,
+        searching_status=(turn and turn.searching_status) or SEARCHING_STATUS,
+        unavailable=unavailable,
+    )
 
     async def chunks() -> AsyncIterator[str]:
-        async for event in turn:
-            spoken = _spoken(event, unavailable)
-            if spoken:
-                yield _chunk(completion, created, spoken)
+        async for said in _spoken(speech, turn):
+            yield _chunk(completion, created, said)
+        if speech.ended:
+            # An unavailable Agent ends the Call; the widget returns the Visitor to messaging.
+            async with serving.sessionmaker() as session:
+                await calls.end_unavailable(session, conversation_id, now=serving.clock.now())
         yield _chunk(completion, created, None)
         yield "data: [DONE]\n\n"
 
     return _event_stream(chunks())
+
+
+async def _spoken(speech: Speech, turn: ServedTurn | None) -> AsyncIterator[str]:
+    """What the voice layer speaks of the turn, in order: the Unavailable text alone when it
+    couldn't be served (``turn`` None)."""
+    if turn is None:
+        yield speech.unavailable()
+        return
+    async for event in turn:
+        for said in speech.hear(event):
+            if said:
+                yield said

@@ -9,9 +9,10 @@ abused.
   can't all take the budget's last minute. The first refusal of a day for the budget raises
   the Agent's Call minutes alert and emails its Owners, once.
 - **Ending.** However a Call ends (the Visitor, the Maximum Call length, silence, the
-  Conversation ending), ``finish`` records when and why, and its minutes: the time from its
-  start, by the platform's clock, rounded up to whole minutes. Those minutes go on the Agent's
-  counter for the UTC date the Call ended, unless the Call was held in the Playground.
+  Conversation ending, a turn the Agent couldn't answer), ``finish`` records when and why, and
+  its minutes: the time from its start, by the platform's clock, rounded up to whole minutes.
+  Those minutes go on the Agent's counter for the UTC date the Call ended, unless the Call was
+  held in the Playground.
 - **The reaper.** A Beat task (``end_idle_calls``) ends Calls that have reached the Maximum Call
   length they started with (changing it applies to the next Call), and Calls with no turn for
   ``SILENCE`` (which also closes Calls whose browser vanished without ending them).
@@ -51,6 +52,9 @@ class CallEnd(enum.StrEnum):
     MAX_LENGTH = "max_length"
     SILENCE = "silence"
     CONVERSATION_ENDED = "conversation_ended"
+    # The Agent couldn't answer a turn (rate limits, Token Budget, provider failure, no model,
+    # retired): the Visitor heard the Unavailable text and returns to messaging.
+    UNAVAILABLE = "unavailable"
 
 
 class CallRefusal(enum.StrEnum):

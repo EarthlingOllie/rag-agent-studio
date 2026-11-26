@@ -7024,6 +7024,8 @@ export interface components {
         };
         /** WidgetConversationOut */
         WidgetConversationOut: {
+            /** Call Open */
+            call_open: boolean;
             /** Messages */
             messages: components["schemas"]["WidgetMessageOut"][];
             rating: components["schemas"]["WidgetRatingOut"];
@@ -15521,15 +15523,6 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This assistant is no longer available. */
-            404: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
-                };
-            };
             /** @description Validation Error */
             422: {
                 headers: {
@@ -15537,15 +15530,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-            /** @description The Agent's unavailable text: it has no model to answer with. */
-            503: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };

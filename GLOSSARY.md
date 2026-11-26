@@ -446,7 +446,7 @@ In Agentic Retrieval Mode, clearing answer text that already streamed because th
 _Avoid_: Replace (that is the canary's), rollback, undo
 
 **Searching status**:
-What a Visitor sees while an Agentic Agent searches: a short row in the reply, "Searching the knowledge base…" (a UI text override can reword it), replaced as soon as the answer starts streaming, and shown again on a Retraction. Screen readers hear it once per reply, from the same polite region as the Reply announcement. The widget is told only that a Search started (a `search` event with no query), never the query the model wrote.
+What a Visitor sees while an Agentic Agent searches: a short row in the reply, "Searching the knowledge base…" (a UI text override can reword it), replaced as soon as the answer starts streaming, and shown again on a Retraction. In a Call it is spoken once per reply instead (see Spoken text). Screen readers hear it once per reply, from the same polite region as the Reply announcement. The widget is told only that a Search started (a `search` event with no query), never the query the model wrote.
 _Avoid_: Typing indicator, thinking, spinner
 
 **Search limit**:
@@ -603,7 +603,7 @@ _Avoid_: Error page, 404
 An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits, Token Budget, the Call settings, Maximum Call length, Call minutes budget and Live sample rate. Allowed Origins, the Unavailable text, the rate limits, the Token Budget, the Live sample rate, the Call settings and the two Call limits are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`, or `agent.live_sample_rate_changed` for the Live sample rate) holding the before and after values of the settings it changed.
 
 **Unavailable text**:
-What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit or because the day's Token Budget is spent). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
+What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit or because the day's Token Budget is spent). In a Call it is spoken, and the Call ends. Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
 _Avoid_: Error message, offline message
 
 **Theme override**:
@@ -717,8 +717,12 @@ An Agent's counterpart in the Voice layer, one per Agent with calling on: it hol
 _Avoid_: ElevenLabs agent, voice agent, voice bot
 
 **Turn endpoint**:
-The OpenAI-compatible chat completions route, under an Agent's public ID, that the Voice layer calls as its Remote agent's custom LLM for every turn of a Call. It takes only the last user message as the Visitor's words, ignoring the history the Voice layer sends, serves them exactly as a typed widget message is served, saves both sides as Spoken Messages, and streams back the text to speak as Server-Sent Events.
+The OpenAI-compatible chat completions route, under an Agent's public ID, that the Voice layer calls as its Remote agent's custom LLM for every turn of a Call. It takes only the last user message as the Visitor's words, ignoring the history the Voice layer sends, serves them exactly as a typed widget message is served, saves both sides as Spoken Messages, and streams back the text to speak (the Spoken text) as Server-Sent Events.
 _Avoid_: Custom LLM (for our side), voice webhook
+
+**Spoken text**:
+What the Turn endpoint gives the Voice layer to say for a reply: the reply without its Markdown (headings, emphasis, list and quote markers, code marks, table rules, link addresses) or its Chunk labels, released a sentence or line at a time, while the saved Message, its Trace and the Conversation log keep the full text with its sources. The first Search of an Agentic reply speaks the Searching status (or its UI text override) once, as a buffer phrase. Text that could still be retracted (an Agentic reply's text, and its Fallback Text, until the answer is known) is held back until it can't be, so nothing spoken is taken back; Automatic replies are spoken as they stream. A Canary trip stops the reply and speaks the replacement text, and a Guardrail block speaks the refusal text, the Call going on; an unavailable outcome (a rate limit, a spent Token Budget, a provider failure, no model, a retired Agent) speaks the Unavailable text and ends the Call, and the widget, reading the Conversation back, returns the Visitor to messaging.
+_Avoid_: TTS text, transcript (that is the log)
 
 **Call client**:
 The widget's side of a Call: it joins the Call the API started and tells the widget what the Visitor said, when the Agent has spoken, and whether the Agent is speaking or listening, while the reply itself (text, sources, Message ID) comes from our API. Against the fake Voice layer the widget uses its scripted call client, which plays a Call without audio by "saying" the Agent's first starter question.

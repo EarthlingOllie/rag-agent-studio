@@ -116,6 +116,7 @@ async def test_a_new_conversation_has_no_messages_yet(
     assert response.json() == {
         "messages": [],
         "rating": {"score": None, "prompt_dismissed": False},
+        "call_open": False,
     }
 
 

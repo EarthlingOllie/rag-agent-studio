@@ -20,6 +20,7 @@ from dataclasses import dataclass
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.agents.config import RetrievalMode
 from app.agents.models import Agent
 from app.conversations.models import Conversation
 from app.core.clock import Clock
@@ -42,6 +43,21 @@ class Unavailable:
 
 
 VisitorTurnEvent = Unavailable | AnswerEvent | SearchEvent
+
+
+@dataclass(frozen=True)
+class ServedTurn:
+    """The stream answering a Visitor turn, iterated for its events, and what a Call needs to
+    speak them (``app.embed.speech``)."""
+
+    events: AsyncIterator[VisitorTurnEvent]
+    # Whether the reply's text may still be retracted as it streams: an Agentic reply.
+    retractable: bool = False
+    # The Live Version's UI text override of the Searching status; None keeps the built-in text.
+    searching_status: str | None = None
+
+    def __aiter__(self) -> AsyncIterator[VisitorTurnEvent]:
+        return self.events
 
 
 @dataclass(frozen=True)
@@ -70,7 +86,7 @@ async def serve_turn(
     *,
     ports: ServingPorts,
     call_id: uuid.UUID | None = None,
-) -> AsyncIterator[VisitorTurnEvent]:
+) -> ServedTurn:
     """Admits and saves the Visitor's words; returns the stream that answers them with the
     Agent's Live Version. Words said in a Call (``call_id``) and their answer are saved as
     Spoken Messages of that Call. The first refusal or reply that finds the day's Token Budget spent
@@ -90,8 +106,13 @@ async def serve_turn(
     except service.NotAdmittedError as refused:
         if refused.reason is Refusal.TOKEN_BUDGET:
             await _budget_exhausted(session, agent_id, ports)
-        return _refused(refused.reason)
-    return _answered(admitted, ports)
+        return ServedTurn(_refused(refused.reason))
+    config = admitted.turn.config
+    return ServedTurn(
+        _answered(admitted, ports),
+        retractable=config.retrieval.mode is RetrievalMode.AGENTIC,
+        searching_status=config.experience.ui_text.searching_status,
+    )
 
 
 async def _refused(reason: Refusal) -> AsyncIterator[VisitorTurnEvent]:

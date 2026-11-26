@@ -13,7 +13,7 @@ import { server } from "../../studio/src/test/server";
 import { SCRIPT_PAUSE_MS } from "./call";
 import type { Boot } from "./chat";
 import { UNRATED } from "./Rating";
-import { Widget } from "./Widget";
+import { CALL_UNAVAILABLE, Widget } from "./Widget";
 
 const boot: Boot = {
   agent: "agt_hr",
@@ -56,12 +56,12 @@ function fakeCallApi({
   startCall = () =>
     json({ call_id: "c1", call_token: "wk2.call", join: { voice_layer: "fake", conversation_token: "fake-call-1" }, max_call_minutes: 10 }, 201),
   turn = () => json({ agent_response: "Twenty-five days." }),
-  history = () => json({ messages: spokenMessages, rating: UNRATED }),
+  history = () => json({ messages: spokenMessages, rating: UNRATED, call_open: true }),
   startConversation = () => json({ conversation_token: "wc1.token" }, 201),
 }: {
   startCall?: () => Response | Promise<Response>;
   turn?: () => Response | Promise<Response>;
-  history?: () => Response;
+  history?: () => Response | Promise<Response>;
   startConversation?: () => Response;
 } = {}) {
   const seen: Seen[] = [];
@@ -443,6 +443,77 @@ test("a Call ended before its voice layer fails says nothing of the failure", as
   await userEvent.setup().click(screen.getByRole("button", { name: "End call" }));
   await screen.findByLabelText("Message");
   fail(HttpResponse.error());
+  await after(50);
+
+  expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+});
+
+test("an Agent that can't answer in a Call returns the Visitor to messaging, saying so", async () => {
+  // The Agent spoke its Unavailable text and the platform ended the Call.
+  const unanswered = [spokenMessages[0]];
+  const seen = fakeCallApi({ history: () => json({ messages: unanswered, rating: UNRATED, call_open: false }) });
+  const { unmount } = render(<Widget boot={boot} />);
+
+  await choose("Call");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(CALL_UNAVAILABLE);
+  expect(screen.getByLabelText("Message")).toBeInTheDocument();
+  expect(screen.queryByRole("group", { name: "Call" })).not.toBeInTheDocument();
+  expect(screen.getByText("How much leave do I get?")).toBeInTheDocument();
+  expect(seen.map((s) => s.route).slice(-3)).toEqual(["resume", "end call", "resume"]);
+  unmount();
+  localStorage.clear();
+
+  fakeCallApi({ history: () => json({ messages: unanswered, rating: UNRATED, call_open: false }) });
+  render(<Widget boot={{ ...boot, ui_text: { ...boot.ui_text, unavailable_message: "We're closed. Please type." } }} />);
+  await choose("Call");
+  expect(await screen.findByRole("alert")).toHaveTextContent("We're closed. Please type.");
+});
+
+test("a Call whose chat expired returns the Visitor to messaging", async () => {
+  fakeCallApi({ history: () => json({ detail: "This chat has expired." }, 401) });
+  render(<Widget boot={boot} />);
+
+  await choose("Call");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(CALL_UNAVAILABLE);
+  expect(screen.getByLabelText("Message")).toBeInTheDocument();
+});
+
+test("an Agent retired during a Call is shown retired", async () => {
+  const seen = fakeCallApi({ history: () => json({ detail: "This assistant is no longer available." }, 404) });
+  render(<Widget boot={boot} />);
+
+  await choose("Call");
+
+  expect(await screen.findByText("This assistant is no longer available.")).toBeInTheDocument();
+  expect(screen.queryByRole("group", { name: "Call" })).not.toBeInTheDocument();
+  expect(localStorage.getItem("rag-widget:conversation:agt_hr")).toBeNull();
+  // The platform ended the Call with the unavailable turn; the widget only leaves it.
+  expect(seen.map((s) => s.route)).not.toContain("end call");
+});
+
+test("a Call ended while its reply is read back stays ended without an alert", async () => {
+  let readBack: (response: Response) => void = () => undefined;
+  let reads = 0;
+  fakeCallApi({
+    history: () => {
+      reads += 1;
+      if (reads > 1) return json({ messages: spokenMessages, rating: UNRATED, call_open: false });
+      return new Promise<Response>((resolve) => {
+        readBack = resolve;
+      });
+    },
+  });
+  render(<Widget boot={boot} />);
+  await choose("Call");
+  await waitFor(() => {
+    expect(reads).toBe(1);
+  });
+
+  await userEvent.setup().click(screen.getByRole("button", { name: "End call" }));
+  await screen.findByLabelText("Message");
+  readBack(json({ messages: spokenMessages, rating: UNRATED, call_open: false }));
   await after(50);
 
   expect(screen.queryByRole("alert")).not.toBeInTheDocument();

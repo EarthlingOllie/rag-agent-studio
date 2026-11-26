@@ -433,6 +433,9 @@ class WidgetRatingOut(BaseModel):
 class WidgetConversationOut(BaseModel):
     messages: list[WidgetMessageOut]
     rating: WidgetRatingOut
+    # Whether the Conversation has a Call open. A Call the Agent couldn't answer in has ended,
+    # so the widget returns the Visitor to messaging.
+    call_open: bool
 
 
 @widget_router.get(
@@ -480,6 +483,7 @@ async def get_conversation(
         rating=WidgetRatingOut(
             score=resumed.rating.score, prompt_dismissed=resumed.rating.prompt_dismissed
         ),
+        call_open=resumed.call_open,
     )
 
 

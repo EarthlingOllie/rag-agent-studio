@@ -656,39 +656,6 @@ async def test_a_turn_over_the_rate_limit_speaks_the_unavailable_text(
     assert (await resume(visitor, agent["public_id"], token)).json()["messages"] == []
 
 
-async def test_a_turn_for_an_agent_retired_mid_call_is_refused(
-    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, voice: httpx.AsyncClient
-) -> None:
-    agent = await calling_agent(app, owner)
-    token = await conversation_token(visitor, agent["public_id"])
-    call = await started(visitor, agent["public_id"], token)
-    secret = await secret_of(app, agent)
-    async with app.state.sessionmaker() as session:
-        row = await session.get_one(Agent, uuid.UUID(agent["id"]))
-        row.live_version_id = None
-        await session.commit()
-
-    response = await turn(voice, agent["public_id"], secret, call["call_token"], "Hi")
-
-    assert response.status_code == 404
-
-
-async def test_a_turn_without_a_model_to_answer_with_is_unavailable(
-    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, voice: httpx.AsyncClient
-) -> None:
-    agent = await live_agent(owner)  # The Organisation has no Default Model.
-    credential = await add_elevenlabs_credential(owner)
-    await calling_on(owner, agent, credential["id"])
-    token = await conversation_token(visitor, agent["public_id"])
-    call = await started(visitor, agent["public_id"], token)
-
-    response = await turn(
-        voice, agent["public_id"], await secret_of(app, agent), call["call_token"], "Hi"
-    )
-
-    assert (response.status_code, response.json()["detail"]) == (503, UNAVAILABLE)
-
-
 # Ending a Call
 
 

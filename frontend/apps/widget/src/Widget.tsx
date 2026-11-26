@@ -52,6 +52,9 @@ const GENERIC = "Something went wrong. Please try again.";
 
 const MINUTE_MS = 60_000;
 
+/** Why the widget returned to the chat when the Agent couldn't answer in a Call. */
+export const CALL_UNAVAILABLE = "The assistant can't answer right now. You can still send a message.";
+
 /** Why the widget returned to the chat when a Call reached the Maximum Call length. */
 export function callLengthReached(minutes: number): string {
   return `The Call reached its ${String(minutes)}-minute limit. You can still send a message.`;
@@ -335,12 +338,39 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     if (resumed) setMessages(logged(resumed));
   }
 
-  /** Leaves the Call, ends it, and returns to the chat with what was said in the log. */
-  async function hangUp(failure: string | null = null) {
+  /**
+   * After a spoken reply: the log from the API. An Agent that couldn't answer has spoken its
+   * Unavailable text and ended the Call, so the Visitor returns to messaging; a retired one is
+   * shown retired.
+   */
+  async function replied(conversation: string) {
+    let resumed: Resumed | null;
+    try {
+      resumed = await resume(boot, conversation);
+    } catch (failure) {
+      if (failure instanceof ChatError && failure.status === 404) {
+        leave();
+        retire();
+      }
+      return;
+    }
+    // The Visitor ended the Call while its log was read back.
+    if (call.current === null) return;
+    if (resumed) setMessages(logged(resumed));
+    if (!resumed?.call_open) await hangUp(boot.ui_text.unavailable_message ?? CALL_UNAVAILABLE);
+  }
+
+  /** Leaves the Call being held, without ending it. */
+  function leave() {
     clearTimeout(callLimit.current);
     leaveCall.current = null;
     call.current?.end();
     call.current = null;
+  }
+
+  /** Leaves the Call, ends it, and returns to the chat with what was said in the log. */
+  async function hangUp(failure: string | null = null) {
+    leave();
     if (token.current !== null) await endCall(boot, token.current);
     await refreshLog();
     setError(failure);
@@ -370,7 +400,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         onVisitorWords: (words) => {
           setMessages((current) => [...current, { role: "visitor", text: words, citations: [], feedback: null, spoken: true }]);
         },
-        onReply: () => void refreshLog(),
+        onReply: () => void replied(conversation),
         onFailure: (failure) => void hangUp(failure.message),
       });
       call.current = session;

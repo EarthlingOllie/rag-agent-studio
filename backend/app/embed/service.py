@@ -15,7 +15,7 @@ from datetime import UTC, datetime, time, timedelta
 from datetime import date as date_type
 from typing import cast
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import exists, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import audit
@@ -23,7 +23,7 @@ from app.agents import serving
 from app.agents.config import Experience
 from app.agents.models import ORIGIN_MAX, Agent
 from app.agents.service import get_agent
-from app.conversations.models import Conversation, Message, MessageRetrieval
+from app.conversations.models import Call, Conversation, Message, MessageRetrieval
 from app.documents.models import Document
 from app.embed import call_limits
 from app.embed.admission import Admission, Limits, Refusal, utc_date
@@ -553,6 +553,8 @@ class ResumedConversation:
     messages: list[ResumedMessage]
     # The Visitor's Conversation Rating and whether they dismissed the rating prompt.
     rating: RatingState
+    # Whether the Conversation has a Call open.
+    call_open: bool
 
 
 async def resume(
@@ -591,6 +593,13 @@ async def resume(
             for m in messages
         ],
         await rating_state(session, conversation),
+        bool(
+            await session.scalar(
+                select(
+                    exists().where(Call.conversation_id == conversation.id, Call.ended_at.is_(None))
+                )
+            )
+        ),
     )
 
 

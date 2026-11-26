@@ -8,6 +8,7 @@ voice layer listening, taking turns and speaking, and our runtime writing every 
   secret, then a good Call token for an open Call of one of that Agent's Conversations. A turn
   that fails either check is refused before anything is answered.
 - ``end_call`` (the widget, with the Conversation token) ends the Conversation's open Call.
+- ``end_unavailable`` ends a Call whose turn the Agent couldn't answer.
 
 The Call limits (``app.embed.call_limits``) bound both: admission refuses a second Call in the
 Conversation, a third for the IP address and any once the day's Call minutes are spent, and
@@ -142,6 +143,16 @@ async def end_call(
     token."""
     conversation = await service.visitor_conversation(session, signer, public_id, token, now=now)
     await call_limits.end_open_call(session, conversation, now=now, reason=CallEnd.VISITOR)
+    await session.commit()
+
+
+async def end_unavailable(
+    session: AsyncSession, conversation_id: uuid.UUID, *, now: datetime
+) -> None:
+    """Ends the Conversation's open Call because the Agent couldn't answer its turn: the
+    Visitor heard the Unavailable text, and the widget returns them to messaging."""
+    conversation = await session.get_one(Conversation, conversation_id)
+    await call_limits.end_open_call(session, conversation, now=now, reason=CallEnd.UNAVAILABLE)
     await session.commit()
 
 

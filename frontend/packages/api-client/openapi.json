@@ -11313,6 +11313,10 @@
       },
       "WidgetConversationOut": {
         "properties": {
+          "call_open": {
+            "title": "Call Open",
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "$ref": "#/components/schemas/WidgetMessageOut"
@@ -11326,7 +11330,8 @@
         },
         "required": [
           "messages",
-          "rating"
+          "rating",
+          "call_open"
         ],
         "title": "WidgetConversationOut",
         "type": "object"
@@ -25254,16 +25259,6 @@
             },
             "description": "The Call token is invalid or expired, or the Call has ended."
           },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "This assistant is no longer available."
-          },
           "422": {
             "content": {
               "application/json": {
@@ -25273,16 +25268,6 @@
               }
             },
             "description": "Validation Error"
-          },
-          "503": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            },
-            "description": "The Agent's unavailable text: it has no model to answer with."
           }
         },
         "summary": "Chat Completions",
