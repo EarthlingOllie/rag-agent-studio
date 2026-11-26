@@ -6,7 +6,8 @@
 #   3. terraform apply at the tag: new task definitions for the services and the migration task (the services
 #      themselves do not roll on apply; see the ecs module)
 #   4. run the migration task (`alembic upgrade head`) and wait for it; anything but exit 0 stops the deploy here
-#   5. point each service at its new task definition and wait until all of them are stable
+#   5. point each service (the API, both worker pools and Beat) at its new task definition, then wait for each and
+#      report it stable
 #   6. upload the Studio and widget builds and the demo pages (under /demo/) to the static bucket; HTML, embed.js and
 #      the unhashed widget.js no-cache
 #   7. invalidate those paths in CloudFront and wait for the invalidation
@@ -93,19 +94,25 @@ if [ "$exit_code" != 0 ]; then
 fi
 
 # --- 5. Roll the services --------------------------------------------------------------------------------------------
+# Keys such as worker-general are not jq identifiers, so they are looked up with --arg. All services roll at once;
+# each is then waited on and reported on its own (spec 22 story 26).
 services=()
 for key in $(out '.services | keys[]'); do
-  service=$(out ".services.$key")
+  service=$(jq -r --arg k "$key" '.services[$k]' "$work/deploy.json")
+  task_definition=$(jq -r --arg k "$key" '.task_definition_arns[$k]' "$work/deploy.json")
   services+=("$service")
-  step "Rolling $service onto $(out ".task_definition_arns.$key")"
-  aws ecs update-service --cluster "$cluster" --service "$service" --task-definition "$(out ".task_definition_arns.$key")" \
+  step "Rolling $service onto $task_definition"
+  aws ecs update-service --cluster "$cluster" --service "$service" --task-definition "$task_definition" \
     --query service.serviceName --output text >/dev/null
 done
-step "Waiting for ${services[*]} to stabilise"
-if ! aws ecs wait services-stable --cluster "$cluster" --services "${services[@]}"; then
-  echo "::error title=Rollout failed::${services[*]} did not stabilise. The deployment circuit breaker rolls a failing service back; see the services' events and log groups." >&2
-  exit 1
-fi
+for service in "${services[@]}"; do
+  step "Waiting for $service to stabilise"
+  if ! aws ecs wait services-stable --cluster "$cluster" --services "$service"; then
+    echo "::error title=Rollout failed::$service did not stabilise. The deployment circuit breaker rolls a failing service back; see the service's events and log group." >&2
+    exit 1
+  fi
+  echo "$service is stable"
+done
 
 # --- 6. Static assets ------------------------------------------------------------------------------------------------
 bucket=$(out .static_bucket_name)

@@ -53,8 +53,16 @@ def task_env(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) ->
     return _use_task_env(request.param, monkeypatch)
 
 
-def test_the_contract_names_the_api_worker_beat_migration_and_seed_containers() -> None:
-    assert sorted(_containers()) == ["api", "beat", "migrate", "seed", "worker"]
+def test_the_contract_names_the_api_both_worker_pools_beat_migration_and_seed_containers() -> None:
+    # Ticket 22-04: the worker is two pools, each serving its own queue.
+    assert sorted(_containers()) == [
+        "api",
+        "beat",
+        "migrate",
+        "seed",
+        "worker-general",
+        "worker-runs",
+    ]
 
 
 def test_each_container_loads_settings_that_reach_rds_and_elasticache_over_tls(
@@ -109,8 +117,8 @@ def test_each_container_sends_jobs_to_the_terraform_queues_on_aws_sqs(
 
 # The seed task (ticket 10-05) runs the API in process, so it seals the demo credential and
 # uploads the demo Documents as the API does.
-@pytest.mark.parametrize("container", ["api", "worker", "seed"])
-def test_the_api_worker_and_seed_seal_with_kms_and_keep_documents_in_the_bucket(
+@pytest.mark.parametrize("container", ["api", "worker-general", "worker-runs", "seed"])
+def test_the_api_workers_and_seed_seal_with_kms_and_keep_documents_in_the_bucket(
     container: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     task_env = _use_task_env(container, monkeypatch)

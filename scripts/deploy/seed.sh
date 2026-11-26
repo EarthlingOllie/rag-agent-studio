@@ -8,7 +8,7 @@
 # The seed is idempotent: it finds the demo Organisation by its Owner and completes what is missing, so running this
 # again duplicates nothing. --reset erases the demo Organisation (only that one) and seeds it again.
 # The seed task runs the image the last deploy applied, so deploy first (scripts/deploy/deploy.sh): it runs the
-# migrations and starts the worker that ingests the demo Documents.
+# migrations and rolls the general worker pool, which ingests the demo Documents the seed queues on the general queue.
 # Usage: TF_STATE_BUCKET=... AWS_REGION=... scripts/deploy/seed.sh [--reset]
 # Optional: DEPLOY_ROOT (default infra/envs/demo), SEED_WAIT_ROUNDS (default 6 waits of up to ten minutes each).
 set -euo pipefail

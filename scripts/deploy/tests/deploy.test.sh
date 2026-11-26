@@ -39,11 +39,12 @@ deploy_json() {
   jq -n --arg url "$1" '{
     image_tag: "0123abc",
     cluster_name: "studio-demo-ecs",
-    services: {api: "studio-demo-ecs-api", worker: "studio-demo-ecs-worker", beat: "studio-demo-ecs-beat"},
+    services: {api: "studio-demo-ecs-api", "worker-general": "studio-demo-ecs-worker-general", "worker-runs": "studio-demo-ecs-worker-runs", beat: "studio-demo-ecs-beat"},
     task_definition_arns: {
       api: "arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-api:7",
       beat: "arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-beat:7",
-      worker: "arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-worker:7"
+      "worker-general": "arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-worker-general:7",
+      "worker-runs": "arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-worker-runs:7"
     },
     migration_task: {
       task_definition_arn: "arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-migrate:7",
@@ -104,7 +105,7 @@ before $name '^terraform .* apply -input=false -auto-approve -var=image_tag=0123
 before $name '^aws ecs run-task' '^aws ecs wait tasks-stopped --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/0123456789abcdef' || ok=0
 before $name '^aws ecs wait tasks-stopped' '^aws ecs describe-tasks' || ok=0
 before $name '^aws ecs describe-tasks' '^aws ecs update-service' || ok=0
-before $name '^aws ecs update-service' '^aws ecs wait services-stable --cluster studio-demo-ecs --services studio-demo-ecs-api studio-demo-ecs-beat studio-demo-ecs-worker' || ok=0
+before $name '^aws ecs update-service .*--service studio-demo-ecs-worker-runs ' '^aws ecs wait services-stable --cluster studio-demo-ecs --services studio-demo-ecs-api$' || ok=0
 before $name '^aws ecs wait services-stable' '^aws s3 sync' || ok=0
 before $name '^aws s3 sync' '^aws cloudfront create-invalidation' || ok=0
 before $name '^aws cloudfront create-invalidation' '^aws cloudfront wait invalidation-completed --distribution-id E2EXAMPLE0ABCD --id I2J0I21PCUYOIK' || ok=0
@@ -119,10 +120,25 @@ grep -qxF 'aws ecs run-task --cluster studio-demo-ecs --task-definition arn:aws:
 grep -qxF 'aws ecs describe-tasks --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/0123456789abcdef --query tasks[0].containers[?name==`migrate`].exitCode | [0] --output text' <<<"$calls" || { fail $name "describe-tasks call was: $(grep 'describe-tasks' <<<"$calls")"; ok=0; }
 [ $ok = 1 ] && echo "ok   $name"
 
-name=rolls_each_service_onto_its_new_task_definition
+name=rolls_the_api_both_worker_pools_and_beat_onto_their_new_task_definitions
 ok=1
-for svc in api beat worker; do
+rolled=$(grep -c '^aws ecs update-service' <<<"$calls")
+[ "$rolled" = 4 ] || { fail $name "expected 4 update-service calls, got $rolled"; ok=0; }
+for svc in api beat worker-general worker-runs; do
   grep -qxF "aws ecs update-service --cluster studio-demo-ecs --service studio-demo-ecs-$svc --task-definition arn:aws:ecs:eu-west-2:123456789012:task-definition/studio-demo-ecs-$svc:7 --query service.serviceName --output text" <<<"$calls" || { fail $name "no update-service for $svc"; ok=0; }
+done
+[ $ok = 1 ] && echo "ok   $name"
+
+# Ticket 22-04 (spec 22 story 26): every service is rolled before any wait, and each is reported stable on its own.
+name=reports_each_service_as_stable
+ok=1
+waits=$(grep '^aws ecs wait services-stable' <<<"$calls")
+[ "$waits" = "aws ecs wait services-stable --cluster studio-demo-ecs --services studio-demo-ecs-api
+aws ecs wait services-stable --cluster studio-demo-ecs --services studio-demo-ecs-beat
+aws ecs wait services-stable --cluster studio-demo-ecs --services studio-demo-ecs-worker-general
+aws ecs wait services-stable --cluster studio-demo-ecs --services studio-demo-ecs-worker-runs" ] || { fail $name "waits were: $waits"; ok=0; }
+for svc in api beat worker-general worker-runs; do
+  expect_output $name "studio-demo-ecs-$svc is stable" || ok=0
 done
 [ $ok = 1 ] && echo "ok   $name"
 
@@ -212,6 +228,15 @@ expect_status $name 1 || ok=0
 expect_output $name "did not stabilise" || ok=0
 never $name '^aws s3' || ok=0
 never $name '^aws cloudfront' || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+name=a_worker_pool_that_does_not_stabilise_is_named_and_stops_the_deploy
+run "$name" 0123abc STUB_IMAGE_IN_ECR=0 STUB_UNSTABLE_SERVICE=studio-demo-ecs-worker-runs
+ok=1
+expect_status $name 1 || ok=0
+expect_output $name "studio-demo-ecs-worker-runs did not stabilise" || ok=0
+expect_output $name "studio-demo-ecs-worker-general is stable" || ok=0
+never $name '^aws s3' || ok=0
 [ $ok = 1 ] && echo "ok   $name"
 
 name=a_failed_apply_stops_the_deploy

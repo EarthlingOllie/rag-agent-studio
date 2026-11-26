@@ -58,7 +58,7 @@ variable "private_subnet_ids" {
 # --- Image -------------------------------------------------------------------------------------------------------
 
 variable "image_repository_url" {
-  description = "ECR repository URL of the backend image that the API, worker and Beat all run (the ecr module's API repository)."
+  description = "ECR repository URL of the backend image that the API, both worker pools and Beat all run (the ecr module's API repository)."
   type        = string
 
   validation {
@@ -90,20 +90,21 @@ variable "image_tag" {
 # --- Sizing ------------------------------------------------------------------------------------------------------
 
 variable "task_sizes" {
-  description = "Fargate CPU units and memory (MiB) per service. The worker is sized for Docling (spec 09 cost defaults)."
+  description = "Fargate CPU units and memory (MiB) per service (spec 22 sizes). The general pool is sized for Docling converting the largest Document; the runs pool for two Run processes (--concurrency=2) with the local Embedding Model and the Guardrail classifier loaded, which ticket 22-04 measured at about 4.7 GB."
   type = map(object({
     cpu    = number
     memory = number
   }))
   default = {
-    api    = { cpu = 512, memory = 1024 }
-    worker = { cpu = 2048, memory = 8192 }
-    beat   = { cpu = 256, memory = 512 }
+    api              = { cpu = 512, memory = 1024 }
+    "worker-general" = { cpu = 2048, memory = 8192 }
+    "worker-runs"    = { cpu = 1024, memory = 6144 }
+    beat             = { cpu = 256, memory = 512 }
   }
 
   validation {
-    condition     = toset(keys(var.task_sizes)) == toset(["api", "worker", "beat"])
-    error_message = "task_sizes must have exactly the keys api, worker and beat."
+    condition     = toset(keys(var.task_sizes)) == toset(["api", "worker-general", "worker-runs", "beat"])
+    error_message = "task_sizes must have exactly the keys api, worker-general, worker-runs and beat."
   }
 
   # Fargate's allowed CPU and memory pairs: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/fargate-tasks-services.html
@@ -123,13 +124,14 @@ variable "task_sizes" {
 }
 
 variable "desired_counts" {
-  description = "Running task count per service. Fixed counts; autoscaling is out of scope (spec 09). Beat must be 0 or 1: two schedulers would run every periodic task twice."
+  description = "Running task count per service. Fixed counts until autoscaling lands (ticket 22-05). Beat must be 0 or 1: two schedulers would run every periodic task twice."
   type = object({
-    api    = number
-    worker = number
-    beat   = number
+    api            = number
+    worker-general = number
+    worker-runs    = number
+    beat           = number
   })
-  default = { api = 1, worker = 1, beat = 1 }
+  default = { api = 1, "worker-general" = 1, "worker-runs" = 1, beat = 1 }
 
   validation {
     condition     = alltrue([for n in values(var.desired_counts) : n >= 0 && floor(n) == n])
@@ -140,6 +142,12 @@ variable "desired_counts" {
     condition     = var.desired_counts.beat <= 1
     error_message = "desired_counts.beat must be 0 or 1, so periodic tasks are scheduled once."
   }
+}
+
+variable "worker_spot" {
+  description = "Run the general worker pool on Fargate Spot (its jobs restart for free). Set false to move it to regular Fargate, for example during a Spot shortage: ECS does not fall back by itself (spec 22 story 10). The runs pool always uses regular Fargate."
+  type        = bool
+  default     = true
 }
 
 variable "log_retention_days" {
@@ -156,7 +164,7 @@ variable "log_retention_days" {
 # --- Data and keys -----------------------------------------------------------------------------------------------
 
 variable "documents_bucket_arn" {
-  description = "ARN of the Documents bucket (storage module). Only the API and worker may use its objects."
+  description = "ARN of the Documents bucket (storage module). Only the API, the general worker pool and the seed task may use its objects."
   type        = string
 
   validation {
@@ -166,7 +174,7 @@ variable "documents_bucket_arn" {
 }
 
 variable "credentials_key_arn" {
-  description = "KMS key for Provider Credential envelope encryption (ADR-0006). The API seals and opens with it; the worker only opens (decrypts)."
+  description = "KMS key for Provider Credential envelope encryption (ADR-0006). The API seals and opens with it; the worker pools only open (decrypt)."
   type        = string
 
   validation {
@@ -286,7 +294,7 @@ variable "demo_pages" {
 }
 
 variable "studio_url" {
-  description = "The Studio's public HTTPS address (the cdn module's url). The API and worker put it in links in emails."
+  description = "The Studio's public HTTPS address (the cdn module's url). The API and the worker pools put it in links in emails."
   type        = string
 
   validation {

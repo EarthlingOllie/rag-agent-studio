@@ -7,7 +7,11 @@ case "$1 $2" in
   "ecr get-login-password") echo not-a-real-password ;;
   "ecs run-task") echo "${STUB_RUN_TASK_ARN-arn:aws:ecs:eu-west-2:123456789012:task/studio-demo-ecs/0123456789abcdef}" ;;
   "ecs wait")
-    [ "$3" = services-stable ] && exit "${STUB_STABLE_EXIT:-0}"
+    if [ "$3" = services-stable ]; then
+      # STUB_UNSTABLE_SERVICE names one service whose wait gives up; STUB_STABLE_EXIT answers every wait.
+      [ -n "${STUB_UNSTABLE_SERVICE:-}" ] && [ "${*: -1}" = "$STUB_UNSTABLE_SERVICE" ] && exit 255
+      exit "${STUB_STABLE_EXIT:-0}"
+    fi
     # tasks-stopped: the waiter gives up (exit 255) until it has been called STUB_TASK_STOPS_AFTER_WAITS times.
     [ "$(grep -c '^aws ecs wait tasks-stopped' "$STUB_CALLS")" -ge "${STUB_TASK_STOPS_AFTER_WAITS:-1}" ] || exit 255
     exit 0 ;;

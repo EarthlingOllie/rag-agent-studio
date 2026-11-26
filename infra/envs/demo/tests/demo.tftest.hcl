@@ -172,18 +172,36 @@ run "wires_the_compute_module_into_the_data_modules" {
   }
 
   assert {
-    condition     = { for k, r in module.database.admitted_client_security_group_ids : k => r } == { api = module.ecs.service_security_group_ids["api"], worker = module.ecs.service_security_group_ids["worker"], migrate = module.ecs.migration_security_group_id, seed = module.ecs.seed_security_group_id }
-    error_message = "Only the API, the worker, the migration task and the seed task may connect to the database."
+    condition     = { for k, r in module.database.admitted_client_security_group_ids : k => r } == { api = module.ecs.service_security_group_ids["api"], "worker-general" = module.ecs.service_security_group_ids["worker-general"], "worker-runs" = module.ecs.service_security_group_ids["worker-runs"], migrate = module.ecs.migration_security_group_id, seed = module.ecs.seed_security_group_id }
+    error_message = "Only the API, both worker pools, the migration task and the seed task may connect to the database (ticket 22-04)."
   }
 
   assert {
-    condition     = module.cache.admitted_client_security_group_ids == merge(module.ecs.service_security_group_ids, { seed = module.ecs.seed_security_group_id })
-    error_message = "The API, worker, Beat and the seed task may connect to Redis."
+    condition     = keys(module.cache.admitted_client_security_group_ids) == ["api", "beat", "seed", "worker-general", "worker-runs"] && module.cache.admitted_client_security_group_ids == merge(module.ecs.service_security_group_ids, { seed = module.ecs.seed_security_group_id })
+    error_message = "The API, both worker pools, Beat and the seed task may connect to Redis (ticket 22-04)."
   }
 
   assert {
-    condition     = keys(module.ecs.service_names) == ["api", "beat", "worker"] && var.image_tag == "bootstrap"
-    error_message = "The demo must run the three services, at the bootstrap tag until the deploy workflow sets one."
+    condition     = keys(module.ecs.service_names) == ["api", "beat", "worker-general", "worker-runs"] && var.image_tag == "bootstrap"
+    error_message = "The demo must run the four services, at the bootstrap tag until the deploy workflow sets one."
+  }
+
+  assert {
+    condition     = module.ecs.capacity_providers == { api = "FARGATE", beat = "FARGATE", "worker-general" = "FARGATE_SPOT", "worker-runs" = "FARGATE" }
+    error_message = "The demo's general pool must run on Fargate Spot by default (ticket 22-04)."
+  }
+}
+
+run "worker_spot_moves_the_demos_general_pool_to_regular_fargate" {
+  command = plan
+
+  variables {
+    worker_spot = false
+  }
+
+  assert {
+    condition     = alltrue([for p in values(module.ecs.capacity_providers) : p == "FARGATE"])
+    error_message = "worker_spot = false must reach the ecs module, so a Spot shortage is one change away from fixed (spec 22 story 10)."
   }
 }
 
@@ -206,7 +224,9 @@ run "wires_the_queues_into_the_services_settings_and_task_roles" {
   assert {
     condition = alltrue([
       contains(module.ecs.task_role_policies.api.Statement, { Sid = "SendJobsToBothQueues", Effect = "Allow", Action = ["sqs:SendMessage"], Resource = [module.queue.queues.general.arn, module.queue.queues.runs.arn] }),
-      contains(module.ecs.task_role_policies.worker.Statement, { Sid = "SendJobsToBothQueues", Effect = "Allow", Action = ["sqs:SendMessage"], Resource = [module.queue.queues.general.arn, module.queue.queues.runs.arn] }),
+      contains(module.ecs.task_role_policies["worker-general"].Statement, { Sid = "SendJobsToBothQueues", Effect = "Allow", Action = ["sqs:SendMessage"], Resource = [module.queue.queues.general.arn, module.queue.queues.runs.arn] }),
+      contains(module.ecs.task_role_policies["worker-general"].Statement, { Sid = "ReceiveJobsFromItsOwnQueue", Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"], Resource = module.queue.queues.general.arn }),
+      contains(module.ecs.task_role_policies["worker-runs"].Statement, { Sid = "ReceiveJobsFromItsOwnQueue", Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"], Resource = module.queue.queues.runs.arn }),
       module.ecs.task_role_policies.beat.Statement[0].Resource == module.queue.queues.general.arn,
     ])
     error_message = "The task roles must name the demo's own queues."
@@ -222,8 +242,8 @@ run "wires_the_cdn_in_front_of_the_static_bucket_and_the_alb" {
   }
 
   assert {
-    condition     = module.ecs.task_environment.api.STUDIO_URL == module.cdn.url && module.ecs.task_environment.worker.STUDIO_URL == module.cdn.url
-    error_message = "The API and worker must put the CloudFront URL in links in emails (STUDIO_URL)."
+    condition     = alltrue([for k in ["api", "worker-general", "worker-runs"] : module.ecs.task_environment[k].STUDIO_URL == module.cdn.url])
+    error_message = "The API and the worker pools must put the CloudFront URL in links in emails (STUDIO_URL)."
   }
 
   assert {
@@ -268,7 +288,7 @@ run "outputs_everything_the_deploy_workflow_needs" {
     condition = output.deploy == {
       image_tag                  = "0123abc"
       cluster_name               = "studio-demo-ecs"
-      services                   = { api = "studio-demo-ecs-api", worker = "studio-demo-ecs-worker", beat = "studio-demo-ecs-beat" }
+      services                   = { api = "studio-demo-ecs-api", "worker-general" = "studio-demo-ecs-worker-general", "worker-runs" = "studio-demo-ecs-worker-runs", beat = "studio-demo-ecs-beat" }
       task_definition_arns       = module.ecs.task_definition_arns
       migration_task             = module.ecs.migration_task
       seed_task                  = module.ecs.seed_task
@@ -290,7 +310,7 @@ run "outputs_everything_the_deploy_workflow_needs" {
   }
 
   assert {
-    condition     = alltrue([for arn in values(output.deploy.task_definition_arns) : arn != null]) && keys(output.deploy.task_definition_arns) == ["api", "beat", "worker"]
+    condition     = alltrue([for arn in values(output.deploy.task_definition_arns) : arn != null]) && keys(output.deploy.task_definition_arns) == ["api", "beat", "worker-general", "worker-runs"]
     error_message = "The deploy output must carry a task definition for each service at the new tag."
   }
 }

@@ -1,15 +1,16 @@
 # Seed in AWS (ticket 10-05): `python -m app.seed`, the command behind `make seed`, as a one-off Fargate task on the
 # backend image. The seed workflow (scripts/deploy/seed.sh) runs it after a deploy, waits for it and prints its log,
 # which holds the demo sign-in details; `--reset` is a command override. The seed runs the API in process and goes
-# through its own services, so it needs what the API needs to create the demo data: Postgres, Redis (ingestion is
-# queued for the worker), the documents bucket and the credentials key. It has its own roles, log group and security
+# through its own services, so it needs what the API needs to create the demo data: Postgres, Redis, the job queues
+# (ingestion is queued for the general worker pool), the documents bucket and the credentials key. It has its own roles, log group and security
 # group, and unlike the API it may not assume customer Bedrock roles. The demo Documents are in the image, at /seed.
 
 locals {
   seed_environment = merge(local.base_environment, local.app_environment)
   seed_secrets     = local.secrets["api"]
 
-  # The API's statements, minus the Bedrock one.
+  # The API's statements, minus the Bedrock one. Sending jobs queues the demo Documents' ingestion through SQS for the
+  # general pool (ticket 22-04).
   seed_task_role_policy = {
     Version = "2012-10-17"
     Statement = concat(local.documents_statements, [
@@ -19,6 +20,7 @@ locals {
         Action   = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"]
         Resource = var.credentials_key_arn
       },
+      local.send_to_both_queues,
     ])
   }
 

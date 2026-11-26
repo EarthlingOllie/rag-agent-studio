@@ -37,3 +37,9 @@ variable "hosted_zone_name" {
   type        = string
   default     = null
 }
+
+variable "worker_spot" {
+  description = "Run the general worker pool on Fargate Spot. Set false to move it to regular Fargate during a Spot shortage; ECS does not fall back by itself (spec 22 story 10)."
+  type        = bool
+  default     = true
+}

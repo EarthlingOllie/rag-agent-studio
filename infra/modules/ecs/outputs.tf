@@ -122,6 +122,11 @@ output "seed_execution_role_policy" {
 }
 
 output "task_environment" {
-  description = "Plain environment variables of each container (api, worker, beat, migrate, seed), keyed by name. Secrets are not included: they are injected by reference to Secrets Manager."
+  description = "Plain environment variables of each container (api, worker-general, worker-runs, beat, migrate, seed), keyed by name. Secrets are not included: they are injected by reference to Secrets Manager."
   value       = merge(local.environment, { migrate = local.migrate_environment, seed = local.seed_environment })
+}
+
+output "capacity_providers" {
+  description = "Capacity provider each service runs on, keyed by service: FARGATE_SPOT for the general worker pool unless worker_spot is false, FARGATE for the rest (ticket 22-04)."
+  value       = local.capacity_providers
 }

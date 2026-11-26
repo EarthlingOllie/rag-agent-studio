@@ -1,6 +1,7 @@
-# Compute module (ticket 09-04): the API, worker and Beat as ECS Fargate services on ARM64 (ADR-0010).
-# All three run the one backend image with different commands. The ALB in front of the API accepts only
-# CloudFront, carrying the secret origin header (ADR-0011).
+# Compute module (ticket 09-04): the API, the two worker pools and Beat as ECS Fargate services on ARM64 (ADR-0010).
+# All four run the one backend image with different commands. The ALB in front of the API accepts only
+# CloudFront, carrying the secret origin header (ADR-0011). Ticket 22-04 split the worker into a general pool on
+# Fargate Spot and a runs pool on regular Fargate, each serving its own queue (ADR-0021).
 locals {
   module_name = "ecs"
   name        = "${var.name_prefix}-${local.module_name}"
@@ -10,13 +11,25 @@ locals {
   image    = "${var.image_repository_url}:${var.image_tag}"
 
   # The same commands as docker-compose.yml, minus the API's `alembic upgrade head`: in AWS, migrations run as
-  # a one-off task before services roll (spec 09, ticket 09-06).
+  # a one-off task before services roll (spec 09, ticket 09-06). Locally one worker serves both queues; here each
+  # pool serves only its own (spec 22 story 39).
+  worker_command = ["celery", "-A", "app.worker.main", "--quiet", "worker", "--loglevel=INFO", "--concurrency=2"]
   commands = {
-    api    = ["python", "-m", "app.serve"]
-    worker = ["celery", "-A", "app.worker.main", "--quiet", "worker", "--loglevel=INFO", "--concurrency=2"]
-    beat   = ["celery", "-A", "app.worker.main", "--quiet", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+    api              = ["python", "-m", "app.serve"]
+    "worker-general" = concat(local.worker_command, ["--queues=${var.queues.general.name}"])
+    "worker-runs"    = concat(local.worker_command, ["--queues=${var.queues.runs.name}"])
+    beat             = ["celery", "-A", "app.worker.main", "--quiet", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
   }
   services = toset(keys(local.commands))
+  workers  = toset(["worker-general", "worker-runs"])
+
+  # Where each service's tasks run: the general pool's jobs restart for free, so it takes Fargate Spot unless
+  # worker_spot is off; the runs pool's jobs are long and paid for, so it stays on regular Fargate (ADR-0021).
+  capacity_providers = { for k in local.services : k => k == "worker-general" && var.worker_spot ? "FARGATE_SPOT" : "FARGATE" }
+
+  # A worker is given two minutes, Fargate's most, between SIGTERM and SIGKILL: a Spot warning is two minutes, and a
+  # short job finishes inside it (spec 22 story 17). The API and Beat keep the default.
+  stop_timeouts = { for k in local.workers : k => { stopTimeout = 120 } }
 
   # Account and region come from the given ARNs, so the policies are fully known at plan time.
   account_id = split(":", var.data_key_arn)[4]
@@ -41,7 +54,7 @@ locals {
     }]
   }
 
-  # Documents: the API uploads, serves and deletes them; the worker reads them for ingestion and purges them.
+  # Documents: the API uploads, serves and deletes them; the general pool reads them for ingestion and purges them.
   documents_statements = [
     {
       Sid      = "DocumentObjects"
@@ -72,7 +85,24 @@ locals {
     Resource = local.queue_arns
   }
 
-  # Each service's policy, or null for none. 22-04 narrows the worker's receive to each pool's own queue.
+  # Ingestion embeds with the Project's provider Embedding Model (ticket 03-09), and Runs call the Agent's model, so
+  # both pools open credential envelopes. They only decrypt: sealing secrets stays with the API.
+  open_credential_envelopes = {
+    Sid      = "OpenProviderCredentialEnvelopes"
+    Effect   = "Allow"
+    Action   = ["kms:Decrypt"]
+    Resource = var.credentials_key_arn
+  }
+
+  # Each pool receives only from its own queue, so it can't take the other pool's jobs (spec 22 story 34).
+  receive_own_queue = { for pool, queue in { "worker-general" = var.queues.general, "worker-runs" = var.queues.runs } : pool => {
+    Sid      = "ReceiveJobsFromItsOwnQueue"
+    Effect   = "Allow"
+    Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"]
+    Resource = queue.arn
+  } }
+
+  # Each service's policy, or null for none.
   task_role_policies = {
     api = {
       Version = "2012-10-17"
@@ -98,26 +128,24 @@ locals {
         local.send_to_both_queues,
       ])
     }
-    worker = {
+    # The general pool ingests, re-embeds and deletes Documents, so it keeps the Documents statements. A job may
+    # queue follow-on work on either queue.
+    "worker-general" = {
       Version = "2012-10-17"
       Statement = concat(local.documents_statements, [
-        {
-          # Ingestion embeds with the Project's provider Embedding Model (ticket 03-09), so the worker opens the
-          # credential's envelope. It only decrypts: sealing secrets stays with the API.
-          Sid      = "OpenProviderCredentialEnvelopes"
-          Effect   = "Allow"
-          Action   = ["kms:Decrypt"]
-          Resource = var.credentials_key_arn
-        },
-        {
-          Sid      = "ReceiveJobsFromBothQueues"
-          Effect   = "Allow"
-          Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"]
-          Resource = local.queue_arns
-        },
-        # A job may queue follow-on work on either queue.
+        local.open_credential_envelopes,
+        local.receive_own_queue["worker-general"],
         local.send_to_both_queues,
       ])
+    }
+    # Evaluation Runs and Suggestion runs read the database and call models; they never touch Documents' objects.
+    "worker-runs" = {
+      Version = "2012-10-17"
+      Statement = [
+        local.open_credential_envelopes,
+        local.receive_own_queue["worker-runs"],
+        local.send_to_both_queues,
+      ]
     }
     # Beat only queues the scheduled jobs, which all go to the general queue: its one AWS permission.
     beat = {
@@ -157,6 +185,19 @@ resource "aws_ecs_cluster" "this" {
   tags = merge(local.tags, { Name = local.name })
 }
 
+# Fargate for the API, Beat and the runs pool; Fargate Spot for the general pool unless worker_spot is off. ECS does
+# not fall back from Spot to regular capacity by itself (spec 22 risks).
+resource "aws_ecs_cluster_capacity_providers" "this" {
+  cluster_name       = aws_ecs_cluster.this.name
+  capacity_providers = ["FARGATE", "FARGATE_SPOT"]
+
+  default_capacity_provider_strategy {
+    capacity_provider = "FARGATE"
+    weight            = 1
+    base              = 0
+  }
+}
+
 # --- Configuration: plain settings as environment variables, secrets by reference to Secrets Manager ---------------
 
 locals {
@@ -189,7 +230,7 @@ locals {
     RUNS_QUEUE_NAME    = var.queues.runs.name
     RUNS_QUEUE_URL     = var.queues.runs.url
   }
-  # What the API and worker need beyond the data stores: Documents in S3, credential envelopes sealed by KMS, and
+  # What the API and the worker pools need beyond the data stores: Documents in S3, credential envelopes sealed by KMS, and
   # the Studio's public address for links in emails.
   app_environment = {
     OBJECT_STORE        = "s3"
@@ -213,24 +254,27 @@ locals {
       BEDROCK_PLATFORM_PRINCIPAL = aws_iam_role.task["api"].arn
       TRUSTED_PROXIES            = local.trusted_proxies
     }, var.demo_pages ? { DEMO_PAGES = "true" } : {})
-    worker = merge(local.base_environment, local.app_environment)
-    beat   = local.base_environment
+    "worker-general" = merge(local.base_environment, local.app_environment)
+    "worker-runs"    = merge(local.base_environment, local.app_environment)
+    beat             = local.base_environment
   }
 
   # Each service gets only the secrets it uses. ECS reads them at task start with the execution role.
   # LOCAL_KEY_WRAPPER_KEY signs widget tokens; every process's settings require it.
   logfire_secret     = var.logfire_token_secret_arn == null ? {} : { LOGFIRE_TOKEN = var.logfire_token_secret_arn }
   key_wrapper_secret = { LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn }
+  worker_secrets = merge({
+    DATABASE_PASSWORD = var.database.password_secret_arn
+    REDIS_AUTH_TOKEN  = var.cache.auth_token_secret_arn
+  }, local.key_wrapper_secret, local.logfire_secret)
   secrets = {
     api = merge({
       DATABASE_PASSWORD = var.database.password_secret_arn
       REDIS_AUTH_TOKEN  = var.cache.auth_token_secret_arn
       SESSION_SECRET    = aws_secretsmanager_secret.platform["session"].arn
     }, local.key_wrapper_secret, local.logfire_secret)
-    worker = merge({
-      DATABASE_PASSWORD = var.database.password_secret_arn
-      REDIS_AUTH_TOKEN  = var.cache.auth_token_secret_arn
-    }, local.key_wrapper_secret, local.logfire_secret)
+    "worker-general" = local.worker_secrets
+    "worker-runs"    = local.worker_secrets
     beat = merge({
       REDIS_AUTH_TOKEN = var.cache.auth_token_secret_arn
     }, local.key_wrapper_secret, local.logfire_secret)
@@ -323,7 +367,7 @@ resource "aws_ecs_task_definition" "this" {
     operating_system_family = "LINUX"
   }
 
-  container_definitions = jsonencode([{
+  container_definitions = jsonencode([merge({
     name                   = each.key
     image                  = local.image
     command                = local.commands[each.key]
@@ -341,7 +385,7 @@ resource "aws_ecs_task_definition" "this" {
         "awslogs-stream-prefix" = each.key
       }
     }
-  }])
+  }, lookup(local.stop_timeouts, each.key, {}))])
 
   # Task-local scratch space for /tmp: the root filesystem is read-only.
   volume {
@@ -492,9 +536,9 @@ resource "aws_security_group" "service" {
 
 locals {
   service_egress = merge(
-    { for k in local.services : "${k}-https" => { service = k, port = 443, cidr = "0.0.0.0/0", security_group = null } },
-    { for k in ["api", "worker"] : "${k}-postgres" => { service = k, port = var.database.port, cidr = null, security_group = var.database.security_group_id } },
-    { for k in local.services : "${k}-redis" => { service = k, port = var.cache.port, cidr = null, security_group = var.cache.security_group_id } },
+    { for k in local.services : "${k}-https" => { service = k, target = "https", port = 443, cidr = "0.0.0.0/0", security_group = null } },
+    { for k in setsubtract(local.services, ["beat"]) : "${k}-postgres" => { service = k, target = "postgres", port = var.database.port, cidr = null, security_group = var.database.security_group_id } },
+    { for k in local.services : "${k}-redis" => { service = k, target = "redis", port = var.cache.port, cidr = null, security_group = var.cache.security_group_id } },
   )
 }
 
@@ -504,7 +548,7 @@ resource "aws_vpc_security_group_egress_rule" "service" {
   for_each = local.service_egress
 
   security_group_id            = aws_security_group.service[each.value.service].id
-  description                  = "${each.value.service} to ${split("-", each.key)[1]}"
+  description                  = "${each.value.service} to ${each.value.target}"
   ip_protocol                  = "tcp"
   from_port                    = each.value.port
   to_port                      = each.value.port
@@ -576,8 +620,12 @@ resource "aws_ecs_service" "this" {
   name            = "${local.name}-${each.key}"
   cluster         = aws_ecs_cluster.this.id
   task_definition = aws_ecs_task_definition.this[each.key].arn
-  launch_type     = "FARGATE"
   desired_count   = var.desired_counts[each.key]
+
+  capacity_provider_strategy {
+    capacity_provider = local.capacity_providers[each.key]
+    weight            = 1
+  }
 
   # Beat is a singleton: stop the old scheduler before starting the new one. The others roll with no gap.
   deployment_maximum_percent         = each.key == "beat" ? 100 : 200
@@ -608,6 +656,9 @@ resource "aws_ecs_service" "this" {
   }
 
   tags = merge(local.tags, { Name = "${local.name}-${each.key}" })
+
+  # The capacity providers must be on the cluster before a service can name one.
+  depends_on = [aws_ecs_cluster_capacity_providers.this]
 
   # An apply at a new image tag registers new task definitions but does not roll the services: the deploy
   # workflow first runs the migration task, then points each service at its new task definition and waits for

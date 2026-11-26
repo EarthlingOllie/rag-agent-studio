@@ -134,17 +134,17 @@ variables {
   }
 }
 
-run "runs_api_worker_and_beat_on_arm64_fargate" {
+run "runs_api_both_worker_pools_and_beat_on_arm64_fargate" {
   command = apply
 
   assert {
-    condition     = keys(aws_ecs_service.this) == ["api", "beat", "worker"]
-    error_message = "There must be exactly three services: api, worker and beat."
+    condition     = keys(aws_ecs_service.this) == ["api", "beat", "worker-general", "worker-runs"]
+    error_message = "There must be exactly four services: api, worker-general, worker-runs and beat (ticket 22-04)."
   }
 
   assert {
-    condition     = alltrue([for k, s in aws_ecs_service.this : s.cluster == aws_ecs_cluster.this.id && s.launch_type == "FARGATE" && s.task_definition == aws_ecs_task_definition.this[k].arn])
-    error_message = "Each service must run its own task definition on Fargate in the module's cluster."
+    condition     = alltrue([for k, s in aws_ecs_service.this : s.cluster == aws_ecs_cluster.this.id && s.task_definition == aws_ecs_task_definition.this[k].arn])
+    error_message = "Each service must run its own task definition in the module's cluster."
   }
 
   assert {
@@ -157,16 +157,82 @@ run "runs_api_worker_and_beat_on_arm64_fargate" {
 
   assert {
     condition = { for k, t in aws_ecs_task_definition.this : k => [t.cpu, t.memory] } == {
-      api    = ["512", "1024"]
-      worker = ["2048", "8192"]
-      beat   = ["256", "512"]
+      api              = ["512", "1024"]
+      "worker-general" = ["2048", "8192"]
+      "worker-runs"    = ["1024", "6144"]
+      beat             = ["256", "512"]
     }
-    error_message = "Task sizes must default to the spec 09 cost defaults (API 0.5 vCPU / 1 GB, worker 2 vCPU / 8 GB)."
+    error_message = "Task sizes must default to API 0.5 vCPU / 1 GB, general pool 2 vCPU / 8 GB (Docling) and runs pool 1 vCPU / 6 GB: ticket 22-04 measured two Run processes with the local Embedding Model and the Guardrail classifier at about 4.7 GB, past the spec's first guess of 4 GB."
   }
 
   assert {
-    condition     = { for k, s in aws_ecs_service.this : k => s.desired_count } == { api = 1, worker = 1, beat = 1 }
-    error_message = "Each service must run one task by default."
+    condition     = { for k, s in aws_ecs_service.this : k => s.desired_count } == { api = 1, "worker-general" = 1, "worker-runs" = 1, beat = 1 }
+    error_message = "Each service must run one task by default (22-05 adds autoscaling)."
+  }
+}
+
+# Ticket 22-04: the general pool's jobs restart for free, so it runs on Fargate Spot; the runs pool's jobs are long and
+# spend an Organisation's money, so it runs on regular Fargate (ADR-0021).
+run "the_cluster_offers_fargate_and_fargate_spot" {
+  command = apply
+
+  assert {
+    condition = (
+      aws_ecs_cluster_capacity_providers.this.cluster_name == aws_ecs_cluster.this.name &&
+      aws_ecs_cluster_capacity_providers.this.capacity_providers == toset(["FARGATE", "FARGATE_SPOT"])
+    )
+    error_message = "The cluster must have the Fargate and Fargate Spot capacity providers."
+  }
+
+  assert {
+    condition     = [for s in aws_ecs_cluster_capacity_providers.this.default_capacity_provider_strategy : [s.capacity_provider, s.weight, s.base]] == [["FARGATE", 1, 0]]
+    error_message = "A service that names no capacity provider must run on regular Fargate."
+  }
+}
+
+run "the_general_pool_runs_on_spot_and_everything_else_on_regular_fargate" {
+  command = plan
+
+  assert {
+    condition = { for k, s in aws_ecs_service.this : k => [for c in s.capacity_provider_strategy : [c.capacity_provider, c.weight]] } == {
+      api              = [["FARGATE", 1]]
+      "worker-general" = [["FARGATE_SPOT", 1]]
+      "worker-runs"    = [["FARGATE", 1]]
+      beat             = [["FARGATE", 1]]
+    }
+    error_message = "worker-general must use Fargate Spot by default; worker-runs, the API and Beat regular Fargate."
+  }
+
+  assert {
+    condition     = output.capacity_providers == { for k, s in aws_ecs_service.this : k => one(s.capacity_provider_strategy).capacity_provider }
+    error_message = "The module must output each service's capacity provider."
+  }
+
+  assert {
+    condition     = alltrue([for s in aws_ecs_service.this : length(s.capacity_provider_strategy) == 1 && contains(aws_ecs_cluster_capacity_providers.this.capacity_providers, one(s.capacity_provider_strategy).capacity_provider)])
+    error_message = "Each service must use exactly one of the cluster's capacity providers."
+  }
+}
+
+run "worker_spot_false_moves_the_general_pool_to_regular_fargate" {
+  command = plan
+
+  variables {
+    worker_spot = false
+  }
+
+  assert {
+    condition     = alltrue([for s in aws_ecs_service.this : [for c in s.capacity_provider_strategy : c.capacity_provider] == ["FARGATE"]])
+    error_message = "With worker_spot false every service, the general pool included, must run on regular Fargate (spec 22 story 10)."
+  }
+}
+
+run "worker_tasks_get_two_minutes_to_stop" {
+  command = plan
+
+  assert {
+    condition     = { for k, t in aws_ecs_task_definition.this : k => lookup(jsondecode(t.container_definitions)[0], "stopTimeout", null) } == { api = null, "worker-general" = 120, "worker-runs" = 120, beat = null }
+    error_message = "Worker containers must have a two-minute stop timeout, so a short job finishes inside a Spot warning (spec 22 story 17); the API and Beat keep the default."
   }
 }
 
@@ -175,24 +241,26 @@ run "task_sizes_and_counts_are_variables" {
 
   variables {
     task_sizes = {
-      api    = { cpu = 1024, memory = 2048 }
-      worker = { cpu = 4096, memory = 16384 }
-      beat   = { cpu = 256, memory = 1024 }
+      api              = { cpu = 1024, memory = 2048 }
+      "worker-general" = { cpu = 4096, memory = 16384 }
+      "worker-runs"    = { cpu = 2048, memory = 6144 }
+      beat             = { cpu = 256, memory = 1024 }
     }
-    desired_counts = { api = 2, worker = 3, beat = 0 }
+    desired_counts = { api = 2, "worker-general" = 3, "worker-runs" = 0, beat = 0 }
   }
 
   assert {
     condition = { for k, t in aws_ecs_task_definition.this : k => [t.cpu, t.memory] } == {
-      api    = ["1024", "2048"]
-      worker = ["4096", "16384"]
-      beat   = ["256", "1024"]
+      api              = ["1024", "2048"]
+      "worker-general" = ["4096", "16384"]
+      "worker-runs"    = ["2048", "6144"]
+      beat             = ["256", "1024"]
     }
     error_message = "task_sizes must reach each task definition."
   }
 
   assert {
-    condition     = { for k, s in aws_ecs_service.this : k => s.desired_count } == { api = 2, worker = 3, beat = 0 }
+    condition     = { for k, s in aws_ecs_service.this : k => s.desired_count } == { api = 2, "worker-general" = 3, "worker-runs" = 0, beat = 0 }
     error_message = "desired_counts must reach each service."
   }
 }
@@ -207,11 +275,12 @@ run "each_service_runs_the_one_backend_image_with_its_own_command" {
 
   assert {
     condition = { for k, t in aws_ecs_task_definition.this : k => jsondecode(t.container_definitions)[0].command } == {
-      api    = ["python", "-m", "app.serve"]
-      worker = ["celery", "-A", "app.worker.main", "--quiet", "worker", "--loglevel=INFO", "--concurrency=2"]
-      beat   = ["celery", "-A", "app.worker.main", "--quiet", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+      api              = ["python", "-m", "app.serve"]
+      "worker-general" = ["celery", "-A", "app.worker.main", "--quiet", "worker", "--loglevel=INFO", "--concurrency=2", "--queues=studio-demo-queue-general"]
+      "worker-runs"    = ["celery", "-A", "app.worker.main", "--quiet", "worker", "--loglevel=INFO", "--concurrency=2", "--queues=studio-demo-queue-runs"]
+      beat             = ["celery", "-A", "app.worker.main", "--quiet", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
     }
-    error_message = "Each service must run its own command, as in docker-compose.yml (migrations run as a separate task)."
+    error_message = "Each service must run its own command, as in docker-compose.yml (migrations run as a separate task); each worker pool serves only its own queue."
   }
 }
 
@@ -219,7 +288,7 @@ run "each_service_has_its_own_least_privilege_task_role" {
   command = apply
 
   assert {
-    condition     = alltrue([for k, t in aws_ecs_task_definition.this : t.task_role_arn == aws_iam_role.task[k].arn]) && { for k, r in aws_iam_role.task : k => r.name } == { api = "studio-demo-ecs-api-task", worker = "studio-demo-ecs-worker-task", beat = "studio-demo-ecs-beat-task" }
+    condition     = alltrue([for k, t in aws_ecs_task_definition.this : t.task_role_arn == aws_iam_role.task[k].arn]) && { for k, r in aws_iam_role.task : k => r.name } == { api = "studio-demo-ecs-api-task", "worker-general" = "studio-demo-ecs-worker-general-task", "worker-runs" = "studio-demo-ecs-worker-runs-task", beat = "studio-demo-ecs-beat-task" }
     error_message = "Each service must run with its own task role."
   }
 
@@ -240,12 +309,12 @@ run "each_service_has_its_own_least_privilege_task_role" {
   }
 
   assert {
-    condition     = keys(aws_iam_role_policy.task) == ["api", "beat", "worker"] && alltrue([for k, p in aws_iam_role_policy.task : p.role == aws_iam_role.task[k].id])
+    condition     = keys(aws_iam_role_policy.task) == ["api", "beat", "worker-general", "worker-runs"] && alltrue([for k, p in aws_iam_role_policy.task : p.role == aws_iam_role.task[k].id])
     error_message = "Each service's task role must have its own policy (Beat's first is sending to the general queue, ticket 22-02)."
   }
 
   assert {
-    condition     = alltrue([for k in ["api", "beat", "worker"] : output.task_role_policies[k] == jsondecode(aws_iam_role_policy.task[k].policy)])
+    condition     = alltrue([for k in ["api", "beat", "worker-general", "worker-runs"] : output.task_role_policies[k] == jsondecode(aws_iam_role_policy.task[k].policy)])
     error_message = "The roles must use the policy documents asserted below."
   }
 }
@@ -306,11 +375,11 @@ run "the_api_reads_documents_uses_the_credentials_key_and_assumes_roles_only_wit
   }
 }
 
-run "the_worker_reads_documents_and_only_decrypts_with_the_credentials_key" {
+run "the_general_pool_reads_documents_decrypts_credentials_and_receives_only_general_jobs" {
   command = plan
 
   assert {
-    condition = output.task_role_policies.worker == {
+    condition = output.task_role_policies["worker-general"] == {
       Version = "2012-10-17"
       Statement = [
         {
@@ -338,13 +407,10 @@ run "the_worker_reads_documents_and_only_decrypts_with_the_credentials_key" {
           Resource = "arn:aws:kms:eu-west-2:123456789012:key/11111111-1111-1111-1111-111111111111"
         },
         {
-          Sid    = "ReceiveJobsFromBothQueues"
-          Effect = "Allow"
-          Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"]
-          Resource = [
-            "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-general",
-            "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs",
-          ]
+          Sid      = "ReceiveJobsFromItsOwnQueue"
+          Effect   = "Allow"
+          Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"]
+          Resource = "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-general"
         },
         {
           Sid    = "SendJobsToBothQueues"
@@ -357,7 +423,41 @@ run "the_worker_reads_documents_and_only_decrypts_with_the_credentials_key" {
         },
       ]
     }
-    error_message = "The worker may use Document objects, only decrypt with the credentials key (to embed with a Project's provider Embedding Model), and receive from and send to both queues until 22-04 splits it per pool."
+    error_message = "The general pool ingests, re-embeds and deletes Documents (their objects and the data key), opens credential envelopes to embed with a Project's provider Embedding Model, receives only from the general queue and sends to both (spec 22 story 34)."
+  }
+}
+
+run "the_runs_pool_only_decrypts_credentials_and_receives_only_runs_jobs" {
+  command = plan
+
+  assert {
+    condition = output.task_role_policies["worker-runs"] == {
+      Version = "2012-10-17"
+      Statement = [
+        {
+          Sid      = "OpenProviderCredentialEnvelopes"
+          Effect   = "Allow"
+          Action   = ["kms:Decrypt"]
+          Resource = "arn:aws:kms:eu-west-2:123456789012:key/11111111-1111-1111-1111-111111111111"
+        },
+        {
+          Sid      = "ReceiveJobsFromItsOwnQueue"
+          Effect   = "Allow"
+          Action   = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"]
+          Resource = "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs"
+        },
+        {
+          Sid    = "SendJobsToBothQueues"
+          Effect = "Allow"
+          Action = ["sqs:SendMessage"]
+          Resource = [
+            "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-general",
+            "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs",
+          ]
+        },
+      ]
+    }
+    error_message = "Evaluation Runs and Suggestion runs never touch Documents' objects: the runs pool only opens credential envelopes (to call the Agent's model), receives only from the runs queue and sends to both (spec 22 story 34)."
   }
 }
 
@@ -474,7 +574,7 @@ run "the_api_trusts_the_alb_and_cloudfront_as_forwarding_proxies" {
   }
 
   assert {
-    condition     = !contains(keys(local.environment.worker), "TRUSTED_PROXIES") && !contains(keys(local.environment.beat), "TRUSTED_PROXIES")
+    condition     = alltrue([for k in ["worker-general", "worker-runs", "beat"] : !contains(keys(local.environment[k]), "TRUSTED_PROXIES")])
     error_message = "Only the API serves requests, so only it is told the trusted proxies."
   }
 }
@@ -538,7 +638,7 @@ run "the_alb_forwards_only_requests_carrying_the_secret_header" {
       length(aws_ecs_service.this["api"].load_balancer) == 1 &&
       one(aws_ecs_service.this["api"].load_balancer).target_group_arn == aws_lb_target_group.api.arn &&
       one(aws_ecs_service.this["api"].load_balancer).container_name == "api" && one(aws_ecs_service.this["api"].load_balancer).container_port == 8000 &&
-      length(aws_ecs_service.this["worker"].load_balancer) == 0 && length(aws_ecs_service.this["beat"].load_balancer) == 0
+      alltrue([for k in ["worker-general", "worker-runs", "beat"] : length(aws_ecs_service.this[k].load_balancer) == 0])
     )
     error_message = "Only the API service sits behind the ALB."
   }
@@ -586,7 +686,12 @@ run "secrets_are_injected_from_secrets_manager_and_never_set_as_plain_values" {
         SESSION_SECRET        = aws_secretsmanager_secret.platform["session"].arn
         LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn
       }
-      worker = {
+      "worker-general" = {
+        DATABASE_PASSWORD     = var.database.password_secret_arn
+        REDIS_AUTH_TOKEN      = var.cache.auth_token_secret_arn
+        LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn
+      }
+      "worker-runs" = {
         DATABASE_PASSWORD     = var.database.password_secret_arn
         REDIS_AUTH_TOKEN      = var.cache.auth_token_secret_arn
         LOCAL_KEY_WRAPPER_KEY = aws_secretsmanager_secret.platform["key-wrapper"].arn
@@ -678,7 +783,7 @@ run "every_service_logs_to_its_own_log_group_with_retention" {
   command = apply
 
   assert {
-    condition     = { for k, g in aws_cloudwatch_log_group.service : k => [g.name, g.retention_in_days] } == { api = ["/ecs/studio-demo-ecs/api", 14], worker = ["/ecs/studio-demo-ecs/worker", 14], beat = ["/ecs/studio-demo-ecs/beat", 14] }
+    condition     = { for k, g in aws_cloudwatch_log_group.service : k => [g.name, g.retention_in_days] } == { api = ["/ecs/studio-demo-ecs/api", 14], "worker-general" = ["/ecs/studio-demo-ecs/worker-general", 14], "worker-runs" = ["/ecs/studio-demo-ecs/worker-runs", 14], beat = ["/ecs/studio-demo-ecs/beat", 14] }
     error_message = "Each service must have its own log group, kept for 14 days by default."
   }
 
@@ -727,7 +832,7 @@ run "each_service_has_its_own_least_privilege_execution_role" {
   assert {
     condition = (
       alltrue([for k, t in aws_ecs_task_definition.this : t.execution_role_arn == aws_iam_role.execution[k].arn]) &&
-      { for k, r in aws_iam_role.execution : k => r.name } == { api = "studio-demo-ecs-api-execution", worker = "studio-demo-ecs-worker-execution", beat = "studio-demo-ecs-beat-execution" } &&
+      { for k, r in aws_iam_role.execution : k => r.name } == { api = "studio-demo-ecs-api-execution", "worker-general" = "studio-demo-ecs-worker-general-execution", "worker-runs" = "studio-demo-ecs-worker-runs-execution", beat = "studio-demo-ecs-beat-execution" } &&
       alltrue([for r in aws_iam_role.execution : r.assume_role_policy == aws_iam_role.task["api"].assume_role_policy])
     )
     error_message = "Each service must start with its own execution role, assumable only by ECS tasks in this account."
@@ -789,12 +894,12 @@ run "each_service_has_its_own_least_privilege_execution_role" {
   }
 
   assert {
-    condition = output.execution_role_policies.worker.Statement[3].Resource == [
+    condition = alltrue([for k in ["worker-general", "worker-runs"] : output.execution_role_policies[k].Statement[3].Resource == [
       "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-database/master-password-AAAAAA",
       "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-ecs/key-wrapper-DdDdDd",
       "arn:aws:secretsmanager:eu-west-2:123456789012:secret:studio-demo-cache/auth-token-BBBBBB",
-    ]
-    error_message = "The worker's execution role may read exactly the database password, local key wrapper key and Redis token."
+    ]])
+    error_message = "Each worker pool's execution role may read exactly the database password, local key wrapper key and Redis token."
   }
 
   assert {
@@ -810,16 +915,36 @@ run "services_reach_only_their_data_stores_and_https" {
 
   assert {
     condition = jsonencode({ for k, r in aws_vpc_security_group_egress_rule.service : k => [r.security_group_id, r.ip_protocol, r.from_port, r.to_port, r.cidr_ipv4, r.referenced_security_group_id] }) == jsonencode({
-      "api-https"       = [aws_security_group.service["api"].id, "tcp", 443, 443, "0.0.0.0/0", null]
-      "api-postgres"    = [aws_security_group.service["api"].id, "tcp", 5432, 5432, null, "sg-0database00000001"]
-      "api-redis"       = [aws_security_group.service["api"].id, "tcp", 6379, 6379, null, "sg-0cache00000000001"]
-      "worker-https"    = [aws_security_group.service["worker"].id, "tcp", 443, 443, "0.0.0.0/0", null]
-      "worker-postgres" = [aws_security_group.service["worker"].id, "tcp", 5432, 5432, null, "sg-0database00000001"]
-      "worker-redis"    = [aws_security_group.service["worker"].id, "tcp", 6379, 6379, null, "sg-0cache00000000001"]
-      "beat-https"      = [aws_security_group.service["beat"].id, "tcp", 443, 443, "0.0.0.0/0", null]
-      "beat-redis"      = [aws_security_group.service["beat"].id, "tcp", 6379, 6379, null, "sg-0cache00000000001"]
+      "api-https"               = [aws_security_group.service["api"].id, "tcp", 443, 443, "0.0.0.0/0", null]
+      "api-postgres"            = [aws_security_group.service["api"].id, "tcp", 5432, 5432, null, "sg-0database00000001"]
+      "api-redis"               = [aws_security_group.service["api"].id, "tcp", 6379, 6379, null, "sg-0cache00000000001"]
+      "beat-https"              = [aws_security_group.service["beat"].id, "tcp", 443, 443, "0.0.0.0/0", null]
+      "beat-redis"              = [aws_security_group.service["beat"].id, "tcp", 6379, 6379, null, "sg-0cache00000000001"]
+      "worker-general-https"    = [aws_security_group.service["worker-general"].id, "tcp", 443, 443, "0.0.0.0/0", null]
+      "worker-general-postgres" = [aws_security_group.service["worker-general"].id, "tcp", 5432, 5432, null, "sg-0database00000001"]
+      "worker-general-redis"    = [aws_security_group.service["worker-general"].id, "tcp", 6379, 6379, null, "sg-0cache00000000001"]
+      "worker-runs-https"       = [aws_security_group.service["worker-runs"].id, "tcp", 443, 443, "0.0.0.0/0", null]
+      "worker-runs-postgres"    = [aws_security_group.service["worker-runs"].id, "tcp", 5432, 5432, null, "sg-0database00000001"]
+      "worker-runs-redis"       = [aws_security_group.service["worker-runs"].id, "tcp", 6379, 6379, null, "sg-0cache00000000001"]
     })
     error_message = "Services may reach HTTPS (AWS APIs and model providers), and only the data stores they use."
+  }
+
+  assert {
+    condition = { for k, r in aws_vpc_security_group_egress_rule.service : k => r.description } == {
+      "api-https"               = "api to https"
+      "api-postgres"            = "api to postgres"
+      "api-redis"               = "api to redis"
+      "beat-https"              = "beat to https"
+      "beat-redis"              = "beat to redis"
+      "worker-general-https"    = "worker-general to https"
+      "worker-general-postgres" = "worker-general to postgres"
+      "worker-general-redis"    = "worker-general to redis"
+      "worker-runs-https"       = "worker-runs to https"
+      "worker-runs-postgres"    = "worker-runs to postgres"
+      "worker-runs-redis"       = "worker-runs to redis"
+    }
+    error_message = "Each egress rule must say which service reaches what."
   }
 
   assert {
@@ -852,8 +977,8 @@ run "deployments_roll_back_and_beat_never_runs_twice" {
   }
 
   assert {
-    condition     = alltrue([for k in ["api", "worker"] : aws_ecs_service.this[k].deployment_maximum_percent == 200 && aws_ecs_service.this[k].deployment_minimum_healthy_percent == 100])
-    error_message = "API and worker deployments must start new tasks before stopping old ones."
+    condition     = alltrue([for k in ["api", "worker-general", "worker-runs"] : aws_ecs_service.this[k].deployment_maximum_percent == 200 && aws_ecs_service.this[k].deployment_minimum_healthy_percent == 100])
+    error_message = "API and worker pool deployments must start new tasks before stopping old ones."
   }
 
   assert {
@@ -871,7 +996,7 @@ run "outputs_the_cluster_services_and_the_bedrock_trust_principal" {
   }
 
   assert {
-    condition     = output.service_names == { api = "studio-demo-ecs-api", worker = "studio-demo-ecs-worker", beat = "studio-demo-ecs-beat" }
+    condition     = output.service_names == { api = "studio-demo-ecs-api", "worker-general" = "studio-demo-ecs-worker-general", "worker-runs" = "studio-demo-ecs-worker-runs", beat = "studio-demo-ecs-beat" }
     error_message = "The module must output each service name, for the deploy workflow to wait on."
   }
 
@@ -917,9 +1042,10 @@ run "rejects_a_cpu_and_memory_pair_fargate_does_not_offer" {
 
   variables {
     task_sizes = {
-      api    = { cpu = 512, memory = 512 }
-      worker = { cpu = 2048, memory = 8192 }
-      beat   = { cpu = 256, memory = 512 }
+      api              = { cpu = 512, memory = 512 }
+      "worker-general" = { cpu = 2048, memory = 8192 }
+      "worker-runs"    = { cpu = 1024, memory = 4096 }
+      beat             = { cpu = 256, memory = 512 }
     }
   }
 
@@ -931,9 +1057,10 @@ run "rejects_an_unknown_cpu_value" {
 
   variables {
     task_sizes = {
-      api    = { cpu = 300, memory = 1024 }
-      worker = { cpu = 2048, memory = 8192 }
-      beat   = { cpu = 256, memory = 512 }
+      api              = { cpu = 300, memory = 1024 }
+      "worker-general" = { cpu = 2048, memory = 8192 }
+      "worker-runs"    = { cpu = 1024, memory = 4096 }
+      beat             = { cpu = 256, memory = 512 }
     }
   }
 
@@ -945,14 +1072,15 @@ run "accepts_every_fargate_cpu_size" {
 
   variables {
     task_sizes = {
-      api    = { cpu = 1024, memory = 8192 }
-      worker = { cpu = 16384, memory = 122880 }
-      beat   = { cpu = 8192, memory = 61440 }
+      api              = { cpu = 1024, memory = 8192 }
+      "worker-general" = { cpu = 16384, memory = 122880 }
+      "worker-runs"    = { cpu = 512, memory = 4096 }
+      beat             = { cpu = 8192, memory = 61440 }
     }
   }
 
   assert {
-    condition     = aws_ecs_task_definition.this["worker"].cpu == "16384" && aws_ecs_task_definition.this["beat"].memory == "61440"
+    condition     = aws_ecs_task_definition.this["worker-general"].cpu == "16384" && aws_ecs_task_definition.this["beat"].memory == "61440"
     error_message = "The largest Fargate sizes must be accepted."
   }
 }
@@ -962,9 +1090,10 @@ run "accepts_4_vcpu_tasks" {
 
   variables {
     task_sizes = {
-      api    = { cpu = 4096, memory = 30720 }
-      worker = { cpu = 2048, memory = 16384 }
-      beat   = { cpu = 256, memory = 2048 }
+      api              = { cpu = 4096, memory = 30720 }
+      "worker-general" = { cpu = 2048, memory = 16384 }
+      "worker-runs"    = { cpu = 1024, memory = 8192 }
+      beat             = { cpu = 256, memory = 2048 }
     }
   }
 
@@ -979,8 +1108,9 @@ run "rejects_a_missing_service_size" {
 
   variables {
     task_sizes = {
-      api    = { cpu = 512, memory = 1024 }
-      worker = { cpu = 2048, memory = 8192 }
+      api              = { cpu = 512, memory = 1024 }
+      "worker-general" = { cpu = 2048, memory = 8192 }
+      beat             = { cpu = 256, memory = 512 }
     }
   }
 
@@ -991,7 +1121,7 @@ run "rejects_two_beats" {
   command = plan
 
   variables {
-    desired_counts = { api = 1, worker = 1, beat = 2 }
+    desired_counts = { api = 1, "worker-general" = 1, "worker-runs" = 1, beat = 2 }
   }
 
   expect_failures = [var.desired_counts]
@@ -1001,7 +1131,7 @@ run "rejects_a_negative_count" {
   command = plan
 
   variables {
-    desired_counts = { api = -1, worker = 1, beat = 1 }
+    desired_counts = { api = 1, "worker-general" = 1, "worker-runs" = -1, beat = 1 }
   }
 
   expect_failures = [var.desired_counts]
@@ -1284,7 +1414,7 @@ run "outputs_how_to_run_the_migration_task_and_each_service_task_definition" {
   }
 
   assert {
-    condition     = output.task_definition_arns == { for k, t in aws_ecs_task_definition.this : k => t.arn } && keys(output.task_definition_arns) == ["api", "beat", "worker"]
+    condition     = output.task_definition_arns == { for k, t in aws_ecs_task_definition.this : k => t.arn } && keys(output.task_definition_arns) == ["api", "beat", "worker-general", "worker-runs"]
     error_message = "The deploy workflow rolls each service onto its task definition at the new tag."
   }
 
@@ -1365,7 +1495,7 @@ run "demo_pages_turn_on_the_apis_demo_routes_only" {
   assert {
     condition = { for k, t in aws_ecs_task_definition.this : k => contains(
       [for e in jsondecode(t.container_definitions)[0].environment : "${e.name}=${e.value}"], "DEMO_PAGES=true"
-    ) } == { api = true, beat = false, worker = false }
+    ) } == { api = true, beat = false, "worker-general" = false, "worker-runs" = false }
     error_message = "demo_pages must set DEMO_PAGES=true on the API only (ticket 10-03); without it no container has it (task-settings.json)."
   }
 
@@ -1470,9 +1600,18 @@ run "the_seed_task_has_its_own_roles_with_the_apis_data_access_and_no_bedrock" {
           Action   = ["kms:Encrypt", "kms:Decrypt", "kms:GenerateDataKey"]
           Resource = "arn:aws:kms:eu-west-2:123456789012:key/11111111-1111-1111-1111-111111111111"
         },
+        {
+          Sid    = "SendJobsToBothQueues"
+          Effect = "Allow"
+          Action = ["sqs:SendMessage"]
+          Resource = [
+            "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-general",
+            "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs",
+          ]
+        },
       ]
     }
-    error_message = "The seed uploads the demo Documents (and erases them on --reset) and seals the demo credential, as the API does; it never assumes customer Bedrock roles."
+    error_message = "The seed uploads the demo Documents (and erases them on --reset), seals the demo credential and queues the demo Documents' ingestion for the general pool, as the API does; it never assumes customer Bedrock roles."
   }
 
   assert {
