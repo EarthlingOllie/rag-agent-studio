@@ -24,6 +24,9 @@ One spec per delivery slice in [`docs/plan.md`](../plan.md), split into tickets 
 | 18 | [Verdict review](./18-verdict-review-spec.md) |
 | 19 | [Judging guidance](./19-judging-guidance-spec.md) |
 | 20 | [Calls](./20-calls-spec.md) |
+| 21 | [Job reliability](./21-job-reliability-spec.md) |
+| 22 | [Lean, scalable infrastructure](./22-lean-scalable-infrastructure-spec.md) |
+| 23 | [Rehearsing the AWS deployment on Floci](./23-floci-rehearsal-spec.md) |
 
 ## Shared test seams
 
@@ -32,7 +35,7 @@ Every spec tests at the **highest seam available** and uses as few seams as poss
 ### Backend
 
 - **API seam** (the primary one): tests drive the FastAPI application through an in-process async HTTP client, exactly as the Studio or widget would. They use real Postgres with pgvector and real Redis (service containers in CI, `docker compose` locally). Assertions are about HTTP responses and about state that can be observed back through the API. Tests don't reach into tables unless the behaviour has no API surface, such as a purge job.
-- **Task seam:** Celery tasks run eagerly in tests and are triggered through the API action that enqueues them (for example, uploading a Document). Beat jobs are called directly as tasks.
+- **Task seam:** Celery tasks run eagerly in tests and are triggered through the API action that enqueues them (for example, uploading a Document). Beat jobs are called directly as tasks. A worker dying mid-job is simulated by a hook on the adapter fakes that aborts the job without running its error handling; the sweeper is then called directly (spec 21).
 - **Adapter fakes:** external systems sit behind a small set of ports. Each port has one production adapter and one deterministic fake, selected by settings or dependency overrides. These are the *only* things tests fake:
 
 | Port | Production adapter | Test fake |
@@ -47,6 +50,8 @@ Every spec tests at the **highest seam available** and uses as few seams as poss
 | Mailer | SES | In-memory outbox; Mailpit in `docker compose` |
 | Clock | System clock | Controllable clock |
 | Voice layer | ElevenLabs Agents | Scripted fake: a Call with no audio, whose turns the test drives |
+| Job publisher | Celery (Redis; SQS from spec 22) | Fake that records what was sent and can lose or hold a message |
+| Scale-in protection | ECS task protection | Fake that records protect, renew and release |
 
 - **Live suite:** tests marked `live` call real providers and real Docling. They run nightly and on demand, outside the coverage gate.
 
