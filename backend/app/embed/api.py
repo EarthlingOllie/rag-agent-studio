@@ -27,9 +27,11 @@ from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from app.agents.api import NOT_FOUND_RESPONSE, ClockDep, not_found
 from app.agents.models import (
+    CALL_MINUTES_BUDGET_MAX,
     CONVERSATION_RATE_MAX,
     IP_RATE_MAX,
     LIVE_SAMPLE_RATE_MAX,
+    MAX_CALL_MINUTES_MAX,
     ORIGIN_MAX,
     SPOKEN_GREETING_MAX,
     TOKEN_BUDGET_MAX,
@@ -43,7 +45,7 @@ from app.auth.api import Db, ErrorResponse
 from app.core.client_ip import request_ip
 from app.core.settings import Settings
 from app.documents.ports import IngestionPorts
-from app.embed import service
+from app.embed import call_limits, service
 from app.embed.admission import Admission, Refusal
 from app.embed.call_settings import CallSettingsChange, CallSettingsError
 from app.embed.tokens import TokenSigner
@@ -516,6 +518,8 @@ ConversationRate = Annotated[int, Field(ge=1, le=CONVERSATION_RATE_MAX)]
 IpRate = Annotated[int, Field(ge=1, le=IP_RATE_MAX)]
 TokenBudget = Annotated[int, Field(ge=1, le=TOKEN_BUDGET_MAX)]
 LiveSampleRate = Annotated[int, Field(ge=0, le=LIVE_SAMPLE_RATE_MAX, strict=True)]
+MaxCallMinutes = Annotated[int, Field(ge=1, le=MAX_CALL_MINUTES_MAX)]
+CallMinutesBudget = Annotated[int, Field(ge=1, le=CALL_MINUTES_BUDGET_MAX)]
 VoiceId = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=VOICE_ID_MAX)
 ]
@@ -549,6 +553,13 @@ class OperationalSettingsOut(BaseModel):
     call_voice_id: str | None
     # What the Agent says when a Call opens a new Conversation; empty says nothing.
     spoken_greeting: str
+    # The Maximum Call length, in minutes (10 by default): the platform ends a Call that long
+    # after it started.
+    max_call_minutes: int
+    # The Call minutes budget: how many minutes of Calls the Agent's Visitors may use per UTC
+    # date (60 by default). Once the day's minutes reach it, Calls are refused with the
+    # unavailable text and Visitors are offered messaging. The Playground doesn't count.
+    call_minutes_budget: int
 
 
 class OperationalSettingsChange(BaseModel):
@@ -569,6 +580,8 @@ class OperationalSettingsChange(BaseModel):
     call_voice_id: VoiceId | None = None
     # Null or blank: no spoken greeting.
     spoken_greeting: SpokenGreeting | None = None
+    max_call_minutes: MaxCallMinutes | None = None
+    call_minutes_budget: CallMinutesBudget | None = None
 
     @field_validator("conversation_messages_per_minute", "ip_messages_per_minute", mode="before")
     @classmethod
@@ -584,6 +597,14 @@ class OperationalSettingsChange(BaseModel):
         # Leaving the budget out keeps it; there is no "no budget".
         if value is None:
             raise ValueError("The Token Budget must be a whole number of tokens.")
+        return value
+
+    @field_validator("max_call_minutes", "call_minutes_budget", mode="before")
+    @classmethod
+    def _a_call_limit_is_a_number(cls, value: object) -> object:
+        # Leaving a limit out keeps it; there is no "no limit".
+        if value is None:
+            raise ValueError("A Call limit must be a whole number of minutes.")
         return value
 
     @field_validator("live_sample_rate", mode="before")
@@ -609,6 +630,8 @@ def _out(found: service.OperationalSettings) -> OperationalSettingsOut:
         else uuid.UUID(found.call_credential_id),
         call_voice_id=found.call_voice_id,
         spoken_greeting=found.spoken_greeting,
+        max_call_minutes=found.max_call_minutes,
+        call_minutes_budget=found.call_minutes_budget,
     )
 
 
@@ -669,6 +692,8 @@ async def change_operational_settings(
             ip_messages_per_minute=body.ip_messages_per_minute,
             daily_token_budget=body.daily_token_budget,
             live_sample_rate=body.live_sample_rate,
+            max_call_minutes=body.max_call_minutes,
+            call_minutes_budget=body.call_minutes_budget,
             call=CallSettingsChange(
                 calls_enabled=body.calls_enabled,
                 call_credential_id=body.call_credential_id,
@@ -751,6 +776,38 @@ async def get_token_usage(
         date=found.date,
         tokens_used=found.tokens_used,
         daily_token_budget=found.daily_token_budget,
+        exhausted=found.exhausted,
+        resets_at=found.resets_at,
+    )
+
+
+class CallMinutesOut(BaseModel):
+    # The UTC date counted: today's.
+    date: date
+    # Minutes of the Agent's Visitors' Calls that ended today, each rounded up. The Playground
+    # doesn't count.
+    minutes_used: int
+    call_minutes_budget: int
+    # Whether today's budget is spent, so Calls are refused and Visitors offered messaging.
+    exhausted: bool
+    # Midnight UTC, when a new day's counter starts.
+    resets_at: datetime
+
+
+@settings_router.get("/call-minutes", operation_id="getCallMinutes", responses=NOT_FOUND_RESPONSE)
+async def get_call_minutes(
+    project_id: uuid.UUID, agent_id: uuid.UUID, scope: Scope, db: Db, clock: ClockDep
+) -> CallMinutesOut:
+    """Today's (UTC) Call minutes against the Agent's Call minutes budget, for the Studio's
+    meter."""
+    try:
+        found = await call_limits.usage(db, scope, project_id, agent_id, now=clock.now())
+    except (ProjectNotFoundError, AgentNotFoundError):
+        raise not_found() from None
+    return CallMinutesOut(
+        date=found.date,
+        minutes_used=found.minutes_used,
+        call_minutes_budget=found.call_minutes_budget,
         exhausted=found.exhausted,
         resets_at=found.resets_at,
     )

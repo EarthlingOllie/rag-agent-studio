@@ -50,6 +50,13 @@ type Phase = "loading" | "chat" | "call" | "ending" | "ended" | "retired";
 
 const GENERIC = "Something went wrong. Please try again.";
 
+const MINUTE_MS = 60_000;
+
+/** Why the widget returned to the chat when a Call reached the Maximum Call length. */
+export function callLengthReached(minutes: number): string {
+  return `The Call reached its ${String(minutes)}-minute limit. You can still send a message.`;
+}
+
 /** What a Call view says the Call is doing. */
 function callState(mode: CallMode | "connecting", muted: boolean, name: string): string {
   if (mode === "connecting") return "Connecting your call…";
@@ -161,6 +168,8 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   const [callMode, setCallMode] = useState<CallMode | "connecting">("connecting");
   const [muted, setMuted] = useState(false);
   const call = useRef<CallSession | null>(null);
+  // Ends the Call when it reaches the Maximum Call length, as the platform does.
+  const callLimit = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const root = useRef<HTMLDivElement | null>(null);
   const opened = useRef(false);
   const focusInput = useRef(false);
@@ -168,6 +177,14 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   function messageBox() {
     return root.current?.querySelector<HTMLInputElement>('input[name="message"], .choice button');
   }
+
+  // A Call's limit timer doesn't outlive the widget.
+  useEffect(
+    () => () => {
+      clearTimeout(callLimit.current);
+    },
+    [],
+  );
 
   useEffect(() => {
     const target = hostOrigin(host);
@@ -312,6 +329,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
 
   /** Leaves the Call, ends it, and returns to the chat with what was said in the log. */
   async function hangUp(failure: string | null = null) {
+    clearTimeout(callLimit.current);
     call.current?.end();
     call.current = null;
     if (token.current !== null) await endCall(boot, token.current);
@@ -341,6 +359,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         onReply: () => void refreshLog(),
         onFailure: (failure) => void hangUp(failure.message),
       });
+      callLimit.current = setTimeout(() => void hangUp(callLengthReached(started.max_call_minutes)), started.max_call_minutes * MINUTE_MS);
     } catch (failure) {
       if (failure instanceof ChatError && failure.status === 404) {
         retire();

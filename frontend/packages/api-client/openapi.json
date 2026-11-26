@@ -117,6 +117,10 @@
             "title": "Budget Exhausted",
             "type": "boolean"
           },
+          "call_budget_exhausted": {
+            "title": "Call Budget Exhausted",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -184,6 +188,7 @@
           "live_version",
           "has_unpublished_changes",
           "budget_exhausted",
+          "call_budget_exhausted",
           "block_rate_alert",
           "live_score_drop_alert"
         ],
@@ -866,6 +871,41 @@
         "title": "CallJoinOut",
         "type": "object"
       },
+      "CallMinutesOut": {
+        "properties": {
+          "call_minutes_budget": {
+            "title": "Call Minutes Budget",
+            "type": "integer"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "exhausted": {
+            "title": "Exhausted",
+            "type": "boolean"
+          },
+          "minutes_used": {
+            "title": "Minutes Used",
+            "type": "integer"
+          },
+          "resets_at": {
+            "format": "date-time",
+            "title": "Resets At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "minutes_used",
+          "call_minutes_budget",
+          "exhausted",
+          "resets_at"
+        ],
+        "title": "CallMinutesOut",
+        "type": "object"
+      },
       "CallRefusedOut": {
         "properties": {
           "detail": {
@@ -876,6 +916,9 @@
             "enum": [
               "rate_limited",
               "budget_exhausted",
+              "call_open",
+              "too_many_calls",
+              "call_minutes_exhausted",
               "voice_unavailable"
             ],
             "title": "Reason",
@@ -6277,6 +6320,19 @@
             ],
             "title": "Call Credential Id"
           },
+          "call_minutes_budget": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Minutes Budget"
+          },
           "call_voice_id": {
             "anyOf": [
               {
@@ -6353,6 +6409,19 @@
             ],
             "title": "Live Sample Rate"
           },
+          "max_call_minutes": {
+            "anyOf": [
+              {
+                "maximum": 60.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Call Minutes"
+          },
           "spoken_greeting": {
             "anyOf": [
               {
@@ -6402,6 +6471,10 @@
             ],
             "title": "Call Credential Id"
           },
+          "call_minutes_budget": {
+            "title": "Call Minutes Budget",
+            "type": "integer"
+          },
           "call_voice_id": {
             "anyOf": [
               {
@@ -6433,6 +6506,10 @@
             "title": "Live Sample Rate",
             "type": "integer"
           },
+          "max_call_minutes": {
+            "title": "Max Call Minutes",
+            "type": "integer"
+          },
           "spoken_greeting": {
             "title": "Spoken Greeting",
             "type": "string"
@@ -6452,7 +6529,9 @@
           "calls_enabled",
           "call_credential_id",
           "call_voice_id",
-          "spoken_greeting"
+          "spoken_greeting",
+          "max_call_minutes",
+          "call_minutes_budget"
         ],
         "title": "OperationalSettingsOut",
         "type": "object"
@@ -8777,12 +8856,17 @@
           },
           "join": {
             "$ref": "#/components/schemas/CallJoinOut"
+          },
+          "max_call_minutes": {
+            "title": "Max Call Minutes",
+            "type": "integer"
           }
         },
         "required": [
           "call_id",
           "call_token",
-          "join"
+          "join",
+          "max_call_minutes"
         ],
         "title": "StartedCallOut",
         "type": "object"
@@ -15849,6 +15933,80 @@
         "summary": "Archive Agent",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/call-minutes": {
+      "get": {
+        "description": "Today's (UTC) Call minutes against the Agent's Call minutes budget, for the Studio's\nmeter.",
+        "operationId": "getCallMinutes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallMinutesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Call Minutes",
+        "tags": [
+          "embed"
         ]
       }
     },
@@ -24661,7 +24819,7 @@
     },
     "/api/widget/agents/{public_id}/conversation/calls": {
       "post": {
-        "description": "Starts a Call in the token's Conversation with the Agent's Live Version, which the Call\nrecords. Admission control runs first, as for a message (the rate limits and the Token\nBudget; the start counts against the rate limits): a refusal is a 503 with the Agent's\nunavailable text and the reason, and so is a voice layer that can't start the Call; nothing\nis recorded then. An Agent with calling off refuses with a 409.",
+        "description": "Starts a Call in the token's Conversation with the Agent's Live Version, which the Call\nrecords. Admission control runs first, as for a message (the rate limits and the Token\nBudget; the start counts against the rate limits), then the Call limits (one Call at a time\nin a Conversation, two at once for an IP address with the Agent, the day's Call minutes\nbudget): a refusal is a 503 with the Agent's unavailable text and the reason, and so is a\nvoice layer that can't start the Call; nothing is recorded then. The first refusal of a day\nfor the Call minutes budget raises the Agent's alert and emails its Owners. An Agent with\ncalling off refuses with a 409.",
         "operationId": "startWidgetCall",
         "parameters": [
           {
@@ -24756,7 +24914,7 @@
     },
     "/api/widget/agents/{public_id}/conversation/calls/current": {
       "delete": {
-        "description": "Ends the token's Conversation's open Call and records when it ended; with no Call open,\nnothing changes. What was said stays in the Conversation as Spoken Messages.",
+        "description": "Ends the token's Conversation's open Call, recording when it ended and adding its minutes\n(rounded up) to the Agent's Call minutes for the day; with no Call open, nothing changes.\nWhat was said stays in the Conversation as Spoken Messages.",
         "operationId": "endWidgetCall",
         "parameters": [
           {

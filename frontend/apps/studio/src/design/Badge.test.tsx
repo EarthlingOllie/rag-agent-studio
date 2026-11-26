@@ -10,6 +10,7 @@ it.each([
   ["archived", "Archived"],
   ["instructionsBehind", "Instructions behind"],
   ["budgetSpent", "Budget spent"],
+  ["callMinutesSpent", "Call minutes spent"],
   ["blocked", "Blocked by guardrail"],
   ["liveScoreDrop", "Live score drop"],
   ["lowSample", "Low sample"],

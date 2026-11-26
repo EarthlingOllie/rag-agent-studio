@@ -6,7 +6,8 @@ anything is looked up.
 - The **Call token** is bound to one Call and the Conversation it is in. The widget hands it to
   the voice layer when a Call starts, and the voice layer sends it back with every turn (as the
   custom LLM's extra body), so the turn endpoint knows which Call a turn belongs to. It lasts
-  the Maximum Call length from when it was issued; the service still checks the Call is open.
+  the Agent's Maximum Call length from when the Call started (its expiry is signed into it);
+  the service still checks the Call is open.
 - The **Conversation token** is opaque, bound to one Visitor Conversation (and through it to the
   Agent), and carries a random nonce. Only its SHA-256 hash is stored, on the Conversation, so a
   copy of the database can't be replayed. It expires 24 hours after the Conversation's last
@@ -25,8 +26,6 @@ from datetime import datetime, timedelta
 
 BOOTSTRAP_TTL = timedelta(minutes=15)
 CONVERSATION_IDLE_TTL = timedelta(hours=24)
-# The Maximum Call length: a Call token is refused this long after it was issued.
-CALL_TTL = timedelta(minutes=10)
 
 _BOOTSTRAP = "wb1"
 _CONVERSATION = "wc1"
@@ -79,8 +78,8 @@ class TokenSigner:
             return None
         return uuid.UUID(hex=parts[0])
 
-    def call(self, call_id: uuid.UUID, conversation_id: uuid.UUID, *, now: datetime) -> str:
-        return self._sign(_CALL, call_id.hex, conversation_id.hex, str(int(now.timestamp())))
+    def call(self, call_id: uuid.UUID, conversation_id: uuid.UUID, *, expires_at: datetime) -> str:
+        return self._sign(_CALL, call_id.hex, conversation_id.hex, str(int(expires_at.timestamp())))
 
     def call_ids(self, token: str, *, now: datetime) -> tuple[uuid.UUID, uuid.UUID] | None:
         """The Call and the Conversation a Call token was issued for, or None when it is
@@ -89,8 +88,8 @@ class TokenSigner:
         if parts is None:
             return None
         # A correctly signed token is one this signer issued, so its parts are well formed.
-        call_id, conversation_id, issued = parts
-        if now.timestamp() - int(issued) > CALL_TTL.total_seconds():
+        call_id, conversation_id, expires = parts
+        if now.timestamp() > int(expires):
             return None
         return uuid.UUID(hex=call_id), uuid.UUID(hex=conversation_id)
 

@@ -7,16 +7,19 @@ voice layer listening, taking turns and speaking, and our runtime writing every 
 - ``turn_call`` checks a turn the voice layer sends to the turn endpoint: the Agent's per-Agent
   secret, then a good Call token for an open Call of one of that Agent's Conversations. A turn
   that fails either check is refused before anything is answered.
-- ``end_call`` (the widget, with the Conversation token) records when the Conversation's open
-  Call ended.
+- ``end_call`` (the widget, with the Conversation token) ends the Conversation's open Call.
+
+The Call limits (``app.embed.call_limits``) bound both: admission refuses a second Call in the
+Conversation, a third for the IP address and any once the day's Call minutes are spent, and
+ending a Call counts its minutes.
 """
 
 import hmac
 import uuid
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents import serving
@@ -24,8 +27,9 @@ from app.agents.models import Agent
 from app.conversations.models import Call, Conversation
 from app.credentials.models import ProviderCredential
 from app.credentials.service import open_secret
-from app.embed import service
+from app.embed import call_limits, service
 from app.embed.admission import Admission
+from app.embed.call_limits import CallEnd, CallRefusal
 from app.embed.tokens import TokenSigner
 from app.voice.port import CallJoin, VoiceLayerError
 from app.voice.remote import VoicePorts, call_secret
@@ -37,6 +41,16 @@ class CallsOffError(Exception):
 
 class InvalidSecretError(Exception):
     """The turn didn't carry the Agent's per-Agent secret."""
+
+
+class CallNotAdmittedError(Exception):
+    """The Call limits refused the Call: the Conversation has one open, the IP address holds
+    the platform's cap of open Calls, or the Agent's Call minutes budget is spent for today."""
+
+    def __init__(self, reason: CallRefusal, agent_id: uuid.UUID) -> None:
+        super().__init__(reason)
+        self.reason = reason
+        self.agent_id = agent_id
 
 
 class InvalidCallError(Exception):
@@ -51,6 +65,8 @@ class StartedCall:
     call_token: str
     # What the browser needs to join the Call in the voice layer.
     join: CallJoin
+    # The Maximum Call length it started under: the platform ends it then.
+    max_call_minutes: int
 
 
 async def start_call(
@@ -68,8 +84,9 @@ async def start_call(
     ``service.InvalidTokenError`` for a bad Conversation token, ``serving.AgentNotServedError``
     or ``serving.AgentNotLiveError`` once the Agent is retired, ``CallsOffError`` when it doesn't
     take Calls, ``service.NotAdmittedError`` when admission control refuses (the rate limits and
-    the Token Budget, as for a message, which the start counts against), and
-    ``VoiceLayerError`` when the voice layer can't start it; nothing is recorded then."""
+    the Token Budget, as for a message, which the start counts against),
+    ``CallNotAdmittedError`` when the Call limits refuse it, and ``VoiceLayerError`` when the
+    voice layer can't start it; nothing is recorded then."""
     conversation = await service.visitor_conversation(session, signer, public_id, token, now=now)
     found = await serving.live_agent(session, public_id)
     agent = found.agent
@@ -83,6 +100,11 @@ async def start_call(
     refusal = await admission.admit(service.limits_of(agent), conversation.id, ip)
     if refusal is not None:
         raise service.NotAdmittedError(refusal, agent.id)
+    limited = await call_limits.refusal(session, agent, conversation, ip, now=now)
+    if limited is not None:
+        agent_id = agent.id
+        await session.rollback()
+        raise CallNotAdmittedError(limited, agent_id)
     call = Call(
         organisation_id=conversation.organisation_id,
         conversation_id=conversation.id,
@@ -100,21 +122,25 @@ async def start_call(
         await session.rollback()
         raise
     conversation.last_activity_at = now
+    max_call_minutes = agent.max_call_minutes
     await session.commit()
-    return StartedCall(call.id, signer.call(call.id, conversation.id, now=now), join)
+    expires_at = now + timedelta(minutes=max_call_minutes)
+    return StartedCall(
+        call.id,
+        signer.call(call.id, conversation.id, expires_at=expires_at),
+        join,
+        max_call_minutes,
+    )
 
 
 async def end_call(
     session: AsyncSession, signer: TokenSigner, public_id: str, token: str, *, now: datetime
 ) -> None:
-    """Ends the Conversation token's Conversation's open Call, recording when it ended; with no
-    Call open, nothing changes. Raises ``service.InvalidTokenError`` for a bad token."""
+    """Ends the Conversation token's Conversation's open Call, recording when it ended and its
+    minutes; with no Call open, nothing changes. Raises ``service.InvalidTokenError`` for a bad
+    token."""
     conversation = await service.visitor_conversation(session, signer, public_id, token, now=now)
-    await session.execute(
-        update(Call)
-        .where(Call.conversation_id == conversation.id, Call.ended_at.is_(None))
-        .values(ended_at=now)
-    )
+    await call_limits.end_open_call(session, conversation, now=now, reason=CallEnd.VISITOR)
     await session.commit()
 
 
@@ -162,4 +188,7 @@ async def turn_call(
     if row is None or row[0].ended_at is not None:
         raise InvalidCallError
     call, conversation = row
+    # The Call isn't silent: Beat leaves it open for another minute.
+    call.last_turn_at = now
+    await session.commit()
     return CallTurn(agent, conversation, call)

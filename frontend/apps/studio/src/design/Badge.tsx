@@ -8,6 +8,8 @@ const BADGES = {
   archived: { label: "Archived", className: "bg-sunken text-muted" },
   instructionsBehind: { label: "Instructions behind", className: "bg-flag-soft text-flag" },
   budgetSpent: { label: "Budget spent", className: "bg-danger-soft text-danger" },
+  /** An Agent whose daily Call minutes budget is spent, so Calls are refused. */
+  callMinutesSpent: { label: "Call minutes spent", className: "bg-danger-soft text-danger" },
   blocked: { label: "Blocked by guardrail", className: "bg-danger-soft text-danger" },
   /** An Agent whose Live Version's Live score is clearly lower than the previous Live Version's. */
   liveScoreDrop: { label: "Live score drop", className: "bg-danger-soft text-danger" },

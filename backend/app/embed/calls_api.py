@@ -15,7 +15,7 @@ from app.agents.api import ClockDep
 from app.agents.serving import AgentNotLiveError, AgentNotServedError
 from app.auth.api import Db
 from app.core.settings import Settings
-from app.embed import calls, service
+from app.embed import call_limits, calls, service
 from app.embed.admission import Refusal
 from app.embed.api import (
     BUDGET_EXHAUSTED,
@@ -31,6 +31,7 @@ from app.embed.api import (
     _gone,
     _invalid,
 )
+from app.embed.call_limits import CallRefusal
 from app.voice.api import Voice
 from app.voice.port import VoiceLayerError
 
@@ -55,14 +56,27 @@ class StartedCallOut(BaseModel):
     # which sends it back with every turn. It lasts the Maximum Call length.
     call_token: str
     join: CallJoinOut
+    # The Maximum Call length, in minutes: the platform ends the Call that long after it
+    # started, and the widget returns to the chat saying why.
+    max_call_minutes: int
 
 
 class CallRefusedOut(BaseModel):
     # The Agent's unavailable text.
     detail: str
-    # `rate_limited`, `budget_exhausted` (the day's Token Budget is spent) or
-    # `voice_unavailable` (the voice layer couldn't start the Call).
-    reason: Literal["rate_limited", "budget_exhausted", "voice_unavailable"]
+    # `rate_limited`, `budget_exhausted` (the day's Token Budget is spent),
+    # `call_open` (the Conversation already has a Call), `too_many_calls` (the Visitor's IP
+    # address holds the platform's cap of open Calls with the Agent), `call_minutes_exhausted`
+    # (the day's Call minutes budget is spent) or `voice_unavailable` (the voice layer couldn't
+    # start the Call). Messaging still works.
+    reason: Literal[
+        "rate_limited",
+        "budget_exhausted",
+        "call_open",
+        "too_many_calls",
+        "call_minutes_exhausted",
+        "voice_unavailable",
+    ]
 
 
 def _refused(unavailable: str, reason: str) -> JSONResponse:
@@ -100,9 +114,12 @@ async def start_call(
 ) -> StartedCallOut | JSONResponse:
     """Starts a Call in the token's Conversation with the Agent's Live Version, which the Call
     records. Admission control runs first, as for a message (the rate limits and the Token
-    Budget; the start counts against the rate limits): a refusal is a 503 with the Agent's
-    unavailable text and the reason, and so is a voice layer that can't start the Call; nothing
-    is recorded then. An Agent with calling off refuses with a 409."""
+    Budget; the start counts against the rate limits), then the Call limits (one Call at a time
+    in a Conversation, two at once for an IP address with the Agent, the day's Call minutes
+    budget): a refusal is a 503 with the Agent's unavailable text and the reason, and so is a
+    voice layer that can't start the Call; nothing is recorded then. The first refusal of a day
+    for the Call minutes budget raises the Agent's alert and emails its Owners. An Agent with
+    calling off refuses with a 409."""
     token = _bearer(authorization)
     unavailable = await service.unavailable_text(db, public_id)
     now = clock.now()
@@ -130,6 +147,12 @@ async def start_call(
             )
             return _refused(unavailable, BUDGET_EXHAUSTED)
         return _refused(unavailable, RATE_LIMITED)
+    except calls.CallNotAdmittedError as limited:
+        if limited.reason is CallRefusal.MINUTES_SPENT:
+            await call_limits.budget_spent(
+                db, limited.agent_id, mailer=serving.mailer, studio_url=serving.studio_url, now=now
+            )
+        return _refused(unavailable, limited.reason)
     except VoiceLayerError:
         return _refused(unavailable, VOICE_UNAVAILABLE)
     settings: Settings = request.app.state.settings
@@ -139,6 +162,7 @@ async def start_call(
         join=CallJoinOut(
             voice_layer=settings.voice_layer, conversation_token=started.join.conversation_token
         ),
+        max_call_minutes=started.max_call_minutes,
     )
 
 
@@ -151,8 +175,9 @@ async def start_call(
 async def end_call(
     public_id: str, db: Db, signer: Signer, clock: ClockDep, authorization: Authorization = ""
 ) -> None:
-    """Ends the token's Conversation's open Call and records when it ended; with no Call open,
-    nothing changes. What was said stays in the Conversation as Spoken Messages."""
+    """Ends the token's Conversation's open Call, recording when it ended and adding its minutes
+    (rounded up) to the Agent's Call minutes for the day; with no Call open, nothing changes.
+    What was said stays in the Conversation as Spoken Messages."""
     try:
         await calls.end_call(db, signer, public_id, _bearer(authorization), now=clock.now())
     except service.InvalidTokenError:

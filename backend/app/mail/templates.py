@@ -188,6 +188,25 @@ def token_budget_exhausted(*, to: str, name: str, agent_name: str, budget: int, 
     )
 
 
+def call_minutes_budget_spent(
+    *, to: str, name: str, agent_name: str, budget: int, link: str
+) -> Email:
+    return Email(
+        to=to,
+        subject=f"{agent_name} has used its daily Call minutes budget",
+        text=(
+            f"Hello {name},\n\n"
+            f"The Agent {agent_name} has used today's Call minutes budget of {budget:,} "
+            "minutes, so Visitors who choose to call it now hear that it is unavailable and are "
+            "offered messaging instead. Messaging still works. The budget resets at midnight "
+            "UTC.\n\n"
+            "To raise the budget, open the Agent's Operational Settings in the Studio:\n\n"
+            f"{link}\n\n"
+            "You get this email once per Agent per day.\n"
+        ),
+    )
+
+
 def models_settings_link(studio_url: str, organisation_id: str) -> str:
     """Organisation settings, Models: where Owners set the Evaluation budget."""
     return f"{studio_url.rstrip('/')}/organisations/{organisation_id}/settings/models"

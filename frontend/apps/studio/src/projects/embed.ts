@@ -40,8 +40,8 @@ function reason(error: unknown, status: number): string {
 
 type Path = { organisation_id: string; project_id: string; agent_id: string };
 
-/** An Agent's Allowed Origins, unavailable text, rate limits and Token Budget: not part of its
- * Draft or Versions. */
+/** An Agent's Allowed Origins, unavailable text, rate limits, Token Budget, Call settings and Call
+ * limits: not part of its Draft or Versions. */
 export type OperationalSettings = Schemas["OperationalSettingsOut"];
 
 const PATH =
@@ -73,6 +73,29 @@ export function useTokenUsage(path: Path) {
   });
 }
 
+/** Today's (UTC) Call minutes against the Agent's Call minutes budget. */
+export type CallMinutes = Schemas["CallMinutesOut"];
+
+const minutesKey = (path: Path) => ["call-minutes", path.organisation_id, path.agent_id] as const;
+
+/** Why today's Call minutes couldn't be loaded. */
+export class CallMinutesError extends Error {}
+
+/** Today's Call minutes against the Call minutes budget, for the Call minutes meter. */
+export function useCallMinutes(path: Path) {
+  return useQuery({
+    queryKey: minutesKey(path),
+    queryFn: async (): Promise<CallMinutes> => {
+      const { data } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/call-minutes",
+        { params: { path } },
+      );
+      if (!data) throw new CallMinutesError();
+      return data;
+    },
+  });
+}
+
 /** The Agent's Operational Settings. */
 export function useOperationalSettings(path: Path) {
   return useQuery({
@@ -98,8 +121,9 @@ export function useChangeOperationalSettings(path: Path) {
     },
     onSuccess: (settings) => {
       queryClient.setQueryData(settingsKey(path), settings);
-      // The meter measures against the budget.
+      // The meters measure against the budgets.
       void queryClient.invalidateQueries({ queryKey: usageKey(path) });
+      void queryClient.invalidateQueries({ queryKey: minutesKey(path) });
     },
   });
 }

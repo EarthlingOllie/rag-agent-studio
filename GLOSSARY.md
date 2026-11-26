@@ -518,7 +518,7 @@ The Agent Version currently served to Visitors, with the Instructions Version it
 _Avoid_: Active, production
 
 **Live state**:
-How an Agent stands with Visitors, shown as badges in the Agents list: "Live v3" (its Live Version), or "Not live", plus "Draft" when it has Unpublished changes. Alerts (a spent Token Budget, a Guardrail block rate spike) are badged beside it.
+How an Agent stands with Visitors, shown as badges in the Agents list: "Live v3" (its Live Version), or "Not live", plus "Draft" when it has Unpublished changes. Alerts (a spent Token Budget or Call minutes budget, a Guardrail block rate spike) are badged beside it.
 _Avoid_: Deployment status, publish state
 
 **Current Version**:
@@ -600,7 +600,7 @@ What a Visitor sees in place of the chat when the Agent is archived, in an archi
 _Avoid_: Error page, 404
 
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits, Token Budget, the Call settings, Maximum Call length, Call minutes budget and Live sample rate. Allowed Origins, the Unavailable text, the rate limits, the Token Budget, the Live sample rate and the Call settings are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`, or `agent.live_sample_rate_changed` for the Live sample rate) holding the before and after values of the settings it changed.
+An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits, Token Budget, the Call settings, Maximum Call length, Call minutes budget and Live sample rate. Allowed Origins, the Unavailable text, the rate limits, the Token Budget, the Live sample rate, the Call settings and the two Call limits are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`, or `agent.live_sample_rate_changed` for the Live sample rate) holding the before and after values of the settings it changed.
 
 **Unavailable text**:
 What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit or because the day's Token Budget is spent). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
@@ -615,7 +615,7 @@ How many Visitor messages an Agent admits in any one minute, per Conversation (i
 _Avoid_: Throttling (that is sign-in protection), quota
 
 **Admission control**:
-The check every Visitor message passes, after its Conversation token is accepted and before anything is saved or a model is called: first the Agent's Token Budget, then its Rate limits. It admits the message or refuses it with a reason, and a refusal reaches the Visitor as the Unavailable text. The Playground never goes through it.
+The check every Visitor message passes, after its Conversation token is accepted and before anything is saved or a model is called: first the Agent's Token Budget, then its Rate limits. It admits the message or refuses it with a reason, and a refusal reaches the Visitor as the Unavailable text. Starting a Call passes the same checks, then the Call's own: no other Call open in the Conversation, fewer than two open Calls for the IP address with the Agent, and the day's Call minutes budget not spent. The Playground never goes through it.
 
 **Trusted proxies**:
 The load balancers and CDN ranges (`TRUSTED_PROXIES`; in AWS the VPC, where the ALB is, and CloudFront's origin-facing ranges) whose `X-Forwarded-For` entries are believed when finding a client's IP address for per-IP limits: the per-IP Rate limit and sign-in protection. The client is the right-most address that isn't a trusted proxy; anything a client wrote itself is ignored. With none, the connection's own address is the client's. Nothing else believes forwarding headers (uvicorn's own handling is off).
@@ -625,7 +625,7 @@ The maximum tokens an Agent's Visitor replies may use per UTC date (1,000,000 by
 _Avoid_: Quota, spend limit (cost is tracked separately)
 
 **Budget alert**:
-The flag an Agent carries once its Token Budget is spent for the day, raised by the first reply that reaches it or the first message it refuses. The Studio shows it as a "Budget exhausted" badge on the Agent list and the Agent page, and raising it emails every Owner once per Agent per day. A Beat task clears the flags at midnight UTC.
+The flag an Agent carries once its Token Budget is spent for the day, raised by the first reply that reaches it or the first message it refuses; the Call minutes budget has its own, raised by the first Call it refuses. The Studio shows them as "Budget spent" and "Call minutes spent" badges on the Agent list and the Agent page, and raising either emails every Owner once per Agent per day. A Beat task clears the flags at midnight UTC.
 _Avoid_: Budget warning, alarm
 
 **Allowed Origins**:
@@ -689,11 +689,11 @@ One Visitor's thread of Messages with an Agent, whether typed or spoken in a Cal
 _Avoid_: Session, chat, thread
 
 **Call**:
-A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. The Agent is asked exactly what it would be asked for a typed Message; only formatting and citation markers are left out of what is spoken (ADR-0019). Only a Visitor in the widget, or a Member in the Playground, starts one (a Playground Call speaks with the Agent's Call settings and stays out of metrics and the Call minutes budget; its Voice Cost still counts); the Conversation log shows it as text while it is spoken, and its audio is never stored. A Conversation has one Call at a time and may have several over its life: a reload ends the Call, and the resumed widget offers to continue with a new one. The spoken greeting opens only a Call that starts an empty Conversation, and the Visitor ends the Call to type. While an Agentic Agent searches, the Searching status is spoken; a Guardrail refusal is spoken and the Call goes on; anything that makes the Agent unavailable speaks the Unavailable text, ends the Call and returns the Visitor to messaging.
+A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. The Agent is asked exactly what it would be asked for a typed Message; only formatting and citation markers are left out of what is spoken (ADR-0019). Only a Visitor in the widget, or a Member in the Playground, starts one (a Playground Call speaks with the Agent's Call settings and stays out of metrics and the Call minutes budget; its Voice Cost still counts); the Conversation log shows it as text while it is spoken, and its audio is never stored. A Conversation has one Call at a time and may have several over its life, and one IP address holds at most two open Calls with an Agent (the platform's cap); starting another is refused with the Unavailable text and the Visitor is offered messaging. A Call ends when the Visitor ends it, at the Maximum Call length, at the Silence cut-off, or when its Conversation ends (the Visitor's "End chat" or an Owner deleting it); ending records its minutes, its length from start to end by the platform's clock rounded up, and adds them to the Agent's Call minutes for the UTC date: a reload ends the Call, and the resumed widget offers to continue with a new one. The spoken greeting opens only a Call that starts an empty Conversation, and the Visitor ends the Call to type. While an Agentic Agent searches, the Searching status is spoken; a Guardrail refusal is spoken and the Call goes on; anything that makes the Agent unavailable speaks the Unavailable text, ends the Call and returns the Visitor to messaging.
 _Avoid_: Voice chat, voice session, phone call
 
 **Call token**:
-A short-lived, signed token the widget is given when a Call starts, bound to the Call and its Conversation and lasting the Maximum Call length. The widget hands it to the Voice layer, which presents it with every spoken turn (as its custom LLM's extra body), together with the Remote agent's secret; a turn is answered only when both are good and the Call is still open.
+A short-lived, signed token the widget is given when a Call starts, bound to the Call and its Conversation and lasting the Maximum Call length in force when the Call started. The widget hands it to the Voice layer, which presents it with every spoken turn (as its custom LLM's extra body), together with the Remote agent's secret; a turn is answered only when both are good and the Call is still open.
 _Avoid_: Voice token, session key
 
 **Calls failing alert**:
@@ -725,11 +725,15 @@ The widget's side of a Call: it joins the Call the API started and tells the wid
 _Avoid_: Voice SDK, softphone
 
 **Maximum Call length**:
-How long one Call may last before it is ended (10 minutes by default), timed by the platform. Part of the Operational Settings.
+How long one Call may last before it is ended (10 minutes by default, at most 60), timed by the platform. The widget returns to the chat saying the Call reached its limit, the Call token stops working, and a Beat task ends the Call on the platform at the moment the limit passed. Part of the Operational Settings.
 _Avoid_: Call timeout, session limit
 
+**Silence cut-off**:
+A Call with no turn for 60 seconds is ended by a Beat task (run every 15 seconds), at the moment the minute passed; this also closes Calls whose browser vanished without ending them.
+_Avoid_: Idle timeout, hang-up timer
+
 **Call minutes budget**:
-The most minutes of Calls an Agent's Visitors may use per UTC date (60 by default), timed by the platform; once spent, the Agent gets its Budget alert, the Owners are emailed once, and Calls are refused with the Unavailable text and the Visitor is offered messaging. Part of the Operational Settings, beside the Token Budget, which spoken replies also count toward.
+The most minutes of Calls an Agent's Visitors may use per UTC date (60 by default), timed by the platform. Each Call that ends adds its minutes, rounded up, to the Agent's counter for the UTC date it ended; once the day's minutes reach the budget, starting a Call is refused with the Unavailable text (reason `call_minutes_exhausted`) and the Visitor is offered messaging, and the first such refusal of the day raises the Agent's Budget alert ("Call minutes spent") and emails the Owners once. A new UTC date starts a new counter; raising the budget applies at once. Playground Calls don't count. The Studio's Call minutes meter, beside the Token Budget's meter in Embed & limits, shows today's minutes against it. Part of the Operational Settings, beside the Token Budget, which spoken replies also count toward.
 _Avoid_: Call quota, voice limit
 
 **Voice Cost**:

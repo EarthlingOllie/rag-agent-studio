@@ -1,6 +1,7 @@
 """Embedding rules: an Agent's Operational Settings (its Allowed Origins, unavailable text, rate
-limits and Token Budget), the Token Budget's alert, the shell's framing policy, and Visitors'
-Conversations, which are reached only through their Conversation token.
+limits, Token Budget, Call settings and Call limits), the Token Budget's alert, the shell's
+framing policy, and Visitors' Conversations, which are reached only through their Conversation
+token.
 
 Operational Settings are not part of any Draft or Version (ADR-0009): they are edited here, apply
 on the next request without publishing, and every change is an Audit Event with the before and
@@ -24,6 +25,7 @@ from app.agents.models import ORIGIN_MAX, Agent
 from app.agents.service import get_agent
 from app.conversations.models import Conversation, Message, MessageRetrieval
 from app.documents.models import Document
+from app.embed import call_limits
 from app.embed.admission import Admission, Limits, Refusal, utc_date
 from app.embed.branding import override_of
 from app.embed.call_settings import CallSettingsChange
@@ -123,6 +125,9 @@ class OperationalSettings:
     call_credential_id: str | None
     call_voice_id: str | None
     spoken_greeting: str
+    # The Call limits: the Maximum Call length and the Call minutes budget per UTC date.
+    max_call_minutes: int
+    call_minutes_budget: int
 
 
 def _settings_of(agent: Agent) -> OperationalSettings:
@@ -139,6 +144,8 @@ def _settings_of(agent: Agent) -> OperationalSettings:
         else str(agent.call_credential_id),
         call_voice_id=agent.call_voice_id,
         spoken_greeting=agent.spoken_greeting,
+        max_call_minutes=agent.max_call_minutes,
+        call_minutes_budget=agent.call_minutes_budget,
     )
 
 
@@ -160,6 +167,8 @@ async def change_operational_settings(
     ip_messages_per_minute: int | None = None,
     daily_token_budget: int | None = None,
     live_sample_rate: int | None = None,
+    max_call_minutes: int | None = None,
+    call_minutes_budget: int | None = None,
     call: CallSettingsChange | None = None,
     voice: VoicePorts,
     now: datetime,
@@ -191,6 +200,10 @@ async def change_operational_settings(
         if live_sample_rate > 0 and not await has_budget(session, scope.organisation_id):
             raise EvaluationBudgetRequiredError
         agent.live_sample_rate = live_sample_rate
+    if max_call_minutes is not None:
+        agent.max_call_minutes = max_call_minutes
+    if call_minutes_budget is not None:
+        agent.call_minutes_budget = call_minutes_budget
     await apply_call_settings(session, scope, agent, call or CallSettingsChange(), voice)
     after = asdict(_settings_of(agent))
     changed = [key for key in before if before[key] != after[key]]
@@ -482,17 +495,17 @@ async def budget_exhausted(
 
 
 async def clear_budget_alerts(session: AsyncSession, *, now: datetime) -> int:
-    """Clears the budget alert flags raised before today (UTC), for Beat at midnight; returns
-    how many it cleared. A flag raised today stays: today's budget is still spent."""
-    cleared = await session.execute(
-        update(Agent)
-        .where(Agent.budget_exhausted_at < _start_of_day(now))
-        .values(budget_exhausted_at=None)
-        .returning(Agent.id)
-    )
-    count = len(cleared.all())
+    """Clears the Token Budget and Call minutes budget alert flags raised before today (UTC),
+    for Beat at midnight; returns how many Agents it cleared. A flag raised today stays:
+    today's budget is still spent."""
+    cleared: set[uuid.UUID] = set()
+    for flag in (Agent.budget_exhausted_at, Agent.call_budget_exhausted_at):
+        rows = await session.execute(
+            update(Agent).where(flag < _start_of_day(now)).values({flag: None}).returning(Agent.id)
+        )
+        cleared.update(rows.scalars())
     await session.commit()
-    return count
+    return len(cleared)
 
 
 async def _conversation(
@@ -584,10 +597,13 @@ async def resume(
 async def end(
     session: AsyncSession, signer: TokenSigner, public_id: str, token: str, *, now: datetime
 ) -> None:
-    """Ends the token's Conversation: its token is forgotten, so it is refused from now on.
-    The Conversation and its Messages are kept. A retired Agent's Conversations can still be
-    ended."""
+    """Ends the token's Conversation: its token is forgotten, so it is refused from now on, and
+    its open Call ends. The Conversation and its Messages are kept. A retired Agent's
+    Conversations can still be ended."""
     conversation = await _conversation(session, signer, public_id, token, now=now)
+    await call_limits.end_open_call(
+        session, conversation, now=now, reason=call_limits.CallEnd.CONVERSATION_ENDED
+    )
     conversation.token_hash = None
     await session.commit()
 

@@ -12,6 +12,7 @@ import {
   type SnippetLayout,
   useChangeOperationalSettings,
   useOperationalSettings,
+  useCallMinutes,
   useTokenUsage,
   useVoices,
 } from "./embed";
@@ -299,6 +300,114 @@ function BudgetMeter({ path }: { path: SettingsPath }) {
         </p>
       )}
     </div>
+  );
+}
+
+/** Today's Call minutes against the Call minutes budget. */
+function CallMinutesMeter({ path }: { path: SettingsPath }) {
+  const usage = useCallMinutes(path);
+  if (usage.isError) return <p className={type.muted}>Today&apos;s Call minutes could not be loaded.</p>;
+  if (!usage.data) return null;
+  const { minutes_used: used, call_minutes_budget: budget, exhausted } = usage.data;
+  const percent = Math.floor((Math.min(used, budget) / budget) * 100);
+  return (
+    <div className="flex flex-col gap-1">
+      <Meter label="Call minutes today" value={Math.min(used, budget)} max={budget} unit="minutes" format={(n) => tokens.format(n)} />
+      <p className={type.small}>{`${tokens.format(used)} of ${tokens.format(budget)} Call minutes used today (${String(percent)}%).`}</p>
+      {exhausted && (
+        <p className="text-sm font-medium text-danger">
+          Today&apos;s Call minutes budget is spent: Calls are refused and Visitors are offered messaging until midnight UTC, or until
+          you raise the budget.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** The Maximum Call length and the Call minutes budget, with today's Call minutes. */
+function CallLimits({ path }: { path: SettingsPath }) {
+  const settings = useOperationalSettings(path);
+  const save = useChangeOperationalSettings(path);
+  const [length, setLength] = useState<string | null>(null);
+  const [budget, setBudget] = useState<string | null>(null);
+  const loaded = settings.isSuccess;
+  const maxMinutes = length ?? String(settings.data?.max_call_minutes ?? "");
+  const budgetMinutes = budget ?? String(settings.data?.call_minutes_budget ?? "");
+
+  function onSubmit(event: SubmitEvent<HTMLFormElement>) {
+    event.preventDefault();
+    save.mutate(
+      { max_call_minutes: Number(maxMinutes), call_minutes_budget: Number(budgetMinutes) },
+      {
+        onSuccess: () => {
+          setLength(null);
+          setBudget(null);
+        },
+      },
+    );
+  }
+
+  return (
+    <section aria-label="Call limits" className={CARD}>
+      <form onSubmit={onSubmit} className="flex flex-col gap-3">
+        <fieldset className="flex flex-col gap-3">
+          <legend className={`${type.subheading} mb-3`}>Call limits</legend>
+          <p id="call-limits-hint" className={type.muted}>
+            The platform ends a Call at the Maximum Call length. Ended Calls count their minutes, rounded up, against the daily budget,
+            which resets at midnight UTC. The Playground doesn&apos;t count.
+          </p>
+          <CallMinutesMeter path={path} />
+          <div className="flex flex-wrap gap-3">
+            <div>
+              <label htmlFor="max-call-minutes" className={field.label}>
+                Maximum Call length (minutes)
+              </label>
+              <input
+                id="max-call-minutes"
+                type="number"
+                min={1}
+                max={60}
+                aria-describedby="call-limits-hint"
+                className={`${field.inputMono} max-w-48`}
+                disabled={!loaded}
+                value={maxMinutes}
+                onChange={(event) => {
+                  save.reset();
+                  setLength(event.target.value);
+                }}
+              />
+            </div>
+            <div>
+              <label htmlFor="call-minutes-budget" className={field.label}>
+                Call minutes per day
+              </label>
+              <input
+                id="call-minutes-budget"
+                type="number"
+                min={1}
+                aria-describedby="call-limits-hint"
+                className={`${field.inputMono} max-w-48`}
+                disabled={!loaded}
+                value={budgetMinutes}
+                onChange={(event) => {
+                  save.reset();
+                  setBudget(event.target.value);
+                }}
+              />
+            </div>
+          </div>
+        </fieldset>
+        <FormError message={save.error?.message} />
+        <div className="flex items-center gap-3">
+          <button type="submit" className={button.secondary} disabled={!loaded || save.isPending}>
+            Save Call limits
+          </button>
+          <p role="status" className={type.muted}>
+            {save.isSuccess ? "Saved. The new limits apply to the next Call." : ""}
+          </p>
+        </div>
+      </form>
+    </section>
   );
 }
 
@@ -644,7 +753,8 @@ function CallSettings({ path }: { path: SettingsPath }) {
 
 /** The Agent's Embed Snippet, once it has a Live Version, and its Operational Settings as cards: the
  * sites allowed to show it, what Visitors see when it can't answer, its daily Token Budget, with
- * today's usage, its rate limits, its Live sample rate and its Call settings. They apply at once, without publishing. */
+ * today's usage, its Call limits, with today's Call minutes, its rate limits, its Live sample rate
+ * and its Call settings. They apply at once, without publishing. */
 export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisationId: string }) {
   const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
   return (
@@ -660,6 +770,7 @@ export function AgentEmbed({ agent, organisationId }: { agent: Agent; organisati
         <AllowedOrigins path={path} />
         <UnavailableText path={path} />
         <TokenBudget path={path} />
+        <CallLimits path={path} />
         <RateLimits path={path} />
         <LiveSampleRate path={path} />
         <CallSettings path={path} />

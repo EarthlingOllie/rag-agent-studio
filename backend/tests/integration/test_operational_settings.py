@@ -36,6 +36,8 @@ LIMITS = {
     "call_credential_id": None,
     "call_voice_id": None,
     "spoken_greeting": "",
+    "max_call_minutes": 10,
+    "call_minutes_budget": 60,
 }
 
 

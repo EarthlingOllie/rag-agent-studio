@@ -41,6 +41,12 @@ LIVE_SAMPLE_RATE_MAX = 100
 # The Call settings (spec 20).
 SPOKEN_GREETING_MAX = 500
 VOICE_ID_MAX = 64
+# The Call limits (spec 20): how long one Call may last, and the minutes of Calls an Agent's
+# Visitors may use per UTC date.
+MAX_CALL_MINUTES_DEFAULT = 10
+MAX_CALL_MINUTES_MAX = 60
+CALL_MINUTES_BUDGET_DEFAULT = 60
+CALL_MINUTES_BUDGET_MAX = 1_000_000
 
 
 def new_public_id() -> str:
@@ -120,6 +126,17 @@ class Agent(IdMixin, Base):
     # the per-Agent secret it presents to our turn endpoint, sealed with envelope encryption.
     remote_agent_id: Mapped[str | None] = mapped_column(String(128))
     call_secret_sealed: Mapped[bytes | None] = mapped_column(LargeBinary)
+    # The Call limits: the Maximum Call length in minutes, and the Call minutes budget, the
+    # minutes of Calls its Visitors may use per UTC date (counted in ``call_minutes_used``).
+    max_call_minutes: Mapped[int] = mapped_column(
+        Integer, server_default=text(str(MAX_CALL_MINUTES_DEFAULT))
+    )
+    call_minutes_budget: Mapped[int] = mapped_column(
+        Integer, server_default=text(str(CALL_MINUTES_BUDGET_DEFAULT))
+    )
+    # The Call minutes budget's alert flag: when a Call was first refused because the day's
+    # Call minutes were spent. Beat clears it at midnight UTC; None when there is no alert.
+    call_budget_exhausted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The Theme override, set by Owners and not versioned: colour tokens replacing the
     # Organisation Theme's ({token: {"light", "dark"}}, only those overridden) and an avatar
     # image (stored as the Theme's images are), or None.

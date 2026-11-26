@@ -168,6 +168,7 @@ export const hrHelper: Agent = {
   live_version: null,
   has_unpublished_changes: false,
   budget_exhausted: false,
+  call_budget_exhausted: false,
   block_rate_alert: false,
   live_score_drop_alert: false,
 };
@@ -476,6 +477,10 @@ export function fakeAgentsApi(
     tokensUsed?: number;
     /** Answers each read of today's usage instead of the stored one. */
     tokenUsage?: () => Response | undefined;
+    /** Today's Call minutes (0 when left out). */
+    callMinutesUsed?: number;
+    /** Answers each read of today's Call minutes instead of the stored ones. */
+    callMinutes?: () => Response | undefined;
     /** The Call settings every Agent starts with; calling off when left out. */
     callSettings?: Partial<Schemas["OperationalSettingsOut"]>;
     /** Decides each Operational Settings change's response instead of accepting it. */
@@ -552,9 +557,25 @@ export function fakeAgentsApi(
     call_credential_id: null,
     call_voice_id: null,
     spoken_greeting: "",
+    max_call_minutes: 10,
+    call_minutes_budget: 60,
     ...options.callSettings,
   };
   server.use(
+    http.get(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/call-minutes",
+      () => {
+        const used = options.callMinutesUsed ?? 0;
+        const minutes: Schemas["CallMinutesOut"] = {
+          date: "2026-11-05",
+          minutes_used: used,
+          call_minutes_budget: settings.call_minutes_budget,
+          exhausted: used >= settings.call_minutes_budget,
+          resets_at: "2026-11-06T00:00:00Z",
+        };
+        return options.callMinutes?.() ?? HttpResponse.json(minutes);
+      },
+    ),
     http.get(
       "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/token-usage",
       () => {
@@ -614,6 +635,8 @@ export function fakeAgentsApi(
           call_credential_id: body.call_credential_id ?? settings.call_credential_id,
           call_voice_id: body.call_voice_id ?? settings.call_voice_id,
           spoken_greeting: body.spoken_greeting?.trim() ?? settings.spoken_greeting,
+          max_call_minutes: body.max_call_minutes ?? settings.max_call_minutes,
+          call_minutes_budget: body.call_minutes_budget ?? settings.call_minutes_budget,
         };
         return HttpResponse.json(settings);
       },

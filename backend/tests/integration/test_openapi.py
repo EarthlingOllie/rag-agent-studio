@@ -151,6 +151,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "getOperationalSettings": (f"{_AGENT}/operational-settings", "get"),
         "changeOperationalSettings": (f"{_AGENT}/operational-settings", "patch"),
         "getTokenUsage": (f"{_AGENT}/token-usage", "get"),
+        "getCallMinutes": (f"{_AGENT}/call-minutes", "get"),
         "getThemeOverride": (f"{_AGENT}/theme-override", "get"),
         "setThemeOverrideColours": (f"{_AGENT}/theme-override", "put"),
         "startAgentAvatarUpload": (f"{_AGENT}/theme-override/avatar/uploads", "post"),

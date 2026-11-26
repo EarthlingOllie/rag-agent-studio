@@ -6,12 +6,13 @@ A Playground Conversation has ``is_playground`` set, so metrics (spec 07) can le
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -77,6 +78,10 @@ class Call(IdMixin, Base):
     the voice layer. Its Spoken Messages name it. It is open until ``ended_at`` is set."""
 
     __tablename__ = "calls"
+    __table_args__ = (
+        # Admission counts an IP address's open Calls, and Beat looks for open Calls to end.
+        Index("ix_calls_open_ip", "ip", postgresql_where=text("ended_at IS NULL")),
+    )
 
     organisation_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("organisations.id", ondelete="CASCADE"), index=True
@@ -92,8 +97,31 @@ class Call(IdMixin, Base):
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The Visitor's IP address when the Call started: the voice layer, not the Visitor, sends
-    # its turns, so their rate limit counts against this address.
+    # its turns, so their rate limit counts against this address. An address holds at most
+    # ``app.embed.call_limits.CALLS_PER_IP`` open Calls with one Agent.
     ip: Mapped[str] = mapped_column(String(64))
+    # When the turn endpoint last took a turn of the Call, by the platform's clock; None until
+    # the first. A Call with no turn for a minute is ended (``app.embed.call_limits``).
+    last_turn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set when it ends: its minutes, rounded up, and why it ended (a ``CallEnd``).
+    minutes: Mapped[int | None] = mapped_column(Integer)
+    end_reason: Mapped[str | None] = mapped_column(String(32))
+
+
+class CallMinutesUsed(Base):
+    """An Agent's Call minutes counter for one UTC date: the minutes of its Visitors' Calls that
+    ended that day, measured against its Call minutes budget. Playground Calls don't count."""
+
+    __tablename__ = "call_minutes_used"
+
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("agents.id", ondelete="CASCADE"), primary_key=True
+    )
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+    )
+    minutes: Mapped[int] = mapped_column(Integer)
 
 
 class Message(IdMixin, Base):

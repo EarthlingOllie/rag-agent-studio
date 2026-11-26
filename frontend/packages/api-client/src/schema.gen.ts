@@ -1116,6 +1116,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/call-minutes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Call Minutes
+         * @description Today's (UTC) Call minutes against the Agent's Call minutes budget, for the Studio's
+         *     meter.
+         */
+        get: operations["getCallMinutes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison": {
         parameters: {
             query?: never;
@@ -2837,9 +2858,12 @@ export interface paths {
          * Start Call
          * @description Starts a Call in the token's Conversation with the Agent's Live Version, which the Call
          *     records. Admission control runs first, as for a message (the rate limits and the Token
-         *     Budget; the start counts against the rate limits): a refusal is a 503 with the Agent's
-         *     unavailable text and the reason, and so is a voice layer that can't start the Call; nothing
-         *     is recorded then. An Agent with calling off refuses with a 409.
+         *     Budget; the start counts against the rate limits), then the Call limits (one Call at a time
+         *     in a Conversation, two at once for an IP address with the Agent, the day's Call minutes
+         *     budget): a refusal is a 503 with the Agent's unavailable text and the reason, and so is a
+         *     voice layer that can't start the Call; nothing is recorded then. The first refusal of a day
+         *     for the Call minutes budget raises the Agent's alert and emails its Owners. An Agent with
+         *     calling off refuses with a 409.
          */
         post: operations["startWidgetCall"];
         delete?: never;
@@ -2860,8 +2884,9 @@ export interface paths {
         post?: never;
         /**
          * End Call
-         * @description Ends the token's Conversation's open Call and records when it ended; with no Call open,
-         *     nothing changes. What was said stays in the Conversation as Spoken Messages.
+         * @description Ends the token's Conversation's open Call, recording when it ended and adding its minutes
+         *     (rounded up) to the Agent's Call minutes for the day; with no Call open, nothing changes.
+         *     What was said stays in the Conversation as Spoken Messages.
          */
         delete: operations["endWidgetCall"];
         options?: never;
@@ -3048,6 +3073,8 @@ export interface components {
             block_rate_alert: boolean;
             /** Budget Exhausted */
             budget_exhausted: boolean;
+            /** Call Budget Exhausted */
+            call_budget_exhausted: boolean;
             /**
              * Created At
              * Format: date-time
@@ -3337,6 +3364,25 @@ export interface components {
              */
             voice_layer: "elevenlabs" | "fake";
         };
+        /** CallMinutesOut */
+        CallMinutesOut: {
+            /** Call Minutes Budget */
+            call_minutes_budget: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Exhausted */
+            exhausted: boolean;
+            /** Minutes Used */
+            minutes_used: number;
+            /**
+             * Resets At
+             * Format: date-time
+             */
+            resets_at: string;
+        };
         /** CallRefusedOut */
         CallRefusedOut: {
             /** Detail */
@@ -3345,7 +3391,7 @@ export interface components {
              * Reason
              * @enum {string}
              */
-            reason: "rate_limited" | "budget_exhausted" | "voice_unavailable";
+            reason: "rate_limited" | "budget_exhausted" | "call_open" | "too_many_calls" | "call_minutes_exhausted" | "voice_unavailable";
         };
         /**
          * Capability
@@ -5256,6 +5302,8 @@ export interface components {
             allowed_origins?: string[] | null;
             /** Call Credential Id */
             call_credential_id?: string | null;
+            /** Call Minutes Budget */
+            call_minutes_budget?: number | null;
             /** Call Voice Id */
             call_voice_id?: string | null;
             /** Calls Enabled */
@@ -5268,6 +5316,8 @@ export interface components {
             ip_messages_per_minute?: number | null;
             /** Live Sample Rate */
             live_sample_rate?: number | null;
+            /** Max Call Minutes */
+            max_call_minutes?: number | null;
             /** Spoken Greeting */
             spoken_greeting?: string | null;
             /** Unavailable Text */
@@ -5279,6 +5329,8 @@ export interface components {
             allowed_origins: string[];
             /** Call Credential Id */
             call_credential_id: string | null;
+            /** Call Minutes Budget */
+            call_minutes_budget: number;
             /** Call Voice Id */
             call_voice_id: string | null;
             /** Calls Enabled */
@@ -5291,6 +5343,8 @@ export interface components {
             ip_messages_per_minute: number;
             /** Live Sample Rate */
             live_sample_rate: number;
+            /** Max Call Minutes */
+            max_call_minutes: number;
             /** Spoken Greeting */
             spoken_greeting: string;
             /** Unavailable Text */
@@ -6178,6 +6232,8 @@ export interface components {
             /** Call Token */
             call_token: string;
             join: components["schemas"]["CallJoinOut"];
+            /** Max Call Minutes */
+            max_call_minutes: number;
         };
         /** SuggestedChangeOut */
         SuggestedChangeOut: {
@@ -10163,6 +10219,48 @@ export interface operations {
             };
             /** @description This Project is archived. An Owner can restore it. Or: This Agent is archived. An Owner can restore it. */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    getCallMinutes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallMinutesOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

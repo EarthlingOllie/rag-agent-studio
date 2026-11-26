@@ -54,7 +54,7 @@ function json(body: unknown, status = 200): Response {
 /** The widget API and the fake voice layer, recording what the widget asked. */
 function fakeCallApi({
   startCall = () =>
-    json({ call_id: "c1", call_token: "wk1.call", join: { voice_layer: "fake", conversation_token: "fake-call-1" } }, 201),
+    json({ call_id: "c1", call_token: "wk1.call", join: { voice_layer: "fake", conversation_token: "fake-call-1" }, max_call_minutes: 10 }, 201),
   turn = () => json({ agent_response: "Twenty-five days." }),
   history = () => json({ messages: spokenMessages, rating: UNRATED }),
   startConversation = () => json({ conversation_token: "wc1.token" }, 201),
@@ -257,6 +257,44 @@ test("a Call ended while the Agent speaks stays ended", async () => {
   await after(SCRIPT_PAUSE_MS * 2);
 
   expect(screen.queryByRole("group", { name: "Call" })).not.toBeInTheDocument();
+});
+
+test("a Call that reaches the Maximum Call length returns to the chat saying why", async () => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
+  try {
+    const seen = fakeCallApi({
+      startCall: () =>
+        json({ call_id: "c1", call_token: "wk1.call", join: { voice_layer: "fake", conversation_token: "fake-call-1" }, max_call_minutes: 3 }, 201),
+    });
+    render(<Widget boot={boot} />);
+    await choose("Call");
+    const log = screen.getByRole("log", { name: "Conversation" });
+    expect(await within(log).findByText("Twenty-five days [C1].")).toBeInTheDocument();
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+
+    vi.advanceTimersByTime(3 * 60_000);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("The Call reached its 3-minute limit. You can still send a message.");
+    expect(screen.getByLabelText("Message")).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Call" })).not.toBeInTheDocument();
+    expect(seen.map((s) => s.route)).toContain("end call");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("a Call refused by the Call limits offers messaging with the unavailable text", async () => {
+  for (const reason of ["call_open", "too_many_calls", "call_minutes_exhausted"]) {
+    fakeCallApi({ startCall: () => json({ detail: UNAVAILABLE, reason }, 503) });
+    const { unmount } = render(<Widget boot={boot} />);
+
+    await choose("Call");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(UNAVAILABLE);
+    expect(screen.getByLabelText("Message")).toBeInTheDocument();
+    unmount();
+    localStorage.clear();
+  }
 });
 
 test("a Call the voice layer drops returns to the chat saying so", async () => {

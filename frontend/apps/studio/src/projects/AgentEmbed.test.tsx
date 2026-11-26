@@ -280,7 +280,9 @@ test("an Editor sets the rate limits per Conversation and per IP address", async
   const embed = await embedSection();
   const perConversation = within(embed).getByLabelText("Messages per minute per Conversation");
   const perIp = within(embed).getByLabelText("Messages per minute per IP address");
-  expect(await within(embed).findByDisplayValue("10")).toBe(perConversation);
+  await waitFor(() => {
+    expect(perConversation).toHaveValue(10);
+  });
   expect(perIp).toHaveValue(30);
 
   await user.clear(perConversation);
@@ -381,6 +383,102 @@ test("the snippet chooses a bubble or an inline container by its data attributes
   expect(within(embed).getByLabelText("Embed Snippet")).toHaveTextContent(`${start} data-launcher="inline" async></script>`);
 });
 
+// The Call limits
+
+test("the Call minutes meter shows today's minutes against the Call minutes budget, beside the Token Budget", async () => {
+  setUp({ callMinutesUsed: 15 });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  const card = within(embed).getByRole("region", { name: "Call limits" });
+  const meter = await within(card).findByRole("meter", { name: "Call minutes today" });
+  await waitFor(() => {
+    expect(meter).toHaveAttribute("aria-valuenow", "15");
+  });
+  expect(meter).toHaveAttribute("aria-valuemax", "60");
+  expect(within(card).getByText("15 of 60 Call minutes used today (25%).")).toBeInTheDocument();
+  expect(within(card).getByLabelText("Maximum Call length (minutes)")).toHaveValue(10);
+  expect(within(card).getByLabelText("Call minutes per day")).toHaveValue(60);
+  expect(within(card).queryByText(/Call minutes budget is spent/)).not.toBeInTheDocument();
+  // Beside the Token Budget's card.
+  const regions = within(embed).getAllByRole("region").map((region) => region.getAttribute("aria-label"));
+  expect(regions.indexOf("Call limits")).toBe(regions.indexOf("Token Budget") + 1);
+});
+
+test("a spent Call minutes budget is explained beside its meter", async () => {
+  setUp({ callMinutesUsed: 63 });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  expect(
+    await within(embed).findByText(
+      "Today's Call minutes budget is spent: Calls are refused and Visitors are offered messaging until midnight UTC, or until you raise the budget.",
+    ),
+  ).toBeInTheDocument();
+  expect(within(embed).getByRole("meter", { name: "Call minutes today" })).toHaveAttribute("aria-valuenow", "60");
+  expect(within(embed).getByText("63 of 60 Call minutes used today (100%).")).toBeInTheDocument();
+});
+
+test("today's Call minutes that can't be loaded say so", async () => {
+  setUp({ callMinutes: () => HttpResponse.json({ detail: "Boom" }, { status: 500 }) });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  expect(await within(embed).findByText("Today's Call minutes could not be loaded.")).toBeInTheDocument();
+  expect(within(embed).queryByRole("meter", { name: "Call minutes today" })).not.toBeInTheDocument();
+});
+
+test("an Editor sets the Maximum Call length and the Call minutes budget, and the meter follows", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({ callMinutesUsed: 30 });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const card = within(embed).getByRole("region", { name: "Call limits" });
+  const length = within(card).getByLabelText("Maximum Call length (minutes)");
+  const budget = within(card).getByLabelText("Call minutes per day");
+  expect(await within(card).findByDisplayValue("10")).toBe(length);
+
+  await user.clear(length);
+  await user.type(length, "5");
+  await user.clear(budget);
+  await user.type(budget, "120");
+  await user.click(within(card).getByRole("button", { name: "Save Call limits" }));
+
+  expect(await within(card).findByText("Saved. The new limits apply to the next Call.")).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "operational-settings")).toEqual([
+    { route: "operational-settings", body: { max_call_minutes: 5, call_minutes_budget: 120 } },
+  ]);
+  expect(await within(card).findByText("30 of 120 Call minutes used today (25%).")).toBeInTheDocument();
+  expect(length).toHaveValue(5);
+  expect(budget).toHaveValue(120);
+});
+
+test("refused Call limits are explained", async () => {
+  const user = userEvent.setup();
+  setUp({
+    changeSettings: () =>
+      HttpResponse.json(
+        {
+          detail: [
+            { loc: ["body", "call_minutes_budget"], msg: "Input should be less than or equal to 1000000", type: "less_than_equal" },
+          ],
+        },
+        { status: 422 },
+      ),
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const card = within(embed).getByRole("region", { name: "Call limits" });
+  const budget = within(card).getByLabelText("Call minutes per day");
+  await within(card).findByDisplayValue("60");
+
+  await user.clear(budget);
+  await user.type(budget, "2000000");
+  await user.click(within(card).getByRole("button", { name: "Save Call limits" }));
+
+  expect(await within(card).findByRole("alert")).toHaveTextContent(/less than or equal to 1000000/);
+});
+
 // The Token Budget
 
 const usagePath = "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/token-usage";
@@ -427,7 +525,7 @@ test("today's usage that can't be loaded says so", async () => {
   const embed = await embedSection();
 
   expect(await within(embed).findByText("Today's usage could not be loaded.")).toBeInTheDocument();
-  expect(within(embed).queryByRole("meter")).not.toBeInTheDocument();
+  expect(within(embed).queryByRole("meter", { name: "Tokens used today" })).not.toBeInTheDocument();
 });
 
 test("an Editor sets the daily Token Budget and the meter follows", async () => {

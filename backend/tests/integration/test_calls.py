@@ -496,6 +496,8 @@ async def test_a_tampered_expired_or_cross_conversation_call_token_is_refused_wi
     call = await started(visitor, agent["public_id"], token)
     second_token = await conversation_token(visitor, agent["public_id"])
     second = await started(visitor, agent["public_id"], second_token)
+    # An IP address holds two open Calls at most.
+    await end_call(visitor, agent["public_id"], second_token)
     elsewhere_token = await conversation_token(visitor, other_agent["public_id"])
     elsewhere = await started(visitor, other_agent["public_id"], elsewhere_token)
     secret = await secret_of(app, agent)
@@ -504,7 +506,7 @@ async def test_a_tampered_expired_or_cross_conversation_call_token_is_refused_wi
     crossed = signer.call(
         uuid.UUID(call["call_id"]),
         (await the_call(app, second["call_id"])).conversation_id,
-        now=clock.now(),
+        expires_at=clock.now() + timedelta(minutes=10),
     )
 
     refused = [
