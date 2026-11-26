@@ -179,6 +179,8 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "startPlaygroundConversation": (f"{_PLAYGROUND}", "post"),
         "getPlaygroundConversation": (f"{_PLAYGROUND}/{{conversation_id}}", "get"),
         "sendPlaygroundMessage": (f"{_PLAYGROUND}/{{conversation_id}}/messages", "post"),
+        "startPlaygroundCall": (f"{_PLAYGROUND}/{{conversation_id}}/calls", "post"),
+        "endPlaygroundCall": (f"{_PLAYGROUND}/{{conversation_id}}/calls/current", "delete"),
         "getPlaygroundTrace": (
             f"{_PLAYGROUND}/{{conversation_id}}/messages/{{message_id}}/trace",
             "get",
