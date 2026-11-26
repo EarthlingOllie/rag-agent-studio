@@ -178,13 +178,17 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     return root.current?.querySelector<HTMLInputElement>('input[name="message"], .choice button');
   }
 
+  // Whether the widget is still on the page: a Call that finishes starting after it left is
+  // ended, not joined.
+  const mounted = useRef(true);
   // A Call's limit timer doesn't outlive the widget.
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
       clearTimeout(callLimit.current);
-    },
-    [],
-  );
+    };
+  }, []);
 
   useEffect(() => {
     const target = hostOrigin(host);
@@ -351,6 +355,10 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         store.save(token.current);
       }
       const started = await startCall(boot, token.current);
+      if (!mounted.current) {
+        await endCall(boot, token.current);
+        return;
+      }
       call.current = joinCall(boot, started, {
         onMode: setCallMode,
         onVisitorWords: (words) => {

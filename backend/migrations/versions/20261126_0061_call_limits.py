@@ -1,5 +1,6 @@
 """Call limits (spec 20): an Agent's Maximum Call length, Call minutes budget and its alert; a
-Call's last turn, minutes and why it ended; and each Agent's Call minutes counter per UTC date.
+Call's Maximum Call length (the Agent's when it started), last turn, minutes and why it ended;
+and each Agent's Call minutes counter per UTC date.
 
 Revision ID: 0061_call_limits
 Revises: 0060_calls
@@ -31,6 +32,12 @@ def upgrade() -> None:
     op.add_column(
         "agents", sa.Column("call_budget_exhausted_at", sa.DateTime(timezone=True), nullable=True)
     )
+    # Calls open during the upgrade get the default Maximum Call length; new ones are given theirs.
+    op.add_column(
+        "calls",
+        sa.Column("max_call_minutes", sa.Integer(), server_default=sa.text("10"), nullable=False),
+    )
+    op.alter_column("calls", "max_call_minutes", server_default=None)
     op.add_column("calls", sa.Column("last_turn_at", sa.DateTime(timezone=True), nullable=True))
     op.add_column("calls", sa.Column("minutes", sa.Integer(), nullable=True))
     op.add_column("calls", sa.Column("end_reason", sa.String(32), nullable=True))
@@ -69,6 +76,7 @@ def downgrade() -> None:
     op.drop_column("calls", "end_reason")
     op.drop_column("calls", "minutes")
     op.drop_column("calls", "last_turn_at")
+    op.drop_column("calls", "max_call_minutes")
     op.drop_column("agents", "call_budget_exhausted_at")
     op.drop_column("agents", "call_minutes_budget")
     op.drop_column("agents", "max_call_minutes")

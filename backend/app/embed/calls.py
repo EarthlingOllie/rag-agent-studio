@@ -111,6 +111,7 @@ async def start_call(
         agent_version_id=found.live.agent_version_id,
         started_at=now,
         ip=ip,
+        max_call_minutes=agent.max_call_minutes,
     )
     session.add(call)
     await session.flush()
@@ -122,7 +123,7 @@ async def start_call(
         await session.rollback()
         raise
     conversation.last_activity_at = now
-    max_call_minutes = agent.max_call_minutes
+    max_call_minutes = call.max_call_minutes
     await session.commit()
     expires_at = now + timedelta(minutes=max_call_minutes)
     return StartedCall(
@@ -163,7 +164,9 @@ async def turn_call(
 ) -> CallTurn:
     """The open Call a turn the voice layer sent belongs to. Raises ``InvalidSecretError``
     unless ``secret`` is the Agent's per-Agent secret, and ``InvalidCallError`` unless
-    ``call_token`` is a good Call token for an open Call in one of the Agent's Conversations."""
+    ``call_token`` is a good Call token for an open Call in one of the Agent's Conversations.
+    The Call stays locked until the turn is recorded, so a Call is never answered after it
+    ended and its minutes were counted."""
     agent = await session.scalar(select(Agent).where(Agent.public_id == public_id))
     expected = None if agent is None else call_secret(voice.envelope, agent)
     if agent is None or expected is None:
@@ -183,6 +186,9 @@ async def turn_call(
                 Call.conversation_id == conversation_id,
                 Conversation.agent_id == agent.id,
             )
+            # Locks the Call, so it can't end between here and the commit: a turn racing its
+            # end waits, then finds it ended.
+            .with_for_update(of=Call)
         )
     ).first()
     if row is None or row[0].ended_at is not None:

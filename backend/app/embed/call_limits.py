@@ -4,15 +4,17 @@ abused.
 - **Admission.** After the checks a message passes, starting a Call is refused while the
   Conversation has a Call open, while the Visitor's IP address holds ``CALLS_PER_IP`` open
   Calls with the Agent (counted per Agent, as the IP rate limit is), and once the Agent's Call
-  minutes for the UTC date have reached its Call minutes budget. The first refusal of a day
+  minutes for the UTC date, with the minutes so far of its open Calls, have reached its Call
+  minutes budget. The first refusal of a day
   for the budget raises the Agent's Call minutes alert and emails its Owners, once.
 - **Ending.** However a Call ends (the Visitor, the Maximum Call length, silence, the
   Conversation ending), ``finish`` records when and why, and its minutes: the time from its
   start, by the platform's clock, rounded up to whole minutes. Those minutes go on the Agent's
   counter for the UTC date the Call ended, unless the Call was held in the Playground.
 - **The reaper.** A Beat task (``end_idle_calls``) ends Calls that have reached the Maximum Call
-  length, and Calls with no turn for ``SILENCE`` (which also closes Calls whose browser
-  vanished without ending them). Such a Call ends when its limit passed, not when Beat noticed.
+  length they started with (changing it applies to the next Call), and Calls with no turn for
+  ``SILENCE`` (which also closes Calls whose browser vanished without ending them).
+  Such a Call ends when its limit passed, not when Beat noticed.
 """
 
 import enum
@@ -62,10 +64,11 @@ def call_minutes(started_at: datetime, ended_at: datetime) -> int:
     return math.ceil(max((ended_at - started_at).total_seconds(), 0) / 60)
 
 
-def deadline(call: Call, max_call_minutes: int) -> tuple[datetime, CallEnd]:
-    """When an open Call is to be ended by the platform, and why: the Maximum Call length from
-    its start, or ``SILENCE`` after its last turn (or its start), whichever comes first."""
-    longest = call.started_at + timedelta(minutes=max_call_minutes)
+def deadline(call: Call) -> tuple[datetime, CallEnd]:
+    """When an open Call is to be ended by the platform, and why: the Maximum Call length it
+    started with, from its start, or ``SILENCE`` after its last turn (or its start), whichever
+    comes first."""
+    longest = call.started_at + timedelta(minutes=call.max_call_minutes)
     silent = (call.last_turn_at or call.started_at) + SILENCE
     return (silent, CallEnd.SILENCE) if silent < longest else (longest, CallEnd.MAX_LENGTH)
 
@@ -122,6 +125,22 @@ async def minutes_used(session: AsyncSession, agent_id: uuid.UUID, day: date) ->
     return used or 0
 
 
+async def open_minutes(session: AsyncSession, agent_id: uuid.UUID, *, now: datetime) -> int:
+    """The minutes, so far, of the Agent's Visitors' Calls still open: admission counts them
+    with the day's ended Calls, so concurrent Calls can't all start on the budget's last
+    minute. (A Call that started yesterday counts whole: its minutes go on the day it ends.)"""
+    starts = await session.scalars(
+        select(Call.started_at)
+        .join(Conversation, Conversation.id == Call.conversation_id)
+        .where(
+            Conversation.agent_id == agent_id,
+            Conversation.is_playground.is_(False),
+            Call.ended_at.is_(None),
+        )
+    )
+    return sum(call_minutes(started_at, now) for started_at in starts)
+
+
 async def refusal(
     session: AsyncSession, agent: Agent, conversation: Conversation, ip: str, *, now: datetime
 ) -> CallRefusal | None:
@@ -147,7 +166,8 @@ async def refusal(
     )
     if (open_for_ip or 0) >= CALLS_PER_IP:
         return CallRefusal.TOO_MANY_CALLS
-    if await minutes_used(session, agent.id, utc_date(now)) >= agent.call_minutes_budget:
+    spent = await minutes_used(session, agent.id, utc_date(now))
+    if spent + await open_minutes(session, agent.id, now=now) >= agent.call_minutes_budget:
         return CallRefusal.MINUTES_SPENT
     return None
 
@@ -206,18 +226,17 @@ async def budget_spent(
 
 async def end_idle_calls(session: AsyncSession, *, now: datetime) -> int:
     """Ends every open Call past its Maximum Call length or silent for ``SILENCE``, for Beat;
-    returns how many it ended. A Call another transaction holds (being ended or taking a turn)
-    is left for the next run."""
+    returns how many it ended. A Call another transaction holds (being ended, or locked by a
+    turn, which then finds it open) is left for the next run."""
     rows = await session.execute(
-        select(Call, Conversation, Agent.max_call_minutes)
+        select(Call, Conversation)
         .join(Conversation, Conversation.id == Call.conversation_id)
-        .join(Agent, Agent.id == Conversation.agent_id)
         .where(Call.ended_at.is_(None))
         .with_for_update(of=Call, skip_locked=True)
     )
     ended = 0
-    for call, conversation, max_call_minutes in rows:
-        at, reason = deadline(call, max_call_minutes)
+    for call, conversation in rows:
+        at, reason = deadline(call)
         if at <= now:
             await finish(session, call, conversation, ended_at=at, reason=reason)
             ended += 1

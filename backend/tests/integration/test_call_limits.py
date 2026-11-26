@@ -21,6 +21,7 @@ from typing import Any
 import httpx
 import pytest
 from fastapi import FastAPI
+from sqlalchemy import select, text
 
 from app.conversations.models import Call, Conversation
 from app.embed.tasks import clear_budget_alerts, end_idle_calls
@@ -281,6 +282,35 @@ async def test_a_call_that_reaches_the_maximum_call_length_is_ended_by_the_platf
     assert (await minutes(owner, agent))["minutes_used"] == 2
 
 
+async def test_changing_the_maximum_during_a_call_applies_to_the_next_call(
+    app: FastAPI,
+    owner: SignedUpMember,
+    visitor_from: VisitorFactory,
+    voice: httpx.AsyncClient,
+    clock: ControllableClock,
+) -> None:
+    agent = await calling_agent(app, owner)
+    secret = await secret_of(app, agent)
+    await limits(owner, agent, max_call_minutes=5)
+    _, longer = await a_call(await visitor_from("203.0.113.20"), agent)
+    await limits(owner, agent, max_call_minutes=2)
+    _, shorter = await a_call(await visitor_from("203.0.113.21"), agent)
+    await limits(owner, agent, max_call_minutes=10)
+    start = clock.now()
+    # Both Visitors keep talking, so neither Call is silent.
+    for _ in range(10):
+        clock.advance(timedelta(seconds=30))
+        for call in (longer, shorter):
+            await turn(voice, agent["public_id"], secret, call["call_token"], "Hi")
+        await run_reaper(clock.now() - timedelta(seconds=1))
+    await run_reaper(clock.now())
+
+    cut = await the_call(app, shorter["call_id"])
+    whole = await the_call(app, longer["call_id"])
+    assert (cut.ended_at, cut.end_reason) == (start + timedelta(minutes=2), "max_length")
+    assert (whole.ended_at, whole.end_reason) == (start + timedelta(minutes=5), "max_length")
+
+
 # Silence
 
 
@@ -327,6 +357,52 @@ async def test_the_beat_task_runs_on_the_system_clock(
     assert await run_reaper() >= 1
 
     assert (await the_call(app, call["call_id"])).end_reason == "silence"
+
+
+async def test_a_turn_racing_the_end_of_its_call_is_refused(
+    app: FastAPI,
+    owner: SignedUpMember,
+    visitor: httpx.AsyncClient,
+    voice: httpx.AsyncClient,
+    clock: ControllableClock,
+) -> None:
+    agent = await calling_agent(app, owner)
+    secret = await secret_of(app, agent)
+    _, call = await a_call(visitor, agent)
+    clock.advance(timedelta(seconds=20))
+    async with app.state.sessionmaker() as ender:
+        # Another transaction is ending the Call as the turn arrives.
+        held = await ender.scalar(
+            select(Call).where(Call.id == uuid.UUID(call["call_id"])).with_for_update()
+        )
+        assert held is not None
+        held.ended_at = clock.now()
+        await ender.flush()
+        racing = asyncio.create_task(
+            turn(voice, agent["public_id"], secret, call["call_token"], "Hi")
+        )
+        await until_a_transaction_waits_on_a_lock(app)
+        await ender.commit()
+    response = await racing
+
+    assert response.status_code == 403
+    assert (await the_call(app, call["call_id"])).last_turn_at is None
+
+
+async def until_a_transaction_waits_on_a_lock(app: FastAPI) -> None:
+    async with app.state.sessionmaker() as watcher:
+        for _ in range(500):
+            waiting = await watcher.scalar(
+                text(
+                    "SELECT count(*) FROM pg_stat_activity"
+                    " WHERE datname = current_database() AND wait_event_type = 'Lock'"
+                )
+            )
+            await watcher.rollback()
+            if waiting:
+                return
+            await asyncio.sleep(0.01)
+    raise AssertionError("the turn never waited on the Call's lock")
 
 
 # Ending the Conversation
@@ -445,6 +521,25 @@ async def test_once_the_budget_is_spent_calls_are_refused_the_alert_raised_and_o
     assert f"/agents/{agent['id']}" in email.text
 
 
+async def test_the_minutes_of_calls_still_open_count_against_the_budget(
+    app: FastAPI,
+    owner: SignedUpMember,
+    visitor_from: VisitorFactory,
+    clock: ControllableClock,
+) -> None:
+    agent = await calling_agent(app, owner)
+    await limits(owner, agent, call_minutes_budget=2)
+    await a_call(await visitor_from("203.0.113.30"), agent)
+    clock.advance(timedelta(seconds=61))
+    # One open minute and a bit: 2 minutes, rounded up, of the budget of 2.
+    late = await visitor_from("203.0.113.31")
+    token = await conversation_token(late, agent["public_id"])
+
+    response = await start_call(late, agent["public_id"], token)
+
+    assert (response.status_code, response.json()) == refusal("call_minutes_exhausted")
+
+
 async def test_a_new_utc_date_starts_a_new_counter_and_clears_the_alert(
     app: FastAPI,
     owner: SignedUpMember,
@@ -507,6 +602,7 @@ async def test_playground_calls_dont_count(
             agent_version_id=uuid.UUID(agent["version"]["id"]),
             started_at=clock.now(),
             ip="203.0.113.10",
+            max_call_minutes=10,
         )
         session.add(call)
         await session.commit()

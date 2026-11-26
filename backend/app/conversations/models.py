@@ -100,6 +100,9 @@ class Call(IdMixin, Base):
     # its turns, so their rate limit counts against this address. An address holds at most
     # ``app.embed.call_limits.CALLS_PER_IP`` open Calls with one Agent.
     ip: Mapped[str] = mapped_column(String(64))
+    # The Agent's Maximum Call length when the Call started: changing it applies to the next
+    # Call, so this Call's token, the widget's timer and Beat all keep to this one.
+    max_call_minutes: Mapped[int] = mapped_column(Integer)
     # When the turn endpoint last took a turn of the Call, by the platform's clock; None until
     # the first. A Call with no turn for a minute is ended (``app.embed.call_limits``).
     last_turn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

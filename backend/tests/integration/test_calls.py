@@ -477,7 +477,7 @@ async def test_an_agent_with_calling_off_has_no_secret_to_answer_with(
 ) -> None:
     agent = await live_agent(owner)
 
-    response = await turn(voice, agent["public_id"], "anything", "wk1.x.y.z.sig", "Hi")
+    response = await turn(voice, agent["public_id"], "anything", "wk2.x.y.z.sig", "Hi")
 
     assert response.status_code == 401
 

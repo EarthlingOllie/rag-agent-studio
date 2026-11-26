@@ -29,7 +29,8 @@ CONVERSATION_IDLE_TTL = timedelta(hours=24)
 
 _BOOTSTRAP = "wb1"
 _CONVERSATION = "wc1"
-_CALL = "wk1"
+# wk1 Call tokens (20-04) signed when the Call started, not when it expires: refused.
+_CALL = "wk2"
 
 
 def _b64(raw: bytes) -> str:

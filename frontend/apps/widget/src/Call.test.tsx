@@ -54,12 +54,12 @@ function json(body: unknown, status = 200): Response {
 /** The widget API and the fake voice layer, recording what the widget asked. */
 function fakeCallApi({
   startCall = () =>
-    json({ call_id: "c1", call_token: "wk1.call", join: { voice_layer: "fake", conversation_token: "fake-call-1" }, max_call_minutes: 10 }, 201),
+    json({ call_id: "c1", call_token: "wk2.call", join: { voice_layer: "fake", conversation_token: "fake-call-1" }, max_call_minutes: 10 }, 201),
   turn = () => json({ agent_response: "Twenty-five days." }),
   history = () => json({ messages: spokenMessages, rating: UNRATED }),
   startConversation = () => json({ conversation_token: "wc1.token" }, 201),
 }: {
-  startCall?: () => Response;
+  startCall?: () => Response | Promise<Response>;
   turn?: () => Response | Promise<Response>;
   history?: () => Response;
   startConversation?: () => Response;
@@ -157,7 +157,7 @@ test("a Visitor holds a scripted Call: the log fills with what was said, then En
   expect(seen).toEqual([
     { route: "start conversation" },
     { route: "start call", authorization: "Bearer wc1.token" },
-    { route: "turn fake-call-1", body: { words: "How much leave do I get?", call_token: "wk1.call" } },
+    { route: "turn fake-call-1", body: { words: "How much leave do I get?", call_token: "wk2.call" } },
     { route: "resume" },
     { route: "end call", authorization: "Bearer wc1.token" },
     { route: "resume" },
@@ -186,7 +186,7 @@ test("a muted Visitor says nothing until they unmute", async () => {
   expect(mute).toHaveAttribute("aria-pressed", "false");
   // With no starter question, the scripted Visitor says hello.
   expect(await screen.findByText("Twenty-five days [C1].")).toBeInTheDocument();
-  expect(seen.find((s) => s.route.startsWith("turn"))?.body).toEqual({ words: "Hello.", call_token: "wk1.call" });
+  expect(seen.find((s) => s.route.startsWith("turn"))?.body).toEqual({ words: "Hello.", call_token: "wk2.call" });
 });
 
 test("ending a muted Call says nothing more", async () => {
@@ -264,7 +264,7 @@ test("a Call that reaches the Maximum Call length returns to the chat saying why
   try {
     const seen = fakeCallApi({
       startCall: () =>
-        json({ call_id: "c1", call_token: "wk1.call", join: { voice_layer: "fake", conversation_token: "fake-call-1" }, max_call_minutes: 3 }, 201),
+        json({ call_id: "c1", call_token: "wk2.call", join: { voice_layer: "fake", conversation_token: "fake-call-1" }, max_call_minutes: 3 }, 201),
     });
     render(<Widget boot={boot} />);
     await choose("Call");
@@ -281,6 +281,25 @@ test("a Call that reaches the Maximum Call length returns to the chat saying why
   } finally {
     vi.useRealTimers();
   }
+});
+
+test("a widget closed while its Call is starting doesn't join the Call, and ends it", async () => {
+  let answer: (response: Response) => void = () => undefined;
+  const seen = fakeCallApi({ startCall: () => new Promise<Response>((resolve) => (answer = resolve)) });
+  const { unmount } = render(<Widget boot={boot} />);
+  await choose("Call");
+  await waitFor(() => {
+    expect(seen.map((s) => s.route)).toContain("start call");
+  });
+
+  unmount();
+  answer(json({ call_id: "c1", call_token: "wk2.call", join: { voice_layer: "fake", conversation_token: "fake-call-1" }, max_call_minutes: 1 }, 201));
+
+  await waitFor(() => {
+    expect(seen.map((s) => s.route)).toEqual(["start conversation", "start call", "end call"]);
+  });
+  await after(SCRIPT_PAUSE_MS * 2);
+  expect(seen.map((s) => s.route)).toEqual(["start conversation", "start call", "end call"]);
 });
 
 test("a Call refused by the Call limits offers messaging with the unavailable text", async () => {
@@ -335,7 +354,7 @@ test("a Call refused by admission control shows the Agent's unavailable text, or
 
 test("a Call the widget can't hold yet says so", async () => {
   fakeCallApi({
-    startCall: () => json({ call_id: "c1", call_token: "wk1.call", join: { voice_layer: "elevenlabs", conversation_token: "lk" } }, 201),
+    startCall: () => json({ call_id: "c1", call_token: "wk2.call", join: { voice_layer: "elevenlabs", conversation_token: "lk" } }, 201),
   });
   render(<Widget boot={boot} />);
 
