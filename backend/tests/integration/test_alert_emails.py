@@ -18,11 +18,9 @@ from typing import Any
 import httpx
 import pytest
 from fastapi import FastAPI
-from sqlalchemy import update
 
 import app.analytics.tasks as analytics_tasks
 import app.jobs.tasks as job_tasks
-from app.alert_emails.models import AlertEmail
 from app.jobs.faults import JobKilled
 from app.jobs.tasks import sweep_jobs
 from app.mail.outbox import OutboxMailer
@@ -48,6 +46,7 @@ from tests.integration.test_live_verdicts import reply
 from tests.integration.test_token_budget import agent as agent
 from tests.integration.test_token_budget import alert, budget, budget_emails, outcome
 from tests.integration.test_version_metrics import roll_up
+from tests.jobs import settle_jobs_in_flight
 
 TOKEN_BUDGET_SUBJECT = "HR helper has used its daily Token Budget"
 
@@ -73,12 +72,7 @@ async def no_alert_emails_left_by_earlier_tests(app: FastAPI) -> None:
     test may have left an alert email unsent (a kill, a refused send). The sweeper would send
     those too, so each test here starts with them settled: every sweep then sends only the
     test's own."""
-    async with app.state.sessionmaker() as session, session.begin():
-        await session.execute(
-            update(AlertEmail)
-            .where(AlertEmail.sent_at.is_(None))
-            .values(sent_at=AlertEmail.raised_at)
-        )
+    await settle_jobs_in_flight(app)
 
 
 async def sweep(clock: ControllableClock) -> None:

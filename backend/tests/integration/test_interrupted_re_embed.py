@@ -19,7 +19,6 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 from sqlalchemy import update
 
-from app.documents.models import Document, DocumentStatus, StagedEdition
 from app.main import create_app
 from app.re_embedding.models import ReEmbedJob, ReEmbedStatus
 from app.re_embedding.tasks import re_embed_project
@@ -42,6 +41,7 @@ from tests.integration.test_re_embedding import (
     scripted,
     state,
 )
+from tests.jobs import settle_jobs_in_flight
 
 RE_EMBED = "projects.re_embed"
 
@@ -65,19 +65,7 @@ async def app(
 async def no_jobs_left_by_earlier_tests(app: FastAPI) -> None:
     """Earlier tests on this worker's database may have left Documents or Re-embeds in flight;
     each test here starts with them settled, so every sweep sees only the test's own rows."""
-    in_flight = (DocumentStatus.QUEUED, DocumentStatus.PROCESSING)
-    async with app.state.sessionmaker() as session, session.begin():
-        for model in (Document, StagedEdition):
-            await session.execute(
-                update(model)
-                .where(model.status.in_(in_flight))
-                .values(status=DocumentStatus.FAILED, claim_id=None, heartbeat_at=None)
-            )
-        await session.execute(
-            update(ReEmbedJob)
-            .where(ReEmbedJob.status == ReEmbedStatus.RUNNING)
-            .values(status=ReEmbedStatus.FAILED, claim_id=None, heartbeat_at=None)
-        )
+    await settle_jobs_in_flight(app)
 
 
 def re_embeds_sent(jobs: RecordingJobPublisher) -> int:

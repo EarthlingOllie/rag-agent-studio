@@ -24,9 +24,8 @@ from sqlalchemy import update
 
 from app.core.settings import load_settings
 from app.documents.converter import FakeConverter
-from app.documents.models import Document, DocumentStatus, StagedEdition
+from app.documents.models import Document, DocumentStatus
 from app.documents.tasks import ingest_document
-from app.evaluation.models import LiveStatus, LiveVerdict
 from app.jobs.reliability import Timings
 from app.jobs.tasks import sweep_jobs
 from app.main import create_app
@@ -43,6 +42,7 @@ from tests.documents import (
 )
 from tests.fakes.clock import ControllableClock
 from tests.fakes.jobs import RecordingJobPublisher
+from tests.jobs import settle_jobs_in_flight
 
 HANDBOOK = b"# Handbook\n\nEveryone gets 25 days of annual leave a year."
 HANDBOOK_2027 = b"# Handbook 2027\n\nEveryone gets 28 days of annual leave a year."
@@ -71,24 +71,6 @@ async def no_jobs_left_by_earlier_tests(app: FastAPI) -> None:
     The sweeper would recover those too, so each test here starts with them settled as Failed:
     every sweep then sees only the test's own rows."""
     await settle_jobs_in_flight(app)
-
-
-async def settle_jobs_in_flight(app: FastAPI) -> None:
-    """Settles every job row earlier tests left in flight: Documents and replacements Queued or
-    Processing as Failed, Live Verdicts Pending as Errors."""
-    in_flight = (DocumentStatus.QUEUED, DocumentStatus.PROCESSING)
-    async with app.state.sessionmaker() as session, session.begin():
-        for model in (Document, StagedEdition):
-            await session.execute(
-                update(model)
-                .where(model.status.in_(in_flight))
-                .values(status=DocumentStatus.FAILED, claim_id=None, heartbeat_at=None)
-            )
-        await session.execute(
-            update(LiveVerdict)
-            .where(LiveVerdict.status == LiveStatus.PENDING)
-            .values(status=LiveStatus.ERROR)
-        )
 
 
 async def sweep(clock: ControllableClock) -> int | None:

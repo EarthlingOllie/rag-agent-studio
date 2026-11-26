@@ -27,12 +27,12 @@ import asyncio
 import uuid
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Any, Protocol
 
 import logfire
-from sqlalchemy import ColumnElement, and_, null, or_, select, text, update
+from sqlalchemy import ColumnElement, and_, false, or_, select, text, true, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.clock import Clock
@@ -90,7 +90,7 @@ class JobTable:
     key: Any
     queued: str
     in_progress: str
-    retry_at: Any = field(default_factory=null)
+    retry_at: Any = None
     reclaims_stale: bool = True
     stale_reason: str = NO_HEARTBEAT
 
@@ -125,6 +125,8 @@ class JobTable:
 
     def _retry_due(self, now: datetime) -> ColumnElement[bool]:
         """A queued row whose automatic retry is due and hasn't been sent since it fell due."""
+        if self.retry_at is None:
+            return false()
         model = self.model
         return and_(
             self.retry_at.is_not(None),
@@ -137,7 +139,9 @@ class JobTable:
         isn't waiting for a retry that isn't due yet)."""
         model = self.model
         waited = or_(model.queued_at.is_(None), model.queued_at < now - queued_too_long)
-        not_waiting = or_(self.retry_at.is_(None), self.retry_at <= now)
+        not_waiting = (
+            true() if self.retry_at is None else or_(self.retry_at.is_(None), self.retry_at <= now)
+        )
         return and_(
             self._queued(),
             or_(self._retry_due(now), and_(waited, not_waiting)),

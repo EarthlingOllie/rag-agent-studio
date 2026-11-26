@@ -34,9 +34,9 @@ from tests.integration.test_interrupted_ingestion import (
     held_converter,
     only_document,
     recovered,
-    settle_jobs_in_flight,
     sweep,
 )
+from tests.jobs import settle_jobs_in_flight
 
 HANDBOOK = b"# Handbook\n\nEveryone gets 25 days of annual leave a year."
 HANDBOOK_2027 = b"# Handbook 2027\n\nEveryone gets 28 days of annual leave a year."

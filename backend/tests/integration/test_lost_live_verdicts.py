@@ -37,7 +37,7 @@ from tests.integration.test_conversations import conversations_path, listed
 from tests.integration.test_evaluation_budget import budget, judged_cost
 from tests.integration.test_interrupted_ingestion import app as app
 from tests.integration.test_interrupted_ingestion import exporter as exporter
-from tests.integration.test_interrupted_ingestion import recovered, settle_jobs_in_flight, sweep
+from tests.integration.test_interrupted_ingestion import recovered, sweep
 from tests.integration.test_live_score import DAY, live_score
 from tests.integration.test_live_verdicts import (
     live_agent,
@@ -47,6 +47,7 @@ from tests.integration.test_live_verdicts import (
     sampling,
     scripted,
 )
+from tests.jobs import settle_jobs_in_flight
 
 JUDGE = "evaluation.live_verdict"
 LOST = (

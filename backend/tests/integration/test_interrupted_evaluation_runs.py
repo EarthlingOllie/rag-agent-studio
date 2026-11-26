@@ -25,7 +25,6 @@ from pydantic_ai.models.function import AgentInfo, FunctionModel
 from sqlalchemy import update
 
 from app.credentials.registry import Provider
-from app.documents.models import Document, DocumentStatus, StagedEdition
 from app.evaluation import rollout_api
 from app.evaluation.models import EvaluationRun, RunStatus
 from app.evaluation.tasks import enqueue_run, run_evaluation_task
@@ -54,6 +53,7 @@ from tests.integration.test_evaluation_rollout import (
 from tests.integration.test_evaluation_settings import set_repeats
 from tests.integration.test_evaluation_sides import results_of, start
 from tests.integration.test_playground import ready_agent, three_tokens
+from tests.jobs import settle_jobs_in_flight
 
 RUN = "evaluation.run"
 
@@ -79,18 +79,7 @@ async def no_jobs_left_by_earlier_tests(app: FastAPI) -> None:
     tests may have left Runs or Documents in flight (a Run left queued on purpose, a kill). The
     sweeper would recover those too, so each test here starts with them settled: every sweep then
     sees only the test's own rows."""
-    async with app.state.sessionmaker() as session, session.begin():
-        await session.execute(
-            update(EvaluationRun)
-            .where(EvaluationRun.status.in_([RunStatus.QUEUED, RunStatus.RUNNING]))
-            .values(status=RunStatus.CANCELLED, claim_id=None, heartbeat_at=None)
-        )
-        for model in (Document, StagedEdition):
-            await session.execute(
-                update(model)
-                .where(model.status.in_([DocumentStatus.QUEUED, DocumentStatus.PROCESSING]))
-                .values(status=DocumentStatus.FAILED, claim_id=None, heartbeat_at=None)
-            )
+    await settle_jobs_in_flight(app)
 
 
 async def sweep(clock: ControllableClock) -> int | None:
