@@ -24,7 +24,7 @@ from sqlalchemy import update
 
 from app.core.settings import load_settings
 from app.documents.converter import FakeConverter
-from app.documents.models import Document, DocumentStatus
+from app.documents.models import Document, DocumentStatus, StagedEdition
 from app.documents.tasks import ingest_document
 from app.jobs.reliability import Timings
 from app.jobs.tasks import sweep_jobs
@@ -61,6 +61,22 @@ async def app(
     application = create_app(extra_span_processors=[SimpleSpanProcessor(exporter)])
     async with LifespanManager(application):
         yield application
+
+
+@pytest.fixture(autouse=True)
+async def no_jobs_left_by_earlier_tests(app: FastAPI) -> None:
+    """The test database is shared by the tests a worker runs, one after another, so earlier
+    tests may have left Documents or replacements Queued or Processing (a lost job, a kill).
+    The sweeper would recover those too, so each test here starts with them settled as Failed:
+    every sweep then sees only the test's own rows."""
+    in_flight = (DocumentStatus.QUEUED, DocumentStatus.PROCESSING)
+    async with app.state.sessionmaker() as session, session.begin():
+        for model in (Document, StagedEdition):
+            await session.execute(
+                update(model)
+                .where(model.status.in_(in_flight))
+                .values(status=DocumentStatus.FAILED, claim_id=None, heartbeat_at=None)
+            )
 
 
 async def sweep(clock: ControllableClock) -> int | None:
