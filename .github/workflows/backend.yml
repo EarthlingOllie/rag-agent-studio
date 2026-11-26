@@ -17,10 +17,12 @@ jobs:
     env:
       TEST_DATABASE_URL: postgresql+asyncpg://studio:studio@localhost:5432/studio_test
       TEST_REDIS_URL: redis://localhost:6379/15
+      TEST_SQS_ENDPOINT_URL: http://localhost:4566
     steps:
       - uses: actions/checkout@v4
-      - name: Start Postgres, Redis and RustFS from docker-compose.yml
-        # The services `make dev` runs, started detached and waited on until healthy.
+      - name: Start Postgres, Redis, RustFS and Floci from docker-compose.yml
+        # The services `make dev` runs, started detached and waited on until healthy. Floci's SQS
+        # is the job broker: the tests that start a real worker send through it (ticket 22-03).
         working-directory: .
         run: make services
       - uses: astral-sh/setup-uv@v6

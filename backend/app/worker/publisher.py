@@ -6,8 +6,12 @@ object deletions it committed). A send that fails is logged with the job and its
 never fails the caller: the committed row is the record of the job. The worker health probe is
 the exception, since reporting whether a job gets through is its whole purpose.
 
-The production adapter sends to Celery. Tests swap in a fake (``tests.fakes.jobs``) that
-records what was sent and can lose or hold a message.
+Each job goes to one of two SQS queues (ADR-0021): Evaluation Runs and Suggestion runs to the runs
+queue, every other job to the general queue. A message carries the task and the identifiers of
+the rows it runs for, never their content.
+
+The production adapter sends to Celery, whose broker is SQS. Tests swap in a fake
+(``tests.fakes.jobs``) that records what was sent and can lose or hold a message.
 """
 
 import abc
@@ -28,7 +32,10 @@ from app.worker.celery_app import (
     RE_EMBED_TASK,
     SUGGESTION_RUN_TASK,
     SWEEP_TASK,
+    QueueKind,
     celery_app,
+    queue_for,
+    queue_names,
 )
 from app.worker.tasks import health_check
 
@@ -49,6 +56,12 @@ class Job:
         """What the job is about, for logs: the row it runs for (none for the object-deletion
         job and the sweeper)."""
         return str(self.args[0]) if self.args else ""
+
+    @property
+    def queue(self) -> QueueKind:
+        """The queue the job goes to: runs for Evaluation Runs and Suggestion runs, general for
+        every other job."""
+        return queue_for(self.task)
 
 
 class JobPublisher(abc.ABC):
@@ -113,12 +126,16 @@ class JobPublisher(abc.ABC):
 
 
 class CeleryJobPublisher(JobPublisher):
-    """Sends to Celery. Every job but the health probe ignores its result, so nobody
-    subscribes to a reply nobody reads."""
+    """Sends to Celery, on the job's queue. Every job but the health probe ignores its result,
+    so nobody subscribes to a reply nobody reads."""
 
     def send(self, job: Job) -> None:
         _task(job.task).apply_async(
-            job.args, job.kwargs, countdown=job.countdown, ignore_result=True
+            job.args,
+            job.kwargs,
+            countdown=job.countdown,
+            ignore_result=True,
+            queue=queue_names[job.queue],
         )
 
     def probe(self) -> "AsyncResult[Any]":

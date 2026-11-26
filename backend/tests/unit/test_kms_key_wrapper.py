@@ -16,6 +16,7 @@ from app.crypto.adapters import build_key_wrapper
 from app.crypto.envelope import EnvelopeEncryption, EnvelopeError
 from app.crypto.kms_key_wrapper import ENCRYPTION_CONTEXT, KmsKeyWrapper
 from app.crypto.local_key_wrapper import LocalKeyWrapper
+from tests.queues import QUEUE_SETTINGS
 
 KEY_ARN = "arn:aws:kms:eu-west-2:111122223333:key/1234abcd-12ab-34cd-56ef-1234567890ab"
 OTHER_ARN = "arn:aws:kms:eu-west-2:111122223333:key/9999abcd-12ab-34cd-56ef-1234567890ab"
@@ -130,6 +131,7 @@ def _settings(**values: str) -> Settings:
     base = {
         "database_url": "postgresql+asyncpg://u:p@localhost/db",
         "redis_url": "redis://localhost:6379/0",
+        **QUEUE_SETTINGS,
         "local_key_wrapper_key": base64.b64encode(b"L" * 32).decode(),
     }
     return Settings.model_validate(base | values)

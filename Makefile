@@ -12,14 +12,14 @@ API_CLIENT_DIR := frontend/packages/api-client
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
 
-dev: ## Start the whole stack (Postgres+pgvector, Redis, RustFS, Mailpit, API, worker, Beat, Studio, widget, demo host page)
+dev: ## Start the whole stack (Postgres+pgvector, Redis, RustFS, Floci (SQS), Mailpit, API, worker, Beat, Studio, widget, demo host page)
 	$(COMPOSE) up --build
 
 down: ## Stop the stack
 	$(COMPOSE) down
 
-services: ## Start only Postgres, Redis and RustFS, for running the test suites on the host
-	$(COMPOSE) up -d --wait postgres redis rustfs
+services: ## Start only Postgres, Redis, RustFS and Floci (SQS), for running the test suites on the host
+	$(COMPOSE) up -d --wait postgres redis rustfs floci
 
 install: ## Install backend and frontend dependencies
 	cd backend && uv sync --frozen

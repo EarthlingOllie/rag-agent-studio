@@ -3,16 +3,17 @@
 that fails never fails the request that queued the job, since its committed row is the record
 (ADR-0020). Outcomes are read through the API.
 
-The last tests send through the real Celery adapter to the Redis broker and read the message
-there, which has no API surface: every job but the worker health probe ignores its result."""
+The fake also shows which queue each job goes to (ticket 22-03). The last tests send through the
+real Celery adapter to SQS on Floci and read the messages there, which have no API surface: which
+queue each lands on, that it carries identifiers only, and that every job but the worker health
+probe ignores its result."""
 
-import json
 import logging
+import uuid
 from collections.abc import Iterator
 from datetime import UTC, datetime
 
 import pytest
-import redis
 from fastapi import FastAPI
 
 from app.core.settings import load_settings
@@ -26,12 +27,14 @@ from app.worker.celery_app import (
     LIVE_VERDICT_TASK,
     RE_EMBED_TASK,
     SUGGESTION_RUN_TASK,
+    SWEEP_TASK,
     configure_celery,
 )
 from app.worker.publisher import CeleryJobPublisher, Job
-from tests.conftest import TEST_REDIS_URL, SignedUpMember
+from tests.conftest import SignedUpMember
 from tests.documents import create_project, documents, replace, upload
 from tests.fakes.jobs import RecordingJobPublisher
+from tests.sqs import empty_queues, take_messages
 
 HANDBOOK = b"# Handbook\n\nEveryone gets 25 days of annual leave a year."
 LOCAL_MODEL = "multilingual-e5-small"
@@ -135,27 +138,91 @@ async def test_a_worker_health_probe_that_cannot_be_sent_is_reported(
     assert (answered.status_code, answered.json()) == (200, {"status": "ok", "reply": "pong"})
 
 
-# --- Through the Redis broker -----------------------------------------------------------------
+# --- Which queue each job goes to (ticket 22-03) ----------------------------------------------
+
+
+async def test_evaluation_and_suggestion_runs_go_to_the_runs_queue_and_other_jobs_to_general() -> (
+    None
+):
+    jobs = RecordingJobPublisher(deliver_to=CeleryJobPublisher())
+    sends = [
+        jobs.ingest_document(uuid.uuid4()),
+        jobs.ingest_document(uuid.uuid4(), countdown=10),
+        jobs.delete_objects(),
+        jobs.run_evaluation(uuid.uuid4()),
+        jobs.judge_live_verdict(uuid.uuid4()),
+        jobs.run_suggestion(uuid.uuid4()),
+        jobs.re_embed(uuid.uuid4(), attempt=2, countdown=10),
+        jobs.delete_project(uuid.uuid4()),
+        jobs.sweep(),
+    ]
+    for send in sends:
+        jobs.lose_next()  # recorded, not delivered
+        await send
+
+    assert [(job.task, job.queue) for job in jobs.sent] == [
+        (INGEST_TASK, "general"),
+        (INGEST_TASK, "general"),
+        (DELETE_OBJECTS_TASK, "general"),
+        (EVALUATION_RUN_TASK, "runs"),
+        (LIVE_VERDICT_TASK, "general"),
+        (SUGGESTION_RUN_TASK, "runs"),
+        (RE_EMBED_TASK, "general"),
+        (DELETE_PROJECT_TASK, "general"),
+        (SWEEP_TASK, "general"),
+    ]
+
+
+# --- Through SQS (Floci) ------------------------------------------------------------------------
 
 
 @pytest.fixture
-def broker(settings_env: pytest.MonkeyPatch) -> Iterator[redis.Redis]:
-    """Celery sending to the test Redis broker instead of running tasks eagerly; the queue is
-    emptied afterwards, and the next app's startup configures Celery again."""
+def broker(settings_env: pytest.MonkeyPatch) -> Iterator[None]:
+    """Celery sending to the test queues on Floci instead of running tasks eagerly; the queues
+    are emptied before and after, and the next app's startup configures Celery again."""
     settings_env.setenv("CELERY_TASK_ALWAYS_EAGER", "false")
     configure_celery(load_settings())
-    with redis.Redis.from_url(TEST_REDIS_URL) as connection:
-        connection.flushdb()
-        yield connection
-        connection.flushdb()
+    empty_queues()
+    yield
+    empty_queues()
 
 
-def queued_headers(connection: redis.Redis) -> dict[str, dict[str, object]]:
-    messages = [json.loads(raw) for raw in connection.lrange("celery", 0, -1)]
-    return {message["headers"]["task"]: message["headers"] for message in messages}
+def test_each_job_lands_on_its_queue_carrying_identifiers_only(broker: None) -> None:
+    publisher = CeleryJobPublisher()
+    document, run, verdict, suggestion, re_embed, project, actor = (
+        str(uuid.uuid4()) for _ in range(7)
+    )
+    requested_at = datetime(2026, 11, 26, tzinfo=UTC).isoformat()
+    for job in (
+        Job(INGEST_TASK, (document,)),
+        Job(DELETE_OBJECTS_TASK, ()),
+        Job(EVALUATION_RUN_TASK, (run,)),
+        Job(LIVE_VERDICT_TASK, (verdict,)),
+        Job(SUGGESTION_RUN_TASK, (suggestion,)),
+        Job(RE_EMBED_TASK, (re_embed,), {"attempt": 2}),
+        Job(DELETE_PROJECT_TASK, (project, actor, requested_at)),
+        Job(SWEEP_TASK, ()),
+    ):
+        publisher.send(job)
+
+    general = {m.task: (m.args, m.kwargs) for m in take_messages("general")}
+    runs = {m.task: (m.args, m.kwargs) for m in take_messages("runs")}
+
+    assert runs == {
+        EVALUATION_RUN_TASK: ([run], {}),
+        SUGGESTION_RUN_TASK: ([suggestion], {}),
+    }
+    assert general == {
+        INGEST_TASK: ([document], {}),
+        DELETE_OBJECTS_TASK: ([], {}),
+        LIVE_VERDICT_TASK: ([verdict], {}),
+        RE_EMBED_TASK: ([re_embed], {"attempt": 2}),
+        DELETE_PROJECT_TASK: ([project, actor, requested_at], {}),
+        SWEEP_TASK: ([], {}),
+    }
 
 
-def test_every_job_but_the_health_probe_ignores_its_result(broker: redis.Redis) -> None:
+def test_every_job_but_the_health_probe_ignores_its_result(broker: None) -> None:
     publisher = CeleryJobPublisher()
     requested_at = datetime(2026, 11, 26, tzinfo=UTC).isoformat()
     for job in (
@@ -171,9 +238,9 @@ def test_every_job_but_the_health_probe_ignores_its_result(broker: redis.Redis) 
         publisher.send(job)
     publisher.probe()
 
-    headers = queued_headers(broker)
+    messages = take_messages("general") + take_messages("runs")
 
-    assert {task: header["ignore_result"] for task, header in headers.items()} == {
+    assert {m.task: m.headers["ignore_result"] for m in messages} == {
         INGEST_TASK: True,
         DELETE_OBJECTS_TASK: True,
         EVALUATION_RUN_TASK: True,

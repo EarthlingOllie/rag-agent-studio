@@ -1,4 +1,4 @@
-"""The worker and Beat entrypoint validates settings before connecting to the broker."""
+"""The worker and Beat entrypoint validates settings before connecting to the broker, SQS."""
 
 import importlib
 import subprocess
@@ -13,7 +13,7 @@ from app.documents.ports import current_ports
 from app.guardrails.fake import RuleDrivenClassifier
 from app.guardrails.local import LoadedModel, LocalClassifier
 from app.worker.publisher import CeleryJobPublisher, Job, install_publisher
-from tests.conftest import TEST_REDIS_URL
+from tests.conftest import TEST_QUEUE_URLS, TEST_QUEUES, TEST_REDIS_URL
 
 
 def _import_worker_entrypoint() -> ModuleType:
@@ -21,14 +21,75 @@ def _import_worker_entrypoint() -> ModuleType:
     return importlib.import_module("app.worker.main")
 
 
-def test_worker_entrypoint_points_celery_at_the_configured_broker(
+def test_worker_entrypoint_points_celery_at_the_configured_queues_not_at_redis(
     settings_env: pytest.MonkeyPatch,
 ) -> None:
     entrypoint = _import_worker_entrypoint()
+    conf = entrypoint.app.conf
 
-    assert entrypoint.app.conf.broker_url == TEST_REDIS_URL
+    # SQS on the endpoint override, with Floci's static keys; Redis only keeps replies.
+    assert conf.broker_url == "sqs://test:test@localhost:4566"
+    assert conf.result_backend == TEST_REDIS_URL
+    options = conf.broker_transport_options
+    assert (options["region"], options["is_secure"]) == ("eu-west-2", False)
+    # Both queues by URL, so the transport never lists or creates a queue.
+    assert options["predefined_queues"] == {
+        TEST_QUEUES["general"]: {"url": TEST_QUEUE_URLS["general"]},
+        TEST_QUEUES["runs"]: {"url": TEST_QUEUE_URLS["runs"]},
+    }
+    assert conf.task_create_missing_queues is False
     assert "worker.health_check" in entrypoint.app.tasks
     assert "documents.ingest" in entrypoint.app.tasks
+
+
+def test_one_worker_serves_both_queues(settings_env: pytest.MonkeyPatch) -> None:
+    """A worker started without a queue argument (the compose stack's) consumes both."""
+    conf = _import_worker_entrypoint().app.conf
+
+    assert [queue.name for queue in conf.task_queues] == [
+        TEST_QUEUES["general"],
+        TEST_QUEUES["runs"],
+    ]
+
+
+def test_scheduled_jobs_go_to_the_general_queue_and_runs_to_the_runs_queue(
+    settings_env: pytest.MonkeyPatch,
+) -> None:
+    """How Celery routes a task sent without a queue: what Beat sends, and a retry."""
+    app = _import_worker_entrypoint().app
+    app.loader.import_default_modules()
+
+    def routed(task: str) -> str:
+        name: str = app.amqp.router.route({}, task)["queue"].name
+        return name
+
+    scheduled = {entry["task"] for entry in app.conf.beat_schedule.values()}
+    assert {routed(task) for task in scheduled} == {TEST_QUEUES["general"]}
+    assert routed("evaluation.run") == TEST_QUEUES["runs"]
+    assert routed("suggestions.run") == TEST_QUEUES["runs"]
+    assert routed("documents.ingest") == TEST_QUEUES["general"]
+
+
+def test_a_broker_on_aws_has_no_endpoint_or_keys(settings_env: pytest.MonkeyPatch) -> None:
+    for setting in ("SQS_ENDPOINT_URL", "SQS_ACCESS_KEY_ID", "SQS_SECRET_ACCESS_KEY"):
+        settings_env.delenv(setting)
+
+    conf = _import_worker_entrypoint().app.conf
+
+    # The task role's credentials and AWS SQS, over HTTPS.
+    assert conf.broker_url == "sqs://"
+    assert conf.broker_transport_options["is_secure"] is True
+
+
+def test_a_key_without_a_secret_is_passed_on_as_it_is(settings_env: pytest.MonkeyPatch) -> None:
+    settings_env.setenv("SQS_ACCESS_KEY_ID", "a key/with+symbols")
+    settings_env.delenv("SQS_SECRET_ACCESS_KEY")
+    settings_env.setenv("SQS_ENDPOINT_URL", "https://sqs.example.test")
+
+    conf = _import_worker_entrypoint().app.conf
+
+    assert conf.broker_url == "sqs://a%20key%2Fwith%2Bsymbols:@sqs.example.test:443"
+    assert conf.broker_transport_options["is_secure"] is True
 
 
 def test_beat_schedules_the_health_check_budget_alert_reset_usage_rollup_purge_and_sweeper(

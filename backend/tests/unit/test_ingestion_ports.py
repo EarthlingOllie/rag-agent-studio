@@ -28,6 +28,7 @@ from app.jobs.faults import JobKilled
 from app.storage.memory import InMemoryObjectStore
 from app.storage.s3 import S3ObjectStore
 from tests.conftest import TEST_LOCAL_KEY_WRAPPER_KEY
+from tests.queues import QUEUE_SETTINGS
 
 ENVELOPE = EnvelopeEncryption(LocalKeyWrapper(base64.b64encode(b"P" * 32).decode()))
 
@@ -37,7 +38,7 @@ def _settings(**values: str) -> Settings:
         database_url="postgresql+asyncpg://u:p@localhost/db",
         redis_url="redis://localhost:6379/0",
         local_key_wrapper_key=TEST_LOCAL_KEY_WRAPPER_KEY,
-        **values,  # type: ignore[arg-type]
+        **(QUEUE_SETTINGS | values),  # type: ignore[arg-type]
     )
 
 

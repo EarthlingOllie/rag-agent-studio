@@ -19,6 +19,9 @@ from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from app.core.client_ip import Network, trusted_networks
 
+# What SQS allows in a standard queue's name.
+_QUEUE_NAME = r"^[A-Za-z0-9_-]{1,80}$"
+
 
 class SettingsError(RuntimeError):
     """Raised when the environment is missing a required setting or holds an invalid one."""
@@ -45,6 +48,23 @@ class Settings(BaseSettings):
     redis_tls: bool = False
     redis_auth_token: SecretStr | None = None
     celery_task_always_eager: bool = False
+    # Jobs go through SQS (ADR-0021): Evaluation Runs and Suggestion runs to the runs queue,
+    # every other job to the general queue. Terraform names the queues and the services get
+    # their names and URLs, so no task lists or creates a queue. There is no Redis broker.
+    general_queue_name: Annotated[str, Field(pattern=_QUEUE_NAME)]
+    general_queue_url: HttpUrl
+    runs_queue_name: Annotated[str, Field(pattern=_QUEUE_NAME)]
+    runs_queue_url: HttpUrl
+    # The SQS endpoint; unset means AWS SQS. Floci (`docker compose`, tests): http://floci:4566.
+    sqs_endpoint_url: HttpUrl | None = None
+    # The queues' region (ECS sets AWS_REGION); unset means boto3's default.
+    aws_region: str | None = None
+    # Static keys (Floci); unset means boto3's default credential chain (an AWS role).
+    sqs_access_key_id: str | None = None
+    sqs_secret_access_key: SecretStr | None = None
+    # Create both queues at startup if they're missing (Floci starts empty). AWS queues are
+    # created by Terraform, so this stays off there.
+    sqs_create_queues: bool = False
     worker_health_timeout_seconds: float = Field(default=5.0, gt=0)
     # How long a Studio session lasts without signing in again.
     session_ttl_seconds: int = Field(default=14 * 24 * 60 * 60, gt=0)
@@ -179,7 +199,9 @@ class Settings(BaseSettings):
     # delay, doubled per attempt, never more than the maximum.
     ingestion_max_attempts: int = Field(default=4, ge=1)
     ingestion_retry_base_seconds: float = Field(default=10.0, gt=0)
-    ingestion_retry_max_seconds: float = Field(default=300.0, gt=0)
+    # At most five minutes: a retry waits in the worker that took its message, which must not
+    # outlive the queue's visibility timeout.
+    ingestion_retry_max_seconds: float = Field(default=300.0, gt=0, le=300)
     # A Document whose ingestion is cut short this many times (counted apart from the
     # automatic retries) is Failed as interrupted; conversion running longer than the limit
     # (in seconds) is stopped and the Document is Failed with a conversion error.
@@ -257,6 +279,18 @@ class Settings(BaseSettings):
     def _kms_has_a_key(self) -> "Settings":
         if self.key_wrapper == "kms" and not self.kms_key_id:
             raise ValueError("KMS_KEY_ID is required when KEY_WRAPPER is kms")
+        return self
+
+    @model_validator(mode="after")
+    def _queues_are_two_and_their_urls_name_them(self) -> "Settings":
+        if self.general_queue_name == self.runs_queue_name:
+            raise ValueError("GENERAL_QUEUE_NAME and RUNS_QUEUE_NAME must name two queues")
+        for kind, name, url in (
+            ("GENERAL", self.general_queue_name, self.general_queue_url),
+            ("RUNS", self.runs_queue_name, self.runs_queue_url),
+        ):
+            if (url.path or "").rstrip("/").rsplit("/", 1)[-1] != name:
+                raise ValueError(f"{kind}_QUEUE_URL must be the URL of {kind}_QUEUE_NAME")
         return self
 
 

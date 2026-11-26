@@ -1,5 +1,6 @@
 """FastAPI application. Settings are loaded and validated when the app starts."""
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
@@ -62,6 +63,7 @@ from app.tenancy import invites_api, members_api, switcher_api
 from app.theme import api as theme_api
 from app.worker.celery_app import configure_celery
 from app.worker.publisher import CeleryJobPublisher, install_publisher
+from app.worker.queues import create_queues
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +170,8 @@ def _lifespan(
         seed_draws(settings.live_sample_seed)
         if settings.object_store_create_bucket:
             await app.state.ingestion.object_store.prepare()
+        if settings.sqs_create_queues:
+            await asyncio.to_thread(create_queues, settings)
         logger.info("API started", extra={"environment": settings.environment})
         try:
             yield

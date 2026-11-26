@@ -18,6 +18,7 @@ from redis import Redis
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.settings import Settings, load_settings
+from app.worker.celery_app import broker_url
 
 CONTRACT = Path(__file__).resolve().parents[3] / "infra/modules/ecs/tests/task-settings.json"
 # Secret values in the shapes the Terraform modules generate them, plus characters a
@@ -84,6 +85,26 @@ def test_each_container_can_build_its_database_and_redis_clients(
     # certificates (ValueError).
     celery = Celery(broker=str(settings.redis_url), backend=str(settings.redis_url))
     assert isinstance(celery.backend, RedisBackend)
+
+
+def test_each_container_sends_jobs_to_the_terraform_queues_on_aws_sqs(
+    task_env: dict[str, str],
+) -> None:
+    """Ticket 22-03: the queue module's names and URLs, AWS SQS through the task role, and no
+    queue created by the services."""
+    settings = load_settings()
+
+    assert (settings.general_queue_name, str(settings.general_queue_url)) == (
+        task_env["GENERAL_QUEUE_NAME"],
+        task_env["GENERAL_QUEUE_URL"],
+    )
+    assert (settings.runs_queue_name, str(settings.runs_queue_url)) == (
+        task_env["RUNS_QUEUE_NAME"],
+        task_env["RUNS_QUEUE_URL"],
+    )
+    assert broker_url(settings) == "sqs://"
+    assert settings.aws_region == "eu-west-2"
+    assert settings.sqs_create_queues is False
 
 
 # The seed task (ticket 10-05) runs the API in process, so it seals the demo credential and

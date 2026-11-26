@@ -1,4 +1,7 @@
-"""Task seam: the API enqueues the Celery health task and waits for the worker's reply."""
+"""Task seam: the API enqueues the Celery health task and waits for the worker's reply.
+
+The tests with a running worker send through SQS on Floci, the transport the stack uses
+(ADR-0021); the reply comes back through Redis."""
 
 from collections.abc import AsyncIterator, Iterator
 
@@ -11,19 +14,22 @@ from celery.contrib.testing.worker import start_worker
 from app.main import create_app
 from app.worker.celery_app import HEALTH_CHECK_TASK, celery_app
 from tests.conftest import TEST_REDIS_URL
+from tests.sqs import empty_queues
 
 
 @pytest.fixture(autouse=True)
-def empty_broker() -> Iterator[None]:
+def empty_broker(settings_env: pytest.MonkeyPatch) -> Iterator[None]:
     """Unanswered health tasks must not leak into the next test's queue."""
+    empty_queues()
     yield
+    empty_queues()
     with redis.Redis.from_url(TEST_REDIS_URL) as connection:
         connection.flushdb()
 
 
 @pytest.fixture
 async def broker_client(settings_env: pytest.MonkeyPatch) -> AsyncIterator[httpx.AsyncClient]:
-    """An API client whose health task goes through the Redis broker instead of running eagerly."""
+    """An API client whose health task goes through SQS instead of running eagerly."""
     settings_env.setenv("CELERY_TASK_ALWAYS_EAGER", "false")
     settings_env.setenv("WORKER_HEALTH_TIMEOUT_SECONDS", "0.5")
     application = create_app()

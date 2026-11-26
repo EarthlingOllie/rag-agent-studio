@@ -2,8 +2,8 @@
 
 Under ``pytest -n N`` each worker process (``gw0``, ``gw1``, ...) gets its own Postgres
 database (``<name>_<worker id>``, created on first use and migrated once per worker) and
-its own Redis database (counting down from the configured one). A serial run, with no
-worker id, uses the configured names unchanged.
+its own Redis database (counting down from the configured one) and its own SQS queues. A
+serial run, with no worker id, uses the configured names unchanged.
 """
 
 import asyncio
@@ -41,6 +41,14 @@ def worker_redis_url(redis_url: str, worker_id: str | None) -> str:
             f"Worker {worker_id} has no free Redis database below {base}; run fewer workers."
         )
     return urlunsplit(parts._replace(path=f"/{database}"))
+
+
+def worker_queue_name(queue: str, worker_id: str | None) -> str:
+    """The SQS queue this worker sends ``queue``'s jobs to: ``studio-test-<queue>``, with the
+    worker id before the queue's own name under xdist."""
+    if worker_id in SERIAL_WORKER_IDS:
+        return f"studio-test-{queue}"
+    return f"studio-test-{worker_id}-{queue}"
 
 
 def ensure_database(database_url: str) -> None:

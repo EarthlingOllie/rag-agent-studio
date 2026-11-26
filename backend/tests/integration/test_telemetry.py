@@ -25,6 +25,7 @@ from pydantic import BaseModel, Field
 from app.main import create_app
 from app.worker.celery_app import celery_app
 from tests.conftest import TEST_REDIS_URL, new_member_details
+from tests.sqs import empty_queues
 
 
 @pytest.fixture
@@ -33,8 +34,11 @@ def exporter() -> InMemorySpanExporter:
 
 
 @pytest.fixture
-def empty_broker() -> Iterator[None]:
+def empty_broker(settings_env: pytest.MonkeyPatch) -> Iterator[None]:
+    """The test queues on Floci start and end empty; the replies in Redis go too."""
+    empty_queues()
     yield
+    empty_queues()
     with redis.Redis.from_url(TEST_REDIS_URL) as connection:
         connection.flushdb()
 

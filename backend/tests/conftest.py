@@ -1,7 +1,8 @@
 """Shared fixtures for the API seam.
 
 Tests talk to the FastAPI app through an in-process async HTTP client, against real
-Postgres and Redis (``docker compose up postgres redis`` locally, service containers in CI).
+Postgres and Redis (``make services`` locally, service containers in CI), and Floci's SQS for
+the few tests that start a real worker.
 """
 
 import base64
@@ -25,7 +26,7 @@ from app.main import create_app
 from app.worker.publisher import install_publisher
 from tests.fakes.clock import ControllableClock
 from tests.fakes.jobs import RecordingJobPublisher
-from tests.worker_resources import worker_database_url, worker_redis_url
+from tests.worker_resources import worker_database_url, worker_queue_name, worker_redis_url
 
 BASE_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://studio:studio@localhost:5432/studio_test"
@@ -36,6 +37,13 @@ BASE_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
 WORKER_ID = os.environ.get("PYTEST_XDIST_WORKER")
 TEST_DATABASE_URL = worker_database_url(BASE_DATABASE_URL, WORKER_ID)
 TEST_REDIS_URL = worker_redis_url(BASE_REDIS_URL, WORKER_ID)
+# Jobs go through SQS on Floci (``docker compose up floci``); each worker has its own queues. The
+# suite runs jobs eagerly, so only the tests that start a real worker or read a queue reach it.
+TEST_SQS_ENDPOINT_URL = os.environ.get("TEST_SQS_ENDPOINT_URL", "http://localhost:4566")
+TEST_QUEUES = {queue: worker_queue_name(queue, WORKER_ID) for queue in ("general", "runs")}
+TEST_QUEUE_URLS = {
+    queue: f"{TEST_SQS_ENDPOINT_URL}/000000000000/{name}" for queue, name in TEST_QUEUES.items()
+}
 # 32 bytes, base64: the local static-key wrapper's key for the test run.
 TEST_LOCAL_KEY_WRAPPER_KEY = base64.b64encode(b"test-only-local-key-wrapper-key!").decode()
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +58,14 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
     monkeypatch.setenv("REDIS_URL", TEST_REDIS_URL)
     monkeypatch.setenv("CELERY_TASK_ALWAYS_EAGER", "true")
+    monkeypatch.setenv("GENERAL_QUEUE_NAME", TEST_QUEUES["general"])
+    monkeypatch.setenv("GENERAL_QUEUE_URL", TEST_QUEUE_URLS["general"])
+    monkeypatch.setenv("RUNS_QUEUE_NAME", TEST_QUEUES["runs"])
+    monkeypatch.setenv("RUNS_QUEUE_URL", TEST_QUEUE_URLS["runs"])
+    monkeypatch.setenv("SQS_ENDPOINT_URL", TEST_SQS_ENDPOINT_URL)
+    monkeypatch.setenv("AWS_REGION", "eu-west-2")
+    monkeypatch.setenv("SQS_ACCESS_KEY_ID", "test")
+    monkeypatch.setenv("SQS_SECRET_ACCESS_KEY", "test")
     monkeypatch.setenv("LOCAL_KEY_WRAPPER_KEY", TEST_LOCAL_KEY_WRAPPER_KEY)
     monkeypatch.setenv("MAILER", "outbox")
     monkeypatch.setenv("STUDIO_URL", STUDIO_URL)

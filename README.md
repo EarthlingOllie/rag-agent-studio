@@ -94,11 +94,12 @@ flowchart LR
   Edge["CloudFront (AWS) / Vite proxy (local): one origin"] --> API["FastAPI API"]
   Edge --> Static["Static assets: Studio, widget, demo pages"]
   API --> PG[("Postgres 16 + pgvector: tenants, Versions, Chunks, Conversations, rollups")]
-  API --> Redis[("Redis: Celery broker, rate limits, Token Budgets")]
+  API --> Redis[("Redis: sessions, rate limits, Token Budgets")]
+  API --> Queues[["SQS (Floci locally): general and runs job queues"]]
   API --> Store[("S3 / RustFS: uploads, Theme images")]
   API --> Gateway["Model gateway"]
-  Redis --> Worker["Celery worker: Docling, chunking, embeddings, ingestion scan"]
-  Beat["Celery Beat: rollups, retention"] --> Redis
+  Queues --> Worker["Celery worker: Docling, chunking, embeddings, ingestion scan, Evaluation Runs"]
+  Beat["Celery Beat: rollups, retention, job sweeper"] --> Queues
   Worker --> PG
   Worker --> Store
   Gateway --> Providers["Anthropic, OpenAI, Bedrock, demo model"]
@@ -116,8 +117,8 @@ flowchart LR
 
 | Layer | Choices |
 |---|---|
-| Backend | Python 3.13, FastAPI, SQLAlchemy 2 (async, asyncpg), Alembic, Pydantic AI (model gateway), Celery with Redis, Docling, fastembed (local embeddings), ONNX classifier, Logfire telemetry with scrubbing, uv |
-| Data | Postgres 16 with pgvector (vectors and full-text in one store), Redis 7, S3 (RustFS locally) |
+| Backend | Python 3.13, FastAPI, SQLAlchemy 2 (async, asyncpg), Alembic, Pydantic AI (model gateway), Celery on SQS, Docling, fastembed (local embeddings), ONNX classifier, Logfire telemetry with scrubbing, uv |
+| Data | Postgres 16 with pgvector (vectors and full-text in one store), Redis 7, S3 (RustFS locally), SQS job queues (Floci locally) |
 | Frontend | pnpm workspace, React 19, TanStack Router and Query, Tailwind CSS 4, Vite, Recharts, a generated TypeScript API client; the widget and a dependency-free 1 KB loader |
 | Testing | pytest against real Postgres and Redis (pytest-xdist), Vitest + Testing Library + MSW, Playwright + axe, `terraform test`, Node's test runner |
 | Infrastructure | Terraform: ECS Fargate (ARM64), RDS, ElastiCache, S3, CloudFront, KMS, ECR, fck-nat; GitHub Actions with OIDC |

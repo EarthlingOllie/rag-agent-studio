@@ -4,9 +4,9 @@ Prerequisites: Docker with Compose v2, GNU Make, [uv](https://docs.astral.sh/uv/
 
 | Command | What it does |
 |---|---|
-| `make dev` | Builds and starts the whole stack: Postgres with pgvector, Redis, RustFS, Mailpit, the API, the Celery worker, Celery Beat, the Studio, the widget and a demo host page. |
+| `make dev` | Builds and starts the whole stack: Postgres with pgvector, Redis, RustFS, Floci (SQS, the job queues), Mailpit, the API, the Celery worker, Celery Beat, the Studio, the widget and a demo host page. |
 | `make install` | Installs backend (`uv sync`) and frontend (`pnpm install`) dependencies on the host. |
-| `make services` | Starts only Postgres and Redis, which the backend tests need. |
+| `make services` | Starts only Postgres, Redis, RustFS and Floci, which the backend tests need. |
 | `make test` | Backend and frontend tests, each failing below 100% line or branch coverage (ADR-0008). |
 | `make lint` | ruff, `mypy --strict`, eslint and `tsc`. |
 | `make gen-client` | Regenerates `frontend/packages/api-client` from the backend's OpenAPI schema. |
@@ -26,6 +26,7 @@ Once `make dev` is up:
 - API: <http://localhost:8000/api/health>, OpenAPI docs at <http://localhost:8000/docs>
 - Mailpit: <http://localhost:8025>
 - RustFS console: <http://localhost:9001>
+- Floci (SQS only): <http://localhost:4566>, the job queues `studio-general` and `studio-runs` (for example `aws --endpoint-url http://localhost:4566 sqs get-queue-attributes --queue-url http://localhost:4566/000000000000/studio-general --attribute-names All`, with any keys)
 - Demo pages (ticket 10-03; after `make seed`): <http://localhost:5175/demo/> (Northwind's shop with the Product FAQ as a bubble; `inline.html` shows it inline, `budget.html` has the Low-budget helper and a button that spends its Token Budget) and <http://localhost:5176/> (an origin no Agent allows: the browser refuses the widget). They ask `GET /api/demo/agents` (proxied by the `host` service) which seeded Agents to embed; `POST /api/demo/agents/{public_id}/exhaust-budget` is the budget button. Both answer only with `DEMO_PAGES=true` (compose and the AWS demo); the seed puts `DEMO_SHOP_ORIGIN` (default the Studio's origin; compose sets `http://localhost:5175`) in the two Agents' Allowed Origins. In AWS the deploy uploads `frontend/apps/widget/host/demo` to the static bucket under `/demo/`; the disallowed-origin page is local-only. The attack panel (ticket 10-04) is <http://localhost:5175/demo/attacks.html>: `GET /api/demo/attacks` lists its five buttons (the fixed payloads in `app/seed/content.py`'s `ATTACKS`) and the seeded Guardrail demo Agent, and `POST /api/demo/attacks/{attack_id}` (`app/seed/attack_panel.py`) sends one to that Agent as the widget would and streams the widget's events plus a `trace` event (`layers`: input `blocked`/`flagged`/`logged`/`allowed`/`passed`, canary `replaced`/`flagged`/`quiet`/`not_reached`; `acted`; `model`; `answer`), then `done`. Also only with `DEMO_PAGES=true`. The Guardrail demo Agent's Model override is the demo credential's `demo-naive` model (the Naive model, labelled), so with the local classifier the three plain attacks are blocked by the input Guardrail, the base64 one passes it and is cut off by the Canary token, and the benign control is answered.
 - Demo host page: <http://localhost:5175/?agent=agt_…> (pastes any Agent's Embed Snippet; add `http://localhost:5175` to the Agent's Allowed Origins on its Embed section first)
 
@@ -169,6 +170,15 @@ app.core.settings.SettingsError: Invalid service settings. DATABASE_URL: Field r
 - **Holding the claim.** The final write and `_settle` (Failed, or Queued for an automatic retry) first check `holds()`, locking the row: a copy given up for dead and replaced writes nothing.
 - **Sweeper** (`jobs.sweep`, `app/jobs/tasks.py`). Beat runs it every minute and each worker sends it once on `worker_ready`. Under a Postgres advisory lock (a sweep that can't take it returns `None` and does nothing), it sends again every row Queued for longer than `JOB_QUEUED_TOO_LONG_SECONDS` (default 900; its `queued_at` restarts), and puts every Processing row with no heartbeat for the dead-after time back to Queued and sends it again. Each recovery is a log span `Sweeper recovered {job} {job_id}: {reason}` (`no heartbeat` or `queued too long`). The API records `queued_at` with its clock when it queues a Document (confirm, replace, retry); ingestion's clock is `IngestionPorts.clock`, which the API points at `app.state.clock`.
 - **Celery.** `worker_prefetch_multiplier=1`, `task_acks_late=True`, `task_reject_on_worker_lost=False`: the sweeper, not the broker, restarts a job whose worker was lost.
+
+**Jobs go through SQS** (ticket 22-03, ADR-0021, `app/worker/celery_app.py`, `app/worker/queues.py`). The broker is SQS, locally and on AWS; Redis is not a broker and there is no setting to make it one. It still holds sessions, sign-in throttling, rate limits, Token Budgets and the reply of the worker health probe (the Celery result backend, `result_expires=300`). Two queues:
+
+- **Routing.** `Job.queue` (`queue_for(task)`) is `runs` for Evaluation Runs (`evaluation.run`) and Suggestion runs (`suggestions.run`) and `general` for every other job. `CeleryJobPublisher` sends each job with `queue=` its queue's name; Celery's `task_routes` say the same for a task sent without one (an automatic retry), and `task_default_queue` is the general queue, so what Beat schedules and the health probe go there.
+- **Predefined queues.** Celery is given both queues by URL (`broker_transport_options.predefined_queues`) with `task_create_missing_queues=False`, so no task lists or creates a queue (the task roles have no permission to). Remote control is off (`worker_enable_remote_control=False`): SQS has no broadcast.
+- **Messages carry identifiers only**: the task's name and the ids of the rows it runs for (plus a re-embed's attempt number and a Project deletion's actor and time); never Document text, Messages or keys.
+- **Settings** (validated at startup): `GENERAL_QUEUE_NAME`, `GENERAL_QUEUE_URL`, `RUNS_QUEUE_NAME`, `RUNS_QUEUE_URL` (required; names SQS accepts, two different queues, each URL ending in its name); `SQS_ENDPOINT_URL` (the endpoint override, unset on AWS; `http://floci:4566` in compose); `AWS_REGION` (ECS sets it); `SQS_ACCESS_KEY_ID`/`SQS_SECRET_ACCESS_KEY` (static keys for Floci; unset on AWS, where the task role is used); `SQS_CREATE_QUEUES` (the API creates both queues at startup, with the queue module's visibility timeouts, one hour and twelve; compose only). `INGESTION_RETRY_MAX_SECONDS` may be at most 300: an automatic retry is a message with a countdown, which the worker that received it holds until it is due, well inside the queues' visibility timeouts.
+- **Local stack.** The `floci` service (`floci/floci:2.5.0`, port 4566, state in the `floci-data` volume) is used for SQS only; RustFS stays the object store. The one `worker` container serves both queues (it is started without `-Q`).
+- **Tests.** The suite runs jobs eagerly; the tests that start a real worker or read a queue (`test_job_queues.py`, `test_job_publisher.py`, `test_worker_health.py`, `test_telemetry.py`, `test_logging.py`) use Floci at `TEST_SQS_ENDPOINT_URL` (default `http://localhost:4566`), on queues of their own per xdist worker (`studio-test[-gwN]-general|runs`, `tests/sqs.py`). The fake publisher records each `Job`, so a test reads `job.queue`.
 - **Tests.** The fake converter (`"convert"`), hash embedder (`"embed"`) and in-memory object store (`"put"`, `"delete"`) carry a `kill` switch (`app/jobs/faults.py`): `kill.arm(point)` makes the next job reaching that point raise `JobKilled`, which skips the job's error handling and which the `jobs` fixture swallows (`jobs.killed`). Tests move the `clock` fixture and run `sweep_jobs.apply(kwargs={"at": …})`; see `tests/integration/test_interrupted_ingestion.py`.
 
 **Ingestion limits** (ticket 21-04, migration `0061_ingestion_limits`). Documents and staged editions gain `interruption_count` and `retry_at`.
@@ -216,7 +226,7 @@ Beat runs these on UTC schedules (`backend/app/worker/celery_app.py`); each catc
 
 ## Tests
 
-Backend tests run against real Postgres and Redis. With `make services` running they use the `studio_test` database and Redis database 15; override with `TEST_DATABASE_URL` and `TEST_REDIS_URL`.
+Backend tests run against real Postgres and Redis. With `make services` running they use the `studio_test` database and Redis database 15; override with `TEST_DATABASE_URL` and `TEST_REDIS_URL`. The few tests that start a real worker send jobs through Floci's SQS at `TEST_SQS_ENDPOINT_URL` (default `http://localhost:4566`).
 
 ## End-to-end tests
 
@@ -240,7 +250,7 @@ To use a Chromium that is already installed instead of Playwright's download, se
 
 ## Job queues (AWS)
 
-Ticket 22-02 added `infra/modules/queue`: the general and runs SQS queues, a dead-letter queue and a depth alarm for each, encryption at rest, and outputs of each queue's name, URL and ARN. `infra/envs/demo` wires it in; the ecs module's new `queues` input puts `GENERAL_QUEUE_NAME/URL` and `RUNS_QUEUE_NAME/URL` in every container's environment (recorded in `infra/modules/ecs/tests/task-settings.json`) and grants the task roles their queue actions. `infra/bootstrap` lets the deploy role manage `studio-*` queues only. The backend does not read these settings yet (ticket 22-03). See [deploy-demo.md](deploy-demo.md#job-queues).
+Ticket 22-02 added `infra/modules/queue`: the general and runs SQS queues, a dead-letter queue and a depth alarm for each, encryption at rest, and outputs of each queue's name, URL and ARN. `infra/envs/demo` wires it in; the ecs module's new `queues` input puts `GENERAL_QUEUE_NAME/URL` and `RUNS_QUEUE_NAME/URL` in every container's environment (recorded in `infra/modules/ecs/tests/task-settings.json`) and grants the task roles their queue actions. `infra/bootstrap` lets the deploy role manage `studio-*` queues only. Since ticket 22-03 the backend sends its jobs to them (see [Jobs go through SQS](#background-jobs)). See [deploy-demo.md](deploy-demo.md#job-queues).
 
 ## CI workflows
 
