@@ -32,6 +32,7 @@ from app.embed.api import NO_LONGER_AVAILABLE, Serving, Signer, _errors, _event_
 from app.embed.visitor_turn import Unavailable, VisitorTurnEvent, serve_turn
 from app.guardrails.pipeline import RefusalEvent
 from app.playground.api import QUESTION_MAX
+from app.playground.service import CallEndedError
 from app.runtime.errors import ErrorEvent
 from app.runtime.runtime import ReplaceEvent, TokenEvent
 from app.voice.api import Voice
@@ -181,6 +182,9 @@ async def chat_completions(
             ports=serving,
             call_id=found.call.id,
         )
+    except CallEndedError:
+        # The Call ended after its turn was checked.
+        raise HTTPException(status.HTTP_403_FORBIDDEN, INVALID_CALL) from None
     except (AgentNotServedError, AgentNotLiveError):
         raise _gone() from None
     except (NoDefaultModelError, ProviderCredentialGoneError):

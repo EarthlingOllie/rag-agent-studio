@@ -302,6 +302,24 @@ test("a widget closed while its Call is starting doesn't join the Call, and ends
   expect(seen.map((s) => s.route)).toEqual(["start conversation", "start call", "end call"]);
 });
 
+test("a widget that leaves the page during its Call leaves the Call and ends it", async () => {
+  const seen = fakeCallApi();
+  const { unmount } = render(<Widget boot={boot} />);
+  await choose("Call");
+  await waitFor(() => {
+    expect(callState()).toHaveTextContent("Listening…");
+  });
+
+  unmount();
+
+  await waitFor(() => {
+    expect(seen.map((s) => s.route)).toEqual(["start conversation", "start call", "end call"]);
+  });
+  // The voice session stopped too: the Visitor's words never reach the voice layer.
+  await after(SCRIPT_PAUSE_MS * 2);
+  expect(seen.map((s) => s.route)).toEqual(["start conversation", "start call", "end call"]);
+});
+
 test("a Call refused by the Call limits offers messaging with the unavailable text", async () => {
   for (const reason of ["call_open", "too_many_calls", "call_minutes_exhausted"]) {
     fakeCallApi({ startCall: () => json({ detail: UNAVAILABLE, reason }, 503) });

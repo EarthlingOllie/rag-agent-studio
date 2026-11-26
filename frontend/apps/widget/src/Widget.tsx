@@ -168,6 +168,8 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   const [callMode, setCallMode] = useState<CallMode | "connecting">("connecting");
   const [muted, setMuted] = useState(false);
   const call = useRef<CallSession | null>(null);
+  // Leaves and ends the Call being held, when the widget leaves the page during it.
+  const leaveCall = useRef<(() => void) | null>(null);
   // Ends the Call when it reaches the Maximum Call length, as the platform does.
   const callLimit = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const root = useRef<HTMLDivElement | null>(null);
@@ -181,12 +183,14 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   // Whether the widget is still on the page: a Call that finishes starting after it left is
   // ended, not joined.
   const mounted = useRef(true);
-  // A Call's limit timer doesn't outlive the widget.
+  // A Call doesn't outlive the widget: leaving the page leaves the voice session, ends the Call
+  // and stops its limit timer.
   useEffect(() => {
     mounted.current = true;
     return () => {
       mounted.current = false;
       clearTimeout(callLimit.current);
+      leaveCall.current?.();
     };
   }, []);
 
@@ -334,6 +338,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   /** Leaves the Call, ends it, and returns to the chat with what was said in the log. */
   async function hangUp(failure: string | null = null) {
     clearTimeout(callLimit.current);
+    leaveCall.current = null;
     call.current?.end();
     call.current = null;
     if (token.current !== null) await endCall(boot, token.current);
@@ -359,7 +364,8 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         await endCall(boot, token.current);
         return;
       }
-      call.current = joinCall(boot, started, {
+      const conversation = token.current;
+      const session = joinCall(boot, started, {
         onMode: setCallMode,
         onVisitorWords: (words) => {
           setMessages((current) => [...current, { role: "visitor", text: words, citations: [], feedback: null, spoken: true }]);
@@ -367,6 +373,11 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         onReply: () => void refreshLog(),
         onFailure: (failure) => void hangUp(failure.message),
       });
+      call.current = session;
+      leaveCall.current = () => {
+        session.end();
+        void endCall(boot, conversation);
+      };
       callLimit.current = setTimeout(() => void hangUp(callLengthReached(started.max_call_minutes)), started.max_call_minutes * MINUTE_MS);
     } catch (failure) {
       if (failure instanceof ChatError && failure.status === 404) {

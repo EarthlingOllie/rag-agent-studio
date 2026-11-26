@@ -165,8 +165,10 @@ async def turn_call(
     """The open Call a turn the voice layer sent belongs to. Raises ``InvalidSecretError``
     unless ``secret`` is the Agent's per-Agent secret, and ``InvalidCallError`` unless
     ``call_token`` is a good Call token for an open Call in one of the Agent's Conversations.
-    The Call stays locked until the turn is recorded, so a Call is never answered after it
-    ended and its minutes were counted."""
+    A Call past its deadline (``call_limits.deadline``) that Beat hasn't ended yet is ended
+    here, then, and the turn refused. Saving the Visitor's words checks again, under the
+    Call's lock, that it is still open (``app.playground.service.save_question``), so a Call
+    that ends after this check takes no Spoken Message and no reply."""
     agent = await session.scalar(select(Agent).where(Agent.public_id == public_id))
     expected = None if agent is None else call_secret(voice.envelope, agent)
     if agent is None or expected is None:
@@ -194,6 +196,9 @@ async def turn_call(
     if row is None or row[0].ended_at is not None:
         raise InvalidCallError
     call, conversation = row
+    if await call_limits.past_deadline(session, call, conversation, now=now):
+        await session.commit()
+        raise InvalidCallError
     # The Call isn't silent: Beat leaves it open for another minute.
     call.last_turn_at = now
     await session.commit()

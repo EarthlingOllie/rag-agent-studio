@@ -729,11 +729,11 @@ How long one Call may last before it is ended (10 minutes by default, at most 60
 _Avoid_: Call timeout, session limit
 
 **Silence cut-off**:
-A Call with no turn for 60 seconds is ended by a Beat task (run every 15 seconds), at the moment the minute passed; this also closes Calls whose browser vanished without ending them.
+A Call with no turn for 60 seconds is ended by a Beat task (run every 15 seconds), at the moment the minute passed; this also closes Calls whose browser vanished without ending them. A turn that arrives after the minute passed, before the Beat task ran, ends the Call then too and is refused.
 _Avoid_: Idle timeout, hang-up timer
 
 **Call minutes budget**:
-The most minutes of Calls an Agent's Visitors may use per UTC date (60 by default), timed by the platform. Each Call that ends adds its minutes, rounded up, to the Agent's counter for the UTC date it ended; once the day's minutes reach the budget, starting a Call is refused with the Unavailable text (reason `call_minutes_exhausted`) and the Visitor is offered messaging, and the first such refusal of the day raises the Agent's Budget alert ("Call minutes spent") and emails the Owners once. A new UTC date starts a new counter; raising the budget applies at once. Playground Calls don't count. The Studio's Call minutes meter, beside the Token Budget's meter in Embed & limits, shows today's minutes against it. Part of the Operational Settings, beside the Token Budget, which spoken replies also count toward.
+The most minutes of Calls an Agent's Visitors may use per UTC date (60 by default), timed by the platform. Each Call that ends adds its minutes, rounded up, to the Agent's counter for the UTC date it ended; Calls still open count their minutes so far, at least one each, and starts are taken one at a time per Agent, so Calls starting at once can't all take its last minute. Once the day's minutes reach the budget, starting a Call is refused with the Unavailable text (reason `call_minutes_exhausted`) and the Visitor is offered messaging, and the first such refusal of the day raises the Agent's Budget alert ("Call minutes spent") and emails the Owners once. A new UTC date starts a new counter; raising the budget applies at once. Playground Calls don't count. The Studio's Call minutes meter, beside the Token Budget's meter in Embed & limits, shows today's minutes (open Calls included, as starting a Call counts them) against it. Part of the Operational Settings, beside the Token Budget, which spoken replies also count toward.
 _Avoid_: Call quota, voice limit
 
 **Voice Cost**:

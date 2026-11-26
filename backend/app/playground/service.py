@@ -32,6 +32,7 @@ from app.agents.service import active_agent, get_agent
 from app.conversations.models import (
     DRAFT,
     VERSION,
+    Call,
     Conversation,
     InstructionsSource,
     Message,
@@ -73,6 +74,10 @@ from app.tenancy.repository import OrganisationScope
 
 class ConversationNotFoundError(Exception):
     """No Playground Conversation with that ID for the Agent."""
+
+
+class CallEndedError(Exception):
+    """The Call the words were spoken in has ended."""
 
 
 async def start_conversation(
@@ -231,6 +236,12 @@ async def save_question(
     await session.refresh(conversation, with_for_update=True)
     if conversation.deleted_at is not None:
         raise ConversationNotFoundError
+    if call_id is not None:
+        # Locked after the Conversation, as ending a Conversation locks them: a Call that ended
+        # since its turn was checked takes no more words.
+        call = await session.get_one(Call, call_id, with_for_update=True, populate_existing=True)
+        if call.ended_at is not None:
+            raise CallEndedError
     organisation_id = conversation.organisation_id
     resolved = await resolve_models(session, organisation_id, config)
     session.add(

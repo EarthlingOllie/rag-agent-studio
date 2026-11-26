@@ -4,9 +4,10 @@ abused.
 - **Admission.** After the checks a message passes, starting a Call is refused while the
   Conversation has a Call open, while the Visitor's IP address holds ``CALLS_PER_IP`` open
   Calls with the Agent (counted per Agent, as the IP rate limit is), and once the Agent's Call
-  minutes for the UTC date, with the minutes so far of its open Calls, have reached its Call
-  minutes budget. The first refusal of a day
-  for the budget raises the Agent's Call minutes alert and emails its Owners, once.
+  minutes for the UTC date, with the minutes so far of its open Calls (at least one each),
+  have reached its Call minutes budget. Starts are serialized per Agent, so concurrent starts
+  can't all take the budget's last minute. The first refusal of a day for the budget raises
+  the Agent's Call minutes alert and emails its Owners, once.
 - **Ending.** However a Call ends (the Visitor, the Maximum Call length, silence, the
   Conversation ending), ``finish`` records when and why, and its minutes: the time from its
   start, by the platform's clock, rounded up to whole minutes. Those minutes go on the Agent's
@@ -14,7 +15,8 @@ abused.
 - **The reaper.** A Beat task (``end_idle_calls``) ends Calls that have reached the Maximum Call
   length they started with (changing it applies to the next Call), and Calls with no turn for
   ``SILENCE`` (which also closes Calls whose browser vanished without ending them).
-  Such a Call ends when its limit passed, not when Beat noticed.
+  Such a Call ends when its limit passed, not when Beat noticed; a turn that arrives after
+  the limit passed and before Beat ran ends it too (``past_deadline``) and is refused.
 """
 
 import enum
@@ -73,6 +75,18 @@ def deadline(call: Call) -> tuple[datetime, CallEnd]:
     return (silent, CallEnd.SILENCE) if silent < longest else (longest, CallEnd.MAX_LENGTH)
 
 
+async def past_deadline(
+    session: AsyncSession, call: Call, conversation: Conversation, *, now: datetime
+) -> bool:
+    """Whether the open ``call`` (locked by the caller) has passed its deadline by ``now``;
+    if so it is ended then, as Beat would have ended it, in the caller's transaction."""
+    at, reason = deadline(call)
+    if at > now:
+        return False
+    await finish(session, call, conversation, ended_at=at, reason=reason)
+    return True
+
+
 async def finish(
     session: AsyncSession,
     call: Call,
@@ -126,9 +140,10 @@ async def minutes_used(session: AsyncSession, agent_id: uuid.UUID, day: date) ->
 
 
 async def open_minutes(session: AsyncSession, agent_id: uuid.UUID, *, now: datetime) -> int:
-    """The minutes, so far, of the Agent's Visitors' Calls still open: admission counts them
-    with the day's ended Calls, so concurrent Calls can't all start on the budget's last
-    minute. (A Call that started yesterday counts whole: its minutes go on the day it ends.)"""
+    """The minutes, so far, of the Agent's Visitors' Calls still open, at least one each (a
+    Call just started will cost its first minute): admission and the Studio's meter count
+    them with the day's ended Calls. (A Call that started yesterday counts whole: its minutes
+    go on the day it ends.)"""
     starts = await session.scalars(
         select(Call.started_at)
         .join(Conversation, Conversation.id == Call.conversation_id)
@@ -138,21 +153,27 @@ async def open_minutes(session: AsyncSession, agent_id: uuid.UUID, *, now: datet
             Call.ended_at.is_(None),
         )
     )
-    return sum(call_minutes(started_at, now) for started_at in starts)
+    return sum(max(call_minutes(started_at, now), 1) for started_at in starts)
+
+
+async def minutes_so_far(session: AsyncSession, agent_id: uuid.UUID, *, now: datetime) -> int:
+    """Today's (UTC) Call minutes as the budget counts them: the Calls that ended today and the
+    minutes so far of those still open."""
+    ended = await minutes_used(session, agent_id, utc_date(now))
+    return ended + await open_minutes(session, agent_id, now=now)
 
 
 async def refusal(
     session: AsyncSession, agent: Agent, conversation: Conversation, ip: str, *, now: datetime
 ) -> CallRefusal | None:
     """Why a Call may not start in the Conversation now, or None. Run it in the transaction
-    that records the Call: it locks the Conversation and the IP address, so two starts can't
-    both take the last place."""
+    that records the Call: it locks the Conversation and then the Agent's Call starts, so two
+    starts can't both take the last place in the Conversation, for the IP address or in the
+    budget."""
     await session.execute(
         select(Conversation.id).where(Conversation.id == conversation.id).with_for_update()
     )
-    await session.execute(
-        select(func.pg_advisory_xact_lock(func.hashtext(f"call-ip:{agent.id}:{ip}")))
-    )
+    await session.execute(select(func.pg_advisory_xact_lock(func.hashtext(f"calls:{agent.id}"))))
     open_here = await session.scalar(
         select(Call.id).where(Call.conversation_id == conversation.id, Call.ended_at.is_(None))
     )
@@ -166,8 +187,7 @@ async def refusal(
     )
     if (open_for_ip or 0) >= CALLS_PER_IP:
         return CallRefusal.TOO_MANY_CALLS
-    spent = await minutes_used(session, agent.id, utc_date(now))
-    if spent + await open_minutes(session, agent.id, now=now) >= agent.call_minutes_budget:
+    if await minutes_so_far(session, agent.id, now=now) >= agent.call_minutes_budget:
         return CallRefusal.MINUTES_SPENT
     return None
 
@@ -236,9 +256,7 @@ async def end_idle_calls(session: AsyncSession, *, now: datetime) -> int:
     )
     ended = 0
     for call, conversation in rows:
-        at, reason = deadline(call)
-        if at <= now:
-            await finish(session, call, conversation, ended_at=at, reason=reason)
+        if await past_deadline(session, call, conversation, now=now):
             ended += 1
     await session.commit()
     return ended
@@ -248,6 +266,8 @@ async def end_idle_calls(session: AsyncSession, *, now: datetime) -> int:
 class CallMinutes:
     # The UTC date counted, today's.
     date: date
+    # The Calls that ended today and the minutes so far of those still open, as admission
+    # counts them.
     minutes_used: int
     call_minutes_budget: int
     exhausted: bool
@@ -263,10 +283,11 @@ async def usage(
     *,
     now: datetime,
 ) -> CallMinutes:
-    """Today's (UTC) Call minutes against the Agent's Call minutes budget."""
+    """Today's (UTC) Call minutes against the Agent's Call minutes budget, counted as admission
+    counts them: spent once Calls are refused."""
     agent = (await get_agent(session, scope, project_id, agent_id)).agent
     today = utc_date(now)
-    used = await minutes_used(session, agent.id, today)
+    used = await minutes_so_far(session, agent.id, now=now)
     return CallMinutes(
         date=today,
         minutes_used=used,

@@ -540,11 +540,14 @@ async def test_a_call_token_lasts_the_maximum_call_length(
     agent = await calling_agent(app, owner)
     token = await conversation_token(visitor, agent["public_id"])
     call = await started(visitor, agent["public_id"], token)
-    clock.advance(timedelta(minutes=10))
+    secret = await secret_of(app, agent)
+    # The Visitor keeps talking, so the Call is never silent.
+    for _ in range(11):
+        clock.advance(timedelta(seconds=50))
+        await turn(voice, agent["public_id"], secret, call["call_token"], "Hi")
+    clock.advance(timedelta(seconds=49))  # 1 s before the Maximum Call length
 
-    response = await turn(
-        voice, agent["public_id"], await secret_of(app, agent), call["call_token"], "Hi"
-    )
+    response = await turn(voice, agent["public_id"], secret, call["call_token"], "Hi")
 
     assert response.status_code == 200, response.text
 
