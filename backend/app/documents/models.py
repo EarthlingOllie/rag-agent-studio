@@ -10,6 +10,7 @@ from typing import Any
 from pgvector.sqlalchemy import HALFVEC, Vector
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     Computed,
     DateTime,
@@ -21,6 +22,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     cast,
+    false,
     func,
     literal,
 )
@@ -93,6 +95,9 @@ class Document(IdMixin, Base):
     queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     claim_id: Mapped[uuid.UUID | None] = mapped_column()
     heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set when a new edition is swapped in, cleared once its Expected sources have been matched
+    # again; the sweeper finishes that for a Document whose ingestion died first.
+    recheck_due: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 

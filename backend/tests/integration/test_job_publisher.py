@@ -120,10 +120,10 @@ async def test_object_deletions_after_ingestion_are_sent_through_the_publisher(
     )
 
     assert replaced.status_code == 202, replaced.text
-    # Ingesting the new edition hands the old edition's original and markdown to be deleted.
+    # Ingesting the new edition sends the object-deletion job, which carries no keys: the old
+    # edition's are in the deletions table.
     assert jobs.tasks() == [INGEST_TASK, INGEST_TASK, DELETE_OBJECTS_TASK]
-    (keys,) = jobs.sent[-1].args
-    assert len(keys) == 2
+    assert jobs.sent[-1] == Job(DELETE_OBJECTS_TASK, ())
 
 
 async def test_a_worker_health_probe_that_cannot_be_sent_is_reported(
@@ -164,7 +164,7 @@ def test_every_job_but_the_health_probe_ignores_its_result(broker: redis.Redis) 
     for job in (
         Job(INGEST_TASK, ("document",)),
         Job(INGEST_TASK, ("retried-document",), {"attempt": 2}, countdown=5),
-        Job(DELETE_OBJECTS_TASK, (["a", "b"],)),
+        Job(DELETE_OBJECTS_TASK, ()),
         Job(EVALUATION_RUN_TASK, ("run",)),
         Job(LIVE_VERDICT_TASK, ("verdict",)),
         Job(SUGGESTION_RUN_TASK, ("suggestion",)),

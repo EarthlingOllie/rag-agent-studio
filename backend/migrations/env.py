@@ -18,6 +18,7 @@ from app.default_model import models as default_model_models
 from app.documents import models as document_models
 from app.evaluation import models as evaluation_models
 from app.feedback import models as feedback_models
+from app.jobs import models as job_models
 from app.pricing import models as pricing_models
 from app.pricing.sync import sync_price_table
 from app.projects import models as project_models
@@ -44,6 +45,7 @@ _MODEL_MODULES = (
     document_models,
     evaluation_models,
     feedback_models,
+    job_models,
     tag_models,
     pricing_models,
     project_models,

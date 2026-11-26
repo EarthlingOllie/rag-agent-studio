@@ -44,6 +44,7 @@ from app.documents.models import (
 )
 from app.documents.pipeline import stored_keys
 from app.evaluation.models import EvaluationExpectedSource, StaleReason
+from app.jobs import deletions
 from app.projects import service as projects
 from app.projects.models import Project
 from app.storage.port import ObjectNotFoundError, ObjectStore
@@ -624,11 +625,12 @@ async def delete_document(
     document_id: uuid.UUID,
     *,
     now: datetime,
-) -> list[str]:
+) -> None:
     """Deletes the Document and its Chunks in one transaction, so retrieval stops at once, and
     records ``document.deleted``. Its Expected sources become Stale expectations
-    (``document_deleted``). Returns its stored objects (originals and converted markdown,
-    of the current and any staged edition) for the caller to schedule deletion of."""
+    (``document_deleted``). Its stored objects (originals and converted markdown, of the current
+    and any staged edition) go to the deletions table in the same transaction; the caller sends
+    the object-deletion job once it commits."""
     project = await projects.active_project(session, scope, project_id)
     document = await session.scalar(
         select(Document)
@@ -667,17 +669,18 @@ async def delete_document(
         },
         occurred_at=now,
     )
+    deletions.schedule(session, keys)
     await session.delete(document)
     await session.commit()
-    return keys
 
 
 @dataclass(frozen=True)
 class Replacement:
     document: Document
     staged: StagedEdition
-    # A previous failed replacement's stored objects, which nothing refers to any more.
-    discarded: list[str]
+    # Whether a previous failed replacement was discarded: its stored objects, which nothing
+    # refers to any more, are in the deletions table.
+    discarded: bool
 
 
 async def replace_document(
@@ -719,14 +722,14 @@ async def replace_document(
         content_hash=content_hash,
         max_bytes=max_bytes,
     )
-    discarded: list[str] = []
+    discarded = staged is not None
     if staged is None:
         staged = StagedEdition(
             document_id=document.id, organisation_id=document.organisation_id, project_id=project.id
         )
         session.add(staged)
     else:
-        discarded = stored_keys(staged.object_key)
+        deletions.schedule(session, stored_keys(staged.object_key))
     staged.edition = document.edition + 1
     staged.name = received.name
     staged.mime_type = received.mime_type
