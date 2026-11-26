@@ -13,8 +13,9 @@ model with its Remembered turns, its Live Verdict reasons or Feedback, and a com
 case with its question, expectations, Verdicts' reasons and Trace. One proposing call
 (``app.suggestions.proposer``) then gives the changes and Knowledge Base gaps; with no evidence
 it proposes nothing and asks no model. A model error, a timeout or invalid output makes the run
-``failed`` with why. The outcome is ``changes``, else ``gaps_only`` when it found only gaps, else
-``no_change``.
+``failed`` with why; so does any unexpected error, which also ends its check Run if one was
+started, so a run never stays in progress. The outcome is ``changes``, else ``gaps_only`` when
+it found only gaps, else ``no_change``.
 
 Evidence points at its Message, or at the Evaluation Case as its Run copied it, and never copies
 text (ADR-0017); reading a Suggestion resolves each piece to its date, kinds and Live Verdict
@@ -23,6 +24,7 @@ deleted" once a case is gone.
 """
 
 import functools
+import logging
 import uuid
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -62,6 +64,7 @@ from app.evaluation.settings import judge_model
 from app.evaluation.suggestion_check import (
     CheckResult,
     check_cost,
+    fail_check,
     read_check,
     start_check,
     stop_check,
@@ -102,6 +105,9 @@ NO_EVIDENCE = "There was no evidence in the range, so nothing was proposed."
 CREDENTIAL_GONE = (
     "The Evaluation Model's Provider Credential no longer exists, so nothing was proposed."
 )
+UNEXPECTED = "The Suggestion run stopped on an unexpected error. Start a new one."
+
+logger = logging.getLogger(__name__)
 
 
 class NeverPublishedError(Exception):
@@ -800,6 +806,23 @@ async def _spent(
         await session.commit()
 
 
+async def _failed_unexpectedly(
+    sessionmaker: async_sessionmaker[AsyncSession], suggestion_id: uuid.UUID, now: datetime
+) -> None:
+    """Ends the run ``failed`` after an unexpected error, unless it already ended, and ends its
+    check Run too if one was started and is still in progress."""
+    async with sessionmaker() as session:
+        suggestion = await session.get_one(Suggestion, suggestion_id, with_for_update=True)
+        if suggestion.status not in IN_PROGRESS:
+            return
+        suggestion.status = SuggestionStatus.FAILED
+        suggestion.error_message = UNEXPECTED
+        suggestion.finished_at = now
+        if suggestion.check_run_id is not None:
+            await fail_check(session, suggestion.check_run_id, UNEXPECTED, now)
+        await session.commit()
+
+
 async def run_suggestion(
     sessionmaker: async_sessionmaker[AsyncSession],
     ports: EvaluationPorts,
@@ -809,7 +832,22 @@ async def run_suggestion(
 ) -> None:
     """Gathers the queued Suggestion run's evidence and proposes its Suggestion, then checks a
     configuration change against the Evaluation Set when the Agent has one. A run cancelled
-    meanwhile stops before its next phase, keeping what it spent."""
+    meanwhile stops before its next phase, keeping what it spent. An unexpected error ends the
+    run ``failed``, and its check Run with it, so it never stays in progress."""
+    try:
+        await _run(sessionmaker, ports, gateway, suggestion_id, clock)
+    except Exception:
+        logger.exception("Suggestion run failed", extra={"suggestion_id": str(suggestion_id)})
+        await _failed_unexpectedly(sessionmaker, suggestion_id, clock.now())
+
+
+async def _run(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    ports: EvaluationPorts,
+    gateway: ModelGateway,
+    suggestion_id: uuid.UUID,
+    clock: Clock,
+) -> None:
     if not await _set_status(sessionmaker, suggestion_id, SuggestionStatus.GATHERING):
         return
     evidence = await _gather(sessionmaker, suggestion_id)
