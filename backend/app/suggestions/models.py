@@ -33,9 +33,17 @@ class SuggestionStatus(enum.StrEnum):
     PROPOSING = "proposing"
     CHECKING = "checking"
     COMPLETED = "completed"
-    # The Evaluation Model failed, timed out or gave invalid output.
+    # The Evaluation Model failed, timed out or gave invalid output, an unexpected error stopped
+    # it, or its worker stopped before its proposal existed (``SuggestionFailure.INTERRUPTED``).
     FAILED = "failed"
     CANCELLED = "cancelled"
+
+
+class SuggestionFailure(enum.StrEnum):
+    """Why a failed run failed, when it was not the Evaluation Model or an error of its own."""
+
+    # Its worker stopped (its heartbeat did) before its proposal was stored (spec 21).
+    INTERRUPTED = "interrupted"
 
 
 # Not yet finished: the Studio polls a Suggestion in one of these.
@@ -45,6 +53,8 @@ IN_PROGRESS = (
     SuggestionStatus.PROPOSING,
     SuggestionStatus.CHECKING,
 )
+# Picked up by its job: the phases the job writes a heartbeat through.
+WORKING = (SuggestionStatus.GATHERING, SuggestionStatus.PROPOSING, SuggestionStatus.CHECKING)
 
 
 class SuggestionOutcome(enum.StrEnum):
@@ -118,6 +128,8 @@ class Suggestion(IdMixin, Base):
     # The run's overall explanation, in its own words.
     explanation: Mapped[str | None] = mapped_column(Text)
     error_message: Mapped[str | None] = mapped_column(Text)
+    # A ``SuggestionFailure`` when a failed run was interrupted; None otherwise.
+    failure_reason: Mapped[str | None] = mapped_column(String(20))
     # The estimated Cost shown before it started, in US dollars: proposing, and checking (None
     # without an Evaluation Set, or when a price it needed is unknown).
     estimated_proposing_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
@@ -139,6 +151,11 @@ class Suggestion(IdMixin, Base):
     # that Member is gone).
     applied_by: Mapped[uuid.UUID | None] = mapped_column(ForeignKey(Member.id, ondelete="SET NULL"))
     applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Job reliability (``app.suggestions.jobs``, ADR-0020): when it was last put on Queued, and,
+    # while its job works on it, that job's claim and last heartbeat.
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    claim_id: Mapped[uuid.UUID | None] = mapped_column()
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class SuggestedChange(IdMixin, Base):

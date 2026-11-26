@@ -6166,6 +6166,12 @@ export interface components {
             /** Total Usd */
             total_usd: string | null;
         };
+        /**
+         * SuggestionFailure
+         * @description Why a failed run failed, when it was not the Evaluation Model or an error of its own.
+         * @enum {string}
+         */
+        SuggestionFailure: "interrupted";
         /** SuggestionOut */
         SuggestionOut: {
             /** Applied At */
@@ -6195,6 +6201,7 @@ export interface components {
             evidence_total: number;
             /** Explanation */
             explanation: string | null;
+            failure_reason: components["schemas"]["SuggestionFailure"] | null;
             /** Finished At */
             finished_at: string | null;
             /** Gaps */
@@ -6263,6 +6270,7 @@ export interface components {
             error_message: string | null;
             /** Evidence Total */
             evidence_total: number;
+            failure_reason: components["schemas"]["SuggestionFailure"] | null;
             /** Finished At */
             finished_at: string | null;
             /**

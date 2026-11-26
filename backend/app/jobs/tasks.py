@@ -24,10 +24,17 @@ from app.jobs import deletions
 from app.jobs.reliability import JobPolicy, Timings, sweep
 from app.mail.factory import build_mailer
 from app.re_embedding.jobs import RE_EMBED
+from app.suggestions.jobs import SUGGESTION_RUNS
 from app.worker.celery_app import SWEEP_TASK, celery_app
 
 # Every job type the sweeper looks after.
-POLICIES: tuple[JobPolicy, ...] = (INGESTION, EVALUATION_RUNS, LIVE_VERDICTS, RE_EMBED)
+POLICIES: tuple[JobPolicy, ...] = (
+    INGESTION,
+    EVALUATION_RUNS,
+    LIVE_VERDICTS,
+    RE_EMBED,
+    SUGGESTION_RUNS,
+)
 
 
 async def _sweep(at: datetime) -> int | None:

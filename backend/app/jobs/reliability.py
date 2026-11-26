@@ -84,7 +84,9 @@ class JobTable:
     and ``overdue_rows``, and names its reason for the traces.
 
     A job type whose rows have one status for both (a Re-embed is ``running`` throughout) gives
-    it as both: the claim then tells them apart, a row without one being queued."""
+    it as both: the claim then tells them apart, a row without one being queued. One whose rows
+    move through several in-progress statuses (a Suggestion run's phases) claims into the first
+    and overrides ``_in_progress`` to take them all."""
 
     model: type[Any]
     key: Any
@@ -188,11 +190,10 @@ async def claim(
 
 def holding(found: Claim) -> ColumnElement[bool]:
     """The condition that the claim's row still carries it."""
-    model = found.table.model
     return and_(
         found.table.key == found.row_id,
-        model.claim_id == found.claim_id,
-        model.status == found.table.in_progress,
+        found.table.model.claim_id == found.claim_id,
+        found.table._in_progress(),
     )
 
 

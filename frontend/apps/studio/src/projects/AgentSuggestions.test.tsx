@@ -108,7 +108,7 @@ test("a checked Suggestion shows both Evaluation scores and each Regression with
   expect(within(detail).getByRole("button", { name: "Apply to Draft" })).toBeEnabled();
 });
 
-test("a Suggestion's check reads as not checked, running, clear, failed or cancelled", async () => {
+test("a Suggestion's check reads as not checked, running, clear, failed, cancelled or stopped", async () => {
   const user = userEvent.setup();
   const states = [
     {
@@ -135,6 +135,12 @@ test("a Suggestion's check reads as not checked, running, clear, failed or cance
       check: { state: "cancelled", evaluation_run_id: CHECK_RUN_ID, live_score: null, suggestion_score: null },
       row: "Check cancelled",
       says: "The check was cancelled before it finished.",
+    },
+    {
+      // Its check Run was cancelled directly, or interrupted: the Suggestion completed, not checked.
+      check: { state: "not_checked", evaluation_run_id: CHECK_RUN_ID, live_score: 1, suggestion_score: null },
+      row: "Not checked",
+      says: "Not checked: its check Run was cancelled or interrupted before it finished, so nothing verified this Suggestion. The proposal and what it cost are kept.",
     },
   ] as const;
   const found = states.map((each, index) => ({
@@ -249,6 +255,36 @@ test("choosing another Suggestion shows it; a failed run says why and a no-chang
   expect(within(detail).getByText("Nothing in the configuration would help.")).toBeInTheDocument();
   expect(within(detail).queryByRole("list", { name: "Suggested changes" })).not.toBeInTheDocument();
   expect(within(detail).getByRole("link", { name: "E1 · 2026-11-14 · Live Verdict passed" })).toBeInTheDocument();
+});
+
+test("an interrupted run says its worker stopped, and a Suggestion whose check stopped keeps what it spent, not checked", async () => {
+  const user = userEvent.setup();
+  const interrupted = suggestion("5a000000-0000-4000-8000-000000000002", "failed", {
+    created_at: "2026-11-15T09:00:00Z",
+    failure_reason: "interrupted",
+  });
+  const stopped: typeof citingSuggestion = {
+    ...citingSuggestion,
+    created_at: "2026-11-14T09:00:00Z",
+    cost: { ...citingSuggestion.cost, checking_usd: "0.0021" },
+    check: { state: "not_checked", evaluation_run_id: CHECK_RUN_ID, live_score: 1, suggestion_score: null, regressions: [] },
+  };
+  setUp({ suggestions: [[interrupted], [stopped]] });
+  renderStudio(evaluationPage(publishedHelper.id));
+  const tab = await openSuggestions(user);
+
+  const runs = await within(tab).findByRole("list", { name: "Suggestion runs" });
+  expect(within(runs).getAllByRole("listitem")[0]).toHaveTextContent("Failed");
+  const failedDetail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-15 09:00 UTC" });
+  expect(within(failedDetail).getByRole("alert")).toHaveTextContent(
+    "Interrupted: the worker running this Suggestion run stopped before its proposal was made, so nothing was proposed. Start a new run.",
+  );
+
+  await user.click(within(tab).getByRole("button", { name: "Suggestion of 2026-11-14 09:00 UTC" }));
+  const detail = await within(tab).findByRole("region", { name: "Suggestion of 2026-11-14 09:00 UTC" });
+  expect(detail).toHaveTextContent("Not checked: the check stopped after costing $0.0021.");
+  expect(within(detail).getByRole("link", { name: "Open the check in Run detail" })).toBeInTheDocument();
+  expect(within(detail).getByRole("button", { name: "Apply to Draft" })).toBeEnabled();
 });
 
 test("an Editor suggests changes over the last 14 UTC days, and the Studio polls the run until it completes", async () => {

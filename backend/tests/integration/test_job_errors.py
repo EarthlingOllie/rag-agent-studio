@@ -57,17 +57,12 @@ from tests.integration.test_suggestion_check import (
     visitor_replies_then,
 )
 from tests.integration.test_suggestion_runs import in_new_session, scope_of
-from tests.integration.test_suggestion_runs import unsent as unsent
 from tests.integration.test_suggestions import live_agent as suggesting_agent
 from tests.integration.test_suggestions import replied
 from tests.integration.test_suggestions import scripted as suggesting
 from tests.integration.test_suggestions import started as suggestion_started
 
 BROKEN = "The judge's client was handed a closed connection."
-
-
-class Killed(BaseException):
-    """The worker died here: no error handling of the job's runs."""
 
 
 @pytest.fixture
@@ -297,40 +292,34 @@ async def test_a_suggestion_run_that_raises_after_its_check_finished_keeps_the_c
     assert (run["id"], run["status"]) == (suggestion["check"]["evaluation_run_id"], "completed")
 
 
-async def test_a_suggestion_run_that_finds_its_check_run_in_progress_fails_and_ends_it(
+async def test_a_suggestion_run_that_raises_before_its_check_starts_fails_and_ends_it(
     app: FastAPI,
     owner: SignedUpMember,
     visitor: httpx.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
-    unsent: list[uuid.UUID],
 ) -> None:
     agent, _ = await visitor_replies_then(
         app, owner, visitor, with_line=CITED, without_line=UNCITED
     )
-    suggestion = await suggestion_started(owner, agent)
-    (suggestion_id,) = unsent
 
-    async def dies(*args: Any) -> None:
-        raise Killed
+    async def breaks(*args: Any) -> None:
+        raise RuntimeError(BROKEN)
 
-    # The first copy's worker dies once the check Run is started: the Suggestion is Checking and
-    # its check Run is left in progress.
-    monkeypatch.setattr("app.suggestions.service.run_evaluation", dies)
-    with pytest.raises(Killed):
-        await asyncio.to_thread(run_suggestion_task.run, str(suggestion_id))
-    assert (await read(owner, agent, suggestion["id"]))["status"] == "checking"
-    (stranded,) = await runs(owner, agent)
-    assert stranded["status"] == "queued"
+    # The job raises once the check Run is added, before it answers anything: the check Run is
+    # still queued.
+    monkeypatch.setattr("app.suggestions.service.run_evaluation", breaks)
 
-    # The job is delivered again.
-    monkeypatch.setattr("app.suggestions.service.run_evaluation", run_evaluation)
-    await asyncio.to_thread(run_suggestion_task.run, str(suggestion_id))
+    settled = await suggestion_started(owner, agent)
 
-    settled = await read(owner, agent, suggestion["id"])
     assert (settled["status"], settled["error_message"]) == ("failed", SUGGESTION_UNEXPECTED)
     (run,) = await runs(owner, agent)
-    assert (run["id"], run["status"]) == (stranded["id"], "failed")
+    assert (run["id"], run["status"]) == (settled["check"]["evaluation_run_id"], "failed")
     assert run["error_message"] == SUGGESTION_UNEXPECTED
+    # Its job delivered again changes nothing (ticket 21-06: it claims from Queued only).
+    before = await read(owner, agent, settled["id"])
+    monkeypatch.setattr("app.suggestions.service.run_evaluation", run_evaluation)
+    await asyncio.to_thread(run_suggestion_task.run, settled["id"])
+    assert await read(owner, agent, settled["id"]) == before
     # The Agent is free for another Run.
     again = await owner.client.post(
         evaluation_path(owner, agent["project_id"], agent["id"], "runs")
