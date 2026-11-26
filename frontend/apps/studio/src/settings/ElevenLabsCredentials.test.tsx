@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { callsElevenLabs, fakeCredentialsApi } from "../test/credentials";
+import { fakePricesApi } from "../test/models";
 import { renderStudio } from "../test/render";
 
 const organisationId = adaSession.organisations[0]?.id ?? "";
@@ -76,6 +77,7 @@ test.each([
 
 test("an ElevenLabs credential is re-checked and rotated like any other", async () => {
   const api = fakeCredentialsApi({ credentials: [callsElevenLabs], recheck: "invalid_key" });
+  fakePricesApi();
   fakeAuthApi({ signedInAs: adaSession });
   renderStudio(credentialsPath);
   await screen.findByRole("table", { name: "Provider Credentials" });

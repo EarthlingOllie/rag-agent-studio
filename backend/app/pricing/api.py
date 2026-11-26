@@ -1,7 +1,8 @@
 """Price routes: every Member reads a credential's prices; Owners override them.
 
 Prices are US dollars per million tokens, returned as decimal strings ("3", "0.075") so no
-amount is rounded through a float.
+amount is rounded through a float. A voice credential has a price per Call minute instead,
+with its own override route.
 """
 
 import uuid
@@ -67,11 +68,31 @@ class ModelPricesOut(BaseModel):
     effective: OptionalPricesOut
 
 
+class VoicePriceOut(BaseModel):
+    unit: Literal["per minute"] = "per minute"
+    # The platform's per-minute voice price in effect now, or null when it has none.
+    platform: str | None
+    # This credential's per-minute override, or null.
+    override: str | None
+    # What this credential pays per Call minute: the override, else the platform price.
+    effective: str | None
+
+
 class CredentialPricesOut(BaseModel):
     credential_id: uuid.UUID
     currency: Literal["USD"] = "USD"
     unit: Literal["per million tokens"] = "per million tokens"
     models: list[ModelPricesOut]
+    # A voice credential's price per Call minute; null for a credential that doesn't carry
+    # Calls.
+    voice: VoicePriceOut | None
+
+
+class OverrideVoicePriceRequest(BaseModel):
+    """The voice credential's price per Call minute, in US dollars; null clears the override,
+    so the platform's price applies."""
+
+    per_minute: PriceIn | None
 
 
 def _amount(value: Decimal) -> str:
@@ -80,6 +101,14 @@ def _amount(value: Decimal) -> str:
 
 def _optional(value: Decimal | None) -> str | None:
     return None if value is None else _amount(value)
+
+
+def _voice_out(pricing: service.VoicePricing) -> VoicePriceOut:
+    return VoicePriceOut(
+        platform=_optional(pricing.platform),
+        override=_optional(pricing.override),
+        effective=_optional(pricing.effective),
+    )
 
 
 def _out(pricing: service.ModelPricing) -> ModelPricesOut:
@@ -126,8 +155,14 @@ async def list_credential_prices(
         credential = await credentials.get(scope, credential_id)
     except CredentialNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
-    listed = await service.credential_prices(db, credential, clock.now())
-    return CredentialPricesOut(credential_id=credential.id, models=[_out(p) for p in listed])
+    now = clock.now()
+    listed = await service.credential_prices(db, credential, now)
+    voice = await service.credential_voice_price(db, credential, now)
+    return CredentialPricesOut(
+        credential_id=credential.id,
+        models=[_out(p) for p in listed],
+        voice=None if voice is None else _voice_out(voice),
+    )
 
 
 @router.put(
@@ -161,3 +196,36 @@ async def override_credential_prices(
         detail = f"This credential doesn't offer {body.model}."
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail) from None
     return _out(pricing)
+
+
+@router.put(
+    "/credentials/{credential_id}/voice-price",
+    responses={
+        403: {"model": ErrorResponse, "description": OWNERS_ONLY},
+        422: {"model": ErrorResponse, "description": "Not a credential that carries Calls"},
+        **_NOT_FOUND,
+    },
+    operation_id="overrideCredentialVoicePrice",
+)
+async def override_credential_voice_price(
+    credential_id: uuid.UUID,
+    body: OverrideVoicePriceRequest,
+    scope: OwnerScope,
+    db: Db,
+    credentials: CredentialsService,
+    clock: Annotated[Clock, Depends(get_clock)],
+) -> VoicePriceOut:
+    """Overrides the voice credential's price per Call minute, to match the voice plan; Voice
+    Cost uses it from the next Call that ends. Owners only."""
+    try:
+        credential = await credentials.get(scope, credential_id, for_update=True)
+    except CredentialNotFoundError:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    try:
+        pricing = await service.set_voice_override(
+            db, scope, credential, body.per_minute, now=clock.now()
+        )
+    except service.NotVoiceCredentialError:
+        detail = "This credential doesn't carry Calls, so it has no per-minute price."
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail) from None
+    return _voice_out(pricing)

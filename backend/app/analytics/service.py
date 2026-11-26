@@ -4,8 +4,9 @@ History markers and the Project's Document changes (a confounder). Days before t
 from the ``usage_daily`` rollups; today, the live partial day, is worked out from the raw
 tables. Playground Conversations never count in either. ``org_cost`` is what the Organisation
 spent over a range of UTC days, by Project or by Agent, with Playground replies' cost in a
-separate column, read from the raw Messages (the rollups never hold Playground usage), and
-Evaluation Runs' cost in another, read from their case results.
+separate column, read from the raw Messages (the rollups never hold Playground usage),
+Evaluation Runs' cost in another, read from their case results, and Visitor Calls' Voice Cost
+in another, from the rollups and today's ended Calls.
 
 Percentiles come from the merged histograms; Wilson intervals are worked out here, from the
 counts. A KPI whose sample is smaller than ``LOW_CONFIDENCE_BELOW`` is flagged low confidence."""
@@ -107,15 +108,21 @@ class VersionKpis:
         return usage.searches / usage.messages if usage.messages else None
 
     @property
+    def voice_cost(self) -> Decimal:
+        """The Voice Cost of the Version's Visitor Calls."""
+        return self.usage.voice_cost_usd.quantize(DOLLARS)
+
+    @property
     def cost_total(self) -> Decimal:
-        return self.usage.cost_usd.quantize(DOLLARS)
+        """The replies' Cost and the Calls' Voice Cost."""
+        return (self.usage.cost_usd + self.usage.voice_cost_usd).quantize(DOLLARS)
 
     @property
     def cost_per_conversation(self) -> Decimal | None:
         usage = self.usage
         if not usage.conversations:
             return None
-        return (usage.cost_usd / usage.conversations).quantize(DOLLARS)
+        return ((usage.cost_usd + usage.voice_cost_usd) / usage.conversations).quantize(DOLLARS)
 
 
 def low_confidence(sample: int) -> bool:
@@ -174,8 +181,8 @@ class CostGroup(enum.StrEnum):
 @dataclass(frozen=True)
 class CostLine:
     """What one Project (or one Agent, with its Project) cost over the period: its Visitor
-    replies and, separately, its Playground replies and its Evaluation Runs (answers and
-    judging), at the prices frozen when each was made."""
+    replies and, separately, its Playground replies, its Evaluation Runs (answers and
+    judging) and its Visitor Calls' Voice Cost, at the prices frozen when each was made."""
 
     project_id: uuid.UUID
     project_name: str
@@ -184,19 +191,24 @@ class CostLine:
     visitor_usd: Decimal
     playground_usd: Decimal
     evaluation_usd: Decimal
+    voice_usd: Decimal
 
     @property
     def total_usd(self) -> Decimal:
-        return self.visitor_usd + self.playground_usd + self.evaluation_usd
+        return self.visitor_usd + self.playground_usd + self.evaluation_usd + self.voice_usd
 
 
 async def _visitor_cost(
     session: AsyncSession, organisation_id: uuid.UUID, start: date, end: date, today: date
-) -> dict[uuid.UUID, Decimal]:
-    """Each Agent's Visitor replies' cost over the days: rollups before today, then today."""
+) -> tuple[dict[uuid.UUID, Decimal], dict[uuid.UUID, Decimal]]:
+    """Each Agent's Visitor replies' cost, and its Visitor Calls' Voice Cost, over the days:
+    rollups before today, then today."""
     cost: defaultdict[uuid.UUID, Decimal] = defaultdict(Decimal)
+    voice: defaultdict[uuid.UUID, Decimal] = defaultdict(Decimal)
     rolled = await session.execute(
-        select(UsageDaily.agent_id, func.sum(UsageDaily.cost_usd))
+        select(
+            UsageDaily.agent_id, func.sum(UsageDaily.cost_usd), func.sum(UsageDaily.voice_cost_usd)
+        )
         .where(
             UsageDaily.organisation_id == organisation_id,
             UsageDaily.day >= start,
@@ -204,13 +216,15 @@ async def _visitor_cost(
         )
         .group_by(UsageDaily.agent_id)
     )
-    for agent_id, total in rolled:
+    for agent_id, total, voiced in rolled:
         cost[agent_id] += total
+        voice[agent_id] += voiced
     if start <= today <= end:
         live = await usage_on(session, today, Only(organisation_id=organisation_id))
         for entry in live.values():
             cost[entry.agent_id] += entry.usage.cost_usd
-    return cost
+            voice[entry.agent_id] += entry.usage.voice_cost_usd
+    return cost, voice
 
 
 async def _playground_cost(
@@ -246,9 +260,11 @@ async def org_cost(
     """What the Organisation spent over the UTC days ``start`` to ``end`` inclusive (``today``
     is the current UTC day), one line per Project or per Agent that replied in the period,
     most expensive first. Archived Projects and Agents are included: they spent it. An Agent
-    that only ran Evaluation Runs or Suggestion runs in the period has a line too. The
-    Evaluation column holds Evaluation Runs, Live Verdicts and Suggestion runs' proposing."""
-    visitor = await _visitor_cost(session, scope.organisation_id, start, end, today)
+    that only ran Evaluation Runs or Suggestion runs in the period has a line too, as does one
+    whose Visitors only called. The Evaluation column holds Evaluation Runs, Live Verdicts and
+    Suggestion runs' proposing; the Voice column the Voice Cost of Visitor Calls that ended in
+    the period."""
+    visitor, voice = await _visitor_cost(session, scope.organisation_id, start, end, today)
     playground = await _playground_cost(session, scope.organisation_id, start, end)
     first, _ = day_bounds(start)
     _, after = day_bounds(end)
@@ -263,7 +279,7 @@ async def org_cost(
         .join(Project, Project.id == Agent.project_id)
         .where(
             Agent.organisation_id == scope.organisation_id,
-            Agent.id.in_(visitor.keys() | playground.keys() | evaluation.keys()),
+            Agent.id.in_(visitor.keys() | playground.keys() | evaluation.keys() | voice.keys()),
         )
     )
     by_agent = group_by is CostGroup.AGENT
@@ -271,6 +287,7 @@ async def org_cost(
     visitor_usd: defaultdict[uuid.UUID, Decimal] = defaultdict(Decimal)
     playground_usd: defaultdict[uuid.UUID, Decimal] = defaultdict(Decimal)
     evaluation_usd: defaultdict[uuid.UUID, Decimal] = defaultdict(Decimal)
+    voice_usd: defaultdict[uuid.UUID, Decimal] = defaultdict(Decimal)
     for agent_id, agent_name, project_id, project_name in agents:
         key = agent_id if by_agent else project_id
         names[key] = (
@@ -281,12 +298,14 @@ async def org_cost(
         visitor_usd[key] += visitor.get(agent_id, Decimal(0))
         playground_usd[key] += playground.get(agent_id, Decimal(0))
         evaluation_usd[key] += evaluation.get(agent_id, Decimal(0))
+        voice_usd[key] += voice.get(agent_id, Decimal(0))
     lines = [
         CostLine(
             *names[key],
             visitor_usd[key].quantize(DOLLARS),
             playground_usd[key].quantize(DOLLARS),
             evaluation_usd[key].quantize(DOLLARS),
+            voice_usd[key].quantize(DOLLARS),
         )
         for key in names
     ]

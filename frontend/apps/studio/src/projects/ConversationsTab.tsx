@@ -18,6 +18,7 @@ import {
   useConversationTrace,
   useDeleteConversation,
 } from "./conversations";
+import { dollars } from "./format";
 import { AddToEvaluationSet } from "./EvaluationCaseEditor";
 import { LiveVerdictSection } from "./LiveVerdict";
 import { useOrganisationRole } from "./ProjectsPage";
@@ -585,6 +586,38 @@ function RatingNote({ rating }: { rating: ConversationDetail["rating"] }) {
   );
 }
 
+const CALL_ENDS: Record<string, string> = {
+  visitor: "ended by the Visitor",
+  max_length: "ended at the Maximum Call length",
+  silence: "ended after a minute of silence",
+  conversation_ended: "ended with the Conversation",
+  unavailable: "ended because the Agent was unavailable",
+};
+
+/** One Call: when it ran and why it ended, its minutes, and its Voice Cost, kept apart from its replies' Cost. */
+function CallRow({ call }: { call: ConversationDetail["calls"][number] }) {
+  if (call.ended_at === null || call.minutes === null) {
+    return (
+      <li className="rounded-xl border border-line px-4 py-3 text-sm text-ink-2">
+        <p className="font-medium text-ink">{`Call · started ${formatTime(call.started_at)} · still open`}</p>
+        <p className="text-muted">Minutes and Voice Cost are counted when it ends</p>
+      </li>
+    );
+  }
+  const why = CALL_ENDS[String(call.end_reason)] ?? "ended";
+  const minutes = call.minutes === 1 ? "1 minute" : `${String(call.minutes)} minutes`;
+  const cost =
+    call.voice_cost_usd === null
+      ? "Voice Cost unknown: no per-minute price was set"
+      : `Voice Cost ${dollars(call.voice_cost_usd)}, apart from the Cost of its replies`;
+  return (
+    <li className="rounded-xl border border-line px-4 py-3 text-sm text-ink-2">
+      <p className="font-medium text-ink">{`Call · ${formatTime(call.started_at)} to ${formatTime(call.ended_at).slice(11)} · ${why}`}</p>
+      <p>{`${minutes} · ${cost}`}</p>
+    </li>
+  );
+}
+
 /** A Message's text, or a note that it was purged and why. */
 function MessageText({ message, deletedAt }: { message: ConversationMessage; deletedAt: string | null }) {
   if (message.purged_at === null) return <p className="whitespace-pre-wrap text-[15px] text-ink">{message.content}</p>;
@@ -777,6 +810,13 @@ export function ConversationPage() {
             />
           ))}
         </ol>
+        {data.calls.length > 0 && (
+          <ol aria-label="Calls" className="flex flex-col gap-2">
+            {data.calls.map((call) => (
+              <CallRow key={call.id} call={call} />
+            ))}
+          </ol>
+        )}
         {!data.is_playground && <RatingNote rating={data.rating} />}
         {adding !== null && (
           <AddToEvaluationSet

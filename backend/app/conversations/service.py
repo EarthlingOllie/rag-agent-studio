@@ -18,7 +18,14 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent, AgentVersion
-from app.conversations.models import Conversation, Message, MessageRetrieval, MessageRole, Search
+from app.conversations.models import (
+    Call,
+    Conversation,
+    Message,
+    MessageRetrieval,
+    MessageRole,
+    Search,
+)
 from app.documents.models import Chunk, Document
 from app.evaluation.live_reads import LiveVerdictFilter, failed_live_verdicts, with_live_verdict
 from app.feedback.models import (
@@ -321,6 +328,8 @@ class ConversationRead:
     # rating's change log, oldest first.
     rating: ConversationRating | None
     rating_changes: list[ConversationRatingChange]
+    # Its Calls, oldest first.
+    calls: list[Call]
 
 
 async def get_conversation(
@@ -359,7 +368,14 @@ async def get_conversation(
             )
         ).all()
     )
-    return ConversationRead(conversation, agent_name, messages, numbers, feedback, rating, changes)
+    calls = list(
+        await session.scalars(
+            select(Call).where(Call.conversation_id == conversation.id).order_by(Call.started_at)
+        )
+    )
+    return ConversationRead(
+        conversation, agent_name, messages, numbers, feedback, rating, changes, calls
+    )
 
 
 @dataclass(frozen=True)

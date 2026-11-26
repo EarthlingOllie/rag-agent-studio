@@ -9,7 +9,9 @@ number belongs to a day by a time that doesn't move once it exists:
 - Message Feedback: when the reply it is on was made;
 - a Conversation: when this Version first replied in it (so it counts once per Version);
 - a Conversation Rating: when the Conversation's first reply was made;
-- a judged Live Verdict: when the reply it judges was made (not when it was judged).
+- a judged Live Verdict: when the reply it judges was made (not when it was judged);
+- a Call's Voice Cost: when the Call ended (its Voice Cost is frozen then), on the Version that
+  was Live when it started.
 """
 
 import uuid
@@ -24,7 +26,7 @@ from sqlalchemy.orm import InstrumentedAttribute
 
 from app.analytics.models import UsageDaily, UsageRollupState
 from app.analytics.stats import Histogram
-from app.conversations.models import Conversation, Message, MessageRole
+from app.conversations.models import Call, Conversation, Message, MessageRole
 from app.evaluation.models import LiveStatus, LiveVerdict
 from app.feedback.models import ConversationRating, MessageFeedback, Thumb
 from app.guardrails.outcomes import blocked
@@ -43,6 +45,7 @@ class Usage:
     tokens: int = 0
     tokens_histogram: Histogram = field(default_factory=Histogram)
     cost_usd: Decimal = Decimal(0)
+    voice_cost_usd: Decimal = Decimal(0)
     thumbs_up: int = 0
     thumbs_down: int = 0
     rating_sum: int = 0
@@ -62,6 +65,7 @@ class Usage:
         self.tokens += other.tokens
         self.tokens_histogram = self.tokens_histogram.merged(other.tokens_histogram)
         self.cost_usd += other.cost_usd
+        self.voice_cost_usd += other.voice_cost_usd
         self.thumbs_up += other.thumbs_up
         self.thumbs_down += other.thumbs_down
         self.rating_sum += other.rating_sum
@@ -83,6 +87,7 @@ class Usage:
             tokens=row.tokens,
             tokens_histogram=Histogram.from_stored(row.tokens_histogram),
             cost_usd=row.cost_usd,
+            voice_cost_usd=row.voice_cost_usd,
             thumbs_up=row.thumbs_up,
             thumbs_down=row.thumbs_down,
             rating_sum=row.rating_sum,
@@ -110,6 +115,7 @@ class Usage:
             tokens=self.tokens,
             tokens_histogram=self.tokens_histogram.stored(),
             cost_usd=self.cost_usd.quantize(DOLLARS),
+            voice_cost_usd=self.voice_cost_usd.quantize(DOLLARS),
             thumbs_up=self.thumbs_up,
             thumbs_down=self.thumbs_down,
             rating_sum=self.rating_sum,
@@ -165,6 +171,28 @@ def _visitor_replies(day: date, only: Only) -> list[ColumnElement[bool]]:
         conditions.append(
             ~exists().where(
                 UsageRollupState.organisation_id == Message.organisation_id,
+                UsageRollupState.finalised_through >= day,
+            )
+        )
+    return conditions
+
+
+def _visitor_calls(day: date, only: Only) -> list[ColumnElement[bool]]:
+    """Visitor Calls that ended on ``day``."""
+    start, end = day_bounds(day)
+    conditions = [
+        Conversation.is_playground.is_(False),
+        Call.ended_at >= start,
+        Call.ended_at < end,
+    ]
+    if only.agent_id is not None:
+        conditions.append(Conversation.agent_id == only.agent_id)
+    if only.organisation_id is not None:
+        conditions.append(Call.organisation_id == only.organisation_id)
+    if only.unfinalised:
+        conditions.append(
+            ~exists().where(
+                UsageRollupState.organisation_id == Call.organisation_id,
                 UsageRollupState.finalised_through >= day,
             )
         )
@@ -290,6 +318,21 @@ async def usage_on(session: AsyncSession, day: date, only: Only) -> dict[uuid.UU
         usage = at(organisation_id, agent_id, version_id)
         usage.live_judged += judged
         usage.live_passed += passed
+
+    calls = await session.execute(
+        select(
+            Call.organisation_id,
+            Conversation.agent_id,
+            Call.agent_version_id,
+            func.sum(Call.voice_cost_usd),
+        )
+        .join(Conversation, Conversation.id == Call.conversation_id)
+        .where(*_visitor_calls(day, only))
+        .group_by(Call.organisation_id, Conversation.agent_id, Call.agent_version_id)
+    )
+    for organisation_id, agent_id, version_id, voice in calls:
+        # A Call with no known price adds nothing.
+        at(organisation_id, agent_id, version_id).voice_cost_usd += voice or 0
 
     first = _first_replies(day, only, per_version=False).subquery()
     ratings = await session.execute(

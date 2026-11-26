@@ -12,7 +12,9 @@ abused.
   Conversation ending, a turn the Agent couldn't answer), ``finish`` records when and why, and
   its minutes: the time from its start, by the platform's clock, rounded up to whole minutes.
   Those minutes go on the Agent's counter for the UTC date the Call ended, unless the Call was
-  held in the Playground.
+  held in the Playground. Its Voice Cost is frozen then too: its minutes times the per-minute
+  price of the Agent's voice credential in effect at its end, preferring the credential's
+  Price override (``app.pricing.service.call_voice_cost``); unknown when no price is set.
 - **The reaper.** A Beat task (``end_idle_calls``) ends Calls that have reached the Maximum Call
   length they started with (changing it applies to the next Call), and Calls with no turn for
   ``SILENCE`` (which also closes Calls whose browser vanished without ending them).
@@ -36,6 +38,7 @@ from app.conversations.models import Call, CallMinutesUsed, Conversation
 from app.embed.admission import utc_date
 from app.mail import templates
 from app.mail.port import Mailer
+from app.pricing.service import call_voice_cost
 from app.tenancy.models import Member, Membership, Role
 from app.tenancy.repository import OrganisationScope
 
@@ -99,11 +102,16 @@ async def finish(
     ended_at: datetime,
     reason: CallEnd,
 ) -> None:
-    """Ends the open ``call`` (locked by the caller) in the caller's transaction, adding its
-    minutes to its Agent's counter for the UTC date unless it was a Playground Call."""
+    """Ends the open ``call`` (locked by the caller) in the caller's transaction, freezing its
+    Voice Cost and adding its minutes to its Agent's counter for the UTC date unless it was a
+    Playground Call."""
     call.ended_at = ended_at
     call.minutes = call_minutes(call.started_at, ended_at)
     call.end_reason = reason
+    credential_id = await session.scalar(
+        select(Agent.call_credential_id).where(Agent.id == conversation.agent_id)
+    )
+    call.voice_cost_usd = await call_voice_cost(session, credential_id, call.minutes, ended_at)
     if conversation.is_playground:
         return
     added = insert(CallMinutesUsed).values(

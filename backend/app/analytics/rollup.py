@@ -9,15 +9,16 @@ block rate is checked for a spike (``app.analytics.alerts``)."""
 
 import uuid
 from datetime import UTC, date, datetime, timedelta
+from typing import Any
 
-from sqlalchemy import delete, exists, func, select, text
+from sqlalchemy import ColumnElement, delete, exists, func, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.analytics.alerts import check_block_rates, check_live_scores
 from app.analytics.models import UsageDaily, UsageRollupState
 from app.analytics.usage import Only, day_bounds, usage_on
-from app.conversations.models import Conversation, Message, MessageRole
+from app.conversations.models import Call, Conversation, Message, MessageRole
 from app.mail.port import Mailer
 
 # Serialises concurrent runs (an hourly run overlapping a slow one, or a manual run).
@@ -40,29 +41,43 @@ async def _recompute(session: AsyncSession, day: date) -> None:
 
 
 async def pending_days(session: AsyncSession, today: date) -> dict[uuid.UUID, date]:
-    """Each Organisation with Visitor replies on days before ``today`` that aren't final: the
-    first such day."""
+    """Each Organisation with Visitor replies, or Visitor Calls that ended, on days before
+    ``today`` that aren't final: the first such day."""
     start, _ = day_bounds(today)
-    finalised = (
-        select(UsageRollupState.finalised_through)
-        .where(UsageRollupState.organisation_id == Message.organisation_id)
-        .scalar_subquery()
-    )
-    after = func.coalesce(finalised + 1, date.min)
-    first_day = func.min(func.timezone("UTC", Message.created_at))
-    rows = await session.execute(
-        select(Message.organisation_id, first_day)
-        .join(Conversation, Conversation.id == Message.conversation_id)
-        .where(
-            Message.role == MessageRole.ASSISTANT,
-            Message.agent_version_id.is_not(None),
-            Conversation.is_playground.is_(False),
-            Message.created_at < start,
-            func.timezone("UTC", Message.created_at) >= after,
+    found: dict[uuid.UUID, date] = {}
+    sources: list[tuple[type[Message] | type[Call], Any, Any, tuple[ColumnElement[bool], ...]]] = [
+        (
+            Message,
+            Message.created_at,
+            Message.organisation_id,
+            (Message.role == MessageRole.ASSISTANT, Message.agent_version_id.is_not(None)),
+        ),
+        (Call, Call.ended_at, Call.organisation_id, ()),
+    ]
+    for source, at, organisation_id, kept in sources:
+        finalised = (
+            select(UsageRollupState.finalised_through)
+            .where(UsageRollupState.organisation_id == organisation_id)
+            .scalar_subquery()
         )
-        .group_by(Message.organisation_id)
-    )
-    return {organisation_id: first.date() for organisation_id, first in rows}
+        after = func.coalesce(finalised + 1, date.min)
+        first_day = func.min(func.timezone("UTC", at))
+        rows = await session.execute(
+            select(organisation_id, first_day)
+            .select_from(source)
+            .join(Conversation, Conversation.id == source.conversation_id)
+            .where(
+                *kept,
+                Conversation.is_playground.is_(False),
+                at < start,
+                func.timezone("UTC", at) >= after,
+            )
+            .group_by(organisation_id)
+        )
+        for organisation, first in rows:
+            day = first.date()
+            found[organisation] = min(found.get(organisation, day), day)
+    return found
 
 
 async def roll_up(

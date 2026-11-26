@@ -1,7 +1,7 @@
 import type { Schemas } from "@studio/api-client";
 import { http, HttpResponse } from "msw";
 
-import { type Credential, marketingOpenAi } from "./credentials";
+import { callsElevenLabs, type Credential, marketingOpenAi } from "./credentials";
 import { server } from "./server";
 
 export type DefaultModel = Schemas["DefaultModelOut"];
@@ -191,6 +191,12 @@ export function fakeEvaluationBudgetApi(options: { budget?: string | null; spent
 
 type ModelPrices = Schemas["ModelPricesOut"];
 type PriceOverride = Schemas["OverridePricesRequest"];
+type VoicePrice = Schemas["VoicePriceOut"];
+
+/** Per-minute prices per voice credential ID, before overrides: ElevenLabs' platform price. */
+export const platformVoicePrices: Record<string, VoicePrice> = {
+  [callsElevenLabs.id]: { unit: "per minute", platform: "0.1", override: null, effective: "0.1" },
+};
 
 /** Prices per credential ID, as `GET …/credentials/{id}/prices` answers them before overrides. */
 export const platformPrices: Record<string, ModelPrices[]> = {
@@ -236,13 +242,33 @@ export const platformPrices: Record<string, ModelPrices[]> = {
  * A stateful stand-in for the price routes: overrides apply as the API applies them (each
  * price overrides the platform's; none clears the override). Records what it receives.
  */
-export function fakePricesApi(options: { prices?: Record<string, ModelPrices[]> } = {}) {
+export function fakePricesApi(
+  options: { prices?: Record<string, ModelPrices[]>; voice?: Record<string, VoicePrice>; voiceStatus?: number } = {},
+) {
   const prices = structuredClone(options.prices ?? platformPrices);
+  const voice = structuredClone(options.voice ?? platformVoicePrices);
   const overridden: { credentialId: string; body: PriceOverride }[] = [];
+  const voiceOverridden: { credentialId: string; perMinute: string | null }[] = [];
   server.use(
     http.get("*/api/organisations/:organisationId/credentials/:credentialId/prices", ({ params }) => {
       const id = params.credentialId as string;
-      return HttpResponse.json({ credential_id: id, currency: "USD", unit: "per million tokens", models: prices[id] ?? [] });
+      return HttpResponse.json({
+        credential_id: id,
+        currency: "USD",
+        unit: "per million tokens",
+        models: prices[id] ?? [],
+        voice: voice[id] ?? null,
+      });
+    }),
+    http.put("*/api/organisations/:organisationId/credentials/:credentialId/voice-price", async ({ params, request }) => {
+      const id = params.credentialId as string;
+      const { per_minute: perMinute } = (await request.json()) as { per_minute: string | null };
+      voiceOverridden.push({ credentialId: id, perMinute });
+      if (options.voiceStatus) return HttpResponse.json({ detail: "Refused" }, { status: options.voiceStatus });
+      const current = voice[id] as VoicePrice;
+      const next: VoicePrice = { ...current, override: perMinute, effective: perMinute ?? current.platform };
+      voice[id] = next;
+      return HttpResponse.json(next);
     }),
     http.put("*/api/organisations/:organisationId/credentials/:credentialId/prices", async ({ params, request }) => {
       const id = params.credentialId as string;
@@ -270,5 +296,5 @@ export function fakePricesApi(options: { prices?: Record<string, ModelPrices[]> 
       return HttpResponse.json(next);
     }),
   );
-  return { overridden };
+  return { overridden, voiceOverridden };
 }

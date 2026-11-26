@@ -29,7 +29,7 @@ function stats(): string[] {
     .map((card) => card.textContent);
 }
 
-test("an Owner sees what each Project cost over the last 30 days, with the Playground and Evaluation Runs in their own columns", async () => {
+test("an Owner sees what each Project cost over the last 30 days, with the Playground, Evaluation Runs and Voice Cost in their own columns", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   const { queries } = fakeCostApi();
   renderStudio(costPage);
@@ -37,15 +37,17 @@ test("an Owner sees what each Project cost over the last 30 days, with the Playg
   expect(await screen.findByRole("table", { name: "Cost by Project" })).toBeInTheDocument();
   expect(screen.getByRole("heading", { level: 1, name: "Organisation cost" })).toBeInTheDocument();
   expect(
-    screen.getByText("What Visitors' Conversations, Playground testing and Evaluation Runs cost, at the prices frozen when each reply was made."),
+    screen.getByText(
+      "What Visitors' Conversations and Calls, Playground testing and Evaluation Runs cost, at the prices frozen when each reply was made and each Call ended.",
+    ),
   ).toBeInTheDocument();
-  expect(stats()).toEqual(["Total$12.54", "Visitors$12.50", "Playground$0.0042", "Evaluation$0.04"]);
+  expect(stats()).toEqual(["Total$13.24", "Visitors$12.50", "Playground$0.0042", "Evaluation$0.04", "Voice$0.70"]);
   expect(screen.getByText(/2026-10-08 to 2026-11-06 \(UTC days\), including today so far/)).toBeInTheDocument();
   expect(table("Cost by Project")).toEqual([
-    ["Project", "Visitors", "Playground", "Evaluation", "Total"],
-    ["Handbook", "$12.50", "$0.0042", "$0.04", "$12.54"],
-    ["Payroll", "$0.003", "$0.00", "$0.00", "$0.003"],
-    ["All Projects", "$12.50", "$0.0042", "$0.04", "$12.54"],
+    ["Project", "Visitors", "Playground", "Evaluation", "Voice", "Total"],
+    ["Handbook", "$12.50", "$0.0042", "$0.04", "$0.70", "$13.24"],
+    ["Payroll", "$0.003", "$0.00", "$0.00", "$0.00", "$0.003"],
+    ["All Projects", "$12.50", "$0.0042", "$0.04", "$0.70", "$13.24"],
   ]);
   const breakdown = screen.getByRole("radiogroup", { name: "Break down by" });
   expect(within(breakdown).getAllByRole("radio").map((radio) => radio.textContent)).toEqual(["Project", "Agent"]);
@@ -67,14 +69,14 @@ test("the Owner breaks the cost down by Agent, each with its Project", async () 
 
   expect(await screen.findByRole("table", { name: "Cost by Agent" })).toBeInTheDocument();
   expect(table("Cost by Agent")).toEqual([
-    ["Agent", "Project", "Visitors", "Playground", "Evaluation", "Total"],
-    ["HR helper", "Handbook", "$12.50", "$0.00", "$0.04", "$12.54"],
-    ["Tried once", "Handbook", "$0.00", "$0.0042", "$0.00", "$0.0042"],
-    ["Payroll helper", "Payroll", "$0.003", "$0.00", "$0.00", "$0.003"],
-    ["All Agents", "", "$12.50", "$0.0042", "$0.04", "$12.54"],
+    ["Agent", "Project", "Visitors", "Playground", "Evaluation", "Voice", "Total"],
+    ["HR helper", "Handbook", "$12.50", "$0.00", "$0.04", "$0.70", "$13.24"],
+    ["Tried once", "Handbook", "$0.00", "$0.0042", "$0.00", "$0.00", "$0.0042"],
+    ["Payroll helper", "Payroll", "$0.003", "$0.00", "$0.00", "$0.00", "$0.003"],
+    ["All Agents", "", "$12.50", "$0.0042", "$0.04", "$0.70", "$13.24"],
   ]);
   expect(screen.getByRole("radio", { name: "Agent" })).toBeChecked();
-  expect(stats()).toEqual(["Total$12.54", "Visitors$12.50", "Playground$0.0042", "Evaluation$0.04"]);
+  expect(stats()).toEqual(["Total$13.24", "Visitors$12.50", "Playground$0.0042", "Evaluation$0.04", "Voice$0.70"]);
   expect(queries.at(-1)?.toString()).toBe("group_by=agent");
 
   // The arrow keys move the choice back, as in every segmented control.
@@ -116,7 +118,7 @@ test("a period with no spending says so", async () => {
   renderStudio(costPage);
 
   expect(await screen.findByRole("heading", { name: "Nothing was spent in this period" })).toBeInTheDocument();
-  expect(screen.getByText(/Visitors' Conversations, Playground testing and Evaluation Runs in any Project show up here/)).toBeInTheDocument();
+  expect(screen.getByText(/Visitors' Conversations and Calls, Playground testing and Evaluation Runs in any Project show up here/)).toBeInTheDocument();
   expect(screen.getByText(/2026-10-08 to 2026-11-06 \(UTC days\)/)).toBeInTheDocument();
   expect(screen.queryByRole("table")).not.toBeInTheDocument();
   expect(screen.queryByRole("list", { name: "Spend for the period" })).not.toBeInTheDocument();

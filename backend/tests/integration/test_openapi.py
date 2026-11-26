@@ -73,6 +73,7 @@ def test_openapi_document_describes_every_endpoint() -> None:
         "listVoices": (f"{_CREDENTIAL}/voices", "get"),
         "listCredentialPrices": (f"{_CREDENTIAL}/prices", "get"),
         "overrideCredentialPrices": (f"{_CREDENTIAL}/prices", "put"),
+        "overrideCredentialVoicePrice": (f"{_CREDENTIAL}/voice-price", "put"),
         "listProviders": ("/api/providers", "get"),
         "getDefaultModel": ("/api/organisations/{organisation_id}/default-model", "get"),
         "setDefaultModel": ("/api/organisations/{organisation_id}/default-model", "put"),

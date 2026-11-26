@@ -906,6 +906,75 @@
         "title": "CallMinutesOut",
         "type": "object"
       },
+      "CallOut": {
+        "properties": {
+          "end_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Reason"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "voice_cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Cost Usd"
+          }
+        },
+        "required": [
+          "id",
+          "started_at",
+          "ended_at",
+          "minutes",
+          "end_reason",
+          "voice_cost_usd"
+        ],
+        "title": "CallOut",
+        "type": "object"
+      },
       "CallRefusedOut": {
         "properties": {
           "detail": {
@@ -1566,6 +1635,13 @@
             "title": "Agent Name",
             "type": "string"
           },
+          "calls": {
+            "items": {
+              "$ref": "#/components/schemas/CallOut"
+            },
+            "title": "Calls",
+            "type": "array"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1624,7 +1700,8 @@
           "last_activity_at",
           "messages",
           "rating",
-          "deleted_at"
+          "deleted_at",
+          "calls"
         ],
         "title": "ConversationDetailOut",
         "type": "object"
@@ -2418,12 +2495,17 @@
           "visitor_usd": {
             "title": "Visitor Usd",
             "type": "string"
+          },
+          "voice_usd": {
+            "title": "Voice Usd",
+            "type": "string"
           }
         },
         "required": [
           "visitor_usd",
           "playground_usd",
           "evaluation_usd",
+          "voice_usd",
           "total_usd"
         ],
         "title": "CostAmountsOut",
@@ -2454,11 +2536,16 @@
           "total_usd": {
             "title": "Total Usd",
             "type": "string"
+          },
+          "voice_usd": {
+            "title": "Voice Usd",
+            "type": "string"
           }
         },
         "required": [
           "total_usd",
-          "per_conversation_usd"
+          "per_conversation_usd",
+          "voice_usd"
         ],
         "title": "CostOut",
         "type": "object"
@@ -2512,12 +2599,17 @@
           "visitor_usd": {
             "title": "Visitor Usd",
             "type": "string"
+          },
+          "voice_usd": {
+            "title": "Voice Usd",
+            "type": "string"
           }
         },
         "required": [
           "visitor_usd",
           "playground_usd",
           "evaluation_usd",
+          "voice_usd",
           "total_usd",
           "project_id",
           "project_name",
@@ -2890,11 +2982,22 @@
             "default": "per million tokens",
             "title": "Unit",
             "type": "string"
+          },
+          "voice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VoicePriceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "credential_id",
-          "models"
+          "models",
+          "voice"
         ],
         "title": "CredentialPricesOut",
         "type": "object"
@@ -6772,6 +6875,31 @@
           "model"
         ],
         "title": "OverridePricesRequest",
+        "type": "object"
+      },
+      "OverrideVoicePriceRequest": {
+        "description": "The voice credential's price per Call minute, in US dollars; null clears the override,\nso the platform's price applies.",
+        "properties": {
+          "per_minute": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Minute"
+          }
+        },
+        "required": [
+          "per_minute"
+        ],
+        "title": "OverrideVoicePriceRequest",
         "type": "object"
       },
       "PasswordResetAccepted": {
@@ -11286,6 +11414,56 @@
         "title": "VoiceOut",
         "type": "object"
       },
+      "VoicePriceOut": {
+        "properties": {
+          "effective": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective"
+          },
+          "override": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform"
+          },
+          "unit": {
+            "const": "per minute",
+            "default": "per minute",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "override",
+          "effective"
+        ],
+        "title": "VoicePriceOut",
+        "type": "object"
+      },
       "WidgetCitationOut": {
         "properties": {
           "document_name": {
@@ -12844,7 +13022,7 @@
     },
     "/api/organisations/{organisation_id}/cost": {
       "get": {
-        "description": "What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most\n366 days), including today's so far, by Project or by Agent. Playground usage and Evaluation\nRuns are each in their own column. Owners only.",
+        "description": "What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most\n366 days), including today's so far, by Project or by Agent. Playground usage, Evaluation\nRuns and Visitor Calls' Voice Cost are each in their own column. Owners only.",
         "operationId": "getOrganisationCost",
         "parameters": [
           {
@@ -13719,6 +13897,90 @@
         "summary": "Rotate Credential",
         "tags": [
           "credentials"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/voice-price": {
+      "put": {
+        "description": "Overrides the voice credential's price per Call minute, to match the voice plan; Voice\nCost uses it from the next Call that ends. Owners only.",
+        "operationId": "overrideCredentialVoicePrice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideVoicePriceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoicePriceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not a credential that carries Calls"
+          }
+        },
+        "summary": "Override Credential Voice Price",
+        "tags": [
+          "prices"
         ]
       }
     },

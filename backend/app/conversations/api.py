@@ -222,6 +222,22 @@ class ConversationRatingRead(BaseModel):
     changes: list[RatingChangeRead]
 
 
+class CallOut(BaseModel):
+    id: uuid.UUID
+    started_at: datetime
+    # Null while it is open.
+    ended_at: datetime | None
+    # Its length rounded up to whole minutes, by the platform's clock; null while it is open.
+    minutes: int | None
+    # Why it ended (the Visitor, the Maximum Call length, silence, the Conversation ending or the
+    # Agent being unavailable); null while it is open.
+    end_reason: str | None
+    # What the voice layer cost, in US dollars, frozen when it ended (minutes times the
+    # per-minute price then); apart from the Cost of its replies. Null while it is open, and
+    # when no per-minute price was set.
+    voice_cost_usd: Dollars | None
+
+
 class ConversationDetailOut(BaseModel):
     id: uuid.UUID
     agent_id: uuid.UUID
@@ -234,6 +250,8 @@ class ConversationDetailOut(BaseModel):
     rating: ConversationRatingRead | None
     # When an Owner deleted it on request (its text is purged); null otherwise.
     deleted_at: datetime | None
+    # Its Calls, oldest first, each with its minutes and Voice Cost.
+    calls: list[CallOut]
 
 
 def _number(version_id: uuid.UUID | None, numbers: dict[uuid.UUID, int]) -> int | None:
@@ -315,6 +333,17 @@ async def get_conversation(
         ],
         rating=_rating_read(read),
         deleted_at=conversation.deleted_at,
+        calls=[
+            CallOut(
+                id=call.id,
+                started_at=call.started_at,
+                ended_at=call.ended_at,
+                minutes=call.minutes,
+                end_reason=call.end_reason,
+                voice_cost_usd=call.voice_cost_usd,
+            )
+            for call in read.calls
+        ],
     )
 
 

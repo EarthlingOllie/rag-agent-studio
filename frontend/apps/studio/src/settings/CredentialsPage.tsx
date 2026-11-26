@@ -20,7 +20,7 @@ import {
   useProviders,
   useRotateCredential,
 } from "./credentials";
-
+import { VoicePrices } from "./VoicePrice";
 
 /** `2026-06-01T09:30:00Z` → `2026-06-01 09:30 UTC`, the same for every viewer. */
 function when(iso: string): string {
@@ -596,6 +596,7 @@ export function CredentialsPage({ organisationId, isOwner }: { organisationId: s
         {!isOwner && <p className={text.muted}>Only Owners can add, check, rotate or delete credentials.</p>}
       </div>
       <CredentialsTable organisationId={organisationId} isOwner={isOwner} />
+      <VoicePrices organisationId={organisationId} isOwner={isOwner} />
       {isOwner && providers.data && <AddCredential organisationId={organisationId} providers={providers.data} />}
       {isOwner && providers.isError && <p role="alert">The providers could not be loaded. Try again shortly.</p>}
     </section>

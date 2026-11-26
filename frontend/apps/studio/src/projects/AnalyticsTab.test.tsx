@@ -79,7 +79,7 @@ test("a Version with enough evidence has no low-confidence marks", async () => {
   expect(["Volume", "Thumbs-up rate", "Mean rating", "Live score"].map(lowSample)).toEqual([false, false, false, false]);
   expect(card("Volume")).toBe("Volume120 Conversations400 replies");
   expect(card("Thumbs-up rate")).toBe("Thumbs-up rate80%95% interval 63% to 90%n = 30 votes (24 up, 6 down)");
-  expect(card("Cost per Conversation")).toBe("Cost per Conversation$1.25$150.00 in total, at the prices of the time");
+  expect(card("Cost per Conversation")).toBe("Cost per Conversation$1.25$150.00 in total, including $12.30 of Voice Cost for Calls, at the prices of the time");
   expect(card("Mean rating")).toBe("Mean rating4.3 of 5n = 40 ratings");
   expect(card("Live score")).toBe("Live score70%95% interval 52% to 83%n = 30 judged replies (21 passed)");
   expect(card("Fallback rate")).toBe("Fallback rate0%0 of 400 replies were the fallback text");
@@ -111,7 +111,7 @@ test("one of each is counted in the singular", async () => {
     conversations: 1,
     messages: 1,
     tokens: { n: 1, mean: 80, p95: 80 },
-    cost: { total_usd: "0.000000000", per_conversation_usd: "0.000000000" },
+    cost: { total_usd: "0.000000000", per_conversation_usd: "0.000000000", voice_usd: "0.000000000" },
     thumbs_up: { up: 1, down: 0, n: 1, rate: 1, low: 0.2065493, high: 1, low_confidence: true },
     rating: { n: 1, mean: 5, low_confidence: true },
     live_score: { n: 1, passed: 0, rate: 0, low: 0, high: 0.7934507, low_confidence: true },

@@ -296,6 +296,7 @@ async def test_an_organisation_with_no_replies_spent_nothing(
         "visitor_usd": "0",
         "playground_usd": "0",
         "evaluation_usd": "0",
+        "voice_usd": "0",
         "total_usd": "0",
     }
 

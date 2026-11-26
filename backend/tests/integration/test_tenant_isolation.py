@@ -146,6 +146,11 @@ async def _a_price_override(owner: SignedUpMember, add_member: MemberFactory) ->
     return params, {"model": "gpt-4.1", "input": "1.5"}
 
 
+async def _a_voice_price_override(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _a_voice_credential(owner, add_member)
+    return params, {"per_minute": "0.05"}
+
+
 async def _a_theme(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     theme = (await owner.client.get(f"/api/organisations/{owner.organisation_id}/theme")).json()
     for key in ("updated_at", "logo", "avatar"):
@@ -898,6 +903,7 @@ ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("GET", f"{_CREDENTIAL}/voices", EDITOR, _a_voice_credential),
     ScopedRoute("GET", f"{_CREDENTIAL}/prices", EDITOR, _a_credential),
     ScopedRoute("PUT", f"{_CREDENTIAL}/prices", OWNER, _a_price_override),
+    ScopedRoute("PUT", f"{_CREDENTIAL}/voice-price", OWNER, _a_voice_price_override),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/default-model", EDITOR),
     ScopedRoute(
         "PUT", "/api/organisations/{organisation_id}/default-model", OWNER, _a_chat_model_choice

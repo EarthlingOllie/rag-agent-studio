@@ -243,11 +243,11 @@ A model that reorders retrieved passages by relevance to a query, built by the M
 _Avoid_: Re-ranker, scorer
 
 **Price table**:
-The platform's price for each provider's models, in US dollars per million input, output and cached input tokens, each with the date it took effect. It lives in the repo as data and is loaded on every migrate; a new price is a new dated entry, so past costs keep the price they were made at.
+The platform's price for each provider's models, in US dollars per million input, output and cached input tokens, each with the date it took effect, and the voice layer's price per Call minute (ElevenLabs), dated the same way. It lives in the repo as data and is loaded on every migrate; a new price is a new dated entry, so past costs keep the price they were made at.
 _Avoid_: Rate card, price list, pricing
 
 **Price override**:
-An Owner's price for one model of one Provider Credential, such as a negotiated rate. Any of the three prices can be overridden; the rest keep the Price table's. Overrides take precedence over the Price table and go with their credential.
+An Owner's price for one model of one Provider Credential, such as a negotiated rate, or the per-minute price of a voice credential, to match its voice plan. Any of a model's three prices can be overridden; the rest keep the Price table's. Overrides take precedence over the Price table and go with their credential.
 _Avoid_: Custom price, discount
 
 **Cost**:
@@ -741,7 +741,7 @@ The most minutes of Calls an Agent's Visitors may use per UTC date (60 by defaul
 _Avoid_: Call quota, voice limit
 
 **Voice Cost**:
-What a Call's voice layer cost in US dollars: its minutes times the per-minute price in effect when it ended, preferring Price overrides. Kept apart from the Cost of the model calls behind each spoken reply.
+What a Call's voice layer cost in US dollars: its minutes times the per-minute price in effect when it ended, preferring the voice credential's Price override; unknown when no price is set. It is frozen when the Call ends, shown on the Call in its Conversation, and rolled up per Agent Version on the UTC day the Call ended into the Agent's cost and Organisation cost. Kept apart from the Cost of the model calls behind each spoken reply.
 _Avoid_: Call charge, voice spend
 
 **Message**:
@@ -836,7 +836,7 @@ The warning under the Time series when the Project's Knowledge Base changed duri
 _Avoid_: Disclaimer, KB warning
 
 **Organisation cost**:
-What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage and Evaluation Run cost each in their own column beside Visitor usage, and a total. Only Projects and Agents that replied or ran an Evaluation Run in the period have a line; archived ones still do. An Evaluation Run's cost counts on the days its answers were given. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
+What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage, Evaluation Run cost and the Voice Cost of Visitors' Calls each in their own column beside Visitor usage, and a total. Only Projects and Agents that replied or ran an Evaluation Run in the period have a line; archived ones still do. An Evaluation Run's cost counts on the days its answers were given. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
 _Avoid_: Billing, invoice, spend report
 
 ## Evaluation

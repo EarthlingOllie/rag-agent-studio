@@ -18,6 +18,7 @@ import {
   judgedVerdict,
   playgroundConversation,
   playgroundDetail,
+  visitorCall,
   visitorConversation,
   visitorDetail,
   visitorTrace,
@@ -863,6 +864,70 @@ test("an Editor reads the Visitor's Conversation Rating, the Version it counts f
     "Rated 2 · for Agent Version v1 · 2026-11-06 10:16 UTC",
     "Changed from 2 to 4 · for Agent Version v2 · 2026-11-06 10:22 UTC",
   ]);
+});
+
+test("each Call shows its minutes and Voice Cost, apart from the Cost of its replies", async () => {
+  setUp();
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+
+  const calls = await screen.findByRole("list", { name: "Calls" });
+
+  expect(within(calls).getAllByRole("listitem").map((call) => call.textContent)).toEqual([
+    "Call · 2026-11-06 10:23 UTC to 10:25 UTC · ended by the Visitor3 minutes · Voice Cost $0.30, apart from the Cost of its replies",
+  ]);
+});
+
+test("an open Call, a Call with no per-minute price and a one-minute Call each say so, and a Conversation without Calls lists none", async () => {
+  const called = {
+    ...visitorDetail,
+    calls: [
+      {
+        id: "ca110000-0000-4000-8000-000000000002",
+        started_at: "2026-11-06T10:23:00Z",
+        ended_at: "2026-11-06T10:23:40Z",
+        minutes: 1,
+        end_reason: "silence",
+        voice_cost_usd: null,
+      },
+      {
+        id: "ca110000-0000-4000-8000-000000000003",
+        started_at: "2026-11-06T10:30:00Z",
+        ended_at: null,
+        minutes: null,
+        end_reason: null,
+        voice_cost_usd: null,
+      },
+    ],
+  };
+  setUp({ details: [called, playgroundDetail] });
+  const { unmount } = renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+
+  const calls = await screen.findByRole("list", { name: "Calls" });
+
+  expect(within(calls).getAllByRole("listitem").map((call) => call.textContent)).toEqual([
+    "Call · 2026-11-06 10:23 UTC to 10:23 UTC · ended after a minute of silence1 minute · Voice Cost unknown: no per-minute price was set",
+    "Call · started 2026-11-06 10:30 UTC · still openMinutes and Voice Cost are counted when it ends",
+  ]);
+  unmount();
+
+  renderStudio(`${conversationsTab}/${PLAYGROUND_CONVERSATION_ID}`);
+  await screen.findByRole("list", { name: "Messages" });
+  expect(screen.queryByRole("list", { name: "Calls" })).not.toBeInTheDocument();
+});
+
+test.each([
+  ["max_length", "ended at the Maximum Call length"],
+  ["conversation_ended", "ended with the Conversation"],
+  ["unavailable", "ended because the Agent was unavailable"],
+  ["something_new", "ended"],
+])("a Call that ended by %s says why", async (reason, why) => {
+  const call = { ...visitorCall, end_reason: reason };
+  setUp({ details: [{ ...visitorDetail, calls: [call] }] });
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+
+  const calls = await screen.findByRole("list", { name: "Calls" });
+
+  expect(within(calls).getByRole("listitem")).toHaveTextContent(`10:25 UTC · ${why}3 minutes`);
 });
 
 test("a Conversation the Visitor didn't rate says so", async () => {

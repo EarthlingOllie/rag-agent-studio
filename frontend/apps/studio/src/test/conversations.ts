@@ -96,6 +96,16 @@ function reply(id: string, content: string, created_at: string, version: number 
   };
 }
 
+/** A three-minute Call in the Visitor Conversation, ended by the Visitor, at $0.10 a minute. */
+export const visitorCall: Detail["calls"][number] = {
+  id: "ca110000-0000-4000-8000-000000000001",
+  started_at: "2026-11-06T10:23:00Z",
+  ended_at: "2026-11-06T10:25:30Z",
+  minutes: 3,
+  end_reason: "visitor",
+  voice_cost_usd: "0.300000000",
+};
+
 export const visitorDetail: Detail = {
   id: VISITOR_CONVERSATION_ID,
   agent_id: hrHelper.id,
@@ -133,6 +143,7 @@ export const visitorDetail: Detail = {
     ],
   },
   deleted_at: null,
+  calls: [visitorCall],
 };
 
 export const playgroundDetail: Detail = {
@@ -146,6 +157,7 @@ export const playgroundDetail: Detail = {
     reply(PLAYGROUND_REPLY_ID, "Twenty-five days.", "2026-11-07T08:00:02Z", null),
   ],
   rating: null,
+  calls: [],
 };
 
 /** The Trace of the Visitor's first reply: answered by Agent Version v1. */

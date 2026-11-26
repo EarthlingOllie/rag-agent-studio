@@ -38,6 +38,7 @@ PLATFORM_TABLES = frozenset(
         "mfa_factors",
         "mfa_recovery_codes",
         "model_prices",
+        "voice_prices",
     }
 )
 

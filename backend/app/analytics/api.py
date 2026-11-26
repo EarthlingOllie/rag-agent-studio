@@ -45,10 +45,13 @@ class TokensOut(BaseModel):
 
 
 class CostOut(BaseModel):
-    # The replies' costs, frozen when each was made, in US dollars.
+    # The replies' costs, frozen when each was made, and the Voice Cost of the Version's Visitor
+    # Calls, in US dollars.
     total_usd: Dollars
     # Null without a Conversation.
     per_conversation_usd: Dollars | None
+    # The Voice Cost alone: the Visitor Calls that ended in the range, frozen when each ended.
+    voice_usd: Dollars
 
 
 class ThumbsUpOut(BaseModel):
@@ -160,7 +163,11 @@ def _out(kpis: service.VersionKpis) -> VersionKpisOut:
             mean=kpis.mean_tokens,
             p95=usage.tokens_histogram.percentile(0.95),
         ),
-        cost=CostOut(total_usd=kpis.cost_total, per_conversation_usd=kpis.cost_per_conversation),
+        cost=CostOut(
+            total_usd=kpis.cost_total,
+            per_conversation_usd=kpis.cost_per_conversation,
+            voice_usd=kpis.voice_cost,
+        ),
         thumbs_up=ThumbsUpOut(
             up=usage.thumbs_up,
             down=usage.thumbs_down,
@@ -249,10 +256,12 @@ async def get_version_metrics(
 
 class CostAmountsOut(BaseModel):
     # In US dollars, at the prices frozen when each reply was made: Visitor replies, Playground
-    # replies, Evaluation Runs (their answers and judging), and all of them.
+    # replies, Evaluation Runs (their answers and judging), Visitor Calls' Voice Cost (frozen
+    # when each Call ended), and all of them.
     visitor_usd: Dollars
     playground_usd: Dollars
     evaluation_usd: Dollars
+    voice_usd: Dollars
     total_usd: Dollars
 
 
@@ -286,8 +295,8 @@ async def get_organisation_cost(
     end: EndQuery = None,
 ) -> OrgCostOut:
     """What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most
-    366 days), including today's so far, by Project or by Agent. Playground usage and Evaluation
-    Runs are each in their own column. Owners only."""
+    366 days), including today's so far, by Project or by Agent. Playground usage, Evaluation
+    Runs and Visitor Calls' Voice Cost are each in their own column. Owners only."""
     today = clock.now().astimezone(UTC).date()
     first, last = _range(start, end, today)
     lines = await service.org_cost(db, scope, group_by, first, last, today)
@@ -300,6 +309,7 @@ async def get_organisation_cost(
             visitor_usd=line.visitor_usd,
             playground_usd=line.playground_usd,
             evaluation_usd=line.evaluation_usd,
+            voice_usd=line.voice_usd,
             total_usd=line.total_usd,
         )
         for line in lines
@@ -307,6 +317,7 @@ async def get_organisation_cost(
     visitor = sum((line.visitor_usd for line in lines), Decimal(0))
     playground = sum((line.playground_usd for line in lines), Decimal(0))
     evaluation = sum((line.evaluation_usd for line in lines), Decimal(0))
+    voice = sum((line.voice_usd for line in lines), Decimal(0))
     return OrgCostOut(
         start=first,
         end=last,
@@ -316,7 +327,8 @@ async def get_organisation_cost(
             visitor_usd=visitor,
             playground_usd=playground,
             evaluation_usd=evaluation,
-            total_usd=visitor + playground + evaluation,
+            voice_usd=voice,
+            total_usd=visitor + playground + evaluation + voice,
         ),
     )
 

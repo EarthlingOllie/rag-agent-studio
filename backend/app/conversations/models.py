@@ -109,6 +109,10 @@ class Call(IdMixin, Base):
     # Set when it ends: its minutes, rounded up, and why it ended (a ``CallEnd``).
     minutes: Mapped[int | None] = mapped_column(Integer)
     end_reason: Mapped[str | None] = mapped_column(String(32))
+    # Its Voice Cost in US dollars, frozen when it ends: its minutes times the voice credential's
+    # per-minute price then (``app.pricing.table.voice_cost``). Null while open, and when no
+    # price was set.
+    voice_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
 
 
 class CallMinutesUsed(Base):

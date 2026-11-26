@@ -473,8 +473,8 @@ export interface paths {
         /**
          * Get Organisation Cost
          * @description What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most
-         *     366 days), including today's so far, by Project or by Agent. Playground usage and Evaluation
-         *     Runs are each in their own column. Owners only.
+         *     366 days), including today's so far, by Project or by Agent. Playground usage, Evaluation
+         *     Runs and Visitor Calls' Voice Cost are each in their own column. Owners only.
          */
         get: operations["getOrganisationCost"];
         put?: never;
@@ -632,6 +632,27 @@ export interface paths {
          * @description Replaces the key, keeping the credential's identity. A failed check keeps the old key.
          */
         post: operations["rotateCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/voice-price": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Override Credential Voice Price
+         * @description Overrides the voice credential's price per Call minute, to match the voice plan; Voice
+         *     Cost uses it from the next Call that ends. Owners only.
+         */
+        put: operations["overrideCredentialVoicePrice"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3383,6 +3404,27 @@ export interface components {
              */
             resets_at: string;
         };
+        /** CallOut */
+        CallOut: {
+            /** End Reason */
+            end_reason: string | null;
+            /** Ended At */
+            ended_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Minutes */
+            minutes: number | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Voice Cost Usd */
+            voice_cost_usd: string | null;
+        };
         /** CallRefusedOut */
         CallRefusedOut: {
             /** Detail */
@@ -3624,6 +3666,8 @@ export interface components {
             agent_id: string;
             /** Agent Name */
             agent_name: string;
+            /** Calls */
+            calls: components["schemas"]["CallOut"][];
             /**
              * Created At
              * Format: date-time
@@ -3875,6 +3919,8 @@ export interface components {
             total_usd: string;
             /** Visitor Usd */
             visitor_usd: string;
+            /** Voice Usd */
+            voice_usd: string;
         };
         /**
          * CostGroup
@@ -3888,6 +3934,8 @@ export interface components {
             per_conversation_usd: string | null;
             /** Total Usd */
             total_usd: string;
+            /** Voice Usd */
+            voice_usd: string;
         };
         /** CostRowOut */
         CostRowOut: {
@@ -3910,6 +3958,8 @@ export interface components {
             total_usd: string;
             /** Visitor Usd */
             visitor_usd: string;
+            /** Voice Usd */
+            voice_usd: string;
         };
         /** CreateAgentRequest */
         CreateAgentRequest: {
@@ -4061,6 +4111,7 @@ export interface components {
              * @constant
              */
             unit: "per million tokens";
+            voice: components["schemas"]["VoicePriceOut"] | null;
         };
         /** CredentialReferenceOut */
         CredentialReferenceOut: {
@@ -5445,6 +5496,15 @@ export interface components {
             model: string;
             /** Output */
             output?: number | string | null;
+        };
+        /**
+         * OverrideVoicePriceRequest
+         * @description The voice credential's price per Call minute, in US dollars; null clears the override,
+         *     so the platform's price applies.
+         */
+        OverrideVoicePriceRequest: {
+            /** Per Minute */
+            per_minute: number | string | null;
         };
         /** PasswordResetAccepted */
         PasswordResetAccepted: {
@@ -7014,6 +7074,21 @@ export interface components {
             name: string;
             /** Sample Url */
             sample_url: string | null;
+        };
+        /** VoicePriceOut */
+        VoicePriceOut: {
+            /** Effective */
+            effective: string | null;
+            /** Override */
+            override: string | null;
+            /** Platform */
+            platform: string | null;
+            /**
+             * Unit
+             * @default per minute
+             * @constant
+             */
+            unit: "per minute";
         };
         /** WidgetCitationOut */
         WidgetCitationOut: {
@@ -8713,6 +8788,60 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    overrideCredentialVoicePrice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideVoicePriceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoicePriceOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not a credential that carries Calls */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
         };
