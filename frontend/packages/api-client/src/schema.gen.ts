@@ -3144,6 +3144,8 @@ export interface components {
             budget_exhausted: boolean;
             /** Call Budget Exhausted */
             call_budget_exhausted: boolean;
+            /** Calls Failing */
+            calls_failing: boolean;
             /**
              * Created At
              * Format: date-time
@@ -5397,6 +5399,8 @@ export interface components {
             call_voice_id: string | null;
             /** Calls Enabled */
             calls_enabled: boolean;
+            /** Calls Failing */
+            calls_failing: boolean;
             /** Conversation Messages Per Minute */
             conversation_messages_per_minute: number;
             /** Daily Token Budget */

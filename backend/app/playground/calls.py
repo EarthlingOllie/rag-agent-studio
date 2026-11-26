@@ -24,7 +24,6 @@ from app.agents.models import Agent
 from app.agents.service import AgentArchivedError, active_agent, get_agent, with_draft
 from app.conversations.models import Call, Conversation, Message
 from app.credentials.models import ProviderCredential
-from app.credentials.service import open_secret
 from app.embed import call_limits
 from app.embed.call_limits import CallEnd
 from app.embed.calls import CallsOffError, StartedCall
@@ -36,7 +35,7 @@ from app.projects.instructions import project_version
 from app.projects.models import InstructionsVersion, Project
 from app.projects.service import active_project
 from app.tenancy.repository import OrganisationScope
-from app.voice.port import VoiceLayerError
+from app.voice import remote
 from app.voice.remote import VoicePorts
 
 
@@ -61,7 +60,7 @@ async def start_call(
     archived errors, ``InstructionsVersionNotFoundError`` for a Version not in the Project,
     ``CallsOffError`` when the Agent's calling is off, ``CallOpenError`` when the Conversation has
     a Call open, and ``VoiceLayerError`` when the voice layer can't start it; nothing is recorded
-    then."""
+    then, but the Agent's Calls failing alert is raised. A Call that starts clears it."""
     project = await active_project(session, scope, project_id)
     version = (
         None
@@ -99,16 +98,8 @@ async def start_call(
     )
     session.add(call)
     await session.flush()
-    try:
-        join = await voice.layer.start_call(
-            open_secret(voice.envelope, credential),
-            str(agent.remote_agent_id),
-            # The spoken greeting opens a Conversation with no Messages, as in the widget.
-            greet=not messages,
-        )
-    except VoiceLayerError:
-        await session.rollback()
-        raise
+    # The spoken greeting opens a Conversation with no Messages, as in the widget.
+    join = await remote.start_call(session, voice, agent, credential, greet=not messages, now=now)
     conversation.last_activity_at = now
     max_call_minutes = call.max_call_minutes
     await session.commit()

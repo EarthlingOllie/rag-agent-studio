@@ -169,6 +169,7 @@ export const hrHelper: Agent = {
   has_unpublished_changes: false,
   budget_exhausted: false,
   call_budget_exhausted: false,
+  calls_failing: false,
   block_rate_alert: false,
   live_score_drop_alert: false,
 };
@@ -559,6 +560,7 @@ export function fakeAgentsApi(
     spoken_greeting: "",
     max_call_minutes: 10,
     call_minutes_budget: 60,
+    calls_failing: false,
     ...options.callSettings,
   };
   server.use(
@@ -637,6 +639,8 @@ export function fakeAgentsApi(
           spoken_greeting: body.spoken_greeting?.trim() ?? settings.spoken_greeting,
           max_call_minutes: body.max_call_minutes ?? settings.max_call_minutes,
           call_minutes_budget: body.call_minutes_budget ?? settings.call_minutes_budget,
+          // Like the API: saving the Call settings sets the remote agent up again, clearing the alert.
+          calls_failing: body.calls_enabled === undefined ? settings.calls_failing : false,
         };
         return HttpResponse.json(settings);
       },

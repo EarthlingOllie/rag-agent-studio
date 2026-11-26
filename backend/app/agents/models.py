@@ -137,6 +137,11 @@ class Agent(IdMixin, Base):
     # The Call minutes budget's alert flag: when a Call was first refused because the day's
     # Call minutes were spent. Beat clears it at midnight UTC; None when there is no alert.
     call_budget_exhausted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The Calls failing alert flag: when the voice layer couldn't start one of the Agent's Calls
+    # (its remote agent gone, the key revoked, the provider unreachable). Saving the Call
+    # settings, which sets the remote agent up again, or the next Call that starts clears it;
+    # None when there is no alert.
+    calls_failing_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     # The Theme override, set by Owners and not versioned: colour tokens replacing the
     # Organisation Theme's ({token: {"light", "dark"}}, only those overridden) and an avatar
     # image (stored as the Theme's images are), or None.

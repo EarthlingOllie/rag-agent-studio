@@ -566,6 +566,11 @@ class OperationalSettingsOut(BaseModel):
     # date (60 by default). Once the day's minutes reach it, Calls are refused with the
     # unavailable text and Visitors are offered messaging. The Playground doesn't count.
     call_minutes_budget: int
+    # The Calls failing alert: the voice layer couldn't start one of the Agent's Calls (its
+    # remote agent gone, the key revoked, the provider unreachable), so Visitors who chose Call
+    # got the unavailable text and the chat. Messaging is unaffected. Saving the Call settings
+    # sets the remote agent up again and clears it, as does the next Call that starts.
+    calls_failing: bool
 
 
 class OperationalSettingsChange(BaseModel):
@@ -638,6 +643,7 @@ def _out(found: service.OperationalSettings) -> OperationalSettingsOut:
         spoken_greeting=found.spoken_greeting,
         max_call_minutes=found.max_call_minutes,
         call_minutes_budget=found.call_minutes_budget,
+        calls_failing=found.calls_failing,
     )
 
 

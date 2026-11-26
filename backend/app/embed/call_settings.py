@@ -121,7 +121,9 @@ async def apply(
     ``CallSettingsError`` when it isn't good, and brings the remote agent in step: set up when
     calling is saved on (or has none yet), updated when the Call settings change, set up anew
     with the new credential (and the old one removed) when the credential changes, and removed
-    when calling is turned off. A voice layer failure raises ``VoiceLayerError``; the caller
+    when calling is turned off. Saving the Call settings while the Agent's Calls failing alert
+    is raised sets the remote agent up again, clearing it. A voice layer failure raises
+    ``VoiceLayerError``; the caller
     saves nothing then. An archived Agent's settings are checked the same, but it gets no remote
     agent."""
     before = _state(agent)
@@ -139,7 +141,10 @@ async def apply(
         if before.enabled:
             await remote.remove(session, ports, agent, before.credential_id)
         return
-    if after == before and agent.remote_agent_id is not None:
+    # Saving the Call settings while Calls are failing sets the remote agent up again, which
+    # clears the alert; other Operational Settings leave it be.
+    retry = agent.calls_failing_at is not None and change != CallSettingsChange()
+    if after == before and agent.remote_agent_id is not None and not retry:
         return
     credential = await _checked_credential(session, scope, agent, ports)
     if agent.archived_at is not None:

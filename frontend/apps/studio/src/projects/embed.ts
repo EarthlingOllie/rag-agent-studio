@@ -124,6 +124,8 @@ export function useChangeOperationalSettings(path: Path) {
       // The meters measure against the budgets.
       void queryClient.invalidateQueries({ queryKey: usageKey(path) });
       void queryClient.invalidateQueries({ queryKey: minutesKey(path) });
+      // Saving the Call settings can clear the Agent's Calls failing alert.
+      void queryClient.invalidateQueries({ queryKey: ["agents", path.organisation_id, path.project_id] });
     },
   });
 }

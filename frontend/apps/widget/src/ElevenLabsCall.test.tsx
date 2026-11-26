@@ -34,6 +34,40 @@ type FakeClient = {
 /** The fake ElevenLabs client: how often the module was loaded, and the sessions it started. */
 const elevenLabs = vi.hoisted((): FakeClient => ({ loads: 0, sessions: [], next: "join", release: null }));
 
+/**
+ * The browser's microphone: how often the widget asked for it, how many of the tracks it was given
+ * it stopped, and how the next request is answered (allowed, refused by the Visitor, or with no
+ * microphone to use).
+ */
+const microphone = {
+  requests: 0,
+  stopped: 0,
+  answer: "allow" as "allow" | "refuse" | "missing",
+};
+
+function fakeMicrophone() {
+  Object.defineProperty(navigator, "mediaDevices", {
+    configurable: true,
+    value: {
+      getUserMedia: (constraints: MediaStreamConstraints) => {
+        expect(constraints).toEqual({ audio: true });
+        microphone.requests += 1;
+        if (microphone.answer === "refuse") return Promise.reject(new DOMException("Permission denied", "NotAllowedError"));
+        if (microphone.answer === "missing") return Promise.reject(new DOMException("Requested device not found", "NotFoundError"));
+        return Promise.resolve({ getTracks: () => [{ stop: () => (microphone.stopped += 1) }] });
+      },
+    },
+  });
+}
+
+/** The host page's Permissions Policy, as the browser reports it to the frame. */
+function hostPolicy(allowsMicrophone: boolean) {
+  Object.defineProperty(document, "featurePolicy", {
+    configurable: true,
+    value: { allowsFeature: (feature: string) => feature !== "microphone" || allowsMicrophone },
+  });
+}
+
 vi.mock("@elevenlabs/client", () => {
   elevenLabs.loads += 1;
   return {
@@ -78,6 +112,9 @@ const boot: Boot = {
 };
 const API = "*/api/widget/agents/agt_hr";
 const DROPPED = "The Call dropped. You can still send a message.";
+const MIC_REFUSED = "A Call needs your microphone, and it wasn't allowed. You can still send a message.";
+const MIC_BLOCKED = "This site doesn't let the chat use a microphone, so you can't call from here. You can still send a message.";
+const MIC_UNUSABLE = "Your microphone couldn't be used, so the Call can't start. You can still send a message.";
 
 const reply = {
   id: "r1",
@@ -137,6 +174,13 @@ beforeEach(() => {
   elevenLabs.sessions = [];
   elevenLabs.next = "join";
   elevenLabs.release = null;
+  Object.assign(microphone, { requests: 0, stopped: 0, answer: "allow" });
+  fakeMicrophone();
+});
+
+afterEach(() => {
+  Reflect.deleteProperty(document, "featurePolicy");
+  Reflect.deleteProperty(navigator, "mediaDevices");
 });
 
 async function choose(option: "Message" | "Call") {
@@ -172,6 +216,20 @@ test("Visitors who don't call never load the ElevenLabs client", async () => {
   await choose("Message");
   expect(screen.getByLabelText("Message")).toBeInTheDocument();
   expect(elevenLabs.loads).toBe(0);
+  expect(microphone.requests).toBe(0);
+});
+
+test("the microphone is asked for only once the Visitor picks Call, before ElevenLabs is joined", async () => {
+  elevenLabsApi();
+  render(<Widget boot={boot} />);
+  expect(microphone.requests).toBe(0);
+
+  await choose("Call");
+
+  await joined();
+  expect(microphone.requests).toBe(1);
+  // Only asked: ElevenLabs' client opens the microphone it listens with.
+  expect(microphone.stopped).toBe(1);
 });
 
 test("picking Call joins ElevenLabs over WebRTC with the Call token as extra body", async () => {
@@ -299,15 +357,77 @@ test("a Call ElevenLabs drops returns to messaging", async () => {
   expect(seen).toContain("end call");
 });
 
-test("a Call that can't be joined (a refused microphone) returns to messaging", async () => {
+test("a Call ElevenLabs can't join returns to messaging", async () => {
   elevenLabs.next = "fail";
-  elevenLabsApi();
+  const seen = elevenLabsApi();
   render(<Widget boot={boot} />);
 
   await choose("Call");
 
   expect(await screen.findByRole("alert")).toHaveTextContent(DROPPED);
   expect(screen.getByLabelText("Message")).toBeInTheDocument();
+  expect(seen).toContain("end call");
+});
+
+test("a refused microphone says so and opens the chat, without joining ElevenLabs", async () => {
+  microphone.answer = "refuse";
+  const seen = elevenLabsApi();
+  render(<Widget boot={boot} />);
+
+  await choose("Call");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(MIC_REFUSED);
+  expect(screen.getByLabelText("Message")).toHaveFocus();
+  expect(elevenLabs.sessions).toHaveLength(0);
+  expect(seen).toContain("end call");
+});
+
+test("a host page whose policy blocks the microphone says so and opens the chat, without asking for it", async () => {
+  hostPolicy(false);
+  const seen = elevenLabsApi();
+  render(<Widget boot={boot} />);
+
+  await choose("Call");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(MIC_BLOCKED);
+  expect(screen.getByLabelText("Message")).toBeInTheDocument();
+  expect(microphone.requests).toBe(0);
+  expect(elevenLabs.sessions).toHaveLength(0);
+  expect(seen).toContain("end call");
+});
+
+test("a host page whose policy allows the microphone asks for it", async () => {
+  hostPolicy(true);
+  elevenLabsApi();
+  render(<Widget boot={boot} />);
+
+  await choose("Call");
+
+  await joined();
+  expect(microphone.requests).toBe(1);
+});
+
+test("a page with no microphone access at all (not a secure context) says the site blocks it", async () => {
+  Reflect.deleteProperty(navigator, "mediaDevices");
+  elevenLabsApi();
+  render(<Widget boot={boot} />);
+
+  await choose("Call");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(MIC_BLOCKED);
+  expect(screen.getByLabelText("Message")).toBeInTheDocument();
+});
+
+test("a microphone that can't be used says so and opens the chat", async () => {
+  microphone.answer = "missing";
+  elevenLabsApi();
+  render(<Widget boot={boot} />);
+
+  await choose("Call");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(MIC_UNUSABLE);
+  expect(screen.getByLabelText("Message")).toBeInTheDocument();
+  expect(elevenLabs.sessions).toHaveLength(0);
 });
 
 test("a widget that leaves the page while ElevenLabs is still joining leaves the session once it joins", async () => {

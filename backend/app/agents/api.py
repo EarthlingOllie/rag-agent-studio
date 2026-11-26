@@ -82,6 +82,10 @@ class AgentOut(BaseModel):
     # The Call minutes alert: the Agent's daily Call minutes budget ran out and a Call was
     # refused, so Visitors are offered messaging instead. Cleared at midnight UTC.
     call_budget_exhausted: bool
+    # The Calls failing alert: the voice layer couldn't start one of the Agent's Calls, so
+    # Visitors are given the unavailable text and the chat. Saving the Call settings, or the next
+    # Call that starts, clears it.
+    calls_failing: bool
     # The Block rate alert: in the last hourly rollup, the share of Visitor messages the input
     # Guardrail blocked had spiked against the week before, as in an attack.
     block_rate_alert: bool
@@ -136,6 +140,7 @@ def agent_out(found: service.AgentWithDraft) -> AgentOut:
         has_unpublished_changes=found.has_unpublished_changes,
         budget_exhausted=agent.budget_exhausted_at is not None,
         call_budget_exhausted=agent.call_budget_exhausted_at is not None,
+        calls_failing=agent.calls_failing_at is not None,
         block_rate_alert=agent.block_rate_alert_at is not None,
         live_score_drop_alert=agent.live_score_drop_alert_at is not None,
     )

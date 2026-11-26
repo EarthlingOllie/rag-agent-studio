@@ -844,6 +844,39 @@ test("when ElevenLabs can't set the Agent up, the Editor is told", async () => {
   expect(await within(card).findByRole("alert")).toHaveTextContent(detail);
 });
 
+test("when Calls are failing, Embed & limits says so, and saving the Call settings sets the Agent up again and clears it", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({
+    credentials: ELEVENLABS_ONLY,
+    callSettings: {
+      calls_enabled: true,
+      call_credential_id: elevenLabs.id,
+      call_voice_id: "voice-ada",
+      spoken_greeting: "Hi.",
+      calls_failing: true,
+    },
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  expect(within(card).getByRole("alert")).toHaveTextContent(
+    "Calls are failing: ElevenLabs couldn't start the Agent's last Call, so Visitors who chose Call were given the unavailable text and the chat. Messaging still works. Check the credential, then save the Call settings to set the Agent up again.",
+  );
+  await user.click(within(card).getByRole("button", { name: "Save Call settings" }));
+
+  expect(await within(card).findByText("Saved. Calls use these settings from now on.")).toBeInTheDocument();
+  expect(within(card).queryByRole("alert")).not.toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "operational-settings")).toHaveLength(1);
+});
+
+test("an Agent whose Calls start has no Calls failing alert on Embed & limits", async () => {
+  setUp({ credentials: ELEVENLABS_ONLY, callSettings: { calls_enabled: true } });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  expect(within(card).queryByText(/Calls are failing/)).not.toBeInTheDocument();
+});
+
 test("voices that can't be listed are explained", async () => {
   setUp({
     credentials: [{ ...elevenLabs, id: "c1000000-0000-4000-8000-0000000000ff", name: "Revoked" }],

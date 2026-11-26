@@ -38,6 +38,7 @@ LIMITS = {
     "spoken_greeting": "",
     "max_call_minutes": 10,
     "call_minutes_budget": 60,
+    "calls_failing": False,
 }
 
 

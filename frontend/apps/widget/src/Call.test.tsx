@@ -338,6 +338,28 @@ test("a Call refused by the Call limits offers messaging with the unavailable te
   }
 });
 
+test("a Call the voice layer can't start gives the unavailable text and the chat, where messaging carries on", async () => {
+  const seen = fakeCallApi({ startCall: () => json({ detail: UNAVAILABLE, reason: "voice_unavailable" }, 503) });
+  server.use(
+    http.post(`${API}/messages`, () => {
+      seen.push({ route: "message" });
+      return new HttpResponse('event: token\ndata: {"text":"Twenty-five days."}\n\nevent: done\ndata: {"message_id":"m1"}\n\n', {
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    }),
+  );
+  const user = userEvent.setup();
+  render(<Widget boot={boot} />);
+
+  await choose("Call");
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(UNAVAILABLE);
+  expect(screen.queryByRole("group", { name: "Call" })).not.toBeInTheDocument();
+  await user.type(screen.getByLabelText("Message"), "How much leave do I get?{Enter}");
+  expect(await screen.findByText("Twenty-five days.")).toBeInTheDocument();
+  expect(seen.map((s) => s.route)).toContain("message");
+});
+
 test("a Call the voice layer drops returns to the chat saying so", async () => {
   fakeCallApi({ turn: () => json({ detail: "The Call token is invalid." }, 502) });
   render(<Widget boot={boot} />);

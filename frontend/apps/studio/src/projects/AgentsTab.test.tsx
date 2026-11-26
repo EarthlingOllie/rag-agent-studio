@@ -326,6 +326,28 @@ test("an Agent whose Call minutes budget is spent is badged in the list, and sti
   expect(screen.getByText("Call minutes spent")).toBeInTheDocument();
 });
 
+test("an Agent whose Calls are failing is badged in the list, and still on its page", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi();
+  const failing = { ...hrHelper, calls_failing: true };
+  const other = { ...hrHelper, id: "a9e00000-0000-4000-8000-000000000002", name: "Benefits FAQ" };
+  fakeAgentsApi({ agents: [failing, other] });
+  renderStudio(agentsTab(hrProject.id));
+
+  const table = await agentsTable();
+  const [first, second] = within(table).getAllByRole("row").slice(1) as [HTMLElement, HTMLElement];
+  expect(within(first).getByText("Calls failing")).toHaveAttribute(
+    "title",
+    "Calls can't start: ElevenLabs couldn't start the Agent's last Call, so Visitors who chose Call were given the unavailable text and the chat. Messaging still works. Save the Call settings in Embed & limits to set the Agent up again.",
+  );
+  expect(within(second).queryByText("Calls failing")).not.toBeInTheDocument();
+
+  await userEvent.click(within(table).getByRole("link", { name: "HR helper" }));
+
+  expect(await screen.findByRole("heading", { level: 1, name: "HR helper" }, { timeout: 5000 })).toBeInTheDocument();
+  expect(screen.getByText("Calls failing")).toBeInTheDocument();
+});
+
 test("an Agent whose Guardrail block rate spiked is badged in the list, and still on its page", async () => {
   fakeAuthApi({ signedInAs: adaSession });
   fakeProjectsApi();

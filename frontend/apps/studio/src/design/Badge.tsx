@@ -10,6 +10,8 @@ const BADGES = {
   budgetSpent: { label: "Budget spent", className: "bg-danger-soft text-danger" },
   /** An Agent whose daily Call minutes budget is spent, so Calls are refused. */
   callMinutesSpent: { label: "Call minutes spent", className: "bg-danger-soft text-danger" },
+  /** An Agent whose last Call the voice layer couldn't start, so Visitors who chose Call got the chat. */
+  callsFailing: { label: "Calls failing", className: "bg-danger-soft text-danger" },
   /** A Spoken Message: said in a Call rather than typed. */
   spoken: { label: "Spoken", className: "bg-sunken text-muted" },
   blocked: { label: "Blocked by guardrail", className: "bg-danger-soft text-danger" },

@@ -28,12 +28,12 @@ from app.agents import serving
 from app.agents.models import Agent
 from app.conversations.models import Call, Conversation, Message
 from app.credentials.models import ProviderCredential
-from app.credentials.service import open_secret
 from app.embed import call_limits, service
 from app.embed.admission import Admission
 from app.embed.call_limits import CallEnd, CallRefusal
 from app.embed.tokens import TokenSigner
-from app.voice.port import CallJoin, VoiceLayerError
+from app.voice import remote
+from app.voice.port import CallJoin
 from app.voice.remote import VoicePorts, call_secret
 
 
@@ -88,7 +88,8 @@ async def start_call(
     take Calls, ``service.NotAdmittedError`` when admission control refuses (the rate limits and
     the Token Budget, as for a message, which the start counts against),
     ``CallNotAdmittedError`` when the Call limits refuse it, and ``VoiceLayerError`` when the
-    voice layer can't start it; nothing is recorded then."""
+    voice layer can't start it; nothing is recorded then, but the Agent's Calls failing
+    alert is raised. A Call that starts clears it."""
     conversation = await service.visitor_conversation(session, signer, public_id, token, now=now)
     found = await serving.live_agent(session, public_id)
     agent = found.agent
@@ -124,13 +125,7 @@ async def start_call(
     )
     session.add(call)
     await session.flush()
-    try:
-        join = await voice.layer.start_call(
-            open_secret(voice.envelope, credential), str(agent.remote_agent_id), greet=greet
-        )
-    except VoiceLayerError:
-        await session.rollback()
-        raise
+    join = await remote.start_call(session, voice, agent, credential, greet=greet, now=now)
     conversation.last_activity_at = now
     max_call_minutes = call.max_call_minutes
     await session.commit()

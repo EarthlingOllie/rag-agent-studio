@@ -6,7 +6,9 @@
  * API, so the Conversation log works as it does for a typed reply.
  *
  * With ElevenLabs, the browser joins the Call over WebRTC with ElevenLabs' own client, which is
- * loaded only when a Visitor picks Call, so Visitors who never call download none of it. It hands
+ * loaded only when a Visitor picks Call, so Visitors who never call download none of it. The
+ * Visitor's microphone is asked for then too, before the client loads: a refused microphone, or a
+ * host page whose policy blocks it, ends the Call there, saying why. It hands
  * ElevenLabs the Call token as extra body, which ElevenLabs passes to our turn endpoint with
  * every turn.
  *
@@ -43,6 +45,36 @@ export type CallSession = {
 export const SCRIPT_PAUSE_MS = 400;
 
 const DROPPED = "The Call dropped. You can still send a message.";
+
+/** Why a Call couldn't start: the Visitor didn't allow the microphone. */
+export const MIC_REFUSED = "A Call needs your microphone, and it wasn't allowed. You can still send a message.";
+/** Why a Call couldn't start: the host page's policy (or an insecure page) blocks the microphone. */
+export const MIC_BLOCKED =
+  "This site doesn't let the chat use a microphone, so you can't call from here. You can still send a message.";
+/** Why a Call couldn't start: there is no microphone to use, or it is busy. */
+export const MIC_UNUSABLE = "Your microphone couldn't be used, so the Call can't start. You can still send a message.";
+
+/** How the browser reports the host page's Permissions Policy to the frame, where it does. */
+type PolicyDocument = Document & { featurePolicy?: { allowsFeature: (feature: string) => boolean } };
+
+/**
+ * Asks for the Visitor's microphone, which the browser may prompt for. Resolves once it is allowed,
+ * having let it go again (the voice layer's client opens the one it listens with); otherwise
+ * rejects with why the Call can't go ahead.
+ */
+async function askForMicrophone(): Promise<void> {
+  const blocked = (document as PolicyDocument).featurePolicy?.allowsFeature("microphone") === false;
+  // Outside a secure context there is no microphone access at all.
+  if (blocked || !("mediaDevices" in navigator)) throw new ChatError(MIC_BLOCKED);
+  let stream: MediaStream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (failure) {
+    // The browser can't tell a policy block from a refusal everywhere: both are NotAllowedError.
+    throw new ChatError(failure instanceof DOMException && failure.name === "NotAllowedError" ? MIC_REFUSED : MIC_UNUSABLE);
+  }
+  for (const track of stream.getTracks()) track.stop();
+}
 
 /** What the scripted Visitor says: the Agent's first starter question, or a hello. */
 export function script(boot: Boot): string[] {
@@ -110,11 +142,12 @@ function elevenLabs(started: StartedCall, handlers: CallHandlers): CallSession {
   let ended = false;
   let muted = false;
   let session: VoiceConversation | null = null;
-  const dropped = () => {
-    if (!ended) handlers.onFailure(new ChatError(DROPPED));
+  const dropped = (failure?: unknown) => {
+    if (!ended) handlers.onFailure(failure instanceof ChatError ? failure : new ChatError(DROPPED));
   };
 
-  void import("@elevenlabs/client")
+  void askForMicrophone()
+    .then(() => import("@elevenlabs/client"))
     .then(({ Conversation }) =>
       Conversation.startSession({
         conversationToken: started.join.conversation_token,
@@ -150,7 +183,7 @@ function elevenLabs(started: StartedCall, handlers: CallHandlers): CallSession {
       session = joined;
       joined.setMicMuted(muted);
     })
-    // The client couldn't load, the microphone was refused, or ElevenLabs couldn't be joined.
+    // The microphone can't be used, the client couldn't load, or ElevenLabs couldn't be joined.
     .catch(dropped);
   return {
     setMuted(next) {

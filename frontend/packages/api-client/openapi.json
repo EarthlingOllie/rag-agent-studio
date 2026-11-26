@@ -121,6 +121,10 @@
             "title": "Call Budget Exhausted",
             "type": "boolean"
           },
+          "calls_failing": {
+            "title": "Calls Failing",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -189,6 +193,7 @@
           "has_unpublished_changes",
           "budget_exhausted",
           "call_budget_exhausted",
+          "calls_failing",
           "block_rate_alert",
           "live_score_drop_alert"
         ],
@@ -6423,6 +6428,10 @@
             "title": "Calls Enabled",
             "type": "boolean"
           },
+          "calls_failing": {
+            "title": "Calls Failing",
+            "type": "boolean"
+          },
           "conversation_messages_per_minute": {
             "title": "Conversation Messages Per Minute",
             "type": "integer"
@@ -6464,7 +6473,8 @@
           "call_voice_id",
           "spoken_greeting",
           "max_call_minutes",
-          "call_minutes_budget"
+          "call_minutes_budget",
+          "calls_failing"
         ],
         "title": "OperationalSettingsOut",
         "type": "object"

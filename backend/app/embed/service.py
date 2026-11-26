@@ -139,6 +139,9 @@ class OperationalSettings:
     # The Call limits: the Maximum Call length and the Call minutes budget per UTC date.
     max_call_minutes: int
     call_minutes_budget: int
+    # The Calls failing alert: the voice layer couldn't start one of the Agent's Calls. Not a
+    # setting, so not audited; saving the Call settings clears it.
+    calls_failing: bool
 
 
 def _settings_of(agent: Agent) -> OperationalSettings:
@@ -157,7 +160,15 @@ def _settings_of(agent: Agent) -> OperationalSettings:
         spoken_greeting=agent.spoken_greeting,
         max_call_minutes=agent.max_call_minutes,
         call_minutes_budget=agent.call_minutes_budget,
+        calls_failing=agent.calls_failing_at is not None,
     )
+
+
+def _audited(agent: Agent) -> dict[str, object]:
+    """The Agent's Operational Settings as their Audit Events record them."""
+    settings = asdict(_settings_of(agent))
+    del settings["calls_failing"]
+    return settings
 
 
 async def operational_settings(
@@ -196,7 +207,7 @@ async def change_operational_settings(
     ``VoiceLayerError``, and then nothing is saved."""
     origins = None if allowed_origins is None else normalise_origins(allowed_origins)
     agent = (await get_agent(session, scope, project_id, agent_id, lock=True)).agent
-    before = asdict(_settings_of(agent))
+    before = _audited(agent)
     if origins is not None:
         agent.allowed_origins = origins
     if unavailable_text is not None:
@@ -216,7 +227,7 @@ async def change_operational_settings(
     if call_minutes_budget is not None:
         agent.call_minutes_budget = call_minutes_budget
     await apply_call_settings(session, scope, agent, call or CallSettingsChange(), voice)
-    after = asdict(_settings_of(agent))
+    after = _audited(agent)
     changed = [key for key in before if before[key] != after[key]]
     for action, keys in (
         (OPERATIONAL_SETTINGS_CHANGED, [key for key in changed if key != LIVE_SAMPLE_RATE]),

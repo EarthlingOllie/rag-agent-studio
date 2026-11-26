@@ -704,8 +704,11 @@ _Avoid_: Test call, Draft call
 The Call token of a Playground Call: signed like a Call token but of its own kind, so neither stands for the other. The turn endpoint answers its turns with the Draft, outside the Visitor limits.
 
 **Calls failing alert**:
-An Agent's alert that Visitors' Calls can't start because the voice layer refuses them (its agent is gone, the key was revoked, the provider is down). Visitors get the Unavailable text and messaging keeps working; saving the Call settings sets the voice layer up again.
+An Agent's alert that Visitors' Calls can't start because the Voice layer refuses them (its remote agent is gone, the key was revoked, the provider is unreachable): raised by the first Call (a Visitor's or a Playground Call) the Voice layer can't start, and shown as a "Calls failing" badge on the Agents list and the Agent's page and as a notice in the Call settings on Embed & limits. Visitors who chose Call get the Unavailable text (reason `voice_unavailable`) and the chat, and messaging keeps working. Saving the Call settings sets the remote agent up again and clears it, as does the next Call that starts, or turning calling off; other Operational Settings changes leave it.
 _Avoid_: Voice error, call outage
+
+**Microphone refusal**:
+A Call that can't go ahead because the Visitor's microphone can't be used. The widget asks for the microphone only after the Visitor chooses Call; when they refuse it, the host page's Permissions Policy (or an insecure page) blocks it, or there is no microphone to use, the widget ends the Call, says why in a short sentence and opens the chat. It raises no Calls failing alert.
 
 **Spoken greeting**:
 What an Agent's Remote agent says as a Call opens a Conversation that has no Messages yet, from the Call settings. It is only spoken, never saved as a Message; a Call in a Conversation that already has Messages (typed, or from an earlier Call) opens with the Agent listening.

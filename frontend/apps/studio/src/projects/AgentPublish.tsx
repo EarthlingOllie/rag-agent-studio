@@ -46,6 +46,12 @@ export function LiveStatus({ agent }: { agent: Agent }) {
           title="Today's Call minutes budget is spent, so Calls are refused and Visitors are offered messaging until midnight UTC."
         />
       )}
+      {agent.calls_failing && (
+        <Badge
+          kind="callsFailing"
+          title="Calls can't start: ElevenLabs couldn't start the Agent's last Call, so Visitors who chose Call were given the unavailable text and the chat. Messaging still works. Save the Call settings in Embed & limits to set the Agent up again."
+        />
+      )}
       {agent.block_rate_alert && (
         <span
           title="In the last hour, the input Guardrail blocked an unusual share of Visitor messages, as in an attack. Review the blocked Conversations."

@@ -610,7 +610,8 @@ function VoicePicker({
 }
 
 /** Whether Visitors can talk to the Agent in a Call, the voice-capable credential and voice it
- * speaks with, and its spoken greeting. Saving sets the Agent up in the voice layer. */
+ * speaks with, and its spoken greeting, with the Calls failing alert when the voice layer couldn't
+ * start a Call. Saving sets the Agent up in the voice layer again, which clears the alert. */
 function CallSettings({ path }: { path: SettingsPath }) {
   const settings = useOperationalSettings(path);
   const credentials = useCredentials(path.organisation_id);
@@ -670,6 +671,13 @@ function CallSettings({ path }: { path: SettingsPath }) {
               Organisation settings
             </Link>
             .
+          </Notice>
+        )}
+        {settings.data?.calls_failing && (
+          <Notice tone="error">
+            Calls are failing: ElevenLabs couldn&apos;t start the Agent&apos;s last Call, so Visitors who chose Call were given
+            the unavailable text and the chat. Messaging still works. Check the credential, then save the Call settings to set
+            the Agent up again.
           </Notice>
         )}
         {credentials.isError && <Notice tone="error">The credentials could not be loaded. Try again shortly.</Notice>}
