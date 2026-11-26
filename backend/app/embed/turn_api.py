@@ -32,6 +32,7 @@ from app.agents.resolution import NoDefaultModelError, ProviderCredentialGoneErr
 from app.agents.service import AgentArchivedError
 from app.agents.serving import AgentNotLiveError, AgentNotServedError
 from app.auth.api import Db
+from app.core.streams import outlasting
 from app.embed import calls, service
 from app.embed.api import Serving, Signer, _errors, _event_stream
 from app.embed.speech import SEARCHING_STATUS, Speech
@@ -201,6 +202,8 @@ async def chat_completions(
         unavailable=unavailable,
     )
 
+    # Runs to its end even when the voice layer stops reading (the Visitor talked over the
+    # reply): the reply is still saved whole, and an unavailable Agent still ends the Call.
     async def chunks() -> AsyncIterator[str]:
         async for said in _spoken(speech, turn):
             yield _chunk(completion, created, said)
@@ -211,7 +214,7 @@ async def chat_completions(
         yield _chunk(completion, created, None)
         yield "data: [DONE]\n\n"
 
-    return _event_stream(chunks())
+    return _event_stream(outlasting(chunks()))
 
 
 async def _spoken(speech: Speech, turn: ServedTurn | None) -> AsyncIterator[str]:

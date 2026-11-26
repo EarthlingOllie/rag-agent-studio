@@ -123,6 +123,10 @@ class Call(IdMixin, Base):
     # per-minute price then (``app.pricing.table.voice_cost``). Null while open, and when no
     # price was set.
     voice_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
+    # The Visitor's Spoken Message whose reply the Visitor talked over before that reply was
+    # saved: the reply is marked interrupted when it is (``app.embed.calls.interrupt``). A
+    # Message ID, kept without a foreign key, as Messages already name their Call.
+    interrupted_turn_id: Mapped[uuid.UUID | None] = mapped_column()
 
 
 class CallMinutesUsed(Base):

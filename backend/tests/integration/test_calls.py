@@ -10,10 +10,11 @@ Turns are driven as the voice layer drives them: by posting to the turn endpoint
 through the fake voice layer's own route, as the widget's scripted call client does.
 """
 
+import asyncio
 import json
 import re
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, MutableMapping
 from datetime import timedelta
 from typing import Any
 
@@ -780,36 +781,138 @@ async def test_talking_before_any_reply_or_outside_a_call_marks_nothing(
     assert [m["interrupted"] for m in messages] == [False, False]
 
 
-async def test_a_call_whose_latest_message_is_the_visitors_marks_nothing(
+class GatedReply:
+    """A model whose reply stops half-way until ``release`` is set: the Agent is still speaking
+    it when the Visitor talks over it."""
+
+    FIRST = "You get twenty-five days. "
+    REST = "That is paid leave, each year."
+
+    def __init__(self) -> None:
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+
+    async def __call__(self, messages: list[ModelMessage], info: AgentInfo) -> AsyncIterator[str]:
+        self.started.set()
+        yield self.FIRST
+        await self.release.wait()
+        yield self.REST
+
+
+async def saved_messages(
+    visitor: httpx.AsyncClient, public_id: str, token: str, count: int
+) -> list[dict[str, Any]]:
+    """The Conversation's Messages, once it holds ``count`` of them (a reply still being
+    answered after the voice layer hung up is saved a moment later)."""
+    for _ in range(200):
+        messages: list[dict[str, Any]] = (await resume(visitor, public_id, token)).json()[
+            "messages"
+        ]
+        if len(messages) >= count:
+            return messages
+        await asyncio.sleep(0.05)
+    raise AssertionError(f"the Conversation never held {count} Messages")
+
+
+async def test_a_reply_talked_over_while_it_streams_is_marked_once_saved_with_its_whole_text(
     app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, voice: httpx.AsyncClient
 ) -> None:
-    """The Visitor talked over a reply that isn't saved yet: the reply before it was heard."""
+    """The Visitor talks over the reply before it is saved: the reply being spoken is marked
+    when it is saved, not the earlier reply that was the latest saved Message."""
     agent = await calling_agent(app, owner)
     token = await conversation_token(visitor, agent["public_id"])
     call = await started(visitor, agent["public_id"], token)
     secret = await secret_of(app, agent)
     await turn(voice, agent["public_id"], secret, call["call_token"], "How much leave?")
-    async with app.state.sessionmaker() as session:
-        first = await session.scalar(
-            select(Message).where(Message.call_id == uuid.UUID(call["call_id"])).limit(1)
-        )
-        assert first is not None
-        session.add(
-            Message(
-                organisation_id=first.organisation_id,
-                conversation_id=first.conversation_id,
-                role="user",
-                content="And notice?",
-                spoken=True,
-                call_id=first.call_id,
-            )
-        )
-        await session.commit()
+    gated = GatedReply()
+    answer_with(app, gated)
+    speaking = asyncio.create_task(
+        turn(voice, agent["public_id"], secret, call["call_token"], "And per year?")
+    )
+    await gated.started.wait()
+
+    response = await interrupt(visitor, agent["public_id"], token)
+    gated.release.set()
+    said = spoken(await speaking)
+
+    assert response.status_code == 204
+    assert said == "You get twenty-five days. That is paid leave, each year."
+    messages = (await resume(visitor, agent["public_id"], token)).json()["messages"]
+    assert [(m["role"], m["interrupted"]) for m in messages] == [
+        ("user", False),
+        ("assistant", False),
+        ("user", False),
+        ("assistant", True),
+    ]
+    assert messages[3]["content"] == "You get twenty-five days. That is paid leave, each year."
+    # The next reply isn't talked over.
+    await turn(voice, agent["public_id"], secret, call["call_token"], "Thanks")
+    after = (await resume(visitor, agent["public_id"], token)).json()["messages"]
+    assert [m["interrupted"] for m in after] == [False, False, False, True, False, False]
+
+
+async def test_a_reply_the_voice_layer_stops_streaming_is_saved_whole_and_marked_interrupted(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient
+) -> None:
+    """The voice layer hangs up on the turn when the Visitor talks over it: the Agent still
+    finishes the reply, which is saved with its whole text and marked interrupted."""
+    agent = await calling_agent(app, owner)
+    token = await conversation_token(visitor, agent["public_id"])
+    call = await started(visitor, agent["public_id"], token)
+    secret = await secret_of(app, agent)
+    gated = GatedReply()
+    answer_with(app, gated)
+    body = json.dumps(
+        {
+            "model": "custom-llm",
+            "messages": [{"role": "user", "content": "How much leave?"}],
+            "elevenlabs_extra_body": {"call_token": call["call_token"]},
+        }
+    ).encode()
+    hung_up = asyncio.Event()
+    requests = [{"type": "http.request", "body": body, "more_body": False}]
+
+    async def receive() -> dict[str, Any]:
+        if requests:
+            return requests.pop()
+        await hung_up.wait()
+        return {"type": "http.disconnect"}
+
+    async def send(message: MutableMapping[str, Any]) -> None:
+        pass
+
+    scope = {
+        "type": "http",
+        "asgi": {"version": "3.0"},
+        "http_version": "1.1",
+        "method": "POST",
+        "scheme": "http",
+        "path": turn_path(agent["public_id"]),
+        "raw_path": turn_path(agent["public_id"]).encode(),
+        "query_string": b"",
+        "root_path": "",
+        "headers": [
+            (b"host", b"test"),
+            (b"content-type", b"application/json"),
+            (b"authorization", f"Bearer {secret}".encode()),
+        ],
+        "client": ("127.0.0.1", 50000),
+        "server": ("test", 80),
+    }
+    streaming = asyncio.create_task(app(scope, receive, send))
+    await gated.started.wait()
 
     assert (await interrupt(visitor, agent["public_id"], token)).status_code == 204
+    hung_up.set()
+    await streaming
+    gated.release.set()
 
-    messages = (await resume(visitor, agent["public_id"], token)).json()["messages"]
-    assert [m["interrupted"] for m in messages] == [False, False, False]
+    messages = await saved_messages(visitor, agent["public_id"], token, 2)
+    assert [(m["role"], m["interrupted"]) for m in messages] == [
+        ("user", False),
+        ("assistant", True),
+    ]
+    assert messages[1]["content"] == "You get twenty-five days. That is paid leave, each year."
 
 
 async def test_saying_a_reply_was_interrupted_needs_a_good_conversation_token(

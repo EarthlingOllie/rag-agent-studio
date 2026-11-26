@@ -155,20 +155,39 @@ async def interrupt(
     session: AsyncSession, signer: TokenSigner, public_id: str, token: str, *, now: datetime
 ) -> None:
     """Marks the reply being spoken in the token's Conversation's open Call as interrupted: the
-    Visitor talked over it. That is the Call's latest Message, if it is the Agent's; with no
-    Call open, or the Visitor's words the latest (the reply they talked over isn't saved yet),
-    nothing changes. The reply keeps its whole text. Raises ``service.InvalidTokenError`` for
-    a bad token."""
+    Visitor talked over it. That is the reply to the Visitor's latest words in the Call. Saved
+    already, it is marked now; still being answered, the Call records the turn and the reply is
+    marked when it is saved (``app.playground.service.answer``). Either way it keeps its whole
+    text. With no Call open, or no words said in it yet (the greeting is being spoken), nothing
+    changes. Raises ``service.InvalidTokenError`` for a bad token."""
     conversation = await service.visitor_conversation(session, signer, public_id, token, now=now)
-    latest = await session.scalar(
-        select(Message)
-        .join(Call, Call.id == Message.call_id)
+    # Locked, as saving a reply of the Call locks it: the reply is either saved first (and
+    # found here) or sees the turn recorded.
+    call = await session.scalar(
+        select(Call)
         .where(Call.conversation_id == conversation.id, Call.ended_at.is_(None))
-        .order_by(Message.seq.desc())
-        .limit(1)
+        .with_for_update()
     )
-    if latest is not None and latest.role == "assistant":
-        latest.interrupted = True
+    said = None
+    if call is not None:
+        said = await session.scalar(
+            select(Message)
+            .where(Message.call_id == call.id, Message.role == "user")
+            .order_by(Message.seq.desc())
+            .limit(1)
+        )
+    if call is not None and said is not None:
+        reply = await session.scalar(
+            select(Message).where(
+                Message.call_id == call.id,
+                Message.role == "assistant",
+                Message.seq > said.seq,
+            )
+        )
+        if reply is None:
+            call.interrupted_turn_id = said.id
+        else:
+            reply.interrupted = True
     await session.commit()
 
 

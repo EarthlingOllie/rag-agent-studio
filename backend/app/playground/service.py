@@ -225,6 +225,8 @@ class PreparedTurn:
     # The Call the question was said in (spec 20): the question and its answer are Spoken
     # Messages of that Call. None for a typed question.
     call_id: uuid.UUID | None = None
+    # The saved question's Message ID: in a Call, the turn an interruption names.
+    question_id: uuid.UUID | None = None
 
     @property
     def instructions_source(self) -> InstructionsSource:
@@ -302,19 +304,20 @@ async def save_question(
             raise CallEndedError
     organisation_id = conversation.organisation_id
     resolved = await resolve_models(session, organisation_id, config)
-    session.add(
-        Message(
-            organisation_id=organisation_id,
-            conversation_id=conversation.id,
-            role=MessageRole.USER,
-            content=question,
-            spoken=call_id is not None,
-            call_id=call_id,
-            # By the app's clock, as the answer is: usage rollups (spec 07) go by it.
-            created_at=now,
-        )
+    asked = Message(
+        id=uuid.uuid4(),
+        organisation_id=organisation_id,
+        conversation_id=conversation.id,
+        role=MessageRole.USER,
+        content=question,
+        spoken=call_id is not None,
+        call_id=call_id,
+        # By the app's clock, as the answer is: usage rollups (spec 07) go by it.
+        created_at=now,
     )
+    session.add(asked)
     conversation.last_activity_at = now
+    question_id = asked.id
     await session.commit()
     return PreparedTurn(
         organisation_id=organisation_id,
@@ -334,6 +337,7 @@ async def save_question(
         agent_version_id=agent_version_id,
         automatic_fallback=resolved.automatic_fallback,
         call_id=call_id,
+        question_id=question_id,
     )
 
 
@@ -581,6 +585,13 @@ async def answer(
                 Conversation, prepared.conversation_id, with_for_update=True
             )
             conversation.last_activity_at = now
+            if prepared.call_id is not None:
+                # Locked after the Conversation, as the Call's turns lock them: the Visitor
+                # talking over this reply either comes first (and is seen here) or finds it.
+                call = await session.get_one(
+                    Call, prepared.call_id, with_for_update=True, populate_existing=True
+                )
+                message.interrupted = call.interrupted_turn_id == prepared.question_id
             if conversation.deleted_at is not None:
                 # Deleted on request while the answer streamed: its text isn't kept either.
                 await purge_messages(session, Message.id == message.id, now=now)

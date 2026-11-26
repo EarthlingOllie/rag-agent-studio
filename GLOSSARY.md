@@ -719,7 +719,7 @@ What the widget offers on a resumed Conversation whose last Call the page cut of
 _Avoid_: Rejoin, reconnect, resume call
 
 **Spoken Message**:
-A Message said in a Call rather than typed: the Visitor's words as transcribed, or the Agent's reply as the model wrote it. An Agent's Spoken Message the Visitor talked over is marked interrupted (the widget tells the API when the voice layer reports the Visitor talking over a reply) and still holds the whole reply, so it matches its Trace. It takes Message Feedback, counts in a Version's metrics and is judged like a typed one.
+A Message said in a Call rather than typed: the Visitor's words as transcribed, or the Agent's reply as the model wrote it. An Agent's Spoken Message the Visitor talked over is marked interrupted (the widget tells the API when the voice layer reports the Visitor talking over a reply) and still holds the whole reply, so it matches its Trace: a reply talked over while it was still being answered is finished, saved whole and marked when saved. It takes Message Feedback, counts in a Version's metrics and is judged like a typed one.
 _Avoid_: Voice message, transcript line, utterance
 
 **Call settings**:
