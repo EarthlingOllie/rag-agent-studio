@@ -291,6 +291,21 @@ test("archived Projects are listed apart, and Owners restore them to the main li
   ).toEqual(["HR handbook", "Old launch", "Sales enablement"]);
 });
 
+test("a Deleting Project is listed among the archived ones as Deleting, with no Restore", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  fakeProjectsApi({ projects: [hrProject, { ...oldProject, deleting: true }] });
+  renderStudio(projectsPage);
+  const table = await screen.findByRole("table", { name: "Projects" });
+  expect(within(table).queryByRole("link", { name: "Old launch" })).not.toBeInTheDocument();
+
+  await showArchived();
+
+  const archived = await screen.findByRole("table", { name: "Archived Projects" });
+  expect(rowTexts(archived)).toEqual([["Old launch", "2026-10-20", "Deleting"]]);
+  expect(within(archived).getByText("Deleting")).toHaveAttribute("title", "Being deleted permanently. A deleted Project can't be restored.");
+  expect(within(archived).queryByRole("button")).not.toBeInTheDocument();
+});
+
 test("Editors see archived Projects but can't restore them", async () => {
   fakeAuthApi({ signedInAs: editorSession });
   fakeProjectsApi();

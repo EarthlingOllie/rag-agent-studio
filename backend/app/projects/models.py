@@ -53,6 +53,14 @@ class Project(IdMixin, Base):
     description: Mapped[str] = mapped_column(Text, default="")
     # Set while the Project is archived: hidden from the main list, and it stops serving.
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set when an Owner asks for the archived Project to be deleted permanently: from then on
+    # it is Deleting (hidden from normal use, can't be restored) until the deletion cascade,
+    # sent at once and finished by the sweeper if that is lost, removes it.
+    deletion_requested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The Owner who asked; the ``project.deleted`` Audit Event is recorded as them.
+    deletion_requested_by: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("members.id", ondelete="SET NULL")
+    )
     # The Embedding Model the Project's Chunks are embedded with; the local model by default.
     embedding_model_id: Mapped[str] = mapped_column(String(100), default=DEFAULT_MODEL_ID)
     # The most Documents, not counting Failed ones, the Project may hold.

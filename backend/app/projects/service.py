@@ -7,6 +7,12 @@ An archived Project is hidden from the main list and stops serving. ``active_pro
 one gate for everything that serves or changes a Project (renaming here; uploads and Agents in
 later specs): it refuses an archived Project. Reading an archived Project still works, so its
 page can offer restoring it.
+
+An Owner deletes an archived Project in two steps (spec 21, ADR-0020): the request marks it
+Deleting, with who asked (``request_deletion``), and the deletion cascade (``delete_project``),
+sent at once and run by the sweeper too (``finish_deletions``), removes it. A Deleting Project
+stays archived, so it is still left out of the main list and serves nothing; ``active_project``
+and restoring refuse it with ``ProjectDeletingError``.
 """
 
 import uuid
@@ -14,12 +20,13 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from sqlalchemy import delete, func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm import InstrumentedAttribute
 
 from app import audit
 from app.agents.models import Agent
 from app.documents.models import Document
+from app.jobs import deletions
 from app.projects.models import FlaggedChunkMode, Project
 from app.tenancy.repository import OrganisationScope
 
@@ -30,6 +37,10 @@ class ProjectNotFoundError(Exception):
 
 class ProjectArchivedError(Exception):
     """The Project is archived, so it can't be changed or serve until it is restored."""
+
+
+class ProjectDeletingError(ProjectArchivedError):
+    """The Project is being deleted: it can't be changed, serve or be restored."""
 
 
 class ProjectNotArchivedError(Exception):
@@ -147,8 +158,10 @@ async def get_project(
 async def active_project(
     session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, *, lock: bool = False
 ) -> Project:
-    """The Project, if it belongs to the Organisation and isn't archived."""
+    """The Project, if it belongs to the Organisation and isn't archived (or being deleted)."""
     project = await get_project(session, scope, project_id, lock=lock)
+    if project.deletion_requested_at is not None:
+        raise ProjectDeletingError
     if project.archived_at is not None:
         raise ProjectArchivedError
     return project
@@ -202,8 +215,11 @@ async def archive_project(
 async def restore_project(
     session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, *, now: datetime
 ) -> Project:
-    """Restores an archived Project to the main list and records ``project.restored``."""
+    """Restores an archived Project to the main list and records ``project.restored``. A
+    Project being deleted can't be restored."""
     project = await get_project(session, scope, project_id, lock=True)
+    if project.deletion_requested_at is not None:
+        raise ProjectDeletingError
     if project.archived_at is None:
         raise ProjectNotArchivedError
     project.archived_at = None
@@ -260,38 +276,49 @@ def storage_prefix(organisation_id: uuid.UUID, project_id: uuid.UUID) -> str:
     return f"organisations/{organisation_id}/projects/{project_id}/"
 
 
-async def check_deletion(
-    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, *, confirm_name: str
+async def request_deletion(
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    *,
+    confirm_name: str,
+    now: datetime,
 ) -> None:
-    """Refuses a permanent deletion unless the Project is archived and ``confirm_name`` is its
-    name, exactly. Owners only; the route checks the role."""
-    project = await get_project(session, scope, project_id)
+    """Marks the Project Deleting, with who asked and when, and commits: from then on it is
+    deleted even if the cascade's message is lost. Refused unless the Project is archived and
+    ``confirm_name`` is its name, exactly. Asking again while it is Deleting changes nothing.
+    Owners only; the route checks the role."""
+    project = await get_project(session, scope, project_id, lock=True)
     if project.archived_at is None:
         raise ProjectNotArchivedError
     if confirm_name != project.name:
         raise ProjectNameMismatchError
+    if project.deletion_requested_at is None:
+        project.deletion_requested_at = now
+        project.deletion_requested_by = scope.member_id
+    await session.commit()
 
 
-async def delete_project(
-    session: AsyncSession, project_id: uuid.UUID, *, actor_id: uuid.UUID, requested_at: datetime
-) -> str | None:
-    """The deletion cascade's database step: deletes the Project and, through the foreign keys'
+async def delete_project(session: AsyncSession, project_id: uuid.UUID) -> bool:
+    """The deletion cascade: deletes the Project and, through the foreign keys'
     ``ON DELETE CASCADE``, everything in it (Documents and their staged editions, Chunks, Tags,
-    Agents, their Conversations and Messages), and records ``project.deleted``, in one
-    transaction. Returns the storage prefix whose objects the caller deletes next.
+    Agents, their Conversations and Messages), records ``project.deleted`` as the Owner who
+    asked, when they asked, and writes the Project's storage prefix to the deletions table, all
+    in one transaction. The caller then drains the deletions table.
 
-    Does nothing, returning None, if the Project is gone already or was restored after the
-    deletion was asked for: only an archived Project is ever deleted."""
+    Returns False, doing nothing, if the Project is gone already, isn't Deleting, or another
+    copy of the cascade holds it: so running it twice, or as two copies at once, is safe."""
     project = await session.scalar(
-        select(Project).where(Project.id == project_id).with_for_update()
+        select(Project).where(Project.id == project_id).with_for_update(skip_locked=True)
     )
-    if project is None or project.archived_at is None:
-        return None
+    if project is None or project.deletion_requested_at is None:
+        await session.rollback()
+        return False
     (summary,) = await _summaries(session, [project])
     await audit.record(
         session,
         organisation_id=project.organisation_id,
-        actor_id=actor_id,
+        actor_id=project.deletion_requested_by,
         action="project.deleted",
         target=audit.AuditTarget("project", project.id),
         before={
@@ -299,8 +326,28 @@ async def delete_project(
             "document_count": summary.document_count,
             "agent_count": summary.agent_count,
         },
-        occurred_at=requested_at,
+        occurred_at=project.deletion_requested_at,
     )
     await session.execute(delete(Project).where(Project.id == project.id))
+    deletions.schedule(session, [storage_prefix(project.organisation_id, project.id)], prefix=True)
     await session.commit()
-    return storage_prefix(project.organisation_id, project.id)
+    return True
+
+
+async def finish_deletions(sessionmaker: async_sessionmaker[AsyncSession]) -> int:
+    """The sweeper's part: runs the cascade for every Project still Deleting (its message was
+    lost, or its worker died before the cascade committed), each in its own transaction. A
+    Project another copy holds is passed by. Returns how many were deleted."""
+    async with sessionmaker() as session:
+        ids = (
+            await session.scalars(
+                select(Project.id)
+                .where(Project.deletion_requested_at.is_not(None))
+                .order_by(Project.deletion_requested_at)
+            )
+        ).all()
+    deleted = 0
+    for project_id in ids:
+        async with sessionmaker() as session:
+            deleted += await delete_project(session, project_id)
+    return deleted

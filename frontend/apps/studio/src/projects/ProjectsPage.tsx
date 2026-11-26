@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FormError } from "../auth/AuthLayout";
 import { type Session, useMe } from "../auth/session";
 import {
+  Badge,
   button,
   EmptyState,
   layout,
@@ -173,7 +174,9 @@ function ArchivedProjects({
                     {(project.archived_at as string).slice(0, 10)}
                   </td>
                   <td className={`${table.td} text-right`}>
-                    {isOwner && (
+                    {project.deleting ? (
+                      <Badge kind="deleting" title="Being deleted permanently. A deleted Project can't be restored." />
+                    ) : isOwner && (
                       <button
                         type="button"
                         className={button.secondary}

@@ -965,8 +965,11 @@ export interface paths {
         /**
          * Delete Project
          * @description Permanently deletes an archived Project (Owners only), once ``confirm_name`` is its
-         *     name. A Celery task removes the Project and everything in it (Documents, Chunks, stored
-         *     files, Agents and Conversations) and records ``project.deleted``. This can't be undone.
+         *     name. The Project is Deleting at once (hidden from normal use, and it can't be restored);
+         *     a job, finished by the sweeper if it is lost, then removes it and everything in it
+         *     (Documents, Chunks, stored files, Agents and Conversations) and records
+         *     ``project.deleted``. Asking again while it is Deleting is accepted and changes nothing.
+         *     This can't be undone.
          */
         delete: operations["deleteProject"];
         options?: never;
@@ -2511,7 +2514,7 @@ export interface paths {
         /**
          * Restore Project
          * @description Restores an archived Project to the main list (Owners only). Records
-         *     ``project.restored``.
+         *     ``project.restored``. A Project being deleted can't be restored.
          */
         post: operations["restoreProject"];
         delete?: never;
@@ -5357,6 +5360,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Deleting */
+            deleting: boolean;
             /** Description */
             description: string;
             /** Document Count */
@@ -13966,7 +13971,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project isn't archived. */
+            /** @description This Project isn't archived. Or: This Project is being deleted. A deleted Project can't be restored. */
             409: {
                 headers: {
                     [name: string]: unknown;

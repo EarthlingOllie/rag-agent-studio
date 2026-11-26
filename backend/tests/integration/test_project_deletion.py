@@ -18,10 +18,13 @@ from sqlalchemy import text
 
 from app.projects.tasks import delete_project
 from app.storage.memory import InMemoryObjectStore
+from app.worker.celery_app import DELETE_PROJECT_TASK
 from tests.agents import answer_with, ask, start_conversation
-from tests.conftest import MemberFactory, SignedUpMember
+from tests.conftest import MemberFactory, SignedUpMember, TenantFactory
 from tests.documents import documents, put_to_memory_store, start_upload, upload
 from tests.fakes.clock import ControllableClock
+from tests.fakes.jobs import RecordingJobPublisher
+from tests.integration.test_interrupted_ingestion import sweep
 from tests.integration.test_playground import ready_agent, three_tokens
 from tests.integration.test_projects import (
     archive,
@@ -31,6 +34,7 @@ from tests.integration.test_projects import (
     projects_path,
     restore,
 )
+from tests.jobs import settle_jobs_in_flight
 
 NOT_ARCHIVED = "Only an archived Project can be deleted. Archive it first."
 NAME_MISMATCH = "Type the Project's name exactly to delete it."
@@ -261,24 +265,22 @@ async def test_an_unknown_project_is_not_found(owner: SignedUpMember) -> None:
 # The task seam: the cascade runs after the request, in a worker.
 
 
-async def run_cascade(project_id: str, owner: SignedUpMember, clock: ControllableClock) -> None:
-    """Runs the deletion cascade as a worker would, for a request made by ``owner`` now."""
-    await asyncio.to_thread(
-        delete_project.delay, project_id, owner.member_id, clock.now().isoformat()
-    )
+async def run_cascade(project_id: str) -> None:
+    """Delivers the deletion cascade for the Project to a worker. The message carries only the
+    Project: who asked, and when, are on its row."""
+    await asyncio.to_thread(delete_project.apply, args=(project_id,))
 
 
-async def test_a_project_restored_before_the_cascade_runs_is_kept(
-    app: FastAPI, owner: SignedUpMember, clock: ControllableClock
+async def test_the_cascade_leaves_a_project_whose_deletion_was_never_asked_for(
+    app: FastAPI, owner: SignedUpMember
 ) -> None:
     project = await archived_project(owner)
     await upload_into_archived(app, owner, project["id"])
-    await restore(owner, project["id"])
 
-    # The cascade a deletion request enqueued runs only now, after the restore.
-    await run_cascade(project["id"], owner, clock)
+    await run_cascade(project["id"])
 
-    assert [p["id"] for p in await listed(owner)] == [project["id"]]
+    (kept,) = await listed(owner, archived="true")
+    assert (kept["id"], kept["deleting"]) == (project["id"], False)
     assert [d["name"] for d in await documents(owner, project["id"])] == ["leave.md"]
     assert len(stored_keys(app)) == 2
     assert await audit_events(owner, "project.deleted") == []
@@ -291,12 +293,199 @@ async def upload_into_archived(app: FastAPI, owner: SignedUpMember, project_id: 
     await archive(owner, project_id)
 
 
-async def test_running_the_cascade_again_does_nothing(
-    owner: SignedUpMember, clock: ControllableClock
-) -> None:
+async def test_running_the_cascade_again_does_nothing(owner: SignedUpMember) -> None:
     project = await archived_project(owner)
     await delete_permanently(owner, project["id"], "HR handbook")
 
-    await run_cascade(project["id"], owner, clock)
+    await run_cascade(project["id"])
 
     assert len(await audit_events(owner, "project.deleted")) == 1
+
+
+async def test_a_cascade_sent_with_who_asked_and_when_is_still_run(
+    owner: SignedUpMember, jobs: RecordingJobPublisher, clock: ControllableClock
+) -> None:
+    """A message sent before the row became the record carries who asked and when; the worker
+    ignores both and reads them from the row."""
+    project = await archived_project(owner)
+    jobs.lose_next()
+    await delete_permanently(owner, project["id"], "HR handbook")
+
+    await asyncio.to_thread(
+        delete_project.apply, args=(project["id"], owner.member_id, clock.now().isoformat())
+    )
+
+    assert await listed(owner, archived="true") == []
+    assert len(await audit_events(owner, "project.deleted")) == 1
+
+
+# Deleting is visible, and always finishes (spec 21, ADR-0020): the request marks the Project
+# Deleting, and the sweeper finishes a deletion whose job was lost or whose worker died.
+
+PROJECT_DELETING = "This Project is being deleted. A deleted Project can't be restored."
+
+
+async def deleting_project(
+    app: FastAPI, owner: SignedUpMember, jobs: RecordingJobPublisher
+) -> dict[str, Any]:
+    """An archived Project holding a Document, whose deletion was asked for and whose job was
+    lost: it stays Deleting until a sweep."""
+    project = await archived_project(owner)
+    await upload_into_archived(app, owner, project["id"])
+    jobs.lose_next()
+    response = await delete_permanently(owner, project["id"], "HR handbook")
+    assert (response.status_code, response.content) == (202, b"")
+    return project
+
+
+async def test_a_project_shows_as_deleting_at_once_and_is_gone_after_a_lost_job_is_swept(
+    app: FastAPI,
+    owner: SignedUpMember,
+    jobs: RecordingJobPublisher,
+    clock: ControllableClock,
+    member_factory: MemberFactory,
+) -> None:
+    await settle_jobs_in_flight(app)
+    editor = await member_factory(owner, "editor")
+    kept = await create_project(owner, "Kept")
+
+    project = await deleting_project(app, owner, jobs)
+
+    # Deleting at once: in the archived list with its state, and out of the main list.
+    (shown,) = await listed(owner, archived="true")
+    assert (shown["id"], shown["deleting"]) == (project["id"], True)
+    assert [p["id"] for p in await listed(editor)] == [kept["id"]]
+    assert kept["deleting"] is False
+    opened = await editor.client.get(projects_path(owner.organisation_id, project["id"]))
+    assert opened.json()["deleting"] is True
+    # The sweeper finishes it: rows, stored files, and one Audit Event for the Owner who asked.
+    requested_at = clock.now()
+    clock.advance(timedelta(minutes=1))
+    await sweep(clock)
+    assert await listed(owner, archived="true") == []
+    assert await project_rows(app, project["id"]) == dict.fromkeys(PROJECT_ROWS, 0)
+    assert not any(project["id"] in key for key in stored_keys(app))
+    (deleted,) = await audit_events(owner, "project.deleted")
+    assert deleted["actor"]["id"] == owner.member_id
+    assert datetime.fromisoformat(deleted["occurred_at"]) == requested_at
+
+
+async def test_a_deleting_project_refuses_restoring_and_changes_with_the_reason(
+    app: FastAPI, owner: SignedUpMember, jobs: RecordingJobPublisher
+) -> None:
+    project = await deleting_project(app, owner, jobs)
+    path = projects_path(owner.organisation_id, project["id"])
+
+    restored = await restore(owner, project["id"])
+    renamed = await owner.client.patch(path, json={"name": "New"})
+    uploaded = await start_upload(owner, project["id"], "more.md", 5)
+    tagged = await owner.client.post(f"{path}/tags", json={"name": "HR"})
+
+    for refused in (restored, renamed, uploaded, tagged):
+        assert (refused.status_code, refused.json()) == (409, {"detail": PROJECT_DELETING})
+    # An archived Project that isn't being deleted still gives the archived reason.
+    other = await archived_project(owner, "Other")
+    renamed_other = await owner.client.patch(
+        projects_path(owner.organisation_id, other["id"]), json={"name": "New"}
+    )
+    assert renamed_other.json() == {"detail": "This Project is archived. An Owner can restore it."}
+
+
+async def test_asking_again_while_deleting_is_accepted_and_keeps_who_asked_first(
+    app: FastAPI,
+    owner: SignedUpMember,
+    jobs: RecordingJobPublisher,
+    clock: ControllableClock,
+    member_factory: MemberFactory,
+) -> None:
+    await settle_jobs_in_flight(app)
+    second_owner = await member_factory(owner, "owner")
+    project = await deleting_project(app, owner, jobs)
+    requested_at = clock.now()
+    clock.advance(timedelta(minutes=3))
+    jobs.lose_next()
+
+    again = await delete_permanently(second_owner, project["id"], "HR handbook")
+
+    assert (again.status_code, again.content) == (202, b"")
+    await sweep(clock)
+    (deleted,) = await audit_events(owner, "project.deleted")
+    assert deleted["actor"]["id"] == owner.member_id
+    assert datetime.fromisoformat(deleted["occurred_at"]) == requested_at
+
+
+async def test_a_worker_killed_after_the_rows_go_leaves_the_files_to_the_next_sweep(
+    app: FastAPI, owner: SignedUpMember, jobs: RecordingJobPublisher, clock: ControllableClock
+) -> None:
+    await settle_jobs_in_flight(app)
+    project = await archived_project(owner)
+    await upload_into_archived(app, owner, project["id"])
+    store = app.state.ingestion.object_store
+    store.kill.arm("delete")
+
+    await delete_permanently(owner, project["id"], "HR handbook")
+
+    assert [job.task for job in jobs.killed] == [DELETE_PROJECT_TASK]
+    assert await listed(owner, archived="true") == []
+    assert len([key for key in stored_keys(app) if project["id"] in key]) == 2
+    await sweep(clock)
+    assert not any(project["id"] in key for key in stored_keys(app))
+
+
+async def test_files_whose_first_delete_failed_are_deleted_by_the_next_sweep(
+    app: FastAPI, owner: SignedUpMember, jobs: RecordingJobPublisher, clock: ControllableClock
+) -> None:
+    await settle_jobs_in_flight(app)
+    project = await archived_project(owner)
+    await upload_into_archived(app, owner, project["id"])
+    store = app.state.ingestion.object_store
+    store.failure = OSError("storage unavailable")
+
+    await delete_permanently(owner, project["id"], "HR handbook")
+
+    assert await listed(owner, archived="true") == []
+    assert len(stored_keys(app)) == 2
+    store.failure = None
+    await sweep(clock)
+    assert stored_keys(app) == []
+
+
+async def test_a_second_copy_skips_the_project_the_first_is_deleting(
+    app: FastAPI, owner: SignedUpMember, jobs: RecordingJobPublisher, clock: ControllableClock
+) -> None:
+    """While one copy of the cascade holds the Project (here, a transaction that holds its row
+    lock), another copy and the sweeper pass it by; it is deleted once, by whichever comes next."""
+    await settle_jobs_in_flight(app)
+    project = await deleting_project(app, owner, jobs)
+    async with app.state.sessionmaker() as first, first.begin():
+        await first.execute(
+            text("SELECT 1 FROM projects WHERE id = :id FOR UPDATE"), {"id": project["id"]}
+        )
+
+        await run_cascade(project["id"])
+        await sweep(clock)
+
+        assert len(await listed(owner, archived="true")) == 1
+    await run_cascade(project["id"])
+    await sweep(clock)
+    assert await listed(owner, archived="true") == []
+    assert len(await audit_events(owner, "project.deleted")) == 1
+
+
+async def test_another_organisations_project_cannot_be_deleted(
+    owner: SignedUpMember, tenant_factory: TenantFactory
+) -> None:
+    project = await archived_project(owner)
+    stranger = await tenant_factory()
+
+    response = await delete_permanently(stranger, project["id"], "HR handbook")
+    across = await stranger.client.request(
+        "DELETE",
+        projects_path(owner.organisation_id, project["id"]),
+        json={"confirm_name": "HR handbook"},
+    )
+
+    assert (response.status_code, response.json()) == (404, {"detail": "Not found"})
+    assert across.status_code in (403, 404)
+    (shown,) = await listed(owner, archived="true")
+    assert shown["deleting"] is False

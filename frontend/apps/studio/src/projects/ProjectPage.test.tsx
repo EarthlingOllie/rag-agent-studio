@@ -4,7 +4,7 @@ import { delay, http, HttpResponse } from "msw";
 
 import { fakeAgentsApi, hrHelper } from "../test/agents";
 import { adaSession, fakeAuthApi, type Session } from "../test/auth";
-import { fakeProjectsApi, hrProject, NAME_MISMATCH, oldProject, PROJECT_ARCHIVED } from "../test/projects";
+import { fakeProjectsApi, hrProject, NAME_MISMATCH, oldProject, PROJECT_ARCHIVED, PROJECT_DELETING } from "../test/projects";
 import { currentSection, hasMenu, openSection, sectionNames } from "../test/navigation";
 import { renderStudio } from "../test/render";
 import { server } from "../test/server";
@@ -257,7 +257,7 @@ test("an Owner permanently deletes an archived Project from the ⋯ menu after t
   await chooseProjectAction("Delete permanently");
   const dialog = screen.getByRole("alertdialog", { name: "Delete Old launch permanently" });
   expect(dialog).toHaveAccessibleDescription(
-    "Deleting Old launch removes its Documents, stored files, Agents and Conversations for good. This can't be undone.",
+    "Deleting Old launch removes its Documents, stored files, Agents and Conversations for good. A deleted Project can't be restored.",
   );
   const confirm = within(dialog).getByRole("button", { name: "Delete Old launch permanently" });
   const typed = within(dialog).getByLabelText("Type Old launch to confirm");
@@ -277,8 +277,25 @@ test("an Owner permanently deletes an archived Project from the ⋯ menu after t
   // A success notice says so, above the list.
   expect(await screen.findByText("Old launch is being deleted permanently.")).toHaveAttribute("role", "status");
   expect(requests).toEqual([{ route: "delete", projectId: oldProject.id, body: { confirm_name: "Old launch" } }]);
+  // It shows as Deleting among the archived Projects until it is gone, and can't be restored.
   await userEvent.click(screen.getByRole("radio", { name: "Archived" }));
-  expect(await screen.findByRole("heading", { name: "No archived Projects" })).toBeInTheDocument();
+  const archived = await screen.findByRole("table", { name: "Archived Projects" });
+  expect(within(archived).getByRole("row", { name: /Old launch/ })).toHaveTextContent("Deleting");
+  expect(within(archived).queryByRole("button", { name: "Restore Old launch" })).not.toBeInTheDocument();
+});
+
+test("a Deleting Project's page says it is being deleted and offers nothing to do", async () => {
+  fakeAuthApi({ signedInAs: adaSession });
+  const { requests } = fakeProjectsApi({ projects: [{ ...oldProject, deleting: true }] });
+  renderStudio(projectPage(oldProject.id));
+
+  const notice = (await screen.findByText(/This Project is being deleted/)).closest("[role=status]") as HTMLElement;
+
+  expect(notice).toHaveTextContent(`${PROJECT_DELETING} It is hidden from the Projects list and doesn't serve.`);
+  expect(within(notice).queryByRole("button")).not.toBeInTheDocument();
+  expect(screen.queryByText(/This Project is archived/)).not.toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: "More Project actions" })).not.toBeInTheDocument();
+  expect(requests).toEqual([]);
 });
 
 test("typing the name and pressing Enter deletes, too", async () => {
