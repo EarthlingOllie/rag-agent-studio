@@ -48,6 +48,11 @@ ALLOWED = {
     # Spec 06: a Visitor's widget is given its own new Conversation token once, in exchange for
     # the shell's bootstrap token. It is the Visitor's credential, not a Provider Credential.
     ("ConversationTokenOut", "conversation_token"): "a Visitor's own new Conversation token",
+    # Spec 20: a Visitor starting a Call is given the Call token bound to their own Call, which
+    # the voice layer sends back with every turn; and the short-lived token their browser joins
+    # the Call in the voice layer with. Both are the Visitor's, not a Provider Credential.
+    ("StartedCallOut", "call_token"): "a Visitor's own new Call token, bound to their Call",
+    ("CallJoinOut", "conversation_token"): "what a Visitor's browser joins their Call with",
 }
 
 
