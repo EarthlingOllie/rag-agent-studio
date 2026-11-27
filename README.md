@@ -95,13 +95,17 @@ flowchart LR
   Edge --> Static["Static assets: Studio, widget, demo pages"]
   API --> PG[("Postgres 16 + pgvector: tenants, Versions, Chunks, Conversations, rollups")]
   API --> Redis[("Redis: sessions, rate limits, Token Budgets")]
-  API --> Queues[["SQS (Floci locally): general and runs job queues"]]
+  API --> General[["SQS general queue (Floci locally): ingestion, Re-embeds, deletions, Live Verdicts, scheduled jobs, sweeper"]]
+  API --> Runs[["SQS runs queue (Floci locally): Evaluation Runs, Suggestion runs"]]
   API --> Store[("S3 / RustFS: uploads, Theme images")]
   API --> Gateway["Model gateway"]
-  Queues --> Worker["Celery worker: Docling, chunking, embeddings, ingestion scan, Evaluation Runs"]
-  Beat["Celery Beat: rollups, retention, job sweeper"] --> Queues
-  Worker --> PG
-  Worker --> Store
+  General --> WorkerGeneral["General worker pool (Fargate Spot, 1 to 3 on queue depth): Docling, chunking, embeddings, ingestion scan"]
+  Runs --> WorkerRuns["Runs worker pool (Fargate, 0 to 2 on queue depth): Evaluation Runs, Suggestion runs"]
+  Beat["Celery Beat (one task): rollups, retention, job sweeper"] --> General
+  WorkerGeneral --> PG
+  WorkerGeneral --> Store
+  WorkerRuns --> PG
+  WorkerRuns --> Gateway
   Gateway --> Providers["Anthropic, OpenAI, Bedrock, demo model"]
   API --> Guard["Guardrails: input classifier (local ONNX or LLM), Canary token"]
   API --> KMS["KMS / local key wrapper: envelope encryption"]
@@ -109,7 +113,7 @@ flowchart LR
 
 **Answering a question:** widget → API → admission control (Allowed Origin, rate limits, Token Budget) → input Guardrail → hybrid retrieval scoped by Tags (up front in Automatic mode, as a tool call in Agentic mode) → the Live Version's prompt and pinned Instructions → the model through the gateway → streamed back through the Canary filter with citations, and saved with its Trace.
 
-**Ingesting a document:** upload to object storage → Docling conversion on the worker → chunking → ingestion scan → embedding into pgvector.
+**Ingesting a document:** upload to object storage → a job on the general queue → Docling conversion on a general-pool worker → chunking → ingestion scan → embedding into pgvector. Evaluation Runs and Suggestion runs go to the runs queue instead, so a long Run never holds up ingestion. On AWS each worker pool scales on its own queue's jobs and the API on CPU (1 to 3 tasks); locally one worker container serves both queues ([ADR-0021](docs/adr/0021-sqs-two-worker-pools-autoscaling.md)).
 
 [docs/plan.md](docs/plan.md#2-architecture) has the full pipelines; [ADR-0010](docs/adr/0010-aws-runtime-shape.md) and [ADR-0011](docs/adr/0011-single-cloudfront-origin.md) describe the AWS shape.
 
@@ -117,11 +121,11 @@ flowchart LR
 
 | Layer | Choices |
 |---|---|
-| Backend | Python 3.13, FastAPI, SQLAlchemy 2 (async, asyncpg), Alembic, Pydantic AI (model gateway), Celery on SQS, Docling, fastembed (local embeddings), ONNX classifier, Logfire telemetry with scrubbing, uv |
+| Backend | Python 3.13, FastAPI, SQLAlchemy 2 (async, asyncpg), Alembic, Pydantic AI (model gateway), Celery on SQS (a general and a runs queue), Docling, fastembed (local embeddings), ONNX classifier, Logfire telemetry with scrubbing, uv |
 | Data | Postgres 16 with pgvector (vectors and full-text in one store), Redis 7, S3 (RustFS locally), SQS job queues (Floci locally) |
 | Frontend | pnpm workspace, React 19, TanStack Router and Query, Tailwind CSS 4, Vite, Recharts, a generated TypeScript API client; the widget and a dependency-free 1 KB loader |
 | Testing | pytest against real Postgres and Redis (pytest-xdist), Vitest + Testing Library + MSW, Playwright + axe, `terraform test`, Node's test runner |
-| Infrastructure | Terraform: ECS Fargate (ARM64), RDS, ElastiCache, S3, CloudFront, KMS, ECR, fck-nat; GitHub Actions with OIDC |
+| Infrastructure | Terraform: ECS Fargate (ARM64) with a general worker pool on Fargate Spot and a runs pool that scales to zero, Application Auto Scaling, SQS, RDS, ElastiCache, S3, CloudFront, KMS, ECR, fck-nat; GitHub Actions with OIDC |
 | Quality and security | ruff, `mypy --strict`, eslint, `tsc`, TFLint, Checkov, gitleaks, pip-audit, pnpm audit, Trivy |
 
 ## Engineering practices
@@ -162,9 +166,10 @@ The AWS demo is applied on demand from GitHub Actions and destroyed after use; n
 1. **Bootstrap (once):** apply `infra/bootstrap` (the Terraform state bucket and the GitHub OIDC deploy role), then set the `AWS_DEPLOY_ROLE_ARN` secret and the `TF_STATE_BUCKET` variable.
 2. **Deploy:** Actions → **deploy**. It builds and pushes ARM64 images, applies `infra/envs/demo`, runs migrations, rolls the API, the two worker pools and Beat, uploads the static apps and smoke-checks the CloudFront URL it prints. From a laptop: `TF_STATE_BUCKET=… AWS_REGION=eu-west-2 scripts/deploy/deploy.sh <tag>`.
 3. **Seed:** Actions → **seed**. Runs the same seed as `make seed` as a one-off ECS task and prints the URL and sign-in details; tick `reset` to rebuild the demo Organisation. From a laptop: `scripts/deploy/seed.sh [--reset]`.
-4. **Destroy:** Actions → **destroy**, typing `destroy demo` to confirm. Everything goes except the state bucket and deploy role. From a laptop: `scripts/deploy/destroy.sh "destroy demo"`.
+4. **Show it scale (optional):** `scripts/deploy/scale.sh` puts uploads, Evaluation Runs and API traffic on a seeded demo and prints a timeline of each queue's jobs and each service's tasks growing and shrinking ([showing it scale](docs/deploy-demo.md#showing-it-scale)).
+5. **Destroy:** Actions → **destroy**, typing `destroy demo` to confirm. Everything goes except the state bucket and deploy role. From a laptop: `scripts/deploy/destroy.sh "destroy demo"`.
 
-**Expected cost** (on-demand, `eu-west-2`, default sizes, almost no traffic; [the breakdown](docs/deploy-demo.md#expected-cost)): about **0.33 USD an hour**, or about **8 USD for a day** of demo. After destroy, about 1 USD a month remains.
+**Expected cost** (list prices, general pool on Spot, `eu-west-2`, default sizes, almost no traffic; [the breakdown](docs/deploy-demo.md#expected-cost)): about **0.17 USD an hour** at rest (the runs pool at zero, the general pool on Spot), about **4 USD for a day** of demo or about 120 USD a month left on. After destroy, about 1 USD a month remains.
 
 ## Documentation
 
