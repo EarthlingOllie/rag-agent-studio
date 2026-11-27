@@ -299,11 +299,12 @@ run "outputs_everything_the_deploy_workflow_needs" {
       task_definition_arns       = module.ecs.task_definition_arns
       migration_task             = module.ecs.migration_task
       seed_task                  = module.ecs.seed_task
+      queue_names                = { general = "studio-demo-queue-general", runs = "studio-demo-queue-runs" }
       static_bucket_name         = "studio-demo-static-123456789012"
       cloudfront_distribution_id = module.cdn.distribution_id
       cloudfront_url             = "https://d111111abcdef8.cloudfront.net"
     }
-    error_message = "The deploy output must name the cluster, services, task definitions, migration task, seed task, static bucket and distribution."
+    error_message = "The deploy output must name the cluster, services, task definitions, migration task, seed task, job queues (for scripts/deploy/scale.sh), static bucket and distribution."
   }
 
   assert {

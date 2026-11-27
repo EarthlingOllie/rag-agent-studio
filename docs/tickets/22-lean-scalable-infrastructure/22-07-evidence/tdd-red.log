@@ -1,0 +1,30 @@
+# TDD red runs for ticket 22-07 (2026-11-26), reproduced by taking the implementation away
+
+## infra/envs/demo: terraform test, deploy output without queue_names
+  run "wires_every_module_with_the_environment_prefix"... pass
+  run "wires_the_data_modules_into_the_environment"... pass
+  run "wires_the_compute_module_into_the_data_modules"... pass
+  run "worker_spot_moves_the_demos_general_pool_to_regular_fargate"... pass
+  run "wires_the_queues_into_the_services_settings_and_task_roles"... pass
+  run "wires_the_cdn_in_front_of_the_static_bucket_and_the_alb"... pass
+  run "outputs_everything_the_deploy_workflow_needs"... fail
+Error: Test assertion failed
+  on tests/demo.tftest.hcl line 295, in run "outputs_everything_the_deploy_workflow_needs":
+  run "a_domain_name_adds_acm_and_route53_to_the_demo"... pass
+  run "rejects_an_unknown_environment"... pass
+Failure! 8 passed, 1 failed.
+
+## scripts/deploy/tests/scale.test.sh, before scripts/deploy/scale.sh existed
+FAIL puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum: exit 127, expected 0. Output: env: '<repo>/scripts/deploy/scale.sh': No such file or directory
+FAIL puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum: terraform calls: 
+FAIL puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum: no deploy output read
+FAIL puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum: minimums not read from the scalable targets: 
+FAIL puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum: task counts not read from ECS: 
+FAIL puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum: queue depth query lacks "Id":"general_visible": 
+FAIL puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum: queue depth query lacks "Id":"general_in_flight": 
+FAIL puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum: queue depth query lacks "Id":"runs_visible": 
+FAIL puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum: queue depth query lacks "Id":"runs_in_flight": 
+FAIL puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum: queue depth query lacks "QueueName","Value":"studio-demo-queue-gene
+FAIL puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum: queue depth query lacks "QueueName","Value":"studio-demo-queue-runs
+FAIL puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum: queue depth query lacks "MetricName":"ApproximateNumberOfMessagesVi
+...
