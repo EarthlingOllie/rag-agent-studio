@@ -1,0 +1,21 @@
+## sign in at http://eh0gqwfac4c4jz.cloudfront.localhost:4566
+POST /api/auth/sign-in -> 200
+set-cookie: studio_session=<token>; HttpOnly; Max-Age=1209600; Path=/; SameSite=lax; Secure
+organisation 5e927675-01f5-4003-967a-a3bd3c418f50, project e14a3bbe-b95d-4ca5-b4f0-a364982e0ef7
+presigned URL host: http://localhost:4566
+## CORS preflight from the Studio's origin
+HTTP/1.1 200 OK
+Access-Control-Allow-Methods: GET, PUT
+Access-Control-Allow-Origin: http://eh0gqwfac4c4jz.cloudfront.localhost:4566
+## PUT the file from the Studio's origin
+HTTP/1.1 200 OK
+Access-Control-Allow-Origin: http://eh0gqwfac4c4jz.cloudfront.localhost:4566
+ETag: "b06ffd414ec16d60339085f0d2358f96"
+confirmed: Document 45ac1c4c-2ad5-4283-8f9d-800ed0eaac99
+after 8 s: ready chunks=1 error=null
+## every Document in the Project
+ready chunks=1
+ready chunks=5
+ready chunks=5
+ready chunks=5
+ready chunks=8

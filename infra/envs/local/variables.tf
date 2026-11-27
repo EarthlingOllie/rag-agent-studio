@@ -38,7 +38,7 @@ variable "cpu_architecture" {
 }
 
 variable "emulator_port" {
-  description = "The host port Floci publishes. It serves the emulated distribution over plain HTTP on this port (ticket 23-01); Floci's health check and queue URLs assume 4566."
+  description = "The host port the rehearsal publishes Floci on, through its front end (infra/rehearsal/compose.yml). Floci serves the emulated distribution over plain HTTP on this port (ticket 23-01); its health check and queue URLs assume 4566."
   type        = number
   default     = 4566
 

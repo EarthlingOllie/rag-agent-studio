@@ -85,9 +85,9 @@ before $name "^$compose up -d --wait$" "^$compose cp floci:/app/data/tls/floci-r
 expect_output $name "Stopping make dev's Floci, which holds port 4566" || ok=0
 [ $ok = 1 ] && echo "ok   $name"
 
-name=up_pulls_the_images_floci_starts_by_name_before_starting_it
+name=up_pulls_the_images_floci_starts_by_name_and_the_front_ends_before_starting_them
 ok=1
-for image in floci/floci:2.5.0 pgvector/pgvector:0.8.1-pg16 valkey/valkey:7.2 registry:2 hashicorp/terraform:1.14.0 amazon/aws-cli:2.31.0; do
+for image in floci/floci:2.5.0 pgvector/pgvector:0.8.1-pg16 valkey/valkey:7.2 registry:2 node:22.23.5-alpine3.24 hashicorp/terraform:1.14.0 amazon/aws-cli:2.31.0; do
   before $name "^docker pull $image$" "^$compose up" || ok=0
 done
 never $name '^docker tag' || ok=0

@@ -18,6 +18,8 @@ fail() { echo "FAIL $1: $2"; failures=$((failures + 1)); }
 jq -n '{
   "/api/health": {status: 200, headers: {"Content-Type": "application/json"}, body: "{\"status\":\"ok\",\"checks\":{\"database\":\"ok\",\"redis\":\"ok\"}}"},
   "/": {status: 200, headers: {"Content-Type": "text/html"}, body: "<!doctype html><html><body><div id=\"root\"></div></body></html>"},
+  "/projects": {status: 200, headers: {"Content-Type": "text/html"}, body: "<!doctype html><html><body><div id=\"root\"></div></body></html>"},
+  "/api/smoke-check-not-found": {status: 404, headers: {"Content-Type": "application/json"}, body: "{\"detail\":\"Not Found\"}"},
   "/widget/a/smoke-check": {status: 404, headers: {"Content-Type": "text/html", "Content-Security-Policy": "frame-ancestors *"}, body: "gone"}
 }' >"$work/site.json"
 python3 -I "$here/fake_site.py" "$work/site.json" >"$work/site.port" 2>/dev/null &

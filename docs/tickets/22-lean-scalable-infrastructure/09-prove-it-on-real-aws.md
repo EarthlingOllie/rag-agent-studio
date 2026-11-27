@@ -13,6 +13,7 @@
 
 - [ ] The deploy workflow succeeds from a clean account state and the smoke check passes
 - [ ] The seed workflow succeeds and the demo Owner can sign in
+- [ ] The CloudFront Function rewrites deep links on real AWS: after a refresh a Studio route such as `/projects` loads the Studio, while `/api/smoke-check-not-found` keeps the API's JSON 404 (the smoke check asserts both; the Floci rehearsal only proves its own front end's copy of the rewrite, ticket 23-04)
 - [ ] The scaling script's timeline shows `api`, `worker-general` and `worker-runs` each scale out and return to their minimum, with the runs pool at zero before and after
 - [ ] The cold start of the runs pool, from a Run being queued to its first answer, is measured and recorded
 - [ ] A deploy started while an Evaluation Run is in progress waits for it

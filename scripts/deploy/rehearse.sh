@@ -6,7 +6,9 @@
 #   1. checks Docker answers on its socket and has the memory the stack needs
 #   2. stops `make dev`'s Floci (it holds port 4566, which the emulator must use) and pulls the images Floci starts by
 #      name, failing clearly on a Docker Hub rate limit
-#   3. starts Floci (infra/rehearsal/compose.yml) and reads its root CA
+#   3. starts Floci and its front end (infra/rehearsal/compose.yml) and reads Floci's root CA. The front end publishes
+#      Floci's port and runs the Studio's SPA fallback CloudFront Function, which Floci stores but does not run, so
+#      deep links load the Studio and the API's 404s stay the API's (ticket 23-04)
 #   4. builds the images (`make images`, for this machine's architecture) and the frontend (`pnpm build`), then adds
 #      Floci's CA to the backend image (infra/rehearsal/ca.Dockerfile)
 #   5. points terraform and the AWS CLI at Floci: they run in containers on a network that reaches only Floci
@@ -56,7 +58,8 @@ fi
 
 # The emulator, the tools and the images Floci starts, by name. A mirror is a Docker Hub mirror (Docker Hub limits
 # anonymous pulls); each image pulled from it is tagged with the name Floci asks for.
-images=(floci/floci:2.5.0 pgvector/pgvector:0.8.1-pg16 valkey/valkey:7.2 registry:2
+# The front end (node) runs the Studio's SPA fallback function in front of Floci (ticket 23-04).
+images=(floci/floci:2.5.0 pgvector/pgvector:0.8.1-pg16 valkey/valkey:7.2 registry:2 node:22.23.5-alpine3.24
   "${REHEARSAL_TERRAFORM_IMAGE:-hashicorp/terraform:1.14.0}" "${REHEARSAL_AWS_IMAGE:-amazon/aws-cli:2.31.0}")
 pull() {
   local image=$1 source=$1 output
@@ -139,7 +142,7 @@ step "Pulling the emulator's images"
 for image in "${images[@]}"; do pull "$image"; done
 
 # --- 3. Floci -------------------------------------------------------------------------------------------------------
-step "Starting Floci"
+step "Starting Floci and its front end"
 compose up -d --wait
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT

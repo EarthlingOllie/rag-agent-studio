@@ -1,3 +1,4 @@
+# make infra-check on the 23-04 working tree, 2026-11-27 (filtered: test results, summaries, exit status)
 ok   demo: S3 backend with native locking
 ok   local: S3 backend with native locking
 ok   envs/demo composes cache
@@ -11,13 +12,17 @@ ok   envs/demo composes network
 ok   envs/demo composes queue
 ok   envs/demo composes storage
 ok   envs/local composes the same modules as envs/demo
-ok   passes_when_health_studio_and_the_widget_shell_respond
+ok   passes_when_health_studio_a_deep_link_an_api_404_and_the_widget_shell_respond
 ok   passes_against_a_live_agent_whose_shell_names_its_allowed_origins
 ok   fails_when_the_health_endpoint_reports_an_error
 ok   fails_when_health_answers_200_without_status_ok
 ok   fails_when_the_studio_is_not_served
 ok   fails_when_the_studio_page_is_not_the_studio
 ok   fails_when_the_studio_is_not_html
+ok   fails_when_a_deep_link_is_a_404
+ok   fails_when_a_deep_link_is_not_the_studio
+ok   fails_when_an_api_404_is_replaced_by_the_studio
+ok   fails_when_an_api_404_keeps_its_status_but_not_its_body
 ok   fails_when_the_widget_shell_has_no_csp
 ok   fails_when_the_widget_shell_csp_has_no_frame_ancestors
 ok   fails_when_the_widget_shell_errors
@@ -132,7 +137,7 @@ ok   needs_TF_STATE_BUCKET
 ok   needs_AWS_REGION
 ok   up_runs_the_unchanged_deploy_on_the_local_environment_against_floci
 ok   up_stops_make_devs_floci_then_starts_the_rehearsals_and_reads_its_ca
-ok   up_pulls_the_images_floci_starts_by_name_before_starting_it
+ok   up_pulls_the_images_floci_starts_by_name_and_the_front_ends_before_starting_them
 ok   up_builds_the_images_for_this_machine_and_adds_flocis_ca_to_the_backend_image
 ok   up_creates_the_state_bucket_in_the_region_and_installs_the_providers_before_deploying
 ok   up_forgets_the_backend_a_previous_rehearsal_configured_before_installing_the_providers
@@ -178,6 +183,25 @@ ok 6 - /demo redirects to /demo/, so the pages' relative links stay in the folde
 ok 7 - a demo page is a file and passes through
 ok 8 - a dot in an earlier path segment does not make a route a file
 ok 9 - the rest of the request (method, query string, headers, cookies) is untouched
+ok 10 - a Studio deep link reaches Floci as /index.html, so a refresh loads the Studio
+ok 11 - the query string of a deep link is kept
+ok 12 - an API 404 survives: /api/* is its own behaviour on CloudFront and is never rewritten
+ok 13 - the widget shell, the widget's assets and embed.js are never rewritten
+ok 14 - a missing asset is passed through, so it stays a 404 rather than HTML
+ok 15 - /demo is redirected by the function itself, without reaching Floci
+ok 16 - requests for Floci's own services (S3, the registry, the APIs) pass through untouched
+ok 17 - the Host header and method reach Floci unchanged, and the client's address is added to X-Forwarded-For
+ok 18 - without an X-Forwarded-For the client's address starts one
+ok 19 - /demo/ loads the demo pages' index, as the function says
+ok 20 - the front end answers 502 when Floci does not answer
+ok 21 - the paths it leaves alone are exactly the cdn module's ordered cache behaviours
+ok 22 - run as a program it listens on FRONT_PORT and forwards to FLOCI_URL
+# tests 22
+# pass 22
+# fail 0
+#     spa-fallback.js       | 100.00 |   100.00 |  100.00 | 
+#    front.mjs              | 100.00 |   100.00 |  100.00 | 
+# all files                 | 100.00 |   100.00 |  100.00 | 
 ok   runs_when_the_secret_is_set_and_infra_changed
 ok   runs_when_the_infra_workflow_changed
 ok   skips_without_the_secret

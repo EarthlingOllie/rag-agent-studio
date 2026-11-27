@@ -37,9 +37,8 @@ services:
       # (finding 12).
       FLOCI_SERVICES_CLOUDFRONT_DOMAIN_SUFFIX: cloudfront.localhost
       FLOCI_DEFAULT_REGION: eu-west-2
-    # Floci's health check and its queue URLs assume 4566; another port breaks both (23-01), so `make dev`'s Floci
-    # is stopped first.
-    ports: ["4566:4566"]
+    # Floci's health check and its queue URLs assume 4566; another port breaks both (23-01). The front end below
+    # publishes it to this machine.
     volumes:
       # Floci starts the database, cache, registry and tasks as containers through the Docker socket.
       - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
@@ -52,6 +51,31 @@ services:
       # the apply hangs (23-01), hence the alias.
       tools:
         aliases: ["000000000000.floci"]
+
+  # The front end (ticket 23-04): publishes Floci's port to this machine and passes every request on to Floci, except
+  # that a request to an emulated distribution runs the Studio's SPA fallback CloudFront Function first, as AWS does
+  # on the default behaviour and Floci 2.5.0 does not. Deep links then load the Studio, and /api/* (the API's 404s
+  # included) is never rewritten. It runs the very function file Terraform uploads (infra/rehearsal/front/front.mjs).
+  front:
+    image: node:22.23.5-alpine3.24
+    command: ["node", "/infra/rehearsal/front/main.mjs"]
+    environment:
+      FLOCI_URL: http://floci:4566
+    # `make dev`'s Floci publishes the same port, so the wrapper stops it first.
+    ports: ["4566:4566"]
+    volumes:
+      # The same layout as the repository, so the front end finds the cdn module's function file.
+      - ./front:/infra/rehearsal/front:ro
+      - ../modules/cdn/functions:/infra/modules/cdn/functions:ro
+    depends_on:
+      floci:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:4566/_floci/init"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    networks: [rehearsal]
 
 networks:
   rehearsal:

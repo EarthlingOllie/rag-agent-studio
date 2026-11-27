@@ -60,7 +60,7 @@ variable "api_origin_domain" {
 }
 
 variable "custom_error_responses" {
-  description = "Optional distribution-wide custom error responses. None by default: on AWS one would turn the API's 403s and 404s into the Studio's HTML, and the SPA fallback function handles deep links. An emulator that stores CloudFront Functions without running them needs a 404-to-index one (ticket 23-01)."
+  description = "Optional distribution-wide custom error responses. None by default: on AWS one would turn the API's 403s and 404s into the Studio's HTML, and the SPA fallback function handles deep links. The Floci rehearsal does not use one either: its front end runs the function (ticket 23-04)."
   type = list(object({
     error_code            = number
     response_code         = optional(number)

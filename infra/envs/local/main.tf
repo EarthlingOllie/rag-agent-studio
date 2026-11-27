@@ -200,8 +200,8 @@ module "cdn" {
   api_origin_domain = "localhost"
   # The emulator drops the tags the provider sends when it creates a CloudFront Function, so the plan after a fresh
   # apply would show them changing (ticket 23-04): the SPA fallback function is left untagged. It stores the function
-  # without running it (23-01, finding 11); a 404-to-index error response would also replace the API's own 404s
-  # (ticket 23-04), so deep links are left as a known gap.
+  # without running it (23-01, finding 11), so the rehearsal's front end (infra/rehearsal/front) runs the same file in
+  # front of it; no 404-to-index error response, which would also replace the API's own 404s (ticket 23-04).
   function_tags       = false
   origin_header_name  = module.ecs.origin_header_name
   origin_header_value = module.ecs.origin_header_value
