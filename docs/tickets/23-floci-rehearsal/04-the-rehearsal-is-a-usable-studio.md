@@ -15,6 +15,6 @@
 - [ ] Per-Visitor rate limits see the real client address: the emulator's network ranges are trusted proxies in `local`
 - [ ] The seed runs as a one-off task through the unchanged seed script, and the demo Owner can sign in
 - [ ] An uploaded Document becomes Ready, proving the worker reaches the queue, database, cache, bucket and key service by the addresses Terraform gave it
-- [ ] A second `terraform plan` after an apply shows no changes, and the wrapper fails if it does
+- [ ] A second `terraform plan` after an apply shows no changes, and the wrapper fails if it does (23-01 found four: the database port, both KMS keys' rotation period and the cache maintenance window; 23-02's inputs remove them)
 - [ ] Tests cover the new behaviour at the highest seam (see [shared test seams](../../specs/README.md#shared-test-seams)); 100% line and branch coverage holds
 - [ ] New domain terms are added to `GLOSSARY.md`; ADRs updated if a decision changed

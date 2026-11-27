@@ -1,0 +1,56 @@
+# Round 1 (demo inputs unchanged): apply errors
+Error: Invalid value for variable
+  on main.tf line 103, in module "ecs":
+ 103:   image_repository_url = module.ecr.repository_urls["rag-agent-studio/api"]
+    ├────────────────
+    │ var.image_repository_url is "localhost:4577/000000000000/eu-west-2/rag-agent-studio/api"
+image_repository_url must be an ECR repository URL, for example
+123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api.
+--
+Error: Invalid value for variable
+  on main.tf line 141, in module "cdn":
+ 141:   alb_dns_name                       = module.ecs.alb_dns_name
+    ├────────────────
+    │ var.alb_dns_name is "studio-local-ecs-3fc907de44bd4c9b.elb.floci-spike"
+alb_dns_name must be an ALB DNS name ending in .elb.amazonaws.com.
+This was checked by the validation rule at
+--
+Error: modifying EC2 Network Interface (eni-a96368a27e495ebd2) SourceDestCheck: operation error EC2: ModifyNetworkInterfaceAttribute, https response error StatusCode: 400, RequestID: e5d95a95-affd-4a0f-9ab8-49b4774c73ff, api error UnsupportedOperation: Operation ModifyNetworkInterfaceAttribute is not supported.
+  with module.network.aws_network_interface.fck_nat[0],
+  on ../../modules/network/main.tf line 161, in resource "aws_network_interface" "fck_nat":
+ 161: resource "aws_network_interface" "fck_nat" {
+Error: listing tags for S3 (Simple Storage) Bucket (studio-local-documents-000000000000): operation error S3 Control: ListTagsForResource, request canceled, context canceled
+  with module.storage.aws_s3_bucket.this["documents"],
+  on ../../modules/storage/main.tf line 16, in resource "aws_s3_bucket" "this":
+  16: resource "aws_s3_bucket" "this" {
+Error: listing tags for S3 (Simple Storage) Bucket (studio-local-static-000000000000): operation error S3 Control: ListTagsForResource, request canceled, context canceled
+  with module.storage.aws_s3_bucket.this["static"],
+  on ../../modules/storage/main.tf line 16, in resource "aws_s3_bucket" "this":
+  16: resource "aws_s3_bucket" "this" {
+
+# Round 2 (S3 Control host resolvable): apply errors
+Error: Invalid value for variable
+  on main.tf line 103, in module "ecs":
+ 103:   image_repository_url = module.ecr.repository_urls["rag-agent-studio/api"]
+    ├────────────────
+    │ var.image_repository_url is "localhost:4577/000000000000/eu-west-2/rag-agent-studio/api"
+image_repository_url must be an ECR repository URL, for example
+123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api.
+--
+Error: Invalid value for variable
+  on main.tf line 141, in module "cdn":
+ 141:   alb_dns_name                       = module.ecs.alb_dns_name
+    ├────────────────
+    │ var.alb_dns_name is "studio-local-ecs-3fc907de44bd4c9b.elb.floci-spike"
+alb_dns_name must be an ALB DNS name ending in .elb.amazonaws.com.
+This was checked by the validation rule at
+
+# Round 3 (managed_nat, origin localhost, relaxed validations)
+Apply complete! Resources: 43 added, 5 changed, 6 destroyed.
+
+# Round 4 (X86_64 tasks)
+Apply complete! Resources: 6 added, 4 changed, 6 destroyed.
+
+# The S3 Control call that hung round 1 (TF_LOG=DEBUG probe of one bucket)
+http.url="http://000000000000.floci-spike:4577/v20180820/tags/arn%3Aaws%3As3%3A%3A%3Aprobe-s3-bucket"
+Error: listing tags for S3 (Simple Storage) Bucket (probe-s3-bucket): operation error S3 Control: ListTagsForResource, request canceled, context canceled

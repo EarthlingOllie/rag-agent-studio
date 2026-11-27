@@ -6,6 +6,29 @@ Floci source read at version 2.5.0 (2026-11-15). Paths below: `repo:` = this rep
 No Docker daemon or Terraform in this sandbox (docker CLI only, no socket), so nothing was run. **verified** = seen in code/docs/issue; **inferred** = reasoning from those.
 "Applies to": Current = today's modules; A = Option A (docs/infra-simplification.md); Both.
 
+## Spike results (ticket 23-01, 2026-11-27)
+
+[Ticket 23-01](../01-spike-terraform-apply-on-floci.md) applied the demo modules to Floci 2.5.0 with the Docker socket mounted; `terraform apply` reached the end. Where these results and the findings below differ, the results are right. Evidence: [23-01-evidence](../23-01-evidence/README.md).
+
+| # | Finding | Result |
+|---|---|---|
+| 1 | No endpoint config | Confirmed; the fix works. Also needed: the state bucket created with `LocationConstraint=eu-west-2` before `init`, and the name `000000000000.<endpoint host>` resolving to Floci, because provider 6.x reads S3 bucket tags through S3 Control, which prefixes the account ID to the host (unresolvable, the apply hangs on the buckets) |
+| 2 | ARM64 tasks | Confirmed (Floci asks for `linux/arm64` and refuses an amd64 image); `X86_64` fixes it |
+| 3 | CloudFront prefix list | Confirmed; the catalogue fix works and accepts the reserved name |
+| 4 | deploy.sh registry | Confirmed. Path-style ECR URIs (`localhost:<port>/000000000000/<region>/<repo>`) push over plain HTTP with no login; `GetAuthorizationToken`'s `proxyEndpoint` is still the virtual-host form. The ecs module's `image_repository_url` validation refuses the path-style URI |
+| 5 | CloudFront origin | Confirmed; origin `localhost` plus the allowlist works (`/api/*` reaches the ALB listener with the origin header). The cdn module's `alb_dns_name` validation refuses Floci's ALB name `<name>-<16 hex>.elb.<FLOCI_HOSTNAME>` |
+| 6 | Networking | Confirmed at the address level: cache `<FLOCI_HOSTNAME>:6379`, database `<Floci container IP>:7001`; tasks join a per-VPC network and Floci's. App connections not yet exercised |
+| 7 | Cache TLS | **Changed**: the certificate names `FLOCI_HOSTNAME`, but 2.5.0 copies no CA into ECS task containers (no `/etc/floci-ca-bundle.pem`, no `SSL_CERT_FILE`). With TLS on, queue URLs are `https://` as well. The tasks need Floci's CA another way |
+| 8 | pgvector | Confirmed; the image override works (`vector` 0.8.1) |
+| 9 | fck-nat AMI | **Changed**: the lookup succeeds (Floci's catalogue has the fck-nat AMI), but the apply fails on `ModifyNetworkInterfaceAttribute` (the interface's `source_dest_check`). `managed_nat = true` still fixes it |
+| 13 | Autoscaling | CPU: confirmed, `put-metric-data` scales the API. Queue depth: Floci publishes the `AWS/SQS` metrics and evaluates plain alarms, but **never evaluates metric-math alarms**, which is what the worker pools' alarms are; worker scaling needs help |
+| 15 | RDS drift | Port confirmed; `storage_type` does not drift. Also drifting: KMS `rotation_period_in_days` (reads 0) and the replication group's `maintenance_window` (not stored) |
+| 16 | Memory | Floci is a native image (131 MB idle), not a JVM. Measured: API with local models 2.33 GB, one general worker process ingesting 2.32 GB, one runs process 2.35 GB (22-04). A 16 GB laptop fits with `jobs_per_task = 1` and 1 vCPU / 3 GB per worker task (about 8 GB in all) |
+| — | ECS task protection | The control-plane API works; there is no ECS agent endpoint (`ECS_AGENT_URI` unset), so the app uses `NoProtection` |
+| — | Fargate Spot | Strategies are stored and honoured as records; a `FARGATE_SPOT` task runs |
+| — | Docker Hub | Floci pulls pgvector, Valkey and `registry:2` by name; a rate limit (429) stops it. Pre-pulling from a mirror and tagging works |
+| — | Port | Floci's health check probes 4566 and queue URLs keep `:4566` when `FLOCI_PORT` changes, so the rehearsal can't run beside `make dev`'s Floci on another port |
+
 ## Ranked findings
 
 ### Blockers

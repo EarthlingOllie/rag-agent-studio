@@ -1,0 +1,6 @@
+# Network isolation check, run before any apply, from a container on the internal floci-spike-tf network (the network the terraform container used)
+wget: bad address 'sts.amazonaws.com'
+sts.amazonaws.com unreachable rc=1
+wget: bad address 'ec2.eu-west-2.amazonaws.com'
+ec2.eu-west-2.amazonaws.com unreachable
+{"version":"2.5.0","original_edition":"floci-always-free","edition":"community","services":{"ssm":"running","sqs":"running","s3":"running","dynamodb":"running","sns":"running","lambda":"running","apig

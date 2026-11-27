@@ -1,0 +1,27 @@
+# docker stats of the Floci side after apply (idle)
+floci-aws-ecs-f77d2878418f4c5a888be762a4746349-worker-general	2.188MiB / 8GiB	0.00%
+floci-aws-ecr-registry	15.72MiB / 15.71GiB	0.05%
+floci-aws-valkey-studio-local-cache	4.109MiB / 15.71GiB	0.09%
+floci-aws-rds-db-635A0621DDC843A7981CFC3C-7114e2	40.2MiB / 15.71GiB	0.00%
+floci-spike	130.8MiB / 15.71GiB	0.06%
+
+# One general-pool worker process ingesting the seed Documents (local models, Docling)
+imported worker app: rss=339 MB
+after warm-up: rss=1492 MB
+  pass 1 northwind-product-faq.docx: 1 chunks, rss=2235 MB, 1.9s
+  pass 1 northwind-returns-policy.md: 1 chunks, rss=2253 MB, 0.3s
+  pass 1 northwind-spring-range.pptx: 1 chunks, rss=2254 MB, 0.2s
+  pass 1 northwind-staff-handbook.md: 2 chunks, rss=2291 MB, 0.5s
+  pass 2 northwind-product-faq.docx: 1 chunks, rss=2299 MB, 0.3s
+  pass 2 northwind-returns-policy.md: 1 chunks, rss=2302 MB, 0.3s
+  pass 2 northwind-spring-range.pptx: 1 chunks, rss=2302 MB, 0.2s
+  pass 2 northwind-staff-handbook.md: 2 chunks, rss=2318 MB, 0.5s
+  pass 3 northwind-product-faq.docx: 1 chunks, rss=2318 MB, 0.2s
+  pass 3 northwind-returns-policy.md: 1 chunks, rss=2318 MB, 0.3s
+  pass 3 northwind-spring-range.pptx: 1 chunks, rss=2318 MB, 0.2s
+  pass 3 northwind-staff-handbook.md: 2 chunks, rss=2318 MB, 0.5s
+peak rss=2317 MB
+
+# The API process with its local models loaded and used
+imported API app: rss=344 MB
+models loaded and used: rss=2245 MB, peak=2330 MB

@@ -1,0 +1,6 @@
+# terraform destroy, first run: the spike's standalone task blocked the cluster delete
+Error: deleting ECS Cluster (arn:aws:ecs:eu-west-2:000000000000:cluster/studio-local-ecs): operation error ECS: DeleteCluster, https response error StatusCode: 400, RequestID: 5044a103-f3d5-47ed-bd81-929ba033e4ce, ClusterContainsTasksException: The cluster can
+
+# second run after stopping it
+Destroy complete! Resources: 8 destroyed.
+destroyed in first run: 158
