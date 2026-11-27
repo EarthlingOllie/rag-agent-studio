@@ -394,12 +394,12 @@ test.describe("Evaluation Runs", () => {
       await page.goto("/");
       await openSection(page, "Organisation sections", "Cost");
       const byProject = page.getByRole("table", { name: "Cost by Project" });
-      await expect(byProject.getByRole("columnheader")).toHaveText(["Project", "Visitors", "Playground", "Evaluation", "Total"]);
+      await expect(byProject.getByRole("columnheader")).toHaveText(["Project", "Visitors", "Playground", "Evaluation", "Voice", "Total"]);
       const row = byProject.getByRole("row", { name: new RegExp(`^${projectName}`) });
       await expect(row).toBeVisible();
-      // The Project names the row; its cells are Visitors, Playground, Evaluation and Total.
-      const [visitors, playground, evaluation, total] = await row.getByRole("cell").allTextContents();
-      expect([visitors, playground]).toEqual(["$0.00", "$0.00"]);
+      // The Project names the row; its cells are Visitors, Playground, Evaluation, Voice and Total.
+      const [visitors, playground, evaluation, voice, total] = await row.getByRole("cell").allTextContents();
+      expect([visitors, playground, voice]).toEqual(["$0.00", "$0.00", "$0.00"]);
       expect(evaluation).not.toBe("$0.00");
       // The Evaluation amount is what the Runs cost (shown to two significant digits below a cent), and nothing else was spent.
       const amount = Number((evaluation ?? "").replace(/[$,]/g, ""));

@@ -6,7 +6,7 @@ import { openSection } from "../fixtures/navigation";
 const CHAT_KEY = "sk-ant-e2e-test-only-not-a-real-key-e708";
 
 test.describe("Organisation cost", () => {
-  test("an Owner opens the Cost page from the navigation and sees each Project's and Agent's cost, the Playground in its own column", async ({
+  test("an Owner opens the Cost page from the navigation and sees each Project's and Agent's cost, the Playground and Voice in their own columns", async ({
     signedInPage: page,
     makeAxeBuilder,
   }) => {
@@ -42,7 +42,7 @@ test.describe("Organisation cost", () => {
 
     await expect(page.getByRole("heading", { level: 1, name: "Organisation cost" })).toBeVisible();
     const byProject = page.getByRole("table", { name: "Cost by Project" });
-    await expect(byProject.getByRole("columnheader")).toHaveText(["Project", "Visitors", "Playground", "Evaluation", "Total"]);
+    await expect(byProject.getByRole("columnheader")).toHaveText(["Project", "Visitors", "Playground", "Evaluation", "Voice", "Total"]);
     await expect(byProject.getByRole("row", { name: /^Cost HR/ })).toBeVisible();
     await expect(byProject.getByRole("row", { name: /^All Projects/ })).toBeVisible();
     await expect(page.getByRole("list", { name: "Spend for the period" }).getByRole("listitem")).toContainText([
@@ -50,6 +50,7 @@ test.describe("Organisation cost", () => {
       "Visitors",
       "Playground",
       "Evaluation",
+      "Voice",
     ]);
     expect((await makeAxeBuilder().analyze()).violations).toEqual([]);
 
