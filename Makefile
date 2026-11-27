@@ -7,7 +7,7 @@ API_CLIENT_DIR := frontend/packages/api-client
 
 .PHONY: help dev down services install test test-backend test-live test-frontend lint lint-backend lint-frontend \
 	gen-client check-client migrate infra-check images security secret-scan audit image-scan e2e e2e-install eval eval-live \
-	seed seed-reset link-check
+	seed seed-reset link-check rehearse rehearse-down
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -98,6 +98,7 @@ infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on
 	scripts/deploy/tests/destroy.test.sh
 	scripts/deploy/tests/seed.test.sh
 	scripts/deploy/tests/scale.test.sh
+	scripts/deploy/tests/rehearse.test.sh
 	node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
 		$(wildcard infra/modules/*/functions/*.test.mjs)
 	scripts/ci/tests/plan-gate.test.sh
@@ -109,6 +110,14 @@ infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on
 	done
 	cd infra && tflint --init && tflint --recursive --config "$$PWD/.tflint.hcl"
 	cd infra && checkov --config-file .checkov.yaml
+
+# The rehearsal (spec 23): the AWS deployment on Floci, an AWS emulator, with no AWS account. Needs Docker with socket
+# access and about 8 GB of memory for it; terraform and the AWS CLI run in containers. See scripts/deploy/rehearse.sh.
+rehearse: ## Rehearse the AWS deployment on Floci: apply infra/envs/local, push the images, migrate, roll the services, upload the Studio, smoke check
+	scripts/deploy/rehearse.sh up
+
+rehearse-down: ## Destroy the rehearsal and remove Floci's containers and data
+	scripts/deploy/rehearse.sh down
 
 images: ## Build the API (also used by the worker and Beat) and Studio images; IMAGE_PLATFORM=linux/arm64 builds for Fargate
 	docker build $(if $(IMAGE_PLATFORM),--platform $(IMAGE_PLATFORM)) --build-context seed=seed -t rag-agent-studio/api:$(IMAGE_TAG) backend

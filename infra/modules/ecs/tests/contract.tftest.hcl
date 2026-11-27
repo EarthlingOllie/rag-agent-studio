@@ -2175,3 +2175,78 @@ run "rejects_a_path_style_registry_on_another_host" {
 
   expect_failures = [var.image_repository_url]
 }
+
+# Ticket 23-03: the emulator's database (a plain pgvector container) serves no TLS, so a local environment turns the
+# setting off through the database input; AWS keeps it on (the parameter group forces TLS).
+run "database_tls_is_on_by_default" {
+  command = plan
+
+  assert {
+    condition = alltrue([for k in ["api", "worker-general", "worker-runs", "beat", "migrate", "seed"] :
+      output.task_environment[k].DATABASE_TLS == "true"
+    ])
+    error_message = "Every container must connect to the database over TLS by default."
+  }
+}
+
+run "database_tls_can_be_turned_off" {
+  command = plan
+
+  variables {
+    database = {
+      address             = "172.29.0.2"
+      port                = 7001
+      name                = "studio"
+      username            = "studio"
+      password_secret_arn = "arn:aws:secretsmanager:eu-west-2:000000000000:secret:studio-local-database/master-password-AAAAAA"
+      security_group_id   = "sg-0database00000001"
+      tls                 = false
+    }
+  }
+
+  assert {
+    condition = alltrue([for k in ["api", "worker-general", "worker-runs", "beat", "migrate", "seed"] :
+      output.task_environment[k].DATABASE_TLS == "false"
+    ])
+    error_message = "database.tls = false must reach every container as DATABASE_TLS=false."
+  }
+
+  assert {
+    condition = alltrue([for k, e in output.task_environment : (
+      { for name, value in e : name => value if !contains(["DATABASE_TLS", "DATABASE_HOST", "DATABASE_PORT"], name) } ==
+      { for name, value in run.database_tls_is_on_by_default.task_environment[k] : name => value if !contains(["DATABASE_TLS", "DATABASE_HOST", "DATABASE_PORT"], name) }
+    )])
+    error_message = "Turning database TLS off must change no other setting."
+  }
+}
+
+# Ticket 23-03: the size and command of each service's task, read back from its task definition, so an environment's
+# own test can check the sizes it sets.
+run "reports_each_services_task_size_and_command" {
+  command = plan
+
+  variables {
+    task_sizes = {
+      api              = { cpu = 512, memory = 3072 }
+      "worker-general" = { cpu = 1024, memory = 3072 }
+      "worker-runs"    = { cpu = 1024, memory = 3072 }
+      beat             = { cpu = 256, memory = 512 }
+    }
+    scaling = { worker-general = { jobs_per_task = 1 } }
+  }
+
+  assert {
+    condition = { for k, t in output.service_tasks : k => { cpu = t.cpu, memory = t.memory } } == {
+      api              = { cpu = 512, memory = 3072 }
+      "worker-general" = { cpu = 1024, memory = 3072 }
+      "worker-runs"    = { cpu = 1024, memory = 3072 }
+      beat             = { cpu = 256, memory = 512 }
+    }
+    error_message = "service_tasks must report the CPU and memory of each service's task definition."
+  }
+
+  assert {
+    condition     = contains(output.service_tasks["worker-general"].command, "--concurrency=1") && contains(output.service_tasks["worker-runs"].command, "--concurrency=2")
+    error_message = "service_tasks must report each service's command, with the worker pools' concurrency."
+  }
+}

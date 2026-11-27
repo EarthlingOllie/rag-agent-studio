@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# The AWS CLI for the rehearsal: see run-tool.sh.
+exec "$(dirname "$0")/run-tool.sh" aws "$@"

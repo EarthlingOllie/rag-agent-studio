@@ -1,0 +1,49 @@
+# make rehearse, first run (2026-11-27, x86_64 sandbox, Floci 2.5.0): the wrapper's and deploy.sh's progress lines, trimmed from 6089 lines
+==> Pulling the emulator's images
+==> Starting Floci
+==> Adding Floci's CA to rag-agent-studio/api:rehearsal
+==> Creating the state bucket studio-local-tfstate in Floci
+==> Installing the Terraform providers
+==> terraform init (state bucket studio-local-tfstate)
+Successfully configured the backend "s3"! Terraform will automatically
+==> Making sure the ECR repositories exist
+Plan: 6 to add, 0 to change, 0 to destroy.
+Apply complete! Resources: 5 added, 0 changed, 0 destroyed.
+==> Pushing the images at rehearsal to localhost:4566
+Login Succeeded
+rehearsal: digest: sha256:47c80ba51e3e4dc89760893555fcf234115c9e5c99e4c975047377ec0d5206c1 size: 856
+rehearsal: digest: sha256:4d1b7f3d000d9e3fe6ab5d57f0c8397162b0106e996f1517fca21f79c5f8fad1 size: 856
+==> terraform apply at image tag rehearsal
+Plan: 161 to add, 0 to change, 0 to destroy.
+Apply complete! Resources: 161 added, 0 changed, 0 destroyed.
+==> Running the migration task
+==> Rolling studio-local-ecs-api onto arn:aws:ecs:eu-west-2:000000000000:task-definition/studio-local-ecs-api:1
+==> Rolling studio-local-ecs-beat onto arn:aws:ecs:eu-west-2:000000000000:task-definition/studio-local-ecs-beat:1
+==> Rolling studio-local-ecs-worker-general onto arn:aws:ecs:eu-west-2:000000000000:task-definition/studio-local-ecs-worker-general:1
+==> Rolling studio-local-ecs-worker-runs onto arn:aws:ecs:eu-west-2:000000000000:task-definition/studio-local-ecs-worker-runs:1
+==> Waiting for studio-local-ecs-api to stabilise
+studio-local-ecs-api is stable
+==> Waiting for studio-local-ecs-beat to stabilise
+studio-local-ecs-beat is stable
+==> Waiting for studio-local-ecs-worker-general to stabilise
+studio-local-ecs-worker-general is stable
+==> Waiting for studio-local-ecs-worker-runs to stabilise
+studio-local-ecs-worker-runs is stable
+==> Uploading the Studio and widget builds and the demo pages to studio-local-static-000000000000
+==> Invalidating the HTML, the loader and the demo pages in E80VTTLY16C690
+==> Smoke checking http://e80vttly16c690.cloudfront.localhost:4566
+ok   health
+ok   studio
+ok   widget_shell
+Smoke check passed: http://e80vttly16c690.cloudfront.localhost:4566
+Deployed rehearsal: http://e80vttly16c690.cloudfront.localhost:4566
+# then: curl <url>/api/health
+{"status":"ok","checks":{"database":"ok","redis":"ok"}}
+# docker stats right after the smoke check
+floci-aws-ecs-<task>-api 525.4MiB / 3GiB
+floci-aws-ecs-<task>-beat 451.3MiB / 512MiB
+floci-aws-ecs-<task>-worker-general 2.532GiB / 3GiB
+floci-aws-rds-db-DD863844BA5343FD886B3F89-dde02f 65.96MiB / 15.71GiB
+floci-aws-valkey-studio-local-cache 9.363MiB / 15.71GiB
+floci-aws-ecr-registry 31.2MiB / 15.71GiB
+studio-rehearsal-floci-1 141.1MiB / 15.71GiB

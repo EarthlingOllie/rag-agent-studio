@@ -60,7 +60,8 @@ deploy_json() {
 }
 
 # run <case> <tag> [VAR=value...]: runs deploy.sh in a fresh case directory; sets $status, $out, $calls, $dir.
-# A wait_minutes=N prefix passes N as deploy.sh's second argument (the wait for protected tasks).
+# A wait_minutes=N prefix passes N as deploy.sh's second argument (the wait for protected tasks), and an arch=A prefix
+# passes A as its third (the architecture the images must be built for; it needs wait_minutes too).
 run() {
   local name=$1 tag=$2
   shift 2
@@ -71,7 +72,7 @@ run() {
   out=$(env PATH="$here/stubs:$here/stubs-clock:$PATH" STUB_CALLS="$dir/calls" STUB_DEPLOY_JSON="$dir/deploy.json" STUB_UPLOADED="$dir/uploaded" \
     TF_STATE_BUCKET=rag-agent-studio-tfstate-123456789012 AWS_REGION=eu-west-2 \
     STUDIO_DIST="$work/studio" WIDGET_DIST="$work/widget" DEMO_DIST="$work/demo" SMOKE_ATTEMPTS=1 SMOKE_DELAY_SECONDS=0 \
-    GITHUB_STEP_SUMMARY="$dir/summary.md" "$@" "$deploy" "$tag" ${wait_minutes:+"$wait_minutes"} 2>&1)
+    GITHUB_STEP_SUMMARY="$dir/summary.md" "$@" "$deploy" "$tag" ${wait_minutes:+"$wait_minutes"} ${arch:+"$arch"} 2>&1)
   status=$?
   calls=$(cat "$dir/calls")
 }
@@ -253,6 +254,50 @@ for image in api studio; do
 done
 before $name '^docker push .*/rag-agent-studio/api:0123abc' '^terraform .* apply -input=false -auto-approve -var=image_tag=0123abc$' || ok=0
 [ $ok = 1 ] && echo "ok   $name"
+
+# Ticket 23-03: the registry is read from Terraform's outputs, never built from the account ID, so the same script pushes
+# to an emulator's registry, and logs in to the host in the repository URL (the emulator's login endpoint names another).
+name=pushes_to_the_registry_terraform_outputs
+run "$name" 0123abc STUB_IMAGE_IN_ECR=254 STUB_LOCAL_IMAGES=1 \
+  STUB_ECR_URLS='{"rag-agent-studio/api":"localhost:4566/000000000000/eu-west-2/rag-agent-studio/api","rag-agent-studio/studio":"localhost:4566/000000000000/eu-west-2/rag-agent-studio/studio"}'
+ok=1
+expect_status $name 0 || ok=0
+before $name '^terraform .* apply .*-target=module.ecr' '^terraform -chdir=.* output -json ecr_repository_urls$' || ok=0
+before $name '^terraform -chdir=.* output -json ecr_repository_urls$' '^docker push' || ok=0
+before $name '^docker login --username AWS --password-stdin localhost:4566$' '^docker push' || ok=0
+for image in api studio; do
+  grep -qxF "docker tag rag-agent-studio/$image:0123abc localhost:4566/000000000000/eu-west-2/rag-agent-studio/$image:0123abc" <<<"$calls" || { fail $name "no tag of $image: $(grep '^docker tag' <<<"$calls")"; ok=0; }
+  grep -qxF "docker push localhost:4566/000000000000/eu-west-2/rag-agent-studio/$image:0123abc" <<<"$calls" || { fail $name "no push of $image"; ok=0; }
+done
+never $name '^aws sts' || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+name=pushes_images_of_the_architecture_given
+wait_minutes=30 arch=amd64 run "$name" 0123abc STUB_IMAGE_IN_ECR=254 STUB_LOCAL_IMAGES=1 STUB_LOCAL_ARCH=amd64
+ok=1
+expect_status $name 0 || ok=0
+grep -q '^docker push .*/rag-agent-studio/api:0123abc$' <<<"$calls" || { fail $name "the amd64 image was not pushed"; ok=0; }
+[ $ok = 1 ] && echo "ok   $name"
+
+name=refuses_images_not_of_the_architecture_given
+wait_minutes=30 arch=amd64 run "$name" 0123abc STUB_IMAGE_IN_ECR=254 STUB_LOCAL_IMAGES=1 STUB_LOCAL_ARCH=arm64
+ok=1
+expect_status $name 1 || ok=0
+expect_output $name "rag-agent-studio/api:0123abc is built for arm64, but the tasks run on amd64" || ok=0
+never $name '^docker push' || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+for bad in x86_64 ARM64 ""; do
+  name="rejects_the_architecture_'$bad'"
+  dir="$work/$name"; mkdir -p "$dir"; : >"$dir/calls"
+  out=$(env PATH="$here/stubs:$PATH" STUB_CALLS="$dir/calls" TF_STATE_BUCKET=b AWS_REGION=eu-west-2 "$deploy" 0123abc 30 "$bad" 2>&1)
+  status=$?
+  calls=$(cat "$dir/calls")
+  ok=1
+  expect_status "$name" 2 || ok=0
+  [ -z "$calls" ] || { fail "$name" "calls were made: $calls"; ok=0; }
+  [ $ok = 1 ] && echo "ok   $name"
+done
 
 name=refuses_to_push_images_that_are_not_arm64
 run "$name" 0123abc STUB_IMAGE_IN_ECR=254 STUB_LOCAL_IMAGES=1 STUB_LOCAL_ARCH=amd64

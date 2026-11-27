@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Stand-in for pnpm in the rehearsal wrapper's tests: logs each call and where it ran.
+echo "pnpm $* (in $PWD)" >>"$STUB_CALLS"

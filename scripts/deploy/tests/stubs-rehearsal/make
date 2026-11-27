@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Stand-in for make in the rehearsal wrapper's tests: logs each call.
+echo "make $*" >>"$STUB_CALLS"

@@ -140,3 +140,12 @@ output "cpu_architecture" {
   description = "CPU architecture every task definition runs on (ARM64 or X86_64): the platform the backend image must be built for."
   value       = one(distinct([for t in concat(values(aws_ecs_task_definition.this), [aws_ecs_task_definition.migrate, aws_ecs_task_definition.seed]) : one(t.runtime_platform).cpu_architecture]))
 }
+
+output "service_tasks" {
+  description = "Each service's task as its task definition has it, keyed by service: CPU units, memory (MiB) and the container's command (the worker pools' with their --concurrency). An environment's tests read its sizes from here (ticket 23-03)."
+  value = { for k, t in aws_ecs_task_definition.this : k => {
+    cpu     = tonumber(t.cpu)
+    memory  = tonumber(t.memory)
+    command = jsondecode(t.container_definitions)[0].command
+  } }
+}

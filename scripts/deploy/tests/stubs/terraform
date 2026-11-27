@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
-# Stand-in for terraform in the deploy script tests: logs each call, prints the deploy output, fails on request.
+# Stand-in for terraform in the deploy script tests: logs each call, prints the deploy output and the repository URLs
+# (STUB_ECR_URLS, default the demo's ECR), fails on request.
 echo "terraform $*" >>"$STUB_CALLS"
 case "$*" in
+  *"output -json ecr_repository_urls"*)
+    if [ -n "${STUB_ECR_URLS:-}" ]; then echo "$STUB_ECR_URLS"; else
+      echo '{"rag-agent-studio/api":"123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api","rag-agent-studio/studio":"123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/studio"}'
+    fi ;;
   *"output -json deploy"*) [ "${STUB_TF_OUTPUT_EXIT:-0}" = 0 ] || exit "$STUB_TF_OUTPUT_EXIT"; cat "$STUB_DEPLOY_JSON" ;;
   *destroy*) exit "${STUB_TF_DESTROY_EXIT:-0}" ;;
   *apply*) exit "${STUB_TF_APPLY_EXIT:-0}" ;;

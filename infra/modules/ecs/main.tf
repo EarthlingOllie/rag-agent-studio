@@ -229,7 +229,7 @@ locals {
     DATABASE_PORT = tostring(var.database.port)
     DATABASE_NAME = var.database.name
     DATABASE_USER = var.database.username
-    DATABASE_TLS  = "true" # The parameter group sets rds.force_ssl.
+    DATABASE_TLS  = tostring(var.database.tls) # On AWS the parameter group sets rds.force_ssl.
   }
   cache_environment = {
     REDIS_HOST = var.cache.address

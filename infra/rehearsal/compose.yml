@@ -1,0 +1,68 @@
+# The rehearsal's emulator (spec 23, ticket 23-03): Floci, pinned, with every setting the rehearsal needs in this one
+# file. scripts/deploy/rehearse.sh starts it (`make rehearse`) and removes it with its data (`make rehearse-down`).
+# It is not part of `make dev`, whose own Floci (SQS only) publishes the same port: the wrapper stops that one first.
+# Each setting below says which emulator gap it covers (docs/tickets/23-floci-rehearsal/01-spike-terraform-apply-on-floci.md).
+name: studio-rehearsal
+
+services:
+  floci:
+    # The same pinned version as `make dev`'s; an upgrade is deliberate (spec 23 story 29).
+    image: floci/floci:2.5.0
+    environment:
+      # Floci gives the database, cache and queue URLs this name, and the tasks resolve it on the network below
+      # (blocker 6).
+      FLOCI_HOSTNAME: floci
+      # The Docker network Floci puts the database, cache, registry and tasks on, so they reach each other and Floci
+      # (blocker 6).
+      FLOCI_SERVICES_DOCKER_NETWORK: studio-rehearsal
+      # State on a volume, so a restarted Floci keeps the environment; rehearse-down deletes it.
+      FLOCI_STORAGE_MODE: persistent
+      # The cache keeps TLS and its auth token, as on AWS (blocker 7). It also makes the queue URLs https://, which is
+      # why the image the rehearsal pushes carries Floci's root CA.
+      FLOCI_TLS_ENABLED: "true"
+      # Repository URLs of the form localhost:4566/<account>/<region>/<name>: plain HTTP, which Docker allows for
+      # localhost without a certificate (blocker 4).
+      FLOCI_SERVICES_ECR_URI_STYLE: path
+      # pgvector, which the migrations need (blocker 8): the same image as `make dev`'s database.
+      FLOCI_SERVICES_RDS_DEFAULT_POSTGRES_IMAGE: pgvector/pgvector:0.8.1-pg16
+      # A Valkey release compatible with Redis 7, as on AWS (research finding 20).
+      FLOCI_SERVICES_ELASTICACHE_DEFAULT_IMAGE: valkey/valkey:7.2
+      # CloudFront's origin-facing prefix list, which the load balancer admits and the API trusts: loopback and the
+      # network below, where the emulated distribution and load balancer connect from (blocker 3, finding 14).
+      FLOCI_SERVICES_EC2_MANAGED_PREFIX_LIST_CATALOG_PATH: /etc/floci/prefix-lists.json
+      # The distribution's API origin is localhost, where Floci serves the load balancer; it refuses private origins
+      # otherwise (blocker 5).
+      FLOCI_SERVICES_CLOUDFRONT_ALLOWED_PRIVATE_ORIGIN_HOSTS: localhost
+      # Distributions are served on <id>.cloudfront.localhost, which browsers and curl resolve to this machine
+      # (finding 12).
+      FLOCI_SERVICES_CLOUDFRONT_DOMAIN_SUFFIX: cloudfront.localhost
+      FLOCI_DEFAULT_REGION: eu-west-2
+    # Floci's health check and its queue URLs assume 4566; another port breaks both (23-01), so `make dev`'s Floci
+    # is stopped first.
+    ports: ["4566:4566"]
+    volumes:
+      # Floci starts the database, cache, registry and tasks as containers through the Docker socket.
+      - ${DOCKER_SOCKET:-/var/run/docker.sock}:/var/run/docker.sock
+      - floci-data:/app/data
+      - ./prefix-lists.json:/etc/floci/prefix-lists.json:ro
+    networks:
+      rehearsal:
+      # Terraform and the AWS CLI run in containers on this network (scripts/deploy/rehearsal), which reaches Floci
+      # and nothing else. The AWS provider reads bucket tags through S3 Control at <account>.<endpoint host>; unresolvable,
+      # the apply hangs (23-01), hence the alias.
+      tools:
+        aliases: ["000000000000.floci"]
+
+networks:
+  rehearsal:
+    name: studio-rehearsal
+    # Fixed, because prefix-lists.json names it.
+    ipam:
+      config: [{ subnet: 172.29.0.0/16 }]
+  tools:
+    name: studio-rehearsal-tools
+    internal: true
+
+volumes:
+  floci-data:
+    name: studio-rehearsal-floci-data

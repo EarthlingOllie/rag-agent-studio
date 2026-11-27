@@ -2,7 +2,8 @@
 # Brings the demo environment up at an image tag (spec 09 stories 25, 26 and 32). The deploy workflow runs it; it
 # also runs by hand with AWS credentials for the account. In order:
 #   1. terraform init against the bootstrap's state bucket, and apply the ECR repositories (a first run creates them)
-#   2. push the API and Studio images at the tag (built for arm64), unless ECR already has the tag
+#   2. push the API and Studio images at the tag (built for arm64, or the architecture given), unless ECR already has
+#      the tag, to the repository URLs Terraform outputs (ticket 23-03: an emulator's registry is another address)
 #   3. terraform apply at the tag: new task definitions for the services and the migration task (the services
 #      themselves do not roll on apply; see the ecs module)
 #   4. run the migration task (`alembic upgrade head`) and wait for it; anything but exit 0 stops the deploy here
@@ -14,6 +15,7 @@
 #   7. invalidate those paths in CloudFront and wait for the invalidation
 #   8. smoke check the CloudFront URL (scripts/deploy/smoke.sh) and print it
 # Usage: TF_STATE_BUCKET=... AWS_REGION=... scripts/deploy/deploy.sh <image tag> [minutes to wait for running jobs]
+#          [image architecture: arm64 (default, the tasks' Graviton CPUs) or amd64 (a rehearsal on an Intel machine)]
 # Optional: DEPLOY_ROOT (default infra/envs/demo), STUDIO_DIST and WIDGET_DIST (the `pnpm build` outputs), DEMO_DIST
 # (the demo pages, default frontend/apps/widget/host/demo; the disallowed-origin page beside it is local-only),
 # SMOKE_AGENT_ID (a live Agent's public ID for the widget shell check), SMOKE_ATTEMPTS, SMOKE_DELAY_SECONDS,
@@ -23,12 +25,14 @@ set -euo pipefail
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../.." && pwd)
 
-usage() { echo "usage: $0 <image tag> (1-128 of A-Z a-z 0-9 . _ -, not latest) [minutes to wait for running jobs, default 30]" >&2; exit 2; }
-[ $# -eq 1 ] || [ $# -eq 2 ] || usage
+usage() { echo "usage: $0 <image tag> (1-128 of A-Z a-z 0-9 . _ -, not latest) [minutes to wait for running jobs, default 30] [arm64 (default) or amd64]" >&2; exit 2; }
+[ $# -ge 1 ] && [ $# -le 3 ] || usage
 tag=$1
 [[ "$tag" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]] && [ "$tag" != latest ] || usage
 wait_minutes=${2:-30}
 [[ "$wait_minutes" =~ ^[0-9]+$ ]] || usage
+expected_arch=${3-arm64}
+[[ "$expected_arch" =~ ^(arm64|amd64)$ ]] || usage
 poll_seconds=${PROTECTED_POLL_SECONDS:-30}
 [ -n "${TF_STATE_BUCKET:-}" ] || { echo "TF_STATE_BUCKET must name the bootstrap's state bucket (its state_bucket_name output)." >&2; exit 2; }
 [ -n "${AWS_REGION:-}" ] || { echo "AWS_REGION must be set." >&2; exit 2; }
@@ -52,24 +56,31 @@ step "Making sure the ECR repositories exist"
 terraform -chdir="$root" apply -input=false -auto-approve -target=module.ecr
 
 # --- 2. Images -------------------------------------------------------------------------------------------------------
-registry="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.$AWS_REGION.amazonaws.com"
 if aws ecr describe-images --repository-name rag-agent-studio/api --image-ids "imageTag=$tag" >/dev/null 2>&1; then
   step "rag-agent-studio/api:$tag is already in ECR"
 else
   if ! arch=$(docker image inspect --format '{{.Architecture}}' "rag-agent-studio/api:$tag" 2>/dev/null); then
-    echo "::error title=No image::rag-agent-studio/api:$tag is not in ECR and was not built here. Deploy a pushed tag, or build it first (make images IMAGE_TAG=$tag IMAGE_PLATFORM=linux/arm64)." >&2
+    echo "::error title=No image::rag-agent-studio/api:$tag is not in ECR and was not built here. Deploy a pushed tag, or build it first (make images IMAGE_TAG=$tag IMAGE_PLATFORM=linux/$expected_arch)." >&2
     exit 1
   fi
-  # The tasks run on ARM64 Fargate (ADR-0010); an x86 image would fail to start with "exec format error".
-  if [ "$arch" != arm64 ]; then
-    echo "::error title=Wrong architecture::rag-agent-studio/api:$tag is built for $arch, but the tasks run on arm64. Build it with IMAGE_PLATFORM=linux/arm64." >&2
+  # The tasks run on ARM64 Fargate (ADR-0010); an image of another architecture would fail to start with "exec format
+  # error". A rehearsal on an Intel machine runs amd64 tasks and says so (ticket 23-03).
+  if [ "$arch" != "$expected_arch" ]; then
+    echo "::error title=Wrong architecture::rag-agent-studio/api:$tag is built for $arch, but the tasks run on $expected_arch. Build it with IMAGE_PLATFORM=linux/$expected_arch." >&2
     exit 1
   fi
+  # Each repository's URL comes from Terraform, never from the account ID: an emulator's registry has another address
+  # (localhost:<port>/<account>/<region>/<name>). Logging in to the URL's host also covers an emulator whose login
+  # endpoint names another host (ticket 23-01).
+  terraform -chdir="$root" output -json ecr_repository_urls >"$work/repositories.json"
+  repository() { jq -r --arg name "rag-agent-studio/$1" '.[$name]' "$work/repositories.json"; }
+  registry=$(repository api)
+  registry=${registry%%/*}
   step "Pushing the images at $tag to $registry"
   aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$registry"
   for image in api studio; do
-    docker tag "rag-agent-studio/$image:$tag" "$registry/rag-agent-studio/$image:$tag"
-    docker push "$registry/rag-agent-studio/$image:$tag"
+    docker tag "rag-agent-studio/$image:$tag" "$(repository "$image"):$tag"
+    docker push "$(repository "$image"):$tag"
   done
 fi
 

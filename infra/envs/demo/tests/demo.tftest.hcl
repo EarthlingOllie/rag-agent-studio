@@ -374,6 +374,11 @@ run "the_local_environment_inputs_leave_the_demo_unchanged" {
   }
 
   assert {
+    condition     = alltrue([for e in values(module.ecs.task_environment) : e.DATABASE_TLS == "true"])
+    error_message = "Every demo container must keep connecting to the database over TLS (ticket 23-03's database.tls defaults on)."
+  }
+
+  assert {
     condition     = module.kms.rotation_period_in_days == { credentials = 365, data = 365 }
     error_message = "Both demo KMS keys must keep a one-year rotation period."
   }

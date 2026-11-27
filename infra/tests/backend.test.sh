@@ -24,6 +24,11 @@ for env in "${envs[@]}"; do
   if grep -Eq '^[[:space:]]*(dynamodb_table|bucket|encrypt|kms_key_id)[[:space:]]*=' <<<"$block"; then
     fail "$name" "dynamodb_table, bucket, encrypt and kms_key_id must not be set (native locking; bucket from -backend-config; the bucket's KMS default encryption applies)"
   fi
+  # The rehearsal's state lives in the emulator; pinned there, a terraform init on this machine can never reach AWS
+  # with whatever credentials it holds (ticket 23-03).
+  if [ "$name" = local ] && ! grep -Eq '^[[:space:]]*endpoints[[:space:]]*=[[:space:]]*\{[[:space:]]*s3[[:space:]]*=[[:space:]]*"http://floci:4566"[[:space:]]*\}' <<<"$block"; then
+    fail "$name" "endpoints = { s3 = \"http://floci:4566\" } is missing: the rehearsal's state must only be read from the emulator"
+  fi
   [ "$failures" -gt "$before" ] || echo "ok   $name: S3 backend with native locking"
 done
 

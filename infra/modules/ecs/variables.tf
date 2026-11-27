@@ -290,7 +290,7 @@ variable "data_key_arn" {
 }
 
 variable "database" {
-  description = "Connection details of the database module: address, port, name, user, the password secret and its security group."
+  description = "Connection details of the database module: address, port, name, user, the password secret and its security group. tls (default true) makes every container connect over TLS, which the database module's parameter group forces on AWS; an emulator whose database serves no TLS needs false (ticket 23-03)."
   type = object({
     address             = string
     port                = number
@@ -298,6 +298,7 @@ variable "database" {
     username            = string
     password_secret_arn = string
     security_group_id   = string
+    tls                 = optional(bool, true)
   })
 }
 
