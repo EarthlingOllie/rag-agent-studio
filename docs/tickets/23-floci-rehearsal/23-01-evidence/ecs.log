@@ -1,0 +1,21 @@
+studio-local-ecs-api ACTIVE desired 1 running 0 cps [{'capacityProvider': 'FARGATE', 'weight': 1, 'base': 0}] launchType None
+studio-local-ecs-worker-general ACTIVE desired 1 running 0 cps [{'capacityProvider': 'FARGATE_SPOT', 'weight': 1, 'base': 0}] launchType None
+studio-local-ecs-worker-runs ACTIVE desired 0 running 0 cps [{'capacityProvider': 'FARGATE', 'weight': 1, 'base': 0}] launchType None
+   ev: (service studio-local-ecs-worker-runs) has reached a steady state.
+studio-local-ecs-beat ACTIVE desired 1 running 0 cps [{'capacityProvider': 'FARGATE', 'weight': 1, 'base': 0}] launchType None
+['FARGATE_SPOT', 'FARGATE'] [{'capacityProvider': 'FARGATE', 'weight': 1}]
+tasks 0
+
+# After the X86_64 change: a standalone FARGATE_SPOT task (command overridden to sleep) and the task protection API
+runtimePlatform {'cpuArchitecture': 'X86_64', 'operatingSystemFamily': 'LINUX'} cpu 2048 mem 8192 [('worker-general', ['celery', '-A', 'app.worker.main', '--quiet', 'worker', '--loglevel=INFO', '--concurrency=2', '--queues=studio-local-queue-general'])]
+run_task failures []
+task RUNNING capacityProviderName FARGATE_SPOT launchType FARGATE None
+update_task_protection [{'taskArn': 'arn:aws:ecs:eu-west-2:000000000000:task/studio-local-ecs/f77d2878418f4c5a888be762a4746349', 'protectionEnabled': True, 'expirationDate': datetime.datetime(2026, 11, 27, 0, 11, 53, 154000, tzinfo=tzlocal())}] []
+get_task_protection [{'taskArn': 'arn:aws:ecs:eu-west-2:000000000000:task/studio-local-ecs/f77d2878418f4c5a888be762a4746349', 'protectionEnabled': True, 'expirationDate': datetime.datetime(2026, 11, 27, 0, 11, 53, 154000, tzinfo=tzlocal())}]
+
+# Floci refusing an amd64 image for an ARM64 task definition
+2026-11-27 00:04:15,414 ERROR [io.flo.aws.ser.ecs.EcsService] Failed to start ECS task arn:aws:ecs:eu-west-2:000000000000:task/studio-local-ecs/66bbdf51c99c407ca9230181f97cc698: Status 404: {"message":"image with reference localhost:4577/000000000000/eu-west-2/rag-agent-studio/api:bootstrap was found but does not provide the spe
+
+# Task container environment: no ECS_AGENT_URI, no SSL_CERT_FILE
+AWS_ENDPOINT_URL=http://floci-spike:4577; ECS_CONTAINER_METADATA_URI_V4 set; GENERAL_QUEUE_URL=https://floci-spike:4566/000000000000/studio-local-queue-general; mem limit 8 GiB (task memory), NanoCpus 2e9 (task cpu); no /etc/floci-ca-bundle.pem in the container
+PUT <floci>/api/<id>/task-protection/v1/state -> 404; PUT <floci>/v4/<id>/task-protection/v1/state -> 404

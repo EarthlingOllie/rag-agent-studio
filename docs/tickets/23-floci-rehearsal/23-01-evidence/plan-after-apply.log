@@ -1,0 +1,15 @@
+# terraform plan -detailed-exitcode after the final apply (rc=2): the drift Floci causes
+  # module.cache.aws_elasticache_replication_group.this will be updated in-place
+      + maintenance_window         = "sun:03:30-sun:04:30"
+        # (39 unchanged attributes hidden)
+        # (1 unchanged block hidden)
+  # module.database.aws_db_instance.this will be updated in-place
+      ~ port                                  = 7001 -> 5432
+        # (74 unchanged attributes hidden)
+  # module.kms.aws_kms_key.this["credentials"] will be updated in-place
+      ~ rotation_period_in_days            = 0 -> 365
+        # (15 unchanged attributes hidden)
+  # module.kms.aws_kms_key.this["data"] will be updated in-place
+      ~ rotation_period_in_days            = 0 -> 365
+        # (15 unchanged attributes hidden)
+Plan: 0 to add, 4 to change, 0 to destroy.

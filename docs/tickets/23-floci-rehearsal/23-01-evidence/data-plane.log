@@ -1,0 +1,12 @@
+# Endpoints Floci gave the cache and database; pgvector in the emulated RDS; the ECR auth token proxyEndpoint
+cache {'Address': 'floci-spike', 'Port': 6379} transit True required auth True
+db {'Address': '172.29.0.2', 'Port': 7001, 'HostedZoneId': 'Z2R2ITUGPM61AM'} postgres 16 gp3 None
+CREATE EXTENSION
+0.8.1
+off
+http://000000000000.dkr.ecr.eu-west-2.localhost:4577
+AWS
+subject=CN = localhost
+issuer=CN = Floci Local CA
+X509v3 Subject Alternative Name: 
+    DNS:localhost, IP Address:127.0.0.1, IP Address:0.0.0.0, DNS:localhost.floci.io, DNS:host.docker.internal, IP Address:0:0:0:0:0:0:0:1, DNS:floci-spike
