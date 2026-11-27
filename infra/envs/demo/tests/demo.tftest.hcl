@@ -345,3 +345,52 @@ run "rejects_an_unknown_environment" {
 
   expect_failures = [var.environment]
 }
+
+# Ticket 23-02 added module inputs a local environment sets (spec 23). The demo sets none of them, so with their
+# defaults its plan is what it was before: each module reports what it built, and it matches the pre-23-02 values.
+run "the_local_environment_inputs_leave_the_demo_unchanged" {
+  command = apply
+
+  assert {
+    condition     = module.ecs.cpu_architecture == "ARM64"
+    error_message = "Every demo task definition must stay ARM64 (Graviton)."
+  }
+
+  assert {
+    condition = jsonencode({ for k, e in module.ecs.task_environment : k => sort(keys(e)) }) == jsonencode({
+      api              = ["AWS_REGION", "BEDROCK_PLATFORM_PRINCIPAL", "DATABASE_HOST", "DATABASE_NAME", "DATABASE_PORT", "DATABASE_TLS", "DATABASE_USER", "DEMO_PAGES", "ENVIRONMENT", "GENERAL_QUEUE_NAME", "GENERAL_QUEUE_URL", "KEY_WRAPPER", "KMS_KEY_ID", "OBJECT_STORE", "OBJECT_STORE_BUCKET", "OBJECT_STORE_REGION", "REDIS_HOST", "REDIS_PORT", "REDIS_TLS", "RUNS_QUEUE_NAME", "RUNS_QUEUE_URL", "STUDIO_URL", "TRUSTED_PROXIES"]
+      "worker-general" = ["AWS_REGION", "DATABASE_HOST", "DATABASE_NAME", "DATABASE_PORT", "DATABASE_TLS", "DATABASE_USER", "ENVIRONMENT", "GENERAL_QUEUE_NAME", "GENERAL_QUEUE_URL", "KEY_WRAPPER", "KMS_KEY_ID", "OBJECT_STORE", "OBJECT_STORE_BUCKET", "OBJECT_STORE_REGION", "REDIS_HOST", "REDIS_PORT", "REDIS_TLS", "RUNS_QUEUE_NAME", "RUNS_QUEUE_URL", "STUDIO_URL"]
+      "worker-runs"    = ["AWS_REGION", "DATABASE_HOST", "DATABASE_NAME", "DATABASE_PORT", "DATABASE_TLS", "DATABASE_USER", "ENVIRONMENT", "GENERAL_QUEUE_NAME", "GENERAL_QUEUE_URL", "KEY_WRAPPER", "KMS_KEY_ID", "OBJECT_STORE", "OBJECT_STORE_BUCKET", "OBJECT_STORE_REGION", "REDIS_HOST", "REDIS_PORT", "REDIS_TLS", "RUNS_QUEUE_NAME", "RUNS_QUEUE_URL", "STUDIO_URL"]
+      beat             = ["AWS_REGION", "DATABASE_HOST", "DATABASE_NAME", "DATABASE_PORT", "DATABASE_TLS", "DATABASE_USER", "ENVIRONMENT", "GENERAL_QUEUE_NAME", "GENERAL_QUEUE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_TLS", "RUNS_QUEUE_NAME", "RUNS_QUEUE_URL"]
+      migrate          = ["AWS_REGION", "DATABASE_HOST", "DATABASE_NAME", "DATABASE_PORT", "DATABASE_TLS", "DATABASE_USER", "ENVIRONMENT", "GENERAL_QUEUE_NAME", "GENERAL_QUEUE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_TLS", "RUNS_QUEUE_NAME", "RUNS_QUEUE_URL"]
+      seed             = ["AWS_REGION", "DATABASE_HOST", "DATABASE_NAME", "DATABASE_PORT", "DATABASE_TLS", "DATABASE_USER", "ENVIRONMENT", "GENERAL_QUEUE_NAME", "GENERAL_QUEUE_URL", "KEY_WRAPPER", "KMS_KEY_ID", "OBJECT_STORE", "OBJECT_STORE_BUCKET", "OBJECT_STORE_REGION", "REDIS_HOST", "REDIS_PORT", "REDIS_TLS", "RUNS_QUEUE_NAME", "RUNS_QUEUE_URL", "STUDIO_URL"]
+    })
+    error_message = "The demo's containers must get exactly the module's settings, with no extra environment."
+  }
+
+  assert {
+    condition     = module.database.port == 5432 && alltrue([for e in values(module.ecs.task_environment) : e.DATABASE_PORT == "5432"])
+    error_message = "The demo database must stay on Postgres's port 5432, and every container must be told so."
+  }
+
+  assert {
+    condition     = module.kms.rotation_period_in_days == { credentials = 365, data = 365 }
+    error_message = "Both demo KMS keys must keep a one-year rotation period."
+  }
+
+  assert {
+    condition     = module.cache.maintenance_window == "sun:03:30-sun:04:30"
+    error_message = "The demo cache must keep its Sunday 03:30-04:30 UTC maintenance window."
+  }
+
+  assert {
+    condition     = module.cdn.custom_error_responses == [] && module.cdn.api_origin_domain == module.ecs.alb_dns_name
+    error_message = "The demo distribution must have no custom error response and must send the API's paths to the ALB."
+  }
+
+  assert {
+    condition     = module.cdn.distribution_domain_name == "d111111abcdef8.cloudfront.net"
+    error_message = "The cdn module must report the distribution's own domain."
+  }
+}
+

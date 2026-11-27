@@ -2031,3 +2031,147 @@ run "only_the_worker_pools_may_set_task_protection_and_only_on_their_own_tasks" 
     error_message = "A pool may protect only tasks carrying its own service's Name tag (propagated from the service), so one pool can't unprotect the other's tasks; the ECS agent's endpoint acts on the calling task alone."
   }
 }
+
+# Ticket 23-02: inputs a local environment needs to differ from the demo without the module branching on it.
+run "cpu_architecture_reaches_every_task_definition" {
+  command = plan
+
+  variables {
+    cpu_architecture = "X86_64"
+  }
+
+  assert {
+    condition = alltrue([for t in concat(values(aws_ecs_task_definition.this), [aws_ecs_task_definition.migrate, aws_ecs_task_definition.seed]) :
+      one(t.runtime_platform).cpu_architecture == "X86_64" && one(t.runtime_platform).operating_system_family == "LINUX"
+    ])
+    error_message = "cpu_architecture must reach every task definition: the four services, the migration and the seed task (23-01: an emulator on an Intel host refuses ARM64 tasks)."
+  }
+
+  assert {
+    condition     = output.cpu_architecture == "X86_64"
+    error_message = "The module must report the architecture its task definitions run on."
+  }
+}
+
+run "cpu_architecture_defaults_to_arm64_everywhere" {
+  command = plan
+
+  assert {
+    condition = alltrue([for t in concat(values(aws_ecs_task_definition.this), [aws_ecs_task_definition.migrate, aws_ecs_task_definition.seed]) :
+      one(t.runtime_platform).cpu_architecture == "ARM64"
+    ])
+    error_message = "Every task definition must stay ARM64 (Graviton) by default."
+  }
+
+  assert {
+    condition     = output.cpu_architecture == "ARM64"
+    error_message = "The module must report ARM64 by default."
+  }
+}
+
+run "rejects_an_unknown_cpu_architecture" {
+  command = plan
+
+  variables {
+    cpu_architecture = "arm64"
+  }
+
+  expect_failures = [var.cpu_architecture]
+}
+
+run "no_extra_environment_by_default" {
+  command = plan
+
+  assert {
+    condition     = alltrue([for e in values(output.task_environment) : !contains(keys(e), "SSL_CERT_FILE")])
+    error_message = "Without extra_environment, no container gets any setting beyond the module's own."
+  }
+}
+
+run "extra_environment_reaches_every_container_and_nothing_else" {
+  command = plan
+
+  variables {
+    extra_environment = { SSL_CERT_FILE = "/etc/ssl/certs/emulator-ca.pem", AWS_ENDPOINT_URL = "https://floci:4566" }
+  }
+
+  assert {
+    condition = alltrue([for t in concat(values(aws_ecs_task_definition.this), [aws_ecs_task_definition.migrate, aws_ecs_task_definition.seed]) :
+      contains(jsondecode(t.container_definitions)[0].environment, { name = "SSL_CERT_FILE", value = "/etc/ssl/certs/emulator-ca.pem" }) &&
+      contains(jsondecode(t.container_definitions)[0].environment, { name = "AWS_ENDPOINT_URL", value = "https://floci:4566" })
+    ])
+    error_message = "extra_environment must reach the environment of every container: the four services, the migration and the seed task."
+  }
+
+  assert {
+    condition = alltrue([for k in ["api", "worker-general", "worker-runs", "beat", "migrate", "seed"] :
+      output.task_environment[k].SSL_CERT_FILE == "/etc/ssl/certs/emulator-ca.pem"
+    ])
+    error_message = "The task_environment output must show the extra variables, as the containers get them."
+  }
+
+  assert {
+    condition = alltrue([for t in concat(values(aws_ecs_task_definition.this), [aws_ecs_task_definition.migrate, aws_ecs_task_definition.seed]) :
+      !anytrue([for s in jsondecode(t.container_definitions)[0].secrets : contains(["SSL_CERT_FILE", "AWS_ENDPOINT_URL"], s.name)])
+    ])
+    error_message = "Extra variables are plain settings: they must never become secrets."
+  }
+
+  assert {
+    condition     = { for k, e in output.task_environment : k => { for name, value in e : name => value if !contains(["SSL_CERT_FILE", "AWS_ENDPOINT_URL"], name) } } == run.no_extra_environment_by_default.task_environment
+    error_message = "Extra variables must only add to the module's settings, leaving every other setting as it was."
+  }
+}
+
+run "rejects_extra_environment_that_overrides_a_module_setting" {
+  command = plan
+
+  variables {
+    extra_environment = { REDIS_TLS = "false" }
+  }
+
+  expect_failures = [aws_ecs_task_definition.this]
+}
+
+run "rejects_an_extra_environment_name_that_is_not_a_variable_name" {
+  command = plan
+
+  variables {
+    extra_environment = { "not a name" = "x" }
+  }
+
+  expect_failures = [var.extra_environment]
+}
+
+run "accepts_the_emulators_path_style_registry" {
+  command = plan
+
+  variables {
+    image_repository_url = "localhost:4566/000000000000/eu-west-2/rag-agent-studio/api"
+  }
+
+  assert {
+    condition     = alltrue([for t in values(aws_ecs_task_definition.this) : jsondecode(t.container_definitions)[0].image == "localhost:4566/000000000000/eu-west-2/rag-agent-studio/api:0123abc"])
+    error_message = "The services must run the image from the emulator's path-style registry when given one (23-01)."
+  }
+}
+
+run "rejects_a_localhost_registry_without_account_and_region" {
+  command = plan
+
+  variables {
+    image_repository_url = "localhost:4566/rag-agent-studio/api"
+  }
+
+  expect_failures = [var.image_repository_url]
+}
+
+run "rejects_a_path_style_registry_on_another_host" {
+  command = plan
+
+  variables {
+    image_repository_url = "registry.example.com:4566/000000000000/eu-west-2/rag-agent-studio/api"
+  }
+
+  expect_failures = [var.image_repository_url]
+}

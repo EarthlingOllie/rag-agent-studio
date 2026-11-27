@@ -116,7 +116,7 @@ resource "aws_ecs_task_definition" "migrate" {
   execution_role_arn       = aws_iam_role.migrate_execution.arn
 
   runtime_platform {
-    cpu_architecture        = "ARM64"
+    cpu_architecture        = var.cpu_architecture
     operating_system_family = "LINUX"
   }
 
@@ -125,7 +125,7 @@ resource "aws_ecs_task_definition" "migrate" {
     image                  = local.image
     command                = ["alembic", "upgrade", "head"]
     essential              = true
-    environment            = [for name, value in local.migrate_environment : { name = name, value = value }]
+    environment            = [for name, value in local.container_environment["migrate"] : { name = name, value = value }]
     secrets                = [for name, arn in local.migrate_secrets : { name = name, valueFrom = arn }]
     readonlyRootFilesystem = true
     mountPoints            = [{ sourceVolume = "tmp", containerPath = "/tmp", readOnly = false }]

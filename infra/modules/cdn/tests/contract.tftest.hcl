@@ -144,6 +144,11 @@ run "a_function_gives_the_studio_spa_fallback_routing" {
     condition     = length(aws_cloudfront_distribution.this.custom_error_response) == 0
     error_message = "No distribution-wide error page: it would turn the API's 403s and 404s into the Studio's HTML."
   }
+
+  assert {
+    condition     = output.custom_error_responses == []
+    error_message = "The module must report that the distribution has no custom error response by default."
+  }
 }
 
 run "caches_static_paths" {
@@ -505,4 +510,88 @@ run "rejects_an_invalid_prefix" {
   }
 
   expect_failures = [var.name_prefix]
+}
+
+# Ticket 23-02: inputs a local environment needs to differ from the demo without the module branching on it.
+run "custom_error_responses_appear_only_when_given" {
+  command = plan
+
+  variables {
+    custom_error_responses = [{ error_code = 404, response_code = 200, response_page_path = "/index.html" }]
+  }
+
+  assert {
+    condition = [for r in aws_cloudfront_distribution.this.custom_error_response : {
+      error = r.error_code, response = r.response_code, page = r.response_page_path, ttl = r.error_caching_min_ttl
+    }] == [{ error = 404, response = 200, page = "/index.html", ttl = 0 }]
+    error_message = "Each custom error response given must reach the distribution, never cached by default (an emulator that stores CloudFront Functions without running them needs a 404-to-index one, ticket 23-01)."
+  }
+
+  assert {
+    condition     = output.custom_error_responses == [{ error_code = 404, response_code = 200, response_page_path = "/index.html", error_caching_min_ttl = 0 }]
+    error_message = "The module must report the custom error responses it gave the distribution."
+  }
+}
+
+run "rejects_a_custom_error_page_without_a_leading_slash" {
+  command = plan
+
+  variables {
+    custom_error_responses = [{ error_code = 404, response_code = 200, response_page_path = "index.html" }]
+  }
+
+  expect_failures = [var.custom_error_responses]
+}
+
+run "outputs_the_distributions_own_domain_even_with_a_custom_one" {
+  command = apply
+
+  variables {
+    domain_name = "studio.example.com"
+  }
+
+  assert {
+    condition     = output.distribution_domain_name == "d111111abcdef8.cloudfront.net" && output.domain_name == "studio.example.com"
+    error_message = "distribution_domain_name must be the distribution's own domain, whatever domain the Studio is served on."
+  }
+}
+
+run "the_api_origin_defaults_to_the_alb" {
+  command = plan
+
+  assert {
+    condition     = output.api_origin_domain == var.alb_dns_name && one([for o in aws_cloudfront_distribution.this.origin : o.domain_name if o.origin_id == "api"]) == var.alb_dns_name
+    error_message = "Without an override the API origin must be the ALB's DNS name."
+  }
+}
+
+run "the_api_origin_can_be_overridden" {
+  command = plan
+
+  variables {
+    alb_dns_name      = "studio-local-ecs-0123456789abcdef.elb.floci"
+    api_origin_domain = "localhost"
+  }
+
+  assert {
+    condition     = output.api_origin_domain == "localhost" && one([for o in aws_cloudfront_distribution.this.origin : o.domain_name if o.origin_id == "api"]) == "localhost"
+    error_message = "An api_origin_domain override must become the API origin, accepting localhost (an emulator refuses the ALB's name as an origin, ticket 23-01)."
+  }
+
+  assert {
+    condition = alltrue([for o in aws_cloudfront_distribution.this.origin : (
+      o.domain_name == var.static_bucket_regional_domain_name && o.origin_access_control_id == var.static_origin_access_control_id
+    ) if o.origin_id == "static"])
+    error_message = "The override must change the API origin and nothing else."
+  }
+}
+
+run "rejects_an_api_origin_override_that_is_not_a_hostname" {
+  command = plan
+
+  variables {
+    api_origin_domain = "http://localhost:4566"
+  }
+
+  expect_failures = [var.api_origin_domain]
 }

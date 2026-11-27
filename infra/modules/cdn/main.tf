@@ -11,6 +11,7 @@ locals {
   static_paths  = ["/embed.js", "/widget/assets/*"]
 
   custom_domain = var.domain_name != null
+  api_origin    = coalesce(var.api_origin_domain, var.alb_dns_name)
 }
 
 # Static builds have content-hashed asset names; index.html and embed.js are invalidated by every deploy (spec 09).
@@ -173,7 +174,7 @@ resource "aws_cloudfront_distribution" "this" {
   # Plain HTTP to the ALB, which admits only CloudFront's prefix list carrying the secret header (ADR-0011).
   origin {
     origin_id   = "api"
-    domain_name = var.alb_dns_name
+    domain_name = local.api_origin
 
     custom_origin_config {
       origin_protocol_policy   = "http-only"
@@ -234,6 +235,17 @@ resource "aws_cloudfront_distribution" "this" {
       compress                   = true
       cache_policy_id            = aws_cloudfront_cache_policy.static.id
       response_headers_policy_id = aws_cloudfront_response_headers_policy.static.id
+    }
+  }
+
+  dynamic "custom_error_response" {
+    for_each = var.custom_error_responses
+
+    content {
+      error_code            = custom_error_response.value.error_code
+      response_code         = custom_error_response.value.response_code
+      response_page_path    = custom_error_response.value.response_page_path
+      error_caching_min_ttl = custom_error_response.value.error_caching_min_ttl
     }
   }
 

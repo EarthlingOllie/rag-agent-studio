@@ -39,12 +39,40 @@ variable "static_origin_access_control_id" {
 }
 
 variable "alb_dns_name" {
-  description = "DNS name of the ALB (the ecs module's output): the origin for /api/* and /widget/a/*."
+  description = "DNS name of the ALB (the ecs module's output): the origin for /api/* and /widget/a/*, unless api_origin_domain overrides it."
   type        = string
 
   validation {
-    condition     = can(regex("^[a-zA-Z0-9.-]+\\.elb\\.amazonaws\\.com$", var.alb_dns_name))
-    error_message = "alb_dns_name must be an ALB DNS name ending in .elb.amazonaws.com."
+    condition     = var.api_origin_domain != null || can(regex("^[a-zA-Z0-9.-]+\\.elb\\.amazonaws\\.com$", var.alb_dns_name))
+    error_message = "alb_dns_name must be an ALB DNS name ending in .elb.amazonaws.com (unless api_origin_domain overrides the origin)."
+  }
+}
+
+variable "api_origin_domain" {
+  description = "Optional address CloudFront sends /api/* and /widget/a/* to instead of alb_dns_name. Null (the default) uses the ALB's name. An emulator refuses the ALB's name as an origin and needs localhost (ticket 23-01)."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.api_origin_domain == null ? true : can(regex("^([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)*[a-z0-9]([a-z0-9-]*[a-z0-9])?$", var.api_origin_domain))
+    error_message = "api_origin_domain must be a lowercase hostname such as localhost, with no scheme, port or path, or null."
+  }
+}
+
+variable "custom_error_responses" {
+  description = "Optional distribution-wide custom error responses. None by default: on AWS one would turn the API's 403s and 404s into the Studio's HTML, and the SPA fallback function handles deep links. An emulator that stores CloudFront Functions without running them needs a 404-to-index one (ticket 23-01)."
+  type = list(object({
+    error_code            = number
+    response_code         = optional(number)
+    response_page_path    = optional(string)
+    error_caching_min_ttl = optional(number, 0)
+  }))
+  default  = []
+  nullable = false
+
+  validation {
+    condition     = alltrue([for r in var.custom_error_responses : r.response_page_path == null ? true : startswith(r.response_page_path, "/")])
+    error_message = "Each custom error response's response_page_path must start with /."
   }
 }
 

@@ -11,6 +11,14 @@ mock_provider "aws" {
       partition = "aws"
     }
   }
+
+  # What an emulator reads back for a rotation period nobody set (ticket 23-01: Floci gives 0). The mock fills it in
+  # only where the configuration leaves the attribute unset.
+  mock_resource "aws_kms_key" {
+    defaults = {
+      rotation_period_in_days = 0
+    }
+  }
 }
 
 variables {
@@ -180,4 +188,40 @@ run "rejects_an_invalid_prefix" {
   }
 
   expect_failures = [var.name_prefix]
+}
+
+# Ticket 23-02: an emulator reads the rotation period back as 0, so a second plan would show a change on every key
+# unless the environment can leave it unset. Rotation itself stays on.
+run "the_rotation_period_may_be_left_unset" {
+  command   = apply
+  state_key = "rotation-period-unset" # Fresh keys, not the ones the runs above created.
+
+  variables {
+    rotation_period_in_days = null
+  }
+
+  assert {
+    condition     = alltrue([for k in aws_kms_key.this : k.enable_key_rotation && k.rotation_period_in_days == 0])
+    error_message = "With rotation_period_in_days null, every key must still rotate but the module must not set a period (the provider reads back whatever the service stores)."
+  }
+
+  assert {
+    condition     = output.rotation_period_in_days == { credentials = 0, data = 0 }
+    error_message = "The module must report each key's rotation period as the service stores it."
+  }
+}
+
+run "the_rotation_period_is_set_by_default" {
+  command   = apply
+  state_key = "rotation-period-default"
+
+  assert {
+    condition     = alltrue([for k in aws_kms_key.this : k.rotation_period_in_days == 365])
+    error_message = "By default every key's rotation period must be set to a year."
+  }
+
+  assert {
+    condition     = output.rotation_period_in_days == { credentials = 365, data = 365 }
+    error_message = "The module must report each key's rotation period."
+  }
 }

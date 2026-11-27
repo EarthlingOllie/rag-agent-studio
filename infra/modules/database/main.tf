@@ -4,8 +4,6 @@ locals {
   module_name = "database"
   name        = "${var.name_prefix}-${local.module_name}"
   tags        = merge(var.tags, { Module = local.module_name, ManagedBy = "terraform" })
-
-  port = 5432
 }
 
 resource "aws_db_subnet_group" "this" {
@@ -32,8 +30,8 @@ resource "aws_vpc_security_group_ingress_rule" "clients" {
   description                  = "Postgres from ${each.key}"
   referenced_security_group_id = each.value
   ip_protocol                  = "tcp"
-  from_port                    = local.port
-  to_port                      = local.port
+  from_port                    = var.port
+  to_port                      = var.port
 
   tags = merge(local.tags, { Name = "${local.name}-from-${each.key}" })
 }
@@ -108,7 +106,7 @@ resource "aws_db_instance" "this" {
   db_subnet_group_name   = aws_db_subnet_group.this.name
   vpc_security_group_ids = [aws_security_group.this.id]
   parameter_group_name   = aws_db_parameter_group.this.name
-  port                   = local.port
+  port                   = var.port
   publicly_accessible    = false
   multi_az               = var.multi_az
 

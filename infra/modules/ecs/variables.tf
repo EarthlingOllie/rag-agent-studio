@@ -58,12 +58,15 @@ variable "private_subnet_ids" {
 # --- Image -------------------------------------------------------------------------------------------------------
 
 variable "image_repository_url" {
-  description = "ECR repository URL of the backend image that the API, both worker pools and Beat all run (the ecr module's API repository)."
+  description = "ECR repository URL of the backend image that the API, both worker pools and Beat all run (the ecr module's API repository). An emulator's path-style registry, localhost:<port>/<account>/<region>/<repository>, is accepted too (ticket 23-01)."
   type        = string
 
   validation {
-    condition     = can(regex("^[0-9]{12}\\.dkr\\.ecr\\.[a-z0-9-]+\\.amazonaws\\.com/[a-z0-9._/-]+$", var.image_repository_url))
-    error_message = "image_repository_url must be an ECR repository URL, for example 123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api."
+    condition = (
+      can(regex("^[0-9]{12}\\.dkr\\.ecr\\.[a-z0-9-]+\\.amazonaws\\.com/[a-z0-9._/-]+$", var.image_repository_url)) ||
+      can(regex("^localhost:[0-9]{1,5}/[0-9]{12}/[a-z0-9-]+/[a-z0-9._/-]+$", var.image_repository_url))
+    )
+    error_message = "image_repository_url must be an ECR repository URL, for example 123456789012.dkr.ecr.eu-west-2.amazonaws.com/rag-agent-studio/api, or an emulator's path-style one, localhost:4566/000000000000/eu-west-2/rag-agent-studio/api."
   }
 }
 
@@ -84,6 +87,29 @@ variable "image_tag" {
   validation {
     condition     = can(regex("^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$", var.image_tag)) && var.image_tag != "latest"
     error_message = "image_tag must be a valid Docker tag other than latest (repositories are immutable, so latest would never move)."
+  }
+}
+
+variable "cpu_architecture" {
+  description = "CPU architecture of every task definition (the services, the migration and the seed task). ARM64 (Graviton) on AWS; an emulator on an Intel host needs X86_64 (ticket 23-01). The image must be built for it."
+  type        = string
+  default     = "ARM64"
+
+  validation {
+    condition     = contains(["ARM64", "X86_64"], var.cpu_architecture)
+    error_message = "cpu_architecture must be ARM64 or X86_64, the values Fargate accepts."
+  }
+}
+
+variable "extra_environment" {
+  description = "Plain environment variables added to every container the module runs (the four services, the migration and the seed task), for settings an environment needs beyond the module's, such as SSL_CERT_FILE pointing at an emulator's CA (ticket 23-02). They may not replace a setting the module sets. Never secrets: values are stored in the task definitions in plain text."
+  type        = map(string)
+  default     = {}
+  nullable    = false
+
+  validation {
+    condition     = alltrue([for name in keys(var.extra_environment) : can(regex("^[A-Za-z_][A-Za-z0-9_]*$", name))])
+    error_message = "extra_environment names must be environment variable names: letters, digits and underscores, not starting with a digit."
   }
 }
 

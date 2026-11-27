@@ -122,8 +122,8 @@ output "seed_execution_role_policy" {
 }
 
 output "task_environment" {
-  description = "Plain environment variables of each container (api, worker-general, worker-runs, beat, migrate, seed), keyed by name. Secrets are not included: they are injected by reference to Secrets Manager."
-  value       = merge(local.environment, { migrate = local.migrate_environment, seed = local.seed_environment })
+  description = "Plain environment variables of each container (api, worker-general, worker-runs, beat, migrate, seed), keyed by name, extra_environment included. Secrets are not included: they are injected by reference to Secrets Manager."
+  value       = local.container_environment
 }
 
 output "capacity_providers" {
@@ -134,4 +134,9 @@ output "capacity_providers" {
 output "scalable_targets" {
   description = "Each autoscaled service's Application Auto Scaling resource ID and its minimum and maximum task counts, keyed by service (ticket 22-05). Beat is not scaled."
   value       = { for k, t in aws_appautoscaling_target.this : k => { resource_id = t.resource_id, min = t.min_capacity, max = t.max_capacity } }
+}
+
+output "cpu_architecture" {
+  description = "CPU architecture every task definition runs on (ARM64 or X86_64): the platform the backend image must be built for."
+  value       = one(distinct([for t in concat(values(aws_ecs_task_definition.this), [aws_ecs_task_definition.migrate, aws_ecs_task_definition.seed]) : one(t.runtime_platform).cpu_architecture]))
 }

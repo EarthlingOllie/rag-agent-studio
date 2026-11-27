@@ -19,13 +19,13 @@ variable "tags" {
 }
 
 variable "rotation_period_in_days" {
-  description = "Days between automatic rotations of each key. AWS allows 90 to 2560."
+  description = "Days between automatic rotations of each key. AWS allows 90 to 2560. Null leaves the period to the service (AWS's default is 365) while rotation stays on: an emulator reads a set period back as 0, so a second plan would show a change (ticket 23-01)."
   type        = number
   default     = 365
 
   validation {
-    condition     = var.rotation_period_in_days >= 90 && var.rotation_period_in_days <= 2560
-    error_message = "rotation_period_in_days must be between 90 and 2560."
+    condition     = var.rotation_period_in_days == null ? true : var.rotation_period_in_days >= 90 && var.rotation_period_in_days <= 2560
+    error_message = "rotation_period_in_days must be between 90 and 2560, or null."
   }
 }
 

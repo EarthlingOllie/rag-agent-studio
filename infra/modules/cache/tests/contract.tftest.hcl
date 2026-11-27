@@ -1,7 +1,15 @@
 # Module contract for the cache module (ticket 09-03), at the module seam, with a mocked AWS provider.
 # Runs that compare resource IDs use `command = apply`: the mock provider only invents IDs at apply time,
 # and it never calls AWS, so apply here creates nothing real.
-mock_provider "aws" {}
+mock_provider "aws" {
+  # Stands for the window the service picks when the module sets none (ticket 23-02); the mock fills it in only where
+  # the configuration leaves the attribute unset.
+  mock_resource "aws_elasticache_replication_group" {
+    defaults = {
+      maintenance_window = "service-picked"
+    }
+  }
+}
 
 variables {
   name_prefix = "studio-demo"
@@ -323,4 +331,49 @@ run "rejects_an_invalid_prefix" {
   }
 
   expect_failures = [var.name_prefix]
+}
+
+# Ticket 23-02: an emulator stores no maintenance window (23-01), so a second plan would show a change unless the
+# environment can leave it unset. Without the mock default the window would read back unknown, not absent.
+run "the_maintenance_window_is_set_by_default" {
+  command = apply
+
+  assert {
+    condition     = aws_elasticache_replication_group.this.maintenance_window == "sun:03:30-sun:04:30"
+    error_message = "The maintenance window must default to Sunday 03:30-04:30 UTC, after the snapshot window."
+  }
+
+  assert {
+    condition     = output.maintenance_window == "sun:03:30-sun:04:30"
+    error_message = "The module must report the maintenance window."
+  }
+}
+
+run "the_maintenance_window_may_be_left_unset" {
+  command   = apply
+  state_key = "maintenance-window-unset" # A fresh replication group, not the one the runs above created.
+
+  variables {
+    maintenance_window = null
+  }
+
+  assert {
+    condition     = aws_elasticache_replication_group.this.maintenance_window == "service-picked"
+    error_message = "With maintenance_window null, the module must leave the window to the service."
+  }
+
+  assert {
+    condition     = output.maintenance_window == "service-picked"
+    error_message = "The module must report the window the service picked."
+  }
+}
+
+run "rejects_a_malformed_maintenance_window" {
+  command = plan
+
+  variables {
+    maintenance_window = "sunday 3am"
+  }
+
+  expect_failures = [var.maintenance_window]
 }

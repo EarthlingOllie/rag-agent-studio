@@ -137,7 +137,7 @@ resource "aws_ecs_task_definition" "seed" {
   execution_role_arn       = aws_iam_role.seed_execution.arn
 
   runtime_platform {
-    cpu_architecture        = "ARM64"
+    cpu_architecture        = var.cpu_architecture
     operating_system_family = "LINUX"
   }
 
@@ -146,7 +146,7 @@ resource "aws_ecs_task_definition" "seed" {
     image                  = local.image
     command                = ["python", "-m", "app.seed"]
     essential              = true
-    environment            = [for name, value in local.seed_environment : { name = name, value = value }]
+    environment            = [for name, value in local.container_environment["seed"] : { name = name, value = value }]
     secrets                = [for name, arn in local.seed_secrets : { name = name, valueFrom = arn }]
     readonlyRootFilesystem = true
     mountPoints            = [{ sourceVolume = "tmp", containerPath = "/tmp", readOnly = false }]

@@ -272,6 +272,16 @@ locals {
     beat             = local.base_environment
   }
 
+  # What each container (the services, the migration and the seed task) is given: the module's settings plus the
+  # environment's extra_environment (ticket 23-02), which may add settings but never replace one of the module's.
+  module_environment = merge(local.environment, { migrate = local.migrate_environment, seed = local.seed_environment })
+  container_environment = {
+    for k, e in local.module_environment : k => merge(e, var.extra_environment)
+  }
+  extra_environment_overrides = sort(setintersection(
+    toset(keys(var.extra_environment)), toset(flatten([for e in values(local.module_environment) : keys(e)])),
+  ))
+
   # Each service gets only the secrets it uses. ECS reads them at task start with the execution role.
   # LOCAL_KEY_WRAPPER_KEY signs widget tokens; every process's settings require it.
   logfire_secret     = var.logfire_token_secret_arn == null ? {} : { LOGFIRE_TOKEN = var.logfire_token_secret_arn }
@@ -376,7 +386,7 @@ resource "aws_ecs_task_definition" "this" {
   execution_role_arn       = aws_iam_role.execution[each.key].arn
 
   runtime_platform {
-    cpu_architecture        = "ARM64"
+    cpu_architecture        = var.cpu_architecture
     operating_system_family = "LINUX"
   }
 
@@ -386,7 +396,7 @@ resource "aws_ecs_task_definition" "this" {
     command                = local.commands[each.key]
     essential              = true
     portMappings           = each.key == "api" ? [{ containerPort = local.api_port, protocol = "tcp" }] : []
-    environment            = [for name, value in local.environment[each.key] : { name = name, value = value }]
+    environment            = [for name, value in local.container_environment[each.key] : { name = name, value = value }]
     secrets                = [for name, arn in local.secrets[each.key] : { name = name, valueFrom = arn }]
     readonlyRootFilesystem = true
     mountPoints            = [{ sourceVolume = "tmp", containerPath = "/tmp", readOnly = false }]
@@ -406,6 +416,13 @@ resource "aws_ecs_task_definition" "this" {
   }
 
   tags = merge(local.tags, { Name = "${local.name}-${each.key}" })
+
+  lifecycle {
+    precondition {
+      condition     = length(local.extra_environment_overrides) == 0
+      error_message = "extra_environment may only add settings; it must not replace the module's own: ${join(", ", local.extra_environment_overrides)}."
+    }
+  }
 }
 
 # --- Edge: an ALB only CloudFront can reach, forwarding only requests with the secret header (ADR-0011) -----------
