@@ -339,3 +339,28 @@ run "rejects_an_invalid_prefix" {
 
   expect_failures = [var.name_prefix]
 }
+
+# Ticket 23-04: an emulator serves the distribution over plain HTTP on a *.localhost name with its own port; that origin
+# is accepted, while an http:// origin anywhere else is still refused.
+run "documents_cors_accepts_an_emulators_localhost_origin" {
+  command = plan
+
+  variables {
+    documents_cors_allowed_origin = "http://e2example0abcd.cloudfront.localhost:4566"
+  }
+
+  assert {
+    condition     = one(one(aws_s3_bucket_cors_configuration.documents).cors_rule).allowed_origins == toset(["http://e2example0abcd.cloudfront.localhost:4566"])
+    error_message = "The emulator's distribution origin must be the one CORS origin."
+  }
+}
+
+run "rejects_an_http_origin_with_a_port_outside_localhost" {
+  command = plan
+
+  variables {
+    documents_cors_allowed_origin = "http://d111111abcdef8.cloudfront.net:4566"
+  }
+
+  expect_failures = [var.documents_cors_allowed_origin]
+}

@@ -113,6 +113,18 @@ variable "extra_environment" {
   }
 }
 
+variable "api_extra_environment" {
+  description = "Plain environment variables added to the API's container only, after extra_environment, for settings only the API uses, such as the address presigned upload links name for an emulator's browser (ticket 23-04). The same rules as extra_environment: they may not replace a module setting, and never secrets."
+  type        = map(string)
+  default     = {}
+  nullable    = false
+
+  validation {
+    condition     = alltrue([for name in keys(var.api_extra_environment) : can(regex("^[A-Za-z_][A-Za-z0-9_]*$", name))])
+    error_message = "api_extra_environment names must be environment variable names: letters, digits and underscores, not starting with a digit."
+  }
+}
+
 # --- Sizing ------------------------------------------------------------------------------------------------------
 
 variable "task_sizes" {
@@ -391,12 +403,12 @@ variable "demo_pages" {
 }
 
 variable "studio_url" {
-  description = "The Studio's public HTTPS address (the cdn module's url). The API and the worker pools put it in links in emails."
+  description = "The Studio's public HTTPS address (the cdn module's url), or an emulator's http://<name>.localhost:<port> one. The API and the worker pools put it in links in emails."
   type        = string
 
   validation {
-    condition     = can(regex("^https://[a-z0-9.-]+$", var.studio_url))
-    error_message = "studio_url must be an https:// origin with no path, for example https://d111111abcdef8.cloudfront.net."
+    condition     = can(regex("^https://[a-z0-9.-]+$", var.studio_url)) || can(regex("^http://([a-z0-9-]+\\.)+localhost(:[0-9]{1,5})?$", var.studio_url))
+    error_message = "studio_url must be an https:// origin with no path, for example https://d111111abcdef8.cloudfront.net, or an emulator's http://<name>.localhost[:port] (ticket 23-04)."
   }
 }
 

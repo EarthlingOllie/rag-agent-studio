@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Rehearses the AWS deployment on this machine against Floci, an AWS emulator, with no AWS account (spec 23, ticket
-# 23-03). `make rehearse` runs `up`; `make rehearse-down` runs `down`.
+# 23-03). `make rehearse` runs `up`, `make rehearse-seed` runs `seed` and `make rehearse-down` runs `down`.
 #
 # up [image tag, default rehearsal]:
 #   1. checks Docker answers on its socket and has the memory the stack needs
@@ -14,6 +14,9 @@
 #   6. creates the state bucket in Floci, in the region, and installs the providers
 #   7. runs the unchanged scripts/deploy/deploy.sh on the local environment (infra/envs/local), which applies it, pushes
 #      the images, migrates, rolls the services, uploads the Studio and smoke-checks the emulated distribution
+#   8. plans again and fails unless the plan shows no changes, so emulator drift cannot hide real drift (ticket 23-04)
+# seed [--reset]: runs the unchanged scripts/deploy/seed.sh on the local environment: the seed as a one-off task, which
+#   prints the demo sign-in details (ticket 23-04).
 # down: destroys the local environment through the unchanged scripts/deploy/destroy.sh, then removes Floci, the
 #   containers and volumes it started, and its data. `make dev`'s Floci is not restarted (`make services` does that).
 #
@@ -30,14 +33,17 @@ region=eu-west-2
 state_bucket=studio-local-tfstate
 data_dir=.terraform-rehearsal
 
-usage() { echo "usage: $0 up [image tag, default rehearsal] | down" >&2; exit 2; }
+usage() { echo "usage: $0 up [image tag, default rehearsal] | seed [--reset] | down" >&2; exit 2; }
 command=${1:-}
-case "$#:$command" in
-  1:up | 2:up | 1:down) ;;
+case "$#:$command:${2:-}" in
+  1:up: | 2:up:* | 1:down: | 1:seed: | 2:seed:--reset) ;;
   *) usage ;;
 esac
-tag=${2:-rehearsal}
-[[ "$tag" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]] && [ "$tag" != latest ] || usage
+tag=rehearsal
+if [ "$command" = up ]; then
+  tag=${2:-rehearsal}
+  [[ "$tag" =~ ^[A-Za-z0-9_][A-Za-z0-9._-]{0,127}$ ]] && [ "$tag" != latest ] || usage
+fi
 
 step() { echo "==> $*"; }
 die() { echo "::error title=Rehearsal failed::$*" >&2; exit 1; }
@@ -86,6 +92,11 @@ point_tools_at_floci() {
   # .terraform folder that `make infra-check` and other plain terraform runs use.
   export TF_DATA_DIR=$data_dir
 }
+
+if [ "$command" = seed ]; then
+  point_tools_at_floci
+  exec "$here/seed.sh" ${2:+"$2"}
+fi
 
 if [ "$command" = down ]; then
   if [ -n "$(compose ps -q floci 2>/dev/null)" ]; then
@@ -162,4 +173,15 @@ REHEARSAL_TOOLS_NETWORK=bridge terraform -chdir="$root" init -backend=false -inp
 # --- 7. The unchanged deploy ----------------------------------------------------------------------------------------
 # No old worker task can be running a job in a fresh rehearsal, so the roll does not wait (0 minutes).
 "$here/deploy.sh" "$tag" 0 "$arch"
-echo "The rehearsal is up. \`make rehearse-down\` removes it."
+
+# --- 8. No drift ----------------------------------------------------------------------------------------------------
+# Every difference the emulator causes is an input of the local environment (ticket 23-04); a change here is new drift.
+step "Planning again: the plan after the apply must show no changes"
+plan_status=0
+terraform -chdir="$root" plan -input=false -detailed-exitcode "-var=image_tag=$tag" >"$work/plan.txt" 2>&1 || plan_status=$?
+case "$plan_status" in
+  0) echo "The plan after the apply shows no changes." ;;
+  2) cat "$work/plan.txt"; die "The plan after the apply is not empty (above): the emulator reads something back differently. Give infra/envs/local an input for it rather than ignoring it." ;;
+  *) cat "$work/plan.txt"; die "The plan after the apply failed (above)." ;;
+esac
+echo "The rehearsal is up. \`make rehearse-seed\` seeds the demo Organisation; \`make rehearse-down\` removes it."

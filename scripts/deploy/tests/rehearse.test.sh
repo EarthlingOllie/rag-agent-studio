@@ -18,7 +18,7 @@ repo=$work/repo
 mkdir -p "$repo/scripts/deploy/rehearsal" "$repo/infra/rehearsal" "$repo/infra/envs/local" "$repo/frontend"
 cp "$here/../rehearse.sh" "$repo/scripts/deploy/"
 touch "$repo/infra/rehearsal/compose.yml" "$repo/infra/rehearsal/ca.Dockerfile"
-for script in deploy.sh destroy.sh rehearsal/terraform rehearsal/aws; do
+for script in deploy.sh destroy.sh seed.sh rehearsal/terraform rehearsal/aws; do
   cat >"$repo/scripts/deploy/$script" <<'EOF'
 #!/usr/bin/env bash
 # Logs the call, with the settings the rehearsal must give it, and which terraform the PATH finds.
@@ -26,6 +26,8 @@ echo "$(basename "$0") $* | DEPLOY_ROOT=${DEPLOY_ROOT:-} TF_STATE_BUCKET=${TF_ST
 case "$(basename "$0") $*" in
   "aws s3api head-bucket"*) exit "${STUB_BUCKET_EXISTS_EXIT:-254}" ;;
   deploy.sh*) exit "${STUB_DEPLOY_EXIT:-0}" ;;
+  "terraform "*" plan "*) echo "  # module.cdn.aws_cloudfront_function.spa_fallback will be updated in-place"; exit "${STUB_PLAN_EXIT:-0}" ;;
+  seed.sh*) exit "${STUB_SEED_EXIT:-0}" ;;
   destroy.sh*) exit "${STUB_DESTROY_EXIT:-0}" ;;
 esac
 EOF
@@ -125,6 +127,31 @@ expect_status $name 0 || ok=0
 has $name "^terraform -chdir=$repo/infra/envs/local init -backend=false -input=false \| .*TF_DATA_DIR=.terraform-rehearsal " || ok=0
 [ $ok = 1 ] && echo "ok   $name"
 
+# Ticket 23-04: a second plan after the apply must show no changes, or emulator drift would hide real drift.
+name=up_checks_that_a_second_plan_after_the_apply_shows_no_changes
+run "$name" up
+ok=1
+expect_status $name 0 || ok=0
+before $name '^deploy.sh' "^terraform -chdir=$repo/infra/envs/local plan -input=false -detailed-exitcode -var=image_tag=rehearsal \| .*$tools TF_VAR_cpu_architecture=X86_64 REHEARSAL_TOOLS_NETWORK= TF_DATA_DIR=.terraform-rehearsal " || ok=0
+expect_output $name "The plan after the apply shows no changes" || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+name=up_fails_when_the_plan_after_the_apply_shows_changes
+run "$name" up -- STUB_PLAN_EXIT=2
+ok=1
+expect_status $name 1 || ok=0
+expect_output $name "The plan after the apply is not empty" || ok=0
+expect_output $name "spa_fallback will be updated in-place" || ok=0
+grep -qF "The rehearsal is up" <<<"$out" && { fail $name "reported up despite the drift"; ok=0; }
+[ $ok = 1 ] && echo "ok   $name"
+
+name=up_fails_when_the_plan_after_the_apply_fails
+run "$name" up -- STUB_PLAN_EXIT=1
+ok=1
+expect_status $name 1 || ok=0
+expect_output $name "The plan after the apply failed" || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
 name=up_keeps_an_existing_state_bucket
 run "$name" up -- STUB_BUCKET_EXISTS_EXIT=0
 ok=1
@@ -216,7 +243,7 @@ expect_status $name 1 || ok=0
 grep -qF "The rehearsal is up" <<<"$out" && { fail $name "reported up after a failed deploy"; ok=0; }
 [ $ok = 1 ] && echo "ok   $name"
 
-for args in "" "sideways" "up latest" "up a b" "down now" "up has/slash"; do
+for args in "" "sideways" "up latest" "up a b" "down now" "up has/slash" "seed now" "seed --reset x"; do
   name="rejects_the_arguments_'$args'"
   # shellcheck disable=SC2086 # Split into arguments on purpose.
   run "$name" $args
@@ -225,6 +252,29 @@ for args in "" "sideways" "up latest" "up a b" "down now" "up has/slash"; do
   [ -z "$calls" ] || { fail "$name" "calls were made: $calls"; ok=0; }
   [ $ok = 1 ] && echo "ok   $name"
 done
+
+# --- seed (ticket 23-04) ----------------------------------------------------------------------------------------------
+
+name=seed_runs_the_unchanged_seed_script_on_the_local_environment
+run "$name" seed
+ok=1
+expect_status $name 0 || ok=0
+has $name "^seed.sh  \| $local_root $tools TF_VAR_cpu_architecture= REHEARSAL_TOOLS_NETWORK= TF_DATA_DIR=.terraform-rehearsal terraform=$repo/scripts/deploy/rehearsal/terraform$" || ok=0
+never $name '^(deploy|destroy).sh|^docker (stop|pull|compose)' || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+name=seed_passes_reset_on
+run "$name" seed --reset
+ok=1
+expect_status $name 0 || ok=0
+has $name '^seed.sh --reset \| ' || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+name=seed_fails_when_the_seed_fails
+run "$name" seed -- STUB_SEED_EXIT=1
+ok=1
+expect_status $name 1 || ok=0
+[ $ok = 1 ] && echo "ok   $name"
 
 # --- down -------------------------------------------------------------------------------------------------------------
 

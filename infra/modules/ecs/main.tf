@@ -275,11 +275,13 @@ locals {
   # What each container (the services, the migration and the seed task) is given: the module's settings plus the
   # environment's extra_environment (ticket 23-02), which may add settings but never replace one of the module's.
   module_environment = merge(local.environment, { migrate = local.migrate_environment, seed = local.seed_environment })
+  # The API also gets api_extra_environment (ticket 23-04).
   container_environment = {
-    for k, e in local.module_environment : k => merge(e, var.extra_environment)
+    for k, e in local.module_environment : k => merge(e, var.extra_environment, k == "api" ? var.api_extra_environment : {})
   }
-  extra_environment_overrides = sort(setintersection(
-    toset(keys(var.extra_environment)), toset(flatten([for e in values(local.module_environment) : keys(e)])),
+  extra_environment_overrides = sort(setunion(
+    setintersection(toset(keys(var.extra_environment)), toset(flatten([for e in values(local.module_environment) : keys(e)]))),
+    setintersection(toset(keys(var.api_extra_environment)), toset(keys(local.module_environment.api))),
   ))
 
   # Each service gets only the secrets it uses. ECS reads them at task start with the execution role.
@@ -420,7 +422,7 @@ resource "aws_ecs_task_definition" "this" {
   lifecycle {
     precondition {
       condition     = length(local.extra_environment_overrides) == 0
-      error_message = "extra_environment may only add settings; it must not replace the module's own: ${join(", ", local.extra_environment_overrides)}."
+      error_message = "extra_environment and api_extra_environment may only add settings; they must not replace the module's own: ${join(", ", local.extra_environment_overrides)}."
     }
   }
 }

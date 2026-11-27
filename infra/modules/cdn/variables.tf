@@ -129,3 +129,10 @@ variable "hosted_zone_name" {
     error_message = "hosted_zone_name needs domain_name."
   }
 }
+
+variable "function_tags" {
+  description = "Tag the SPA fallback CloudFront Function (default true). Floci drops the tags the provider sends when it creates a function, so the plan after a fresh apply shows them changing; a local environment on it sets false (ticket 23-04)."
+  type        = bool
+  default     = true
+  nullable    = false
+}

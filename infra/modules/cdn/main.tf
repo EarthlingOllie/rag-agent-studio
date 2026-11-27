@@ -147,7 +147,7 @@ resource "aws_cloudfront_function" "spa_fallback" {
   publish = true
   code    = file("${path.module}/functions/spa-fallback.js")
 
-  tags = merge(local.tags, { Name = "${local.name}-spa-fallback" })
+  tags = var.function_tags ? merge(local.tags, { Name = "${local.name}-spa-fallback" }) : null
 }
 
 resource "aws_cloudfront_distribution" "this" {

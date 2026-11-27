@@ -595,3 +595,32 @@ run "rejects_an_api_origin_override_that_is_not_a_hostname" {
 
   expect_failures = [var.api_origin_domain]
 }
+
+# Ticket 23-04: Floci drops the tags the provider sends when it creates a CloudFront Function, so the plan after a
+# fresh apply would show them changing; a local environment leaves the function untagged.
+run "the_spa_fallback_function_is_tagged_by_default" {
+  command = plan
+
+  assert {
+    condition     = aws_cloudfront_function.spa_fallback.tags.Module == "cdn" && aws_cloudfront_function.spa_fallback.tags.Name == "studio-demo-cdn-spa-fallback"
+    error_message = "The SPA fallback function must carry the module's tags by default."
+  }
+}
+
+run "function_tags_false_leaves_the_function_untagged" {
+  command = plan
+
+  variables {
+    function_tags = false
+  }
+
+  assert {
+    condition     = length(coalesce(aws_cloudfront_function.spa_fallback.tags, {})) == 0
+    error_message = "function_tags = false must give the SPA fallback function no tags."
+  }
+
+  assert {
+    condition     = aws_cloudfront_distribution.this.tags.Module == "cdn"
+    error_message = "function_tags = false must leave every other resource's tags alone."
+  }
+}

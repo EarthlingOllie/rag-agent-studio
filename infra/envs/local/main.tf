@@ -42,9 +42,8 @@ provider "aws" {
     sts                    = var.emulator_endpoint
   }
 
-  default_tags {
-    tags = merge(local.tags, { ManagedBy = "terraform" })
-  }
+  # No default_tags, unlike the demo: every module tags its own resources (ManagedBy included), and default tags would
+  # reach the SPA fallback function, whose tags Floci drops on create (ticket 23-04).
 }
 
 module "network" {
@@ -97,8 +96,8 @@ module "storage" {
   name_prefix                    = local.name_prefix
   tags                           = local.tags
   kms_key_arn                    = module.kms.data_key_arn
-  force_destroy                  = true # make rehearse-down destroys everything in one run.
-  documents_cors_allowed_origin  = module.cdn.url
+  force_destroy                  = true      # make rehearse-down destroys everything in one run.
+  documents_cors_allowed_origin  = local.url # Browsers upload from the emulated distribution's origin (ticket 23-04).
   static_assets_distribution_arn = module.cdn.distribution_arn
 }
 
@@ -133,7 +132,7 @@ module "ecs" {
   documents_bucket_arn = module.storage.documents_bucket_arn
   credentials_key_arn  = module.kms.credentials_key_arn
   data_key_arn         = module.kms.data_key_arn
-  studio_url           = module.cdn.url
+  studio_url           = local.url # Links in emails point at the emulated distribution (ticket 23-04).
   demo_pages           = true
 
   # The emulator runs each task as a container on this machine and refuses an image of another architecture
@@ -147,6 +146,11 @@ module "ecs" {
     SSL_CERT_FILE      = var.ca_bundle_path
     AWS_CA_BUNDLE      = var.ca_bundle_path
     REQUESTS_CA_BUNDLE = var.ca_bundle_path
+  }
+  # The API's presigned upload links name Floci's published port, which the browser reaches. Only the API: the seed
+  # task uploads from inside the network, at the endpoint Floci gives every task (ticket 23-04).
+  api_extra_environment = {
+    OBJECT_STORE_PUBLIC_ENDPOINT_URL = "http://localhost:${var.emulator_port}"
   }
 
   # Sizes that fit a 16 GB laptop, from 23-01's measurements: one job per worker task at 1 vCPU / 3 GB (one process
@@ -193,7 +197,12 @@ module "cdn" {
   alb_dns_name                       = module.ecs.alb_dns_name
   # The emulator refuses the load balancer's name as an origin; it serves the load balancer on localhost inside its
   # own container, which FLOCI_SERVICES_CLOUDFRONT_ALLOWED_PRIVATE_ORIGIN_HOSTS admits (23-01, blocker 5).
-  api_origin_domain   = "localhost"
+  api_origin_domain = "localhost"
+  # The emulator drops the tags the provider sends when it creates a CloudFront Function, so the plan after a fresh
+  # apply would show them changing (ticket 23-04): the SPA fallback function is left untagged. It stores the function
+  # without running it (23-01, finding 11); a 404-to-index error response would also replace the API's own 404s
+  # (ticket 23-04), so deep links are left as a known gap.
+  function_tags       = false
   origin_header_name  = module.ecs.origin_header_name
   origin_header_value = module.ecs.origin_header_value
 }

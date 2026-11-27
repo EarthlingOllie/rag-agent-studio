@@ -7,7 +7,7 @@ API_CLIENT_DIR := frontend/packages/api-client
 
 .PHONY: help dev down services install test test-backend test-live test-frontend lint lint-backend lint-frontend \
 	gen-client check-client migrate infra-check images security secret-scan audit image-scan e2e e2e-install eval eval-live \
-	seed seed-reset link-check rehearse rehearse-down
+	seed seed-reset link-check rehearse rehearse-seed rehearse-down
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -115,6 +115,9 @@ infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on
 # access and about 8 GB of memory for it; terraform and the AWS CLI run in containers. See scripts/deploy/rehearse.sh.
 rehearse: ## Rehearse the AWS deployment on Floci: apply infra/envs/local, push the images, migrate, roll the services, upload the Studio, smoke check
 	scripts/deploy/rehearse.sh up
+
+rehearse-seed: ## Seed the rehearsal's demo Organisation as a one-off task and print its sign-in details (REHEARSAL_SEED_ARGS=--reset seeds it again)
+	scripts/deploy/rehearse.sh seed $(REHEARSAL_SEED_ARGS)
 
 rehearse-down: ## Destroy the rehearsal and remove Floci's containers and data
 	scripts/deploy/rehearse.sh down

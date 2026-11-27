@@ -268,3 +268,32 @@ run "rejects_an_unknown_architecture" {
 
   expect_failures = [var.cpu_architecture]
 }
+
+# Ticket 23-04: the rehearsal is a usable Studio.
+run "the_emulated_distribution_is_the_studio_and_the_uploads_origin" {
+  command = apply
+
+  assert {
+    condition     = alltrue([for k in ["api", "worker-general", "worker-runs", "seed"] : module.ecs.task_environment[k].STUDIO_URL == output.cloudfront_url])
+    error_message = "Links in emails must point at the emulated distribution's address."
+  }
+
+  assert {
+    condition     = module.storage.documents_cors_allowed_origin == "http://e2example0abcd.cloudfront.localhost:4566"
+    error_message = "Browsers upload Documents from the emulated distribution's origin, so it must be the uploads CORS origin."
+  }
+
+  assert {
+    condition     = module.ecs.task_environment.api.OBJECT_STORE_PUBLIC_ENDPOINT_URL == "http://localhost:4566" && !contains(keys(module.ecs.task_environment.seed), "OBJECT_STORE_PUBLIC_ENDPOINT_URL")
+    error_message = "The API's presigned upload links must name an address the browser reaches (Floci's published port); the seed task, which uploads from inside the network, must keep the tasks' own endpoint."
+  }
+}
+
+run "adds_no_custom_error_response" {
+  command = apply
+
+  assert {
+    condition     = module.cdn.custom_error_responses == []
+    error_message = "A distribution-wide 404-to-index response would replace the API's 404s too (ticket 23-04: Floci applies it to every origin, as AWS does), so local adds none."
+  }
+}

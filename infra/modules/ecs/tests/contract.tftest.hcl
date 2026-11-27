@@ -2250,3 +2250,62 @@ run "reports_each_services_task_size_and_command" {
     error_message = "service_tasks must report each service's command, with the worker pools' concurrency."
   }
 }
+
+# Ticket 23-04: the emulated distribution's address is the Studio URL in a local environment.
+run "accepts_an_emulators_localhost_studio_url" {
+  command = plan
+
+  variables {
+    studio_url = "http://e2example0abcd.cloudfront.localhost:4566"
+  }
+
+  assert {
+    condition     = output.task_environment.api.STUDIO_URL == "http://e2example0abcd.cloudfront.localhost:4566"
+    error_message = "An emulator's http://*.localhost:<port> address must reach the services as the Studio URL."
+  }
+}
+
+run "rejects_an_http_studio_url_with_a_port_outside_localhost" {
+  command = plan
+
+  variables {
+    studio_url = "http://d111111abcdef8.cloudfront.net:4566"
+  }
+
+  expect_failures = [var.studio_url]
+}
+
+# Ticket 23-04: settings only the API gets, such as the address presigned links name for browsers; the seed task, which
+# uploads from inside the network, must not get it.
+run "api_extra_environment_reaches_the_api_only" {
+  command = plan
+
+  variables {
+    api_extra_environment = { OBJECT_STORE_PUBLIC_ENDPOINT_URL = "http://localhost:4566" }
+  }
+
+  assert {
+    condition     = output.task_environment.api.OBJECT_STORE_PUBLIC_ENDPOINT_URL == "http://localhost:4566"
+    error_message = "api_extra_environment must reach the API's container."
+  }
+
+  assert {
+    condition     = alltrue([for k in ["worker-general", "worker-runs", "beat", "migrate", "seed"] : !contains(keys(output.task_environment[k]), "OBJECT_STORE_PUBLIC_ENDPOINT_URL")])
+    error_message = "api_extra_environment must reach no other container."
+  }
+
+  assert {
+    condition     = contains(jsondecode(aws_ecs_task_definition.this["api"].container_definitions)[0].environment, { name = "OBJECT_STORE_PUBLIC_ENDPOINT_URL", value = "http://localhost:4566" })
+    error_message = "The API's task definition must carry the variable."
+  }
+}
+
+run "rejects_api_extra_environment_that_overrides_a_module_setting" {
+  command = plan
+
+  variables {
+    api_extra_environment = { TRUSTED_PROXIES = "0.0.0.0/0" }
+  }
+
+  expect_failures = [aws_ecs_task_definition.this]
+}
