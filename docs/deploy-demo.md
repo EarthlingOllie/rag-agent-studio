@@ -133,6 +133,37 @@ The script stops once every service is back at its minimum with both queues empt
 
 Only real AWS shows the pools scaling on their own alarms. Ticket 23-01's spike on the Floci emulator ([findings](tickets/23-floci-rehearsal/research/floci-findings.md#spike-results-ticket-23-01-2026-11-27)) found that Floci never evaluates metric-math alarms, which the pools' `…-jobs` and `…-idle` alarms are, and returns nothing for the same `GetMetricData` queries the script uses for its queue columns; it publishes no ECS CPU metric either. Ticket 23-05 also found that it does not run a step policy on an alarm state set by hand, and that it answers those `GetMetricData` queries with zeros, so the rehearsal's queue columns read `0+0`. So `make rehearse-scale` ([23-05](tickets/23-floci-rehearsal/05-make-rehearse-scale.md)) runs this same script on the seeded rehearsal while `scripts/deploy/rehearsal/drive-scaling.sh` publishes each pool's queue jobs (waiting plus in flight) as `Rehearsal/SQS` `Jobs`, the single metric the pools' alarms watch in `infra/envs/local` (the ecs module's `jobs_metric_namespace`), and the API tasks' CPU measured with `docker stats` as `AWS/ECS` `CPUUtilization`. Floci then evaluates those plain alarms and runs the same step and target-tracking policies. The rehearsal caps the API and the general pool at 2 tasks and the runs pool at 1, with 30-second cooldowns and a one-minute idle time, so it fits a 16 GB laptop; the pools are back within a few minutes, and the API last, after Floci's target tracking has seen fifteen low minutes.
 
+## Rehearse it on Floci (no AWS account)
+
+Spec 23's rehearsal applies the same modules to Floci, an AWS emulator ([findings](tickets/23-floci-rehearsal/research/floci-findings.md)), through `infra/envs/local`, then runs the unchanged deploy, seed and scaling scripts against it. Use it before a real deploy, after any change under `infra/` or `scripts/deploy/`.
+
+**Prerequisites.** Docker with access to its socket (Floci starts the database, cache, registry and tasks as containers; on Linux add yourself to the `docker` group or set `DOCKER_HOST`) and at least 8 GB of memory for Docker, about 16 GB in the machine for a scaled-out rehearsal; `jq`, `curl`, and Node with pnpm for the frontend build. Terraform and the AWS CLI are not needed: they run in containers on a network that reaches only Floci, with dummy credentials, so no AWS account can be touched whatever credentials the machine holds. The rehearsal uses port 4566, so it stops `make dev`'s Floci first (`make services` starts it again). Floci pulls its images from Docker Hub, which limits anonymous pulls: `docker login`, or set `REHEARSAL_IMAGE_MIRROR=mirror.gcr.io`. It runs on x86_64 and Apple-silicon machines and builds the images for the machine's own architecture.
+
+**Commands.**
+
+| Command | What it does |
+|---|---|
+| `make rehearse` | Starts Floci and its front end, builds the images and the frontend, applies `infra/envs/local` through the unchanged `deploy.sh` (push, migrate, roll, upload, smoke check), then plans again and fails unless the plan shows no changes. Prints the Studio's address, `http://<id>.cloudfront.localhost:4566` |
+| `make rehearse-seed` | Seeds the demo Organisation as a one-off task (`REHEARSAL_SEED_ARGS=--reset` to start again); sign in as `owner@northwind.example` / `northwind-owner-demo` |
+| `make rehearse-scale` | Runs the [scaling script](#showing-it-scale) on the seeded rehearsal with a laptop-sized load and prints its timeline; fails naming a service that never scaled (`REHEARSAL_SCALE_ARGS` passes its options) |
+| `make rehearse-down` | Destroys the environment and removes Floci, the containers it started and its data |
+
+On GitHub, Actions, **rehearsal**, Run workflow runs `make rehearse`, `make rehearse-seed` (and, if ticked, `make rehearse-scale`), then `make rehearse-down`, and uploads every log as the `rehearsal-logs` artifact. Run it by hand on the branch of a pull request that changes the infrastructure; it is not a required check. It logs in to Docker Hub when the `DOCKERHUB_USERNAME` variable and `DOCKERHUB_TOKEN` secret are set, and pulls through `mirror.gcr.io` otherwise. GitHub's standard Linux runner has the 16 GB it needs for public repositories; a private repository's smaller runner fails the memory check.
+
+**What the rehearsal proves.** That the modules apply cleanly from nothing and a second plan shows no changes; that the deploy script pushes, migrates, rolls and uploads, and the smoke check passes through the distribution (health, the Studio, a deep link, an API 404 and the widget shell); that the tasks reach the queue, database, cache, bucket and key service by the addresses Terraform gave them (a Document uploaded through a presigned link becomes Ready); that the seed runs as a one-off task; that the API's CORS, Studio URL and trusted-proxy settings work behind the distribution; and that the scaling policies move each service out and back in when their alarms fire, the runs pool from zero.
+
+**What only AWS proves** ([22-09](tickets/22-lean-scalable-infrastructure/09-prove-it-on-real-aws.md)):
+
+- **IAM and security groups.** Floci does not enforce either, so a missing permission or rule passes here.
+- **The CloudFront Function.** Floci stores it but does not run it; the rehearsal's front end (`infra/rehearsal/front`) runs the same file in front of Floci, so deep links work here without proving CloudFront runs it.
+- **Spot interruptions.** Floci records `FARGATE_SPOT` but never reclaims a task.
+- **Bedrock.** The rehearsal answers with the Demo model; nothing calls Bedrock.
+- **ECS task protection through the agent.** Floci gives tasks no ECS agent endpoint, so a worker holding a job is not protected from scale-in; deploys and scale-in that wait for jobs are proved only on AWS.
+- **The pools' metric-math alarms.** Floci never evaluates them; `local` swaps in a single published `Jobs` metric per queue (`jobs_metric_namespace`), and `make rehearse-scale` publishes it and the API's CPU itself. The alarms CloudWatch evaluates on AWS, ECS's own CPU metric and the timeline's queue columns are proved only there.
+- **Sizes and cold starts.** Floci runs every task as a local container, with no image pull from a remote registry worth measuring; task sizes are the laptop's (`local` runs the API and workers at 3 GB), not the demo's.
+- **The seed log's closing report.** `seed.sh` prints the first 10,000 events of the seed task's log, which can end before the sign-in report; the same happens on AWS.
+- **TLS on the database, HTTPS at the edge and the real certificate.** Floci's database serves no TLS and its distribution plain HTTP.
+
 ## Expected cost
 
 Rough list prices for `eu-west-2` (London), in USD, with the default variables, no free tier and almost no traffic, as of November 2026 (ticket 22-08 recomputed them from the Terraform defaults; nothing was measured on AWS). Treat them as an order of magnitude and check the [AWS Pricing Calculator](https://calculator.aws/) before relying on them: prices change and differ by region. The rows are the shape at rest: every scaled service at its minimum, so the runs pool is at zero tasks.

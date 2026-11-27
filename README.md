@@ -148,6 +148,7 @@ Backend and frontend are held at **100% line and branch coverage**, enforced in 
 | `make e2e` | Stack up, seed, Playwright + axe |
 | `make eval` | The Attack evaluation suite (mocked model) |
 | `make infra-check` | Terraform fmt, validate, test, TFLint, Checkov and the deploy scripts' tests |
+| `make rehearse` | The AWS deployment rehearsed on Floci, an AWS emulator, with no AWS account: apply, push, migrate, roll, upload, smoke check, and a second plan that must show no changes; `make rehearse-seed`, `make rehearse-scale` and `make rehearse-down` follow ([guide](docs/deploy-demo.md#rehearse-it-on-floci-no-aws-account)) |
 | `make link-check` | Every relative link in the Markdown resolves |
 | `make security` | gitleaks, pip-audit, pnpm audit, Trivy |
 
