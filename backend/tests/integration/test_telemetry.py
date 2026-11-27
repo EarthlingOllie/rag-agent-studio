@@ -24,7 +24,7 @@ from pydantic import BaseModel, Field
 
 from app.main import create_app
 from app.worker.celery_app import celery_app
-from tests.conftest import TEST_REDIS_URL, new_member_details
+from tests.conftest import TEST_REDIS_URL, RegisterTestTask, new_member_details
 from tests.sqs import empty_queues
 
 
@@ -305,20 +305,23 @@ async def test_with_a_logfire_token_scrubbed_spans_are_sent_to_logfire_instead_o
     assert not [line for line in capsys.readouterr().out.splitlines() if '"context"' in line]
 
 
-@celery_app.task(name="test.reply")
 def _reply(content: str) -> str:
     """A stand-in for a task that carries Message text in and out."""
     return f"You said: {content}"
 
 
 async def test_task_spans_never_contain_the_message_text_a_task_carries(
-    settings_env: pytest.MonkeyPatch, empty_broker: None, exporter: InMemorySpanExporter
+    settings_env: pytest.MonkeyPatch,
+    empty_broker: None,
+    exporter: InMemorySpanExporter,
+    test_task: RegisterTestTask,
 ) -> None:
     settings_env.setenv("CELERY_TASK_ALWAYS_EAGER", "false")
     application = create_app(extra_span_processors=[SimpleSpanProcessor(exporter)])
+    reply = test_task("test.reply", _reply)
     async with LifespanManager(application):
         with start_worker(celery_app, pool="solo", perform_ping_check=False):
-            assert MESSAGE_TEXT in _reply.delay(MESSAGE_TEXT).get(timeout=10)
+            assert MESSAGE_TEXT in reply.delay(MESSAGE_TEXT).get(timeout=10)
 
     spans = exporter.get_finished_spans()
     assert {"apply_async/test.reply", "run/test.reply"} <= {span.name for span in spans}

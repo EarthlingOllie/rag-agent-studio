@@ -12,18 +12,21 @@ from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
 from alembic import command
 from alembic.config import Config
 from asgi_lifespan import LifespanManager
+from celery import Task
 from fastapi import FastAPI
 
 from app.core.clock import Clock
 from app.jobs.protection import NoProtection, install_protection
 from app.mail.outbox import OutboxMailer
 from app.main import create_app
+from app.worker.celery_app import celery_app
 from app.worker.publisher import install_publisher
 from tests.fakes.clock import ControllableClock
 from tests.fakes.jobs import RecordingJobPublisher
@@ -131,6 +134,31 @@ def jobs(app: FastAPI) -> RecordingJobPublisher:
     app.state.jobs = fake
     install_publisher(fake)
     return fake
+
+
+# Registers a test-only Celery task under a name for the current test (the `test_task` fixture).
+type RegisterTestTask = Callable[[str, Callable[..., Any]], Task[..., Any]]
+
+
+@pytest.fixture
+def test_task() -> Iterator[RegisterTestTask]:
+    """Registers a test-only Celery task for one test, and unregisters it afterwards.
+
+    A task registered with ``@celery_app.task`` at module level stays in ``celery_app.tasks``
+    for the rest of the process, so it would show up as a job the worker runs (ticket 22-08's
+    guide check) in whichever test shares that process.
+    """
+    names: list[str] = []
+
+    # Quoted: Task is generic only in its type stubs, so the bare annotation fails at runtime.
+    def register(name: str, function: Callable[..., Any]) -> "Task[..., Any]":
+        celery_app.finalize()  # a finalized app registers the task now, not on first use
+        names.append(name)
+        return celery_app.task(name=name)(function)
+
+    yield register
+    for name in names:
+        celery_app.tasks.unregister(name)
 
 
 @pytest.fixture

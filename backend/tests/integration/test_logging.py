@@ -30,6 +30,7 @@ from tests.conftest import (
     TEST_QUEUES,
     TEST_REDIS_URL,
     TEST_SQS_ENDPOINT_URL,
+    RegisterTestTask,
 )
 from tests.sqs import empty_queues
 
@@ -317,21 +318,24 @@ def test_migrations_write_only_json_lines() -> None:
     assert {entry["logger"] for entry in logs} >= {"alembic.runtime.migration"}
 
 
-@celery_app.task(name="test.echo")
 def _echo(content: str) -> str:
     """A stand-in for a task that carries Message text in and out."""
     return content
 
 
 def test_worker_task_logs_leave_out_task_arguments_and_results(
-    settings_env: pytest.MonkeyPatch, empty_broker: None, capsys: pytest.CaptureFixture[str]
+    settings_env: pytest.MonkeyPatch,
+    empty_broker: None,
+    capsys: pytest.CaptureFixture[str],
+    test_task: RegisterTestTask,
 ) -> None:
     settings_env.setenv("CELERY_TASK_ALWAYS_EAGER", "false")
     sys.modules.pop("app.worker.main", None)
     __import__("app.worker.main")  # the worker entrypoint configures logging and Celery
+    echo = test_task("test.echo", _echo)
 
     with start_worker(celery_app, pool="solo", perform_ping_check=False):
-        assert _echo.delay(MESSAGE_TEXT).get(timeout=10) == MESSAGE_TEXT
+        assert echo.delay(MESSAGE_TEXT).get(timeout=10) == MESSAGE_TEXT
 
     output = capsys.readouterr().out
     assert MESSAGE_TEXT not in output
