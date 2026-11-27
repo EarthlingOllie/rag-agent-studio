@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 # Stand-in for the AWS CLI in the deploy script tests: logs each call and answers as the STUB_* variables say.
 echo "aws $*" >>"$STUB_CALLS"
+
+# timeline_line <n>: reads the nth line of STUB_TIMELINE, or its last, into the array $line.
+timeline_line() {
+  local total
+  total=$(wc -l <"$STUB_TIMELINE")
+  read -r -a line <<<"$(sed -n "$(( $1 < total ? $1 : total ))p" "$STUB_TIMELINE")"
+}
+
 case "$1 $2" in
   "sts get-caller-identity") echo 123456789012 ;;
   "ecr describe-images") exit "${STUB_IMAGE_IN_ECR:-254}" ;;
@@ -32,6 +40,24 @@ case "$1 $2" in
     fi ;;
   "ecs update-task-protection") echo "${STUB_CLEAR_FAILURES-}" ;;
   "ecs update-service") exit 0 ;;
+  "ecs describe-services")
+    # The scaling script's polls: each call answers the next line of STUB_TIMELINE (the last line once they run out),
+    # "<api running> <api desired> <general running> <general desired> <runs running> <runs desired> ..." (see
+    # scale.test.sh), as the running and desired counts of each scaled service.
+    timeline_line "$(grep -c '^aws ecs describe-services' "$STUB_CALLS")"
+    printf 'studio-demo-ecs-%s\t%s\t%s\n' api "${line[0]}" "${line[1]}" worker-general "${line[2]}" "${line[3]}" \
+      worker-runs "${line[4]}" "${line[5]}" ;;
+  "cloudwatch get-metric-data")
+    # ... and the queues' latest visible and in-flight jobs from the same line's last four fields ("-": no data).
+    timeline_line "$(grep -c '^aws cloudwatch get-metric-data' "$STUB_CALLS")"
+    for i in 6 7 8 9; do [ "${line[$i]}" = - ] && line[i]=None || line[i]="${line[$i]}.0"; done
+    printf '%s\t%s\n' general_visible "${line[6]}" general_in_flight "${line[7]}" runs_visible "${line[8]}" \
+      runs_in_flight "${line[9]}" ;;
+  "application-autoscaling describe-scalable-targets")
+    # STUB_MINIMUMS: the api, worker-general and worker-runs minimums, default "1 1 0" (the module's defaults).
+    read -r -a mins <<<"${STUB_MINIMUMS:-1 1 0}"
+    printf 'service/studio-demo-ecs/studio-demo-ecs-%s\t%s\n' api "${mins[0]}" worker-general "${mins[1]}" \
+      worker-runs "${mins[2]}" ;;
   "s3 sync")
     # Keep what would have been uploaded, so the tests can check the bucket's layout.
     mkdir -p "$STUB_UPLOADED" && cp -R "$3/." "$STUB_UPLOADED/" ;;

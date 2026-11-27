@@ -97,6 +97,7 @@ infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on
 	scripts/deploy/tests/deploy.test.sh
 	scripts/deploy/tests/destroy.test.sh
 	scripts/deploy/tests/seed.test.sh
+	scripts/deploy/tests/scale.test.sh
 	node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
 		$(wildcard infra/modules/*/functions/*.test.mjs)
 	scripts/ci/tests/plan-gate.test.sh
