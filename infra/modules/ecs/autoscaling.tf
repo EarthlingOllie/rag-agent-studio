@@ -9,10 +9,15 @@
 #     ECS stop an idle task, not a busy one.
 #   - idle: once the queue has held no job for idle_minutes, the pool goes back to its minimum (zero for the runs pool).
 # ECS reports no CPU for a service at zero tasks, which is why the workers scale on their queue (spec 22 risks).
+# With jobs_metric_namespace set, both alarms watch a published <namespace>/Jobs metric instead of adding the two SQS
+# metrics: the Floci rehearsal publishes it, as Floci never evaluates metric math (ticket 23-05).
 locals {
   scaled = toset(["api", "worker-general", "worker-runs"])
 
   worker_queues = { "worker-general" = var.queues.general.name, "worker-runs" = var.queues.runs.name }
+
+  # An emulator that never evaluates metric math gets one published metric per queue (ticket 23-05).
+  published_jobs = var.jobs_metric_namespace != null
 
   # Step bounds are relative to the jobs alarm's threshold of one job, lower bound inclusive and upper exclusive:
   # with two slots, 1-2 jobs is one task, 3-4 two, and so on; the last step has no upper bound.
@@ -111,33 +116,37 @@ resource "aws_cloudwatch_metric_alarm" "worker_jobs" {
   treat_missing_data  = "notBreaching"
   alarm_actions       = [aws_appautoscaling_policy.worker_jobs[each.key].arn]
 
-  metric_query {
-    id = "waiting"
-    metric {
-      namespace   = "AWS/SQS"
-      metric_name = "ApproximateNumberOfMessagesVisible"
-      dimensions  = { QueueName = local.worker_queues[each.key] }
-      period      = 60
-      stat        = "Maximum"
+  # A published jobs metric (jobs_metric_namespace) replaces the metric math below.
+  namespace   = local.published_jobs ? var.jobs_metric_namespace : null
+  metric_name = local.published_jobs ? "Jobs" : null
+  dimensions  = local.published_jobs ? { QueueName = local.worker_queues[each.key] } : null
+  statistic   = local.published_jobs ? "Maximum" : null
+  period      = local.published_jobs ? 60 : null
+
+  dynamic "metric_query" {
+    for_each = local.published_jobs ? {} : { waiting = "ApproximateNumberOfMessagesVisible", in_flight = "ApproximateNumberOfMessagesNotVisible" }
+
+    content {
+      id = metric_query.key
+      metric {
+        namespace   = "AWS/SQS"
+        metric_name = metric_query.value
+        dimensions  = { QueueName = local.worker_queues[each.key] }
+        period      = 60
+        stat        = "Maximum"
+      }
     }
   }
 
-  metric_query {
-    id = "in_flight"
-    metric {
-      namespace   = "AWS/SQS"
-      metric_name = "ApproximateNumberOfMessagesNotVisible"
-      dimensions  = { QueueName = local.worker_queues[each.key] }
-      period      = 60
-      stat        = "Maximum"
-    }
-  }
+  dynamic "metric_query" {
+    for_each = local.published_jobs ? [] : ["jobs"]
 
-  metric_query {
-    id          = "jobs"
-    expression  = "waiting + in_flight"
-    label       = "Jobs waiting or in flight"
-    return_data = true
+    content {
+      id          = "jobs"
+      expression  = "waiting + in_flight"
+      label       = "Jobs waiting or in flight"
+      return_data = true
+    }
   }
 
   tags = merge(local.tags, { Name = "${local.name}-${each.key}-jobs" })
@@ -155,33 +164,37 @@ resource "aws_cloudwatch_metric_alarm" "worker_idle" {
   treat_missing_data  = "breaching"
   alarm_actions       = [aws_appautoscaling_policy.worker_idle[each.key].arn]
 
-  metric_query {
-    id = "waiting"
-    metric {
-      namespace   = "AWS/SQS"
-      metric_name = "ApproximateNumberOfMessagesVisible"
-      dimensions  = { QueueName = local.worker_queues[each.key] }
-      period      = 60
-      stat        = "Maximum"
+  # A published jobs metric (jobs_metric_namespace) replaces the metric math below.
+  namespace   = local.published_jobs ? var.jobs_metric_namespace : null
+  metric_name = local.published_jobs ? "Jobs" : null
+  dimensions  = local.published_jobs ? { QueueName = local.worker_queues[each.key] } : null
+  statistic   = local.published_jobs ? "Maximum" : null
+  period      = local.published_jobs ? 60 : null
+
+  dynamic "metric_query" {
+    for_each = local.published_jobs ? {} : { waiting = "ApproximateNumberOfMessagesVisible", in_flight = "ApproximateNumberOfMessagesNotVisible" }
+
+    content {
+      id = metric_query.key
+      metric {
+        namespace   = "AWS/SQS"
+        metric_name = metric_query.value
+        dimensions  = { QueueName = local.worker_queues[each.key] }
+        period      = 60
+        stat        = "Maximum"
+      }
     }
   }
 
-  metric_query {
-    id = "in_flight"
-    metric {
-      namespace   = "AWS/SQS"
-      metric_name = "ApproximateNumberOfMessagesNotVisible"
-      dimensions  = { QueueName = local.worker_queues[each.key] }
-      period      = 60
-      stat        = "Maximum"
-    }
-  }
+  dynamic "metric_query" {
+    for_each = local.published_jobs ? [] : ["jobs"]
 
-  metric_query {
-    id          = "jobs"
-    expression  = "waiting + in_flight"
-    label       = "Jobs waiting or in flight"
-    return_data = true
+    content {
+      id          = "jobs"
+      expression  = "waiting + in_flight"
+      label       = "Jobs waiting or in flight"
+      return_data = true
+    }
   }
 
   tags = merge(local.tags, { Name = "${local.name}-${each.key}-idle" })

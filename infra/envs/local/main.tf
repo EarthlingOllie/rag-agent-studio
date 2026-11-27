@@ -162,10 +162,18 @@ module "ecs" {
     "worker-runs"    = { cpu = 1024, memory = 3072 }
     beat             = { cpu = 256, memory = 1024 }
   }
+  # A laptop's share of the demo's scaling (ticket 23-05): at most 2 API tasks (new ones stay well under their 3 GB
+  # until a Visitor message loads the models), 2 general tasks and 1 runs task at once, about 13 GB with all of them
+  # busy; and short cooldowns and idle times, so `make rehearse-scale` shows each service out and back in minutes.
   scaling = {
-    worker-general = { jobs_per_task = 1 }
-    worker-runs    = { jobs_per_task = 1 }
+    api            = { max = 2, scale_out_cooldown = 30, scale_in_cooldown = 60 }
+    worker-general = { max = 2, jobs_per_task = 1, scale_out_cooldown = 30, scale_in_cooldown = 30, idle_minutes = 1 }
+    worker-runs    = { max = 1, jobs_per_task = 1, scale_out_cooldown = 30, scale_in_cooldown = 30, idle_minutes = 1 }
   }
+  # The emulator never evaluates the metric math the pools' alarms use (23-01), nor runs a step policy on an alarm
+  # state set by hand (23-05): the alarms watch one published metric per queue, Rehearsal/SQS Jobs (waiting plus in
+  # flight), which `make rehearse-scale` publishes (scripts/deploy/rehearsal/drive-scaling.sh).
+  jobs_metric_namespace = "Rehearsal/SQS"
 
   database = {
     address             = module.database.address

@@ -187,6 +187,17 @@ variable "desired_counts" {
   }
 }
 
+variable "jobs_metric_namespace" {
+  description = "Null (the default): each worker pool's alarms add their queue's waiting and in-flight messages with metric math, as on AWS. Set, they watch one metric per queue instead, <namespace>/Jobs by QueueName (Maximum over a minute), which something must publish: for an emulator that never evaluates metric math, such as the Floci rehearsal, where `make rehearse-scale` publishes it (ticket 23-05)."
+  type        = string
+  default     = null
+
+  validation {
+    condition     = var.jobs_metric_namespace == null ? true : can(regex("^[A-Za-z0-9._/#:-]{1,255}$", var.jobs_metric_namespace)) && !startswith(var.jobs_metric_namespace, "AWS/")
+    error_message = "jobs_metric_namespace must be a custom CloudWatch namespace such as Rehearsal/SQS (not AWS/...), or null."
+  }
+}
+
 variable "scaling" {
   description = <<-EOT
     Application Auto Scaling bounds, targets and cooldowns (ticket 22-05, ADR-0021). Every attribute is optional.

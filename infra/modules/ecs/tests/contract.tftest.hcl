@@ -1841,6 +1841,52 @@ run "each_worker_pool_scales_on_its_queues_waiting_plus_in_flight_jobs" {
   }
 }
 
+# An emulator that never evaluates metric math (Floci, ticket 23-05) gets one published metric per queue instead.
+run "a_published_jobs_metric_replaces_the_metric_math_when_given" {
+  command = plan
+
+  variables {
+    jobs_metric_namespace = "Rehearsal/SQS"
+  }
+
+  assert {
+    condition = jsonencode({ for k, a in merge(
+      { for p, x in aws_cloudwatch_metric_alarm.worker_jobs : "${p}-jobs" => x },
+      { for p, x in aws_cloudwatch_metric_alarm.worker_idle : "${p}-idle" => x },
+      ) : k => [a.namespace, a.metric_name, a.dimensions, a.statistic, a.period, length(a.metric_query)] }) == jsonencode({
+      "worker-general-jobs" = ["Rehearsal/SQS", "Jobs", { QueueName = "studio-demo-queue-general" }, "Maximum", 60, 0]
+      "worker-general-idle" = ["Rehearsal/SQS", "Jobs", { QueueName = "studio-demo-queue-general" }, "Maximum", 60, 0]
+      "worker-runs-jobs"    = ["Rehearsal/SQS", "Jobs", { QueueName = "studio-demo-queue-runs" }, "Maximum", 60, 0]
+      "worker-runs-idle"    = ["Rehearsal/SQS", "Jobs", { QueueName = "studio-demo-queue-runs" }, "Maximum", 60, 0]
+    })
+    error_message = "With jobs_metric_namespace, each pool's alarms watch <namespace>/Jobs for its own queue (waiting plus in flight, published by the rehearsal), with no metric math."
+  }
+
+  assert {
+    condition     = alltrue([for k, a in aws_cloudwatch_metric_alarm.worker_jobs : a.threshold == 1 && a.alarm_actions == toset([aws_appautoscaling_policy.worker_jobs[k].arn])]) && alltrue([for k, a in aws_cloudwatch_metric_alarm.worker_idle : a.treat_missing_data == "breaching" && a.alarm_actions == toset([aws_appautoscaling_policy.worker_idle[k].arn])])
+    error_message = "Only the metric changes: thresholds, missing-data rules and the policies the alarms drive stay the same."
+  }
+}
+
+run "the_pools_alarms_use_metric_math_by_default" {
+  command = plan
+
+  assert {
+    condition     = alltrue([for a in concat(values(aws_cloudwatch_metric_alarm.worker_jobs), values(aws_cloudwatch_metric_alarm.worker_idle)) : a.metric_name == null && length(a.metric_query) == 3])
+    error_message = "Without jobs_metric_namespace the pools' alarms add the two SQS metrics themselves, as on AWS."
+  }
+}
+
+run "rejects_an_aws_namespace_for_the_jobs_metric" {
+  command = plan
+
+  variables {
+    jobs_metric_namespace = "AWS/SQS"
+  }
+
+  expect_failures = [var.jobs_metric_namespace]
+}
+
 run "a_worker_pool_steps_up_one_task_per_slots_worth_of_jobs" {
   command = plan
 

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Rehearses the AWS deployment on this machine against Floci, an AWS emulator, with no AWS account (spec 23, ticket
-# 23-03). `make rehearse` runs `up`, `make rehearse-seed` runs `seed` and `make rehearse-down` runs `down`.
+# 23-03). `make rehearse` runs `up`, `make rehearse-seed` runs `seed`, `make rehearse-scale` runs `scale` and
+# `make rehearse-down` runs `down`.
 #
 # up [image tag, default rehearsal]:
 #   1. checks Docker answers on its socket and has the memory the stack needs
@@ -19,6 +20,10 @@
 #   8. plans again and fails unless the plan shows no changes, so emulator drift cannot hide real drift (ticket 23-04)
 # seed [--reset]: runs the unchanged scripts/deploy/seed.sh on the local environment: the seed as a one-off task, which
 #   prints the demo sign-in details (ticket 23-04).
+# scale [scale.sh options]: runs the unchanged scripts/deploy/scale.sh on the seeded rehearsal with a load sized for a
+#   laptop (options given here win), while scripts/deploy/rehearsal/drive-scaling.sh publishes what Floci does not
+#   compute: each pool's queue jobs, the metric local's pool alarms watch, and the API's CPU (ticket 23-05). It exits
+#   non-zero, naming the service, if a service never scaled out or did not return to its minimum.
 # down: destroys the local environment through the unchanged scripts/deploy/destroy.sh, then removes Floci, the
 #   containers and volumes it started, and its data. `make dev`'s Floci is not restarted (`make services` does that).
 #
@@ -35,10 +40,10 @@ region=eu-west-2
 state_bucket=studio-local-tfstate
 data_dir=.terraform-rehearsal
 
-usage() { echo "usage: $0 up [image tag, default rehearsal] | seed [--reset] | down" >&2; exit 2; }
+usage() { echo "usage: $0 up [image tag, default rehearsal] | seed [--reset] | scale [scale.sh options] | down" >&2; exit 2; }
 command=${1:-}
 case "$#:$command:${2:-}" in
-  1:up: | 2:up:* | 1:down: | 1:seed: | 2:seed:--reset) ;;
+  1:up: | 2:up:* | 1:down: | 1:seed: | 2:seed:--reset | *:scale:*) ;;
   *) usage ;;
 esac
 tag=rehearsal
@@ -99,6 +104,29 @@ point_tools_at_floci() {
 if [ "$command" = seed ]; then
   point_tools_at_floci
   exec "$here/seed.sh" ${2:+"$2"}
+fi
+
+if [ "$command" = scale ]; then
+  shift
+  point_tools_at_floci
+  terraform -chdir="$root" init -input=false "-backend-config=bucket=$state_bucket" "-backend-config=region=$region" >/dev/null
+  work=$(mktemp -d)
+  terraform -chdir="$root" output -json deploy >"$work/deploy.json"
+  namespace=$(terraform -chdir="$root" output -raw jobs_metric_namespace)
+  out() { jq -r "$1" "$work/deploy.json"; }
+  "$here/rehearsal/drive-scaling.sh" "$(out .cluster_name)" "$(out .services.api)" "$(out .queue_names.general)" \
+    "$(out .queue_names.runs)" "$namespace" >"$work/drive.log" 2>&1 &
+  driver=$!
+  trap 'kill "$driver" 2>/dev/null; wait "$driver" 2>/dev/null || true; cat "$work/drive.log"; rm -rf "$work"' EXIT
+  step "Publishing each pool's queue jobs and the API's CPU to Floci's CloudWatch while the scaling script runs"
+  # The demo Owner's published sign-in (backend/app/seed/content.py). A laptop-sized load: 4 copies of each seed
+  # Document, one Run, four minutes of API requests, a row every 15 seconds.
+  export OWNER_EMAIL=${OWNER_EMAIL:-owner@northwind.example} OWNER_PASSWORD=${OWNER_PASSWORD:-northwind-owner-demo}
+  export AWS_REGION=$region
+  status=0
+  "$here/scale.sh" --copies 4 --runs 1 --api-seconds 240 --api-workers 8 --poll-seconds 15 --timeout-minutes 30 "$@" \
+    "$(out .cloudfront_url)" || status=$?
+  exit "$status"
 fi
 
 if [ "$command" = down ]; then

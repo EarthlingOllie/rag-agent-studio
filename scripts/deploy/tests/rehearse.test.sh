@@ -18,7 +18,7 @@ repo=$work/repo
 mkdir -p "$repo/scripts/deploy/rehearsal" "$repo/infra/rehearsal" "$repo/infra/envs/local" "$repo/frontend"
 cp "$here/../rehearse.sh" "$repo/scripts/deploy/"
 touch "$repo/infra/rehearsal/compose.yml" "$repo/infra/rehearsal/ca.Dockerfile"
-for script in deploy.sh destroy.sh seed.sh rehearsal/terraform rehearsal/aws; do
+for script in deploy.sh destroy.sh seed.sh scale.sh rehearsal/terraform rehearsal/aws rehearsal/drive-scaling.sh; do
   cat >"$repo/scripts/deploy/$script" <<'EOF'
 #!/usr/bin/env bash
 # Logs the call, with the settings the rehearsal must give it, and which terraform the PATH finds.
@@ -29,6 +29,10 @@ case "$(basename "$0") $*" in
   "terraform "*" plan "*) echo "  # module.cdn.aws_cloudfront_function.spa_fallback will be updated in-place"; exit "${STUB_PLAN_EXIT:-0}" ;;
   seed.sh*) exit "${STUB_SEED_EXIT:-0}" ;;
   destroy.sh*) exit "${STUB_DESTROY_EXIT:-0}" ;;
+  "terraform "*" output -json deploy") echo '{"cluster_name":"studio-local-ecs","services":{"api":"studio-local-ecs-api"},"queue_names":{"general":"studio-local-queue-general","runs":"studio-local-queue-runs"},"cloudfront_url":"http://e1.cloudfront.localhost:4566"}' ;;
+  "terraform "*" output -raw jobs_metric_namespace") printf Rehearsal/SQS ;;
+  scale.sh*) echo "scale.sh OWNER_EMAIL=${OWNER_EMAIL:-} OWNER_PASSWORD=${OWNER_PASSWORD:-}" >>"$STUB_CALLS"; sleep 0.5; exit "${STUB_SCALE_EXIT:-0}" ;;
+  drive-scaling.sh*) while :; do sleep 0.1; done ;;
 esac
 EOF
   chmod +x "$repo/scripts/deploy/$script"
@@ -274,6 +278,40 @@ name=seed_fails_when_the_seed_fails
 run "$name" seed -- STUB_SEED_EXIT=1
 ok=1
 expect_status $name 1 || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+# --- scale (ticket 23-05) ---------------------------------------------------------------------------------------------
+
+name=scale_runs_the_unchanged_scaling_script_on_the_seeded_rehearsal_with_laptop_sized_load
+run "$name" scale
+ok=1
+expect_status $name 0 || ok=0
+has $name "^terraform -chdir=$repo/infra/envs/local init -input=false -backend-config=bucket=studio-local-tfstate -backend-config=region=eu-west-2 \| $local_root $tools " || ok=0
+has $name "^scale.sh --copies 4 --runs 1 --api-seconds 240 --api-workers 8 --poll-seconds 15 --timeout-minutes 30 http://e1.cloudfront.localhost:4566 \| $local_root $tools .*terraform=$repo/scripts/deploy/rehearsal/terraform$" || ok=0
+has $name "^scale.sh OWNER_EMAIL=owner@northwind.example OWNER_PASSWORD=northwind-owner-demo$" || ok=0
+never $name '^(deploy|destroy|seed).sh|^docker (stop|pull|compose)' || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+name=scale_publishes_the_figures_floci_does_not_compute_while_the_script_runs_and_stops_after
+ok=1
+before $name "^terraform .* output -raw jobs_metric_namespace" '^drive-scaling.sh ' || ok=0
+has $name '^drive-scaling.sh studio-local-ecs studio-local-ecs-api studio-local-queue-general studio-local-queue-runs Rehearsal/SQS \| ' || ok=0
+pgrep -f "$repo/scripts/deploy/rehearsal/drive-scaling.sh" >/dev/null && { fail $name "the driver is still running"; ok=0; }
+[ $ok = 1 ] && echo "ok   $name"
+
+name=scale_passes_options_through_and_they_win_over_the_defaults
+run "$name" scale --copies 4 --timeout-minutes 45 -- OWNER_EMAIL=me@example.com OWNER_PASSWORD=secret
+ok=1
+expect_status $name 0 || ok=0
+has $name "^scale.sh --copies 4 --runs 1 --api-seconds 240 --api-workers 8 --poll-seconds 15 --timeout-minutes 30 --copies 4 --timeout-minutes 45 http://e1.cloudfront.localhost:4566 \| " || ok=0
+has $name "^scale.sh OWNER_EMAIL=me@example.com OWNER_PASSWORD=secret$" || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+name=scale_fails_when_a_service_never_scaled
+run "$name" scale -- STUB_SCALE_EXIT=1
+ok=1
+expect_status $name 1 || ok=0
+pgrep -f "$repo/scripts/deploy/rehearsal/drive-scaling.sh" >/dev/null && { fail $name "the driver is still running"; ok=0; }
 [ $ok = 1 ] && echo "ok   $name"
 
 # --- down -------------------------------------------------------------------------------------------------------------

@@ -68,7 +68,7 @@ documents=${SCALE_DOCUMENTS_DIR:-$repo/seed/documents}
 die() { echo "::error title=Scaling demonstration failed::$*" >&2; exit 1; }
 umask 077
 work=$(mktemp -d)
-jar="$work/cookies"
+session="$work/session"
 project_id="" project_name="" org="" traffic=() started=()
 
 # --- 1. The deployed environment ------------------------------------------------------------------------------------
@@ -101,11 +101,17 @@ done
 
 # --- The Studio API -------------------------------------------------------------------------------------------------
 # api <method> <path> [body, or @file]: calls the Studio's API with the Owner's session; sets $code and leaves the
-# response in $work/body.
+# response in $work/body. The script keeps the session cookie itself, from the latest answer that set it: it is Secure,
+# and curl neither stores nor sends a Secure cookie over plain HTTP, which the Floci rehearsal's
+# http://<id>.cloudfront.localhost Studio is (browsers keep it for localhost names; ticket 23-05).
 api() {
-  local args=(-sS --max-time 60 -b "$jar" -c "$jar" -o "$work/body" -w '%{http_code}' -X "$1")
+  local args=(-sS --max-time 60 -D "$work/headers" -o "$work/body" -w '%{http_code}' -X "$1") renewed
+  [ -s "$session" ] && args+=(-H "Cookie: $(cat "$session")")
   [ $# -ge 3 ] && args+=(-H 'Content-Type: application/json' --data-binary "$3")
+  : >"$work/headers"
   code=$(curl "${args[@]}" "$base$2" 2>"$work/error") || code=000
+  renewed=$(tr -d '\r' <"$work/headers" | sed -n -E 's/^[Ss][Ee][Tt]-[Cc][Oo][Oo][Kk][Ii][Ee]: *(studio_session=[^;]*).*/\1/p' | tail -n 1)
+  [ -z "$renewed" ] || printf '%s' "$renewed" >"$session"
 }
 detail() { jq -r '.detail // empty' "$work/body" 2>/dev/null || head -c 300 "$work/body"; cat "$work/error"; }
 # expect <what> <status...>: dies unless the last call answered one of the statuses.
@@ -227,12 +233,12 @@ start_runs() {
 }
 
 # send_requests <n>: one loop of API traffic until the load ends; writes how many requests it sent. The loops read
-# their own copy of the session, which the script's own calls keep rewriting.
-cp "$jar" "$work/traffic-cookies"
+# their own copy of the session, which the script's own calls may rewrite.
+cp "$session" "$work/traffic-session"
 send_requests() {
   local end=$(($(date +%s) + api_seconds)) sent=0
   while [ "$(date +%s)" -lt "$end" ]; do
-    curl -s -o /dev/null --max-time 10 -b "$work/traffic-cookies" "$base$projects" || true
+    curl -s -o /dev/null --max-time 10 -H "Cookie: $(cat "$work/traffic-session")" "$base$projects" || true
     sent=$((sent + 1))
   done
   echo "$sent" >"$work/sent.$1"

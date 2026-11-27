@@ -149,3 +149,13 @@ output "service_tasks" {
     command = jsondecode(t.container_definitions)[0].command
   } }
 }
+
+output "scaling" {
+  description = "The scaling settings in effect, defaults filled in: each autoscaled service's bounds, cooldowns, CPU target or slots and idle minutes (ticket 22-05)."
+  value       = var.scaling
+}
+
+output "jobs_metric_namespace" {
+  description = "Null when the worker pools' alarms add their queue's two SQS metrics themselves (AWS); otherwise the namespace of the published <namespace>/Jobs metric they watch, which the Floci rehearsal's scale command publishes (ticket 23-05)."
+  value       = var.jobs_metric_namespace
+}

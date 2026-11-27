@@ -58,3 +58,8 @@ output "deploy" {
     cloudfront_url             = local.url
   }
 }
+
+output "jobs_metric_namespace" {
+  description = "Namespace of the Jobs metric (waiting plus in-flight jobs, by QueueName) the worker pools' alarms watch here; `make rehearse-scale` publishes it (ticket 23-05)."
+  value       = module.ecs.jobs_metric_namespace
+}

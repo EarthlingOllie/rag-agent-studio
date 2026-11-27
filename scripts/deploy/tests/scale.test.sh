@@ -97,7 +97,7 @@ serve() {
     [ -n "$port" ] && break
     sleep 0.05
   done
-  url="http://127.0.0.1:$port"
+  url="http://${STUDIO_HOST:-127.0.0.1}:$port"
 }
 
 # run <case> <routes json> <timeline> [scale.sh options...] [-- VAR=value...]: runs scale.sh against a fresh fake Studio,
@@ -206,6 +206,29 @@ deleted $name || ok=0
 [ $ok = 1 ] && echo "ok   $name"
 
 # --- Load sizes are arguments ---------------------------------------------------------------------------------------
+
+# The Floci rehearsal serves the Studio over plain HTTP on http://<id>.cloudfront.localhost (ticket 23-05). The session
+# cookie is Secure, which browsers keep for localhost names but curl neither stores nor sends over HTTP: the script
+# keeps the session itself, and every request still carries it.
+name=keeps_a_secure_session_cookie_over_plain_http
+STUDIO_HOST=e1.cloudfront.localhost run $name "$(studio '.["POST /api/auth/sign-in"].headers["Set-Cookie"] = "studio_session=s3cr3t; HttpOnly; Max-Age=1209600; Path=/; SameSite=lax; Secure"')" "$SCALES_OUT_AND_IN" --copies 1
+ok=1
+expect_status $name 0 || ok=0
+expect_request $name "POST $P cookie=studio_session=s3cr3t body=" || ok=0
+if grep -v '^POST /api/auth/sign-in\|^PUT /presigned' <<<"$requests" | grep -qv 'cookie=studio_session=s3cr3t'; then
+  fail $name "a request without the session: $requests"; ok=0
+fi
+[ "$(count "$requests" "GET $P cookie=studio_session=s3cr3t")" -ge 3 ] || { fail $name "the API traffic lacks the session: $requests"; ok=0; }
+deleted $name || ok=0
+[ $ok = 1 ] && echo "ok   $name"
+
+# A session the API renews on a later answer replaces the one from the sign-in.
+name=follows_a_renewed_session_cookie
+run $name "$(studio ".[\"POST $P\"] = {status: 201, headers: {\"Set-Cookie\": \"studio_session=r3n3w3d; Path=/; HttpOnly\"}, body: {id: \"$project\", name: \"Scaling demonstration\"}}")" "$SCALES_OUT_AND_IN" --copies 1
+ok=1
+expect_status $name 0 || ok=0
+expect_request $name "POST $P/$project/archive cookie=studio_session=r3n3w3d" || ok=0
+[ $ok = 1 ] && echo "ok   $name"
 
 name=takes_the_copies_and_runs_as_arguments
 run "$name" "$(studio)" "$SCALES_OUT_AND_IN" --copies 2 --runs 2 --api-seconds 3

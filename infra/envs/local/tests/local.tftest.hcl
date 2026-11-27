@@ -209,6 +209,32 @@ run "fits_a_16_gb_laptop" {
   }
 }
 
+run "scales_like_the_demo_at_a_laptops_size_and_pace" {
+  command = apply
+
+  assert {
+    condition = { for k, t in module.ecs.scalable_targets : k => [t.min, t.max] } == {
+      api = [1, 2], "worker-general" = [1, 2], "worker-runs" = [0, 1]
+    }
+    error_message = "local must cap the API and the general pool at 2 tasks and the runs pool at 1, still from zero, so a scaled-out rehearsal fits 16 GB."
+  }
+
+  assert {
+    condition = (
+      [module.ecs.scaling.api.scale_out_cooldown, module.ecs.scaling.api.scale_in_cooldown] == [30, 60] &&
+      alltrue([for k in ["worker-general", "worker-runs"] : (
+        module.ecs.scaling[k].scale_out_cooldown == 30 && module.ecs.scaling[k].scale_in_cooldown == 30 && module.ecs.scaling[k].idle_minutes == 1
+      )])
+    )
+    error_message = "local must use short cooldowns and a one-minute idle time, so the scaling rehearsal takes minutes."
+  }
+
+  assert {
+    condition     = module.ecs.jobs_metric_namespace == "Rehearsal/SQS" && output.jobs_metric_namespace == "Rehearsal/SQS"
+    error_message = "The pools' alarms must watch the published Rehearsal/SQS Jobs metric, as the emulator never evaluates metric math; the wrapper reads the namespace from the output."
+  }
+}
+
 run "runs_tasks_on_the_machines_architecture" {
   command = apply
 

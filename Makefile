@@ -7,7 +7,7 @@ API_CLIENT_DIR := frontend/packages/api-client
 
 .PHONY: help dev down services install test test-backend test-live test-frontend lint lint-backend lint-frontend \
 	gen-client check-client migrate infra-check images security secret-scan audit image-scan e2e e2e-install eval eval-live \
-	seed seed-reset link-check rehearse rehearse-seed rehearse-down
+	seed seed-reset link-check rehearse rehearse-seed rehearse-scale rehearse-down
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
@@ -99,6 +99,7 @@ infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on
 	scripts/deploy/tests/seed.test.sh
 	scripts/deploy/tests/scale.test.sh
 	scripts/deploy/tests/rehearse.test.sh
+	scripts/deploy/tests/drive-scaling.test.sh
 	node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
 		$(wildcard infra/modules/*/functions/*.test.mjs) infra/rehearsal/front/front.test.mjs
 	scripts/ci/tests/plan-gate.test.sh
@@ -118,6 +119,9 @@ rehearse: ## Rehearse the AWS deployment on Floci: apply infra/envs/local, push 
 
 rehearse-seed: ## Seed the rehearsal's demo Organisation as a one-off task and print its sign-in details (REHEARSAL_SEED_ARGS=--reset seeds it again)
 	scripts/deploy/rehearse.sh seed $(REHEARSAL_SEED_ARGS)
+
+rehearse-scale: ## Show each worker pool and the API scale out and back in on the seeded rehearsal (scale.sh's timeline; REHEARSAL_SCALE_ARGS passes its options)
+	scripts/deploy/rehearse.sh scale $(REHEARSAL_SCALE_ARGS)
 
 rehearse-down: ## Destroy the rehearsal and remove Floci's containers and data
 	scripts/deploy/rehearse.sh down
