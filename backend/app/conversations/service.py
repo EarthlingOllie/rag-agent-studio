@@ -1,7 +1,7 @@
 """Reading a Project's Conversations for the Studio's Conversations viewer: Visitor
 Conversations (from the widget) and Playground ones (flagged), filtered by Agent, start date,
-Agent Version, Playground, Message Feedback, Conversation Rating, Guardrail outcome and Live
-Verdict, and
+Agent Version, Playground, Message Feedback, Conversation Rating, Guardrail outcome, Live
+Verdict and whether they had a Call, and
 one Conversation's Messages and each reply's Trace.
 
 Everything is found through the Project, which is found through the Organisation scope, so a
@@ -18,7 +18,14 @@ from sqlalchemy.dialects.postgresql import distinct_on
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.models import Agent, AgentVersion
-from app.conversations.models import Conversation, Message, MessageRetrieval, MessageRole, Search
+from app.conversations.models import (
+    Call,
+    Conversation,
+    Message,
+    MessageRetrieval,
+    MessageRole,
+    Search,
+)
 from app.documents.models import Chunk, Document
 from app.evaluation.live_reads import LiveVerdictFilter, failed_live_verdicts, with_live_verdict
 from app.feedback.models import (
@@ -115,7 +122,8 @@ class ConversationFilter:
     ``playground`` keeps only Playground (True) or only Visitor (False) Conversations;
     ``feedback`` keeps them by their Message Feedback; ``rating`` by their current
     Conversation Rating; ``guardrail`` by their replies' Guardrail outcomes; ``live_verdict`` by
-    their replies' Live Verdicts."""
+    their replies' Live Verdicts; ``has_call`` keeps only those with a Call (True), open or
+    ended, or only those without one (False)."""
 
     agent_id: uuid.UUID | None = None
     version_id: uuid.UUID | None = None
@@ -126,6 +134,7 @@ class ConversationFilter:
     rating: RatingFilter | None = None
     guardrail: GuardrailFilter | None = None
     live_verdict: LiveVerdictFilter | None = None
+    has_call: bool | None = None
 
     def conditions(self) -> list[ColumnElement[bool]]:
         found: list[ColumnElement[bool]] = []
@@ -165,6 +174,9 @@ class ConversationFilter:
             found.append(_with_guardrail_outcome(self.guardrail.value))
         if self.live_verdict is not None:
             found.append(with_live_verdict(self.live_verdict))
+        if self.has_call is not None:
+            called = Conversation.id.in_(select(Call.conversation_id))
+            found.append(called if self.has_call else ~called)
         return found
 
 
@@ -187,6 +199,9 @@ class ConversationSummary:
     guardrail_events: int
     # How many of its replies failed their Live Verdict.
     failed_live_verdicts: int = 0
+    # How many Calls it had, and the minutes of those that ended.
+    calls: int = 0
+    call_minutes: int = 0
 
 
 @dataclass(frozen=True)
@@ -288,6 +303,18 @@ async def list_conversations(
         ).all()
     )
     failed = await failed_live_verdicts(session, ids)
+    calls: dict[uuid.UUID, tuple[int, int]] = {
+        conversation_id: (count, minutes or 0)
+        for conversation_id, count, minutes in await session.execute(
+            select(
+                Call.conversation_id,
+                func.count(),
+                func.sum(Call.minutes),
+            )
+            .where(Call.conversation_id.in_(ids))
+            .group_by(Call.conversation_id)
+        )
+    }
     return ConversationPage(
         rows=[
             ConversationSummary(
@@ -301,6 +328,8 @@ async def list_conversations(
                 rating=ratings.get(conversation.id),
                 guardrail_events=guardrail_events.get(conversation.id, 0),
                 failed_live_verdicts=failed.get(conversation.id, 0),
+                calls=calls.get(conversation.id, (0, 0))[0],
+                call_minutes=calls.get(conversation.id, (0, 0))[1],
             )
             for conversation, agent_name in found
         ],
@@ -321,6 +350,8 @@ class ConversationRead:
     # rating's change log, oldest first.
     rating: ConversationRating | None
     rating_changes: list[ConversationRatingChange]
+    # Its Calls, oldest first.
+    calls: list[Call]
 
 
 async def get_conversation(
@@ -359,7 +390,14 @@ async def get_conversation(
             )
         ).all()
     )
-    return ConversationRead(conversation, agent_name, messages, numbers, feedback, rating, changes)
+    calls = list(
+        await session.scalars(
+            select(Call).where(Call.conversation_id == conversation.id).order_by(Call.started_at)
+        )
+    )
+    return ConversationRead(
+        conversation, agent_name, messages, numbers, feedback, rating, changes, calls
+    )
 
 
 @dataclass(frozen=True)

@@ -122,6 +122,9 @@ class UiText(BaseModel):
     unavailable_message: ShortText | None = None
     # Shown to Visitors while an Agentic Agent searches; None keeps "Searching the knowledge base…".
     searching_status: ShortText | None = None
+    # The Launcher's two choices for an Agent that takes Calls; None keeps "Message" and "Call".
+    message_choice: ShortText | None = None
+    call_choice: ShortText | None = None
 
 
 class Experience(BaseModel):

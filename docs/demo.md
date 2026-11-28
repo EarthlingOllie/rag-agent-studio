@@ -145,6 +145,17 @@ Run the [Quickstart](../README.md#quickstart) first (`make dev`, then `make seed
 
 This walkthrough is automated as one Playwright test, [`five-minute-demo.spec.ts`](../frontend/e2e/tests/five-minute-demo.spec.ts), which `make e2e` runs after `make seed`. Step 8 is local-only.
 
+## Calls walkthrough
+
+The Demo Organisation takes Calls only when the seed is given an ElevenLabs key and the API has a public address ElevenLabs can reach; without them calling stays off and everything above works unchanged. Locally:
+
+1. **Set up** (once). Start a tunnel to the API (`cloudflared tunnel --url http://localhost:8000`), set `VOICE_LAYER=elevenlabs` and `PUBLIC_BASE_URL=<the tunnel's https address>` in `.env`, run `docker compose up -d api worker`, then `SEED_ELEVENLABS_API_KEY=<your key> make seed`. The seed prints `Calls: Product FAQ takes Calls (voice …)`. The [development guide](development.md#calls-and-the-voice-layer) has the key's permissions and the details.
+2. **The Call settings** (15 s). **Agents → Product FAQ → Embed & limits**: calling is on with the Northwind ElevenLabs credential, a voice you can play a sample of, and the spoken greeting.
+3. **A Call on the shop page** (60 s). Open <http://localhost:5175/demo/> and the chat bubble: it opens on a choice of **Message** or **Call**. Pick **Call** and allow the microphone. The Agent greets you aloud; ask "Can I return a jar of honey?" and the log shows what you said and the spoken reply as text, with its source. **End call** returns to the chat, where you can type in the same Conversation.
+4. **The Call in the Studio** (30 s). **Conversations**: filter by **Has a Call** and open the Conversation. Spoken Messages are marked with their Call, the Call shows its minutes and Voice Cost, and each spoken reply has its Trace like a typed one.
+
+`make seed-reset` removes the remote agent the seed made from your ElevenLabs account before rebuilding the Demo Organisation. In the AWS demo the API is told its public base URL (the CloudFront address) by the deploy, so an Owner can add an ElevenLabs credential and turn calling on in the Studio.
+
 ## Regenerating the videos
 
 The recordings come from [`scripts/demo-videos/record.cjs`](../scripts/demo-videos/record.cjs), which drives the Studio with Playwright using the same accessible names as the e2e suite, and [`scripts/demo-videos/encode.sh`](../scripts/demo-videos/encode.sh), which turns them into these MP4s and posters. [`scripts/demo-videos/combine.py`](../scripts/demo-videos/combine.py) then joins them into the single video, drawing each title card from this page's story headings and quotes. They need `ffmpeg`, and `combine.py` needs Pillow.

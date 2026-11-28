@@ -4,6 +4,7 @@ import { FormError } from "../auth/AuthLayout";
 import { button, field, Pagination, surface, table, text, useToast } from "../design";
 import { type Credential, credentialFailure, useCredentials } from "./credentials";
 import { formatPrice, type ModelPrices, parsePrice, PRICE_KINDS, type PriceKind, useCredentialPrices, useOverridePrices } from "./prices";
+import { VoicePriceCard } from "./VoicePrice";
 
 const INVALID = "Prices are amounts in US dollars per million tokens, like 3 or 0.075, with at most six decimal places.";
 /** Models per page of the price table. */
@@ -127,9 +128,11 @@ function CredentialPriceTable({ organisationId, credential, isOwner }: { organis
   const shown = rows.slice((page - 1) * PRICES_PAGE_SIZE, page * PRICES_PAGE_SIZE);
   return (
     <div className="flex flex-col gap-4">
-      {rows.length === 0 ? (
-        <p className={text.muted}>This credential offers no models.</p>
-      ) : (
+      {rows.length === 0 && listed.data.voice !== null && (
+        <VoicePriceCard organisationId={organisationId} credential={credential} isOwner={isOwner} />
+      )}
+      {rows.length === 0 && listed.data.voice === null && <p className={text.muted}>This credential offers no models.</p>}
+      {rows.length > 0 && (
         <>
           <div className={table.wrap}>
             <table aria-label={`Prices for ${credential.name}`} className={`${table.table} min-w-[640px]`}>

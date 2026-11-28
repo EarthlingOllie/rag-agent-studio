@@ -131,6 +131,8 @@ EXPERIENCE = {
         "rate_conversation": "How did Hana do?",
         "unavailable_message": "Hana is on a break. Try again soon.",
         "searching_status": "Hana is looking that up…",
+        "message_choice": "Type to Hana",
+        "call_choice": "Talk to Hana",
     },
     "rating_prompt_after": 5,
 }
@@ -183,6 +185,8 @@ async def test_an_agent_with_the_default_experience_shows_its_name_and_built_in_
         "rate_conversation": None,
         "unavailable_message": None,
         "searching_status": None,
+        "message_choice": None,
+        "call_choice": None,
     }
     assert data["rating_prompt_after"] == 3
     assert data["citations"] is True

@@ -1,0 +1,18 @@
+[
+  {
+    "request": {
+      "method": "GET",
+      "url": "https://api.elevenlabs.io/v1/convai/conversation/token",
+      "params": {
+        "agent_id": "agent_01k9w3"
+      }
+    },
+    "response": {
+      "status": 200,
+      "json": {
+        "token": "eyJhbGciOiJIUzI1NiJ9.livekit-room-grant",
+        "conversation_id": "conv_01kb7z"
+      }
+    }
+  }
+]

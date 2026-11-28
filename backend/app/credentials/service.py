@@ -48,7 +48,8 @@ class UnsupportedCapabilityError(Exception):
 
 
 class CheckFailedError(Exception):
-    def __init__(self, failure: CheckFailure) -> None:
+    def __init__(self, provider: Provider, failure: CheckFailure) -> None:
+        self.provider = provider
         self.failure = failure
 
 
@@ -203,7 +204,7 @@ class Credentials:
             scope, "credential.check_failed", credential_id, after=details | {"reason": failure}
         )
         await self._session.commit()
-        return CheckFailedError(failure)
+        return CheckFailedError(Provider(details["provider"]), failure)
 
     async def _capabilities(
         self,

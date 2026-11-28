@@ -81,6 +81,13 @@ BEDROCK_FAILURE_MESSAGES = {
         "We couldn't reach AWS to check the credential. Try again in a few minutes."
     ),
 }
+# ElevenLabs refuses a key whose permissions leave out ElevenLabs Agents as it refuses a wrong one.
+ELEVENLABS_FAILURE_MESSAGES = FAILURE_MESSAGES | {
+    CheckFailure.INVALID_KEY: (
+        "ElevenLabs rejected this API key. Check it was copied in full, and that its "
+        "permissions allow ElevenLabs Agents."
+    ),
+}
 NOT_ROTATABLE = (
     "Bedrock credentials can't be rotated with an API key. "
     "Add a new Bedrock credential, then delete this one."
@@ -95,7 +102,9 @@ BEDROCK_ACTIONS = (
 CredentialName = Annotated[
     str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)
 ]
-ApiKeyProvider = Literal[Provider.ANTHROPIC, Provider.OPENAI, Provider.VOYAGE, Provider.DEMO]
+ApiKeyProvider = Literal[
+    Provider.ANTHROPIC, Provider.OPENAI, Provider.VOYAGE, Provider.ELEVENLABS, Provider.DEMO
+]
 
 
 class CreateCredentialRequest(BaseModel):
@@ -279,8 +288,16 @@ def _api_key(secret: SecretStr) -> str:
     return key
 
 
-def _check_failed(error: CheckFailedError, *, bedrock: bool = False) -> JSONResponse:
-    messages = BEDROCK_FAILURE_MESSAGES if bedrock else FAILURE_MESSAGES
+def _failure_messages(provider: Provider) -> dict[CheckFailure, str]:
+    if provider is Provider.BEDROCK:
+        return BEDROCK_FAILURE_MESSAGES
+    if provider is Provider.ELEVENLABS:
+        return ELEVENLABS_FAILURE_MESSAGES
+    return FAILURE_MESSAGES
+
+
+def _check_failed(error: CheckFailedError) -> JSONResponse:
+    messages = _failure_messages(error.provider)
     body = CheckFailedResponse(detail=messages[error.failure], reason=error.failure)
     return JSONResponse(body.model_dump(mode="json"), status_code=status.HTTP_400_BAD_REQUEST)
 
@@ -368,7 +385,7 @@ async def create_bedrock_credential(
     except DuplicateNameError:
         raise HTTPException(status.HTTP_409_CONFLICT, NAME_TAKEN) from None
     except CheckFailedError as error:
-        return _check_failed(error, bedrock=True)
+        return _check_failed(error)
     return _out(credential)
 
 

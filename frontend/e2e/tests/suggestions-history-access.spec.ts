@@ -131,7 +131,8 @@ test.describe("Suggestions: Cost, permissions and accessibility", () => {
       await openSection(page, "Organisation sections", "Cost");
       const row = page.getByRole("table", { name: "Cost by Project" }).getByRole("row", { name: new RegExp(`^${org.projectName}`) });
       await expect(row).toBeVisible({ timeout: 15_000 });
-      await expect(row.getByRole("cell").nth(3)).not.toHaveText("$0.00");
+      // Its cells are Visitors, Playground, Evaluation, Voice and Total: the run is in Evaluation.
+      await expect(row.getByRole("cell").nth(2)).not.toHaveText("$0.00");
     });
   });
 

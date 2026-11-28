@@ -7,6 +7,7 @@ import { failed } from "./credentials";
 export type CredentialPrices = Schemas["CredentialPricesOut"];
 export type ModelPrices = Schemas["ModelPricesOut"];
 export type PriceOverride = Schemas["OverridePricesRequest"];
+export type VoicePrice = Schemas["VoicePriceOut"];
 export type PriceKind = "input" | "output" | "cached_input";
 
 export const PRICE_KINDS: { kind: PriceKind; name: string }[] = [
@@ -59,6 +60,24 @@ export function useOverridePrices(organisationId: string, credentialId: string) 
       queryClient.setQueryData<CredentialPrices>(pricesKey(organisationId, credentialId), (listed) =>
         listed && { ...listed, models: listed.models.map((row) => (row.model === saved.model ? saved : row)) },
       );
+    },
+  });
+}
+
+/** Sets a voice credential's price per Call minute; null goes back to the platform's. Owners only. */
+export function useOverrideVoicePrice(organisationId: string, credentialId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (perMinute: string | null): Promise<VoicePrice> => {
+      const { data, error, response } = await api.PUT("/api/organisations/{organisation_id}/credentials/{credential_id}/voice-price", {
+        params: { path: { organisation_id: organisationId, credential_id: credentialId } },
+        body: { per_minute: perMinute },
+      });
+      if (!data) throw failed(response, error);
+      return data;
+    },
+    onSuccess: (saved) => {
+      queryClient.setQueryData<CredentialPrices>(pricesKey(organisationId, credentialId), (listed) => listed && { ...listed, voice: saved });
     },
   });
 }

@@ -38,6 +38,11 @@ DEMO_MODEL = "demo-chat"
 # The Guardrail demo Agent's model: the demo provider's naive model, which obeys injected
 # instructions, so the attack panel shows the Guardrails stopping attacks, not a model refusing.
 NAIVE_DEMO_MODEL = "demo-naive"
+# Calls (spec 20): with an ElevenLabs key and a public base URL, the seed adds this voice-capable
+# credential and turns calling on for the Product FAQ (``SHOP_AGENT``), with the account's first
+# voice and this spoken greeting.
+VOICE_CREDENTIAL = "Northwind ElevenLabs"
+SPOKEN_GREETING = "Hello, you're through to Northwind Traders. What can I help you with?"
 # The chat model a real credential from the environment answers with, unless one is named.
 REAL_DEFAULT_MODELS = {Provider.ANTHROPIC: "claude-haiku-4-5", Provider.OPENAI: "gpt-4.1-mini"}
 

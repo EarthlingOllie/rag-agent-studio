@@ -28,10 +28,20 @@ export function embedSnippet(
 /** Why the Operational Settings couldn't be loaded or saved: the API's reason, or a generic one. */
 export class OperationalSettingsError extends Error {}
 
+/** The API's reason for a refusal: its first validation message, or the detail of a refusal by the
+ * voice layer or a client error (4xx); anything else is a generic reason. */
+function reason(error: unknown, status: number): string {
+  const detail = (error as { detail?: unknown } | undefined)?.detail;
+  const first = Array.isArray(detail) ? (detail[0] as { msg?: unknown } | undefined) : undefined;
+  if (typeof first?.msg === "string") return first.msg;
+  const explained = status === 502 || status < 500;
+  return explained && typeof detail === "string" ? detail : "Something went wrong. Try again.";
+}
+
 type Path = { organisation_id: string; project_id: string; agent_id: string };
 
-/** An Agent's Allowed Origins, unavailable text, rate limits and Token Budget: not part of its
- * Draft or Versions. */
+/** An Agent's Allowed Origins, unavailable text, rate limits, Token Budget, Call settings and Call
+ * limits: not part of its Draft or Versions. */
 export type OperationalSettings = Schemas["OperationalSettingsOut"];
 
 const PATH =
@@ -63,6 +73,29 @@ export function useTokenUsage(path: Path) {
   });
 }
 
+/** Today's (UTC) Call minutes against the Agent's Call minutes budget. */
+export type CallMinutes = Schemas["CallMinutesOut"];
+
+const minutesKey = (path: Path) => ["call-minutes", path.organisation_id, path.agent_id] as const;
+
+/** Why today's Call minutes couldn't be loaded. */
+export class CallMinutesError extends Error {}
+
+/** Today's Call minutes against the Call minutes budget, for the Call minutes meter. */
+export function useCallMinutes(path: Path) {
+  return useQuery({
+    queryKey: minutesKey(path),
+    queryFn: async (): Promise<CallMinutes> => {
+      const { data } = await api.GET(
+        "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/call-minutes",
+        { params: { path } },
+      );
+      if (!data) throw new CallMinutesError();
+      return data;
+    },
+  });
+}
+
 /** The Agent's Operational Settings. */
 export function useOperationalSettings(path: Path) {
   return useQuery({
@@ -82,20 +115,41 @@ export function useChangeOperationalSettings(path: Path) {
     mutationFn: async (
       change: Schemas["OperationalSettingsChange"],
     ): Promise<OperationalSettings> => {
-      const { data, error } = await api.PATCH(PATH, { params: { path }, body: change });
-      if (!data) {
-        const detail = (error as { detail?: unknown }).detail;
-        const first = Array.isArray(detail) ? (detail[0] as { msg?: unknown } | undefined) : undefined;
-        throw new OperationalSettingsError(
-          typeof first?.msg === "string" ? first.msg : "Something went wrong. Try again.",
-        );
-      }
+      const { data, error, response } = await api.PATCH(PATH, { params: { path }, body: change });
+      if (!data) throw new OperationalSettingsError(reason(error, response.status));
       return data;
     },
     onSuccess: (settings) => {
       queryClient.setQueryData(settingsKey(path), settings);
-      // The meter measures against the budget.
+      // The meters measure against the budgets.
       void queryClient.invalidateQueries({ queryKey: usageKey(path) });
+      void queryClient.invalidateQueries({ queryKey: minutesKey(path) });
+      // Saving the Call settings can clear the Agent's Calls failing alert.
+      void queryClient.invalidateQueries({ queryKey: ["agents", path.organisation_id, path.project_id] });
+    },
+  });
+}
+
+/** A voice of a voice-capable credential's ElevenLabs account, with a sample to listen to. */
+export type Voice = Schemas["VoiceOut"];
+
+/** Why a credential's voices couldn't be listed. */
+export class VoicesError extends Error {}
+
+/** The voices a voice-capable credential offers, for the Call settings' voice picker; nothing is
+ * asked until a credential is chosen. */
+export function useVoices(organisationId: string, credentialId: string | null) {
+  return useQuery({
+    queryKey: ["voices", organisationId, credentialId] as const,
+    enabled: credentialId !== null,
+    retry: false,
+    queryFn: async (): Promise<Voice[]> => {
+      const { data, error, response } = await api.GET("/api/organisations/{organisation_id}/credentials/{credential_id}/voices", {
+        // Only asked once a credential is chosen.
+        params: { path: { organisation_id: organisationId, credential_id: credentialId as string } },
+      });
+      if (!data) throw new VoicesError(reason(error, response.status));
+      return data;
     },
   });
 }

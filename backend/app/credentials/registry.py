@@ -13,6 +13,8 @@ class Provider(enum.StrEnum):
     OPENAI = "openai"
     BEDROCK = "bedrock"
     VOYAGE = "voyage"
+    # The voice layer behind Calls (ElevenLabs Agents, ADR-0019): no models, only voice.
+    ELEVENLABS = "elevenlabs"
     # The demo provider: canned answers from the Knowledge Base, no AI and no key
     # (``app.gateway.demo``). The seeded demo Organisation uses it.
     DEMO = "demo"
@@ -28,6 +30,9 @@ class Capability(enum.StrEnum):
     CHAT = "chat"
     EMBEDDINGS = "embeddings"
     RERANK = "rerank"
+    # Carrying a Call. A voice credential offers no models: its voices belong to the
+    # ElevenLabs account and are listed per credential.
+    VOICE = "voice"
 
 
 @dataclass(frozen=True)
@@ -125,6 +130,9 @@ PROVIDERS: dict[Provider, ProviderSpec] = {
                     Model("rerank-2.5-lite", "rerank-2.5-lite"),
                 ),
             },
+        ),
+        ProviderSpec(
+            Provider.ELEVENLABS, "ElevenLabs", (AuthKind.API_KEY,), {Capability.VOICE: ()}
         ),
         ProviderSpec(
             Provider.DEMO,

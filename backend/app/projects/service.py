@@ -29,6 +29,8 @@ from app.documents.models import Document
 from app.jobs import deletions
 from app.projects.models import FlaggedChunkMode, Project
 from app.tenancy.repository import OrganisationScope
+from app.voice import remote
+from app.voice.remote import VoicePorts
 
 
 class ProjectNotFoundError(Exception):
@@ -299,12 +301,15 @@ async def request_deletion(
     await session.commit()
 
 
-async def delete_project(session: AsyncSession, project_id: uuid.UUID) -> bool:
+async def delete_project(
+    session: AsyncSession, project_id: uuid.UUID, *, voice: VoicePorts
+) -> bool:
     """The deletion cascade: deletes the Project and, through the foreign keys'
     ``ON DELETE CASCADE``, everything in it (Documents and their staged editions, Chunks, Tags,
     Agents, their Conversations and Messages), records ``project.deleted`` as the Owner who
     asked, when they asked, and writes the Project's storage prefix to the deletions table, all
-    in one transaction. The caller then drains the deletions table.
+    in one transaction. Its Agents' remote agents in the voice layer are removed first (best
+    effort). The caller then drains the deletions table.
 
     Returns False, doing nothing, if the Project is gone already, isn't Deleting, or another
     copy of the cascade holds it: so running it twice, or as two copies at once, is safe."""
@@ -328,13 +333,20 @@ async def delete_project(session: AsyncSession, project_id: uuid.UUID) -> bool:
         },
         occurred_at=project.deletion_requested_at,
     )
+    calling = await session.scalars(
+        select(Agent).where(Agent.project_id == project.id, Agent.remote_agent_id.is_not(None))
+    )
+    for agent in calling.all():
+        await remote.remove(session, voice, agent, agent.call_credential_id)
     await session.execute(delete(Project).where(Project.id == project.id))
     deletions.schedule(session, [storage_prefix(project.organisation_id, project.id)], prefix=True)
     await session.commit()
     return True
 
 
-async def finish_deletions(sessionmaker: async_sessionmaker[AsyncSession]) -> int:
+async def finish_deletions(
+    sessionmaker: async_sessionmaker[AsyncSession], voice: VoicePorts
+) -> int:
     """The sweeper's part: runs the cascade for every Project still Deleting (its message was
     lost, or its worker died before the cascade committed), each in its own transaction. A
     Project another copy holds is passed by. Returns how many were deleted."""
@@ -349,5 +361,5 @@ async def finish_deletions(sessionmaker: async_sessionmaker[AsyncSession]) -> in
     deleted = 0
     for project_id in ids:
         async with sessionmaker() as session:
-            deleted += await delete_project(session, project_id)
+            deleted += await delete_project(session, project_id, voice=voice)
     return deleted

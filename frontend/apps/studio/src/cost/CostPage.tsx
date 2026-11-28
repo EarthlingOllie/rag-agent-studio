@@ -21,13 +21,14 @@ function failure(error: Error): string {
     : "The cost could not be loaded. Try again shortly.";
 }
 
-/** The period's headline figures: everything, then Visitors, the Playground and Evaluation Runs apart. */
+/** The period's headline figures: everything, then Visitors, the Playground, Evaluation Runs and Voice Cost apart. */
 function CostStats({ cost }: { cost: OrgCost }) {
   const figures = [
     { label: "Total", value: cost.total.total_usd },
     { label: "Visitors", value: cost.total.visitor_usd },
     { label: "Playground", value: cost.total.playground_usd },
     { label: "Evaluation", value: cost.total.evaluation_usd },
+    { label: "Voice", value: cost.total.voice_usd },
   ];
   return (
     <ul aria-label="Spend for the period" className={layout.stats}>
@@ -67,6 +68,11 @@ function CostTable({ cost }: { cost: OrgCost }) {
               Evaluation
             </th>
             <th scope="col" className={table.thNumeric}>
+              <abbr title="Voice Cost: what the voice layer cost for Visitors' Calls" className="no-underline">
+                Voice
+              </abbr>
+            </th>
+            <th scope="col" className={table.thNumeric}>
               Total
             </th>
           </tr>
@@ -81,6 +87,7 @@ function CostTable({ cost }: { cost: OrgCost }) {
               <td className={table.tdNumeric}>{dollars(row.visitor_usd)}</td>
               <td className={table.tdNumeric}>{dollars(row.playground_usd)}</td>
               <td className={table.tdNumeric}>{dollars(row.evaluation_usd)}</td>
+              <td className={table.tdNumeric}>{dollars(row.voice_usd)}</td>
               <td className={table.tdNumeric}>{dollars(row.total_usd)}</td>
             </tr>
           ))}
@@ -92,6 +99,7 @@ function CostTable({ cost }: { cost: OrgCost }) {
             <td className={`${table.tdNumeric} font-medium`}>{dollars(cost.total.visitor_usd)}</td>
             <td className={`${table.tdNumeric} font-medium`}>{dollars(cost.total.playground_usd)}</td>
             <td className={`${table.tdNumeric} font-medium`}>{dollars(cost.total.evaluation_usd)}</td>
+            <td className={`${table.tdNumeric} font-medium`}>{dollars(cost.total.voice_usd)}</td>
             <td className={`${table.tdNumeric} font-medium`}>{dollars(cost.total.total_usd)}</td>
           </tr>
         </tfoot>
@@ -123,7 +131,7 @@ function OrgCostReport({ organisationId }: { organisationId: string }) {
           <EmptyState
             icon="analytics"
             title="Nothing was spent in this period"
-            description="Visitors' Conversations, Playground testing and Evaluation Runs in any Project show up here, with what they cost."
+            description="Visitors' Conversations and Calls, Playground testing and Evaluation Runs in any Project show up here, with what they cost."
           />
         ) : (
           <>
@@ -167,7 +175,7 @@ function OrgCostReport({ organisationId }: { organisationId: string }) {
   );
 }
 
-/** The Organisation cost page: this month's Evaluation budget meter, then what the Organisation spent over a period, by Project or by Agent, with Playground usage and Evaluation (Runs and Live Verdicts) each in its own column. Owners only. */
+/** The Organisation cost page: this month's Evaluation budget meter, then what the Organisation spent over a period, by Project or by Agent, with Playground usage, Evaluation (Runs and Live Verdicts) and Voice Cost each in its own column. Owners only. */
 export function CostPage() {
   const { organisationId, isOwner } = useOrganisationRole();
   return (
@@ -176,7 +184,7 @@ export function CostPage() {
         title="Organisation cost"
         description={
           isOwner
-            ? "What Visitors' Conversations, Playground testing and Evaluation Runs cost, at the prices frozen when each reply was made."
+            ? "What Visitors' Conversations and Calls, Playground testing and Evaluation Runs cost, at the prices frozen when each reply was made and each Call ended."
             : undefined
         }
       />

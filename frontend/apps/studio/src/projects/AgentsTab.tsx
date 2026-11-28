@@ -32,6 +32,9 @@ const SHOWN_OPTIONS = [
 ] as const;
 
 const BUDGET_SPENT = "Today's Token Budget is spent, so Visitors see the unavailable text until midnight UTC.";
+const CALL_MINUTES_SPENT = "Today's Call minutes budget is spent, so Calls are refused and Visitors are offered messaging until midnight UTC.";
+const CALLS_FAILING =
+  "Calls can't start: ElevenLabs couldn't start the Agent's last Call, so Visitors who chose Call were given the unavailable text and the chat. Messaging still works. Save the Call settings in Embed & limits to set the Agent up again.";
 const BLOCK_RATE_SPIKE =
   "Block rate spike: in the last hour, the input Guardrail blocked an unusual share of Visitor messages, as in an attack. Review the blocked Conversations.";
 const LIVE_SCORE_DROP =
@@ -91,15 +94,23 @@ function LiveCell({ agent }: { agent: Agent }) {
   );
 }
 
-/** The alerts an Agent needs looked at: a spent Token Budget, a spike in Guardrail blocks, a drop
- * in the Live score. */
+/** The alerts an Agent needs looked at: a spent Token Budget or Call minutes budget, Calls failing
+ * to start, a spike in Guardrail blocks, a drop in the Live score. */
 function AlertsCell({ agent }: { agent: Agent }) {
-  if (!agent.budget_exhausted && !agent.block_rate_alert && !agent.live_score_drop_alert) {
+  if (
+    !agent.budget_exhausted &&
+    !agent.call_budget_exhausted &&
+    !agent.calls_failing &&
+    !agent.block_rate_alert &&
+    !agent.live_score_drop_alert
+  ) {
     return <span className="text-muted">—</span>;
   }
   return (
     <span className="inline-flex flex-wrap items-center gap-1.5">
       {agent.budget_exhausted && <Badge kind="budgetSpent" title={BUDGET_SPENT} />}
+      {agent.call_budget_exhausted && <Badge kind="callMinutesSpent" title={CALL_MINUTES_SPENT} />}
+      {agent.calls_failing && <Badge kind="callsFailing" title={CALLS_FAILING} />}
       {agent.block_rate_alert && <Badge kind="blocked" title={BLOCK_RATE_SPIKE} />}
       {agent.live_score_drop_alert && <Badge kind="liveScoreDrop" title={LIVE_SCORE_DROP} />}
     </span>

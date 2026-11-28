@@ -18,6 +18,7 @@ import {
   useConversationTrace,
   useDeleteConversation,
 } from "./conversations";
+import { dollars } from "./format";
 import { AddToEvaluationSet } from "./EvaluationCaseEditor";
 import { LiveVerdictSection } from "./LiveVerdict";
 import { useOrganisationRole } from "./ProjectsPage";
@@ -72,6 +73,9 @@ function guardrailText({ guardrail_events: events }: ConversationSummary): strin
   if (events === 0) return "None";
   return `${String(events)} ${events === 1 ? "event" : "events"}`;
 }
+
+/** Whole minutes, such as "1 minute" or "3 minutes". */
+const minutesText = (minutes: number) => (minutes === 1 ? "1 minute" : `${String(minutes)} minutes`);
 
 /** How many of a Conversation's replies failed their Live Verdict, such as "2 failed", or "None". */
 function FailedLiveVerdicts({ conversation: { failed_live_verdicts: failed } }: { conversation: ConversationSummary }) {
@@ -320,6 +324,18 @@ function Filters({
         }}
       />
       <Choice
+        label="Has a Call"
+        value={filters.call ?? ""}
+        options={[
+          ["", "With or without"],
+          ["yes", "With a Call"],
+          ["no", "Without a Call"],
+        ]}
+        onChange={(call) => {
+          set({ call });
+        }}
+      />
+      <Choice
         label="Live Verdict"
         value={filters.live ?? ""}
         options={[
@@ -419,6 +435,11 @@ function Results({ data, filters }: { data: ConversationPageData; filters: Conve
             <Fact name="Failed Live Verdicts" label>
               <FailedLiveVerdicts conversation={conversation} />
             </Fact>
+            {conversation.calls > 0 && (
+              <Fact name="Calls" label mono>
+                {`${String(conversation.calls)} · ${minutesText(conversation.call_minutes)}`}
+              </Fact>
+            )}
           </dl>
         </li>
       ))}
@@ -585,6 +606,39 @@ function RatingNote({ rating }: { rating: ConversationDetail["rating"] }) {
   );
 }
 
+const CALL_ENDS: Record<string, string> = {
+  visitor: "ended by the Visitor",
+  editor: "ended in the Playground",
+  max_length: "ended at the Maximum Call length",
+  silence: "ended after a minute of silence",
+  conversation_ended: "ended with the Conversation",
+  unavailable: "ended because the Agent was unavailable",
+};
+
+/** One Call: when it ran and why it ended, its minutes, and its Voice Cost, kept apart from its replies' Cost. */
+function CallRow({ call }: { call: ConversationDetail["calls"][number] }) {
+  if (call.ended_at === null || call.minutes === null) {
+    return (
+      <li className="rounded-xl border border-line px-4 py-3 text-sm text-ink-2">
+        <p className="font-medium text-ink">{`Call · started ${formatTime(call.started_at)} · still open`}</p>
+        <p className="text-muted">Minutes and Voice Cost are counted when it ends</p>
+      </li>
+    );
+  }
+  const why = CALL_ENDS[String(call.end_reason)] ?? "ended";
+  const minutes = minutesText(call.minutes);
+  const cost =
+    call.voice_cost_usd === null
+      ? "Voice Cost unknown: no per-minute price was set"
+      : `Voice Cost ${dollars(call.voice_cost_usd)}, apart from the Cost of its replies`;
+  return (
+    <li className="rounded-xl border border-line px-4 py-3 text-sm text-ink-2">
+      <p className="font-medium text-ink">{`Call · ${formatTime(call.started_at)} to ${formatTime(call.ended_at).slice(11)} · ${why}`}</p>
+      <p>{`${minutes} · ${cost}`}</p>
+    </li>
+  );
+}
+
 /** A Message's text, or a note that it was purged and why. */
 function MessageText({ message, deletedAt }: { message: ConversationMessage; deletedAt: string | null }) {
   if (message.purged_at === null) return <p className="whitespace-pre-wrap text-[15px] text-ink">{message.content}</p>;
@@ -607,11 +661,19 @@ function usage(message: ConversationMessage): string {
   return `${String(message.input_tokens)} input and ${String(message.output_tokens)} output tokens · ${String(message.latency_ms)} ms`;
 }
 
+/** A Spoken Message's mark, naming the Call it was said in when the Conversation lists it. */
+function SpokenMark({ message, calls }: { message: ConversationMessage; calls: ConversationDetail["calls"] }) {
+  if (!message.spoken) return null;
+  const call = calls.find((found) => found.id === message.call_id);
+  return <Badge kind="spoken" title={call === undefined ? "Said in a Call." : `Said in the Call of ${formatTime(call.started_at)}.`} />;
+}
+
 function MessageItem({
   message,
   asker,
   agentName,
   deletedAt,
+  calls,
   path,
   onAdd,
 }: {
@@ -619,6 +681,8 @@ function MessageItem({
   asker: string;
   agentName: string;
   deletedAt: string | null;
+  /** The Conversation's Calls, which its Spoken Messages name. */
+  calls: ConversationDetail["calls"];
   path: ConversationPath;
   /** Opens the case editor with this reply's question and cited passages. */
   onAdd: (messageId: string) => void;
@@ -626,7 +690,10 @@ function MessageItem({
   if (message.role === "user") {
     return (
       <li aria-label={asker} className="flex flex-col items-end gap-1">
-        <p className={text.small}>{asker}</p>
+        <p className={`${text.small} flex items-center gap-2`}>
+          {asker}
+          <SpokenMark message={message} calls={calls} />
+        </p>
         <div className="max-w-[85%] rounded-2xl rounded-br-md bg-sunken px-4 py-2.5">
           <MessageText message={message} deletedAt={deletedAt} />
         </div>
@@ -649,6 +716,10 @@ function MessageItem({
             <Badge kind="draft" title="Answered by the Draft, in the Playground." />
           ) : (
             <Badge kind="version" version={message.agent_version_number} />
+          )}
+          <SpokenMark message={message} calls={calls} />
+          {message.interrupted && (
+            <Badge kind="interrupted" title="The Visitor talked over this reply; it is kept whole, as its Trace shows." />
           )}
           {message.fallback && <span>Fallback reply</span>}
           {blocked(message) && <Badge kind="blocked" title="The input Guardrail blocked the question: the model wasn't asked." />}
@@ -772,11 +843,19 @@ export function ConversationPage() {
               asker={data.is_playground ? "Editor" : "Visitor"}
               agentName={data.agent_name}
               deletedAt={data.deleted_at}
+              calls={data.calls}
               path={path}
               onAdd={setAdding}
             />
           ))}
         </ol>
+        {data.calls.length > 0 && (
+          <ol aria-label="Calls" className="flex flex-col gap-2">
+            {data.calls.map((call) => (
+              <CallRow key={call.id} call={call} />
+            ))}
+          </ol>
+        )}
         {!data.is_playground && <RatingNote rating={data.rating} />}
         {adding !== null && (
           <AddToEvaluationSet

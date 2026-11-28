@@ -104,15 +104,69 @@ async def test_provider_errors_become_typed_failures(
     assert not result.passed
 
 
-async def test_a_network_error_is_an_unreachable_provider() -> None:
+# ElevenLabs answers an unusable key with a 401 and says why in ``detail.status``.
+ELEVENLABS_AGENTS: dict[str, object] = {"agents": [], "next_cursor": None, "has_more": False}
+
+
+def _elevenlabs_error(status: str) -> dict[str, object]:
+    return {"detail": {"status": status, "message": f"Trimmed {status} message."}}
+
+
+async def test_elevenlabs_is_checked_by_listing_agents_with_the_key_header() -> None:
+    seen: list[httpx.Request] = []
+
+    result = await _verifier(200, ELEVENLABS_AGENTS, seen).check(Provider.ELEVENLABS, KEY)
+
+    assert result.passed
+    (request,) = seen
+    assert (request.method, str(request.url)) == (
+        "GET",
+        "https://api.elevenlabs.io/v1/convai/agents?page_size=1",
+    )
+    assert request.headers["xi-api-key"] == KEY
+    assert "authorization" not in request.headers
+
+
+@pytest.mark.parametrize(
+    ("status", "body", "failure"),
+    [
+        (401, _elevenlabs_error("invalid_api_key"), CheckFailure.INVALID_KEY),
+        # A key whose permissions leave out ElevenLabs Agents can't take Calls.
+        (401, _elevenlabs_error("missing_permissions"), CheckFailure.INVALID_KEY),
+        (403, _elevenlabs_error("missing_permissions"), CheckFailure.INVALID_KEY),
+        (401, _elevenlabs_error("quota_exceeded"), CheckFailure.QUOTA_EXCEEDED),
+        (401, {"detail": "Unauthorized"}, CheckFailure.INVALID_KEY),
+        (401, ["not", "an", "object"], CheckFailure.INVALID_KEY),
+        (429, _elevenlabs_error("too_many_concurrent_requests"), CheckFailure.QUOTA_EXCEEDED),
+        (404, {}, CheckFailure.PROVIDER_UNREACHABLE),
+        (500, {}, CheckFailure.PROVIDER_UNREACHABLE),
+    ],
+)
+async def test_elevenlabs_errors_become_typed_failures(
+    status: int, body: object, failure: CheckFailure
+) -> None:
+    result = await _verifier(status, body, []).check(Provider.ELEVENLABS, KEY)
+
+    assert result == CheckResult(failure)
+
+
+async def test_an_elevenlabs_401_that_is_not_json_is_an_invalid_key() -> None:
+    def answer(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(401, text="<html>Unauthorized</html>")
+
+    verifier = HttpCredentialVerifier(httpx.AsyncClient(transport=httpx.MockTransport(answer)))
+
+    assert await verifier.check(Provider.ELEVENLABS, KEY) == CheckResult(CheckFailure.INVALID_KEY)
+
+
+@pytest.mark.parametrize("provider", [Provider.OPENAI, Provider.ELEVENLABS])
+async def test_a_network_error_is_an_unreachable_provider(provider: Provider) -> None:
     def fail(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectTimeout("timed out", request=request)
 
     verifier = HttpCredentialVerifier(httpx.AsyncClient(transport=httpx.MockTransport(fail)))
 
-    assert await verifier.check(Provider.OPENAI, KEY) == CheckResult(
-        CheckFailure.PROVIDER_UNREACHABLE
-    )
+    assert await verifier.check(provider, KEY) == CheckResult(CheckFailure.PROVIDER_UNREACHABLE)
 
 
 async def test_bedrock_is_not_checked_with_an_api_key() -> None:

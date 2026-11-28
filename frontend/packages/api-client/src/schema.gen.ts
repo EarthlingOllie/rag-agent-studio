@@ -473,8 +473,9 @@ export interface paths {
         /**
          * Get Organisation Cost
          * @description What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most
-         *     366 days), including today's so far, by Project or by Agent. Playground usage and Evaluation
-         *     Runs are each in their own column. Owners only.
+         *     366 days), including today's so far, by Project or by Agent. Playground replies, Evaluation
+         *     Runs and Calls' Voice Cost (Visitor and Playground Calls) are each in their own column.
+         *     Owners only.
          */
         get: operations["getOrganisationCost"];
         put?: never;
@@ -632,6 +633,47 @@ export interface paths {
          * @description Replaces the key, keeping the credential's identity. A failed check keeps the old key.
          */
         post: operations["rotateCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/voice-price": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Override Credential Voice Price
+         * @description Overrides the voice credential's price per Call minute, to match the voice plan; Voice
+         *     Cost uses it from the next Call that ends. Owners only.
+         */
+        put: operations["overrideCredentialVoicePrice"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/voices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Voices
+         * @description The voices the credential's ElevenLabs account offers, for the voice picker.
+         */
+        get: operations["listVoices"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -1099,6 +1141,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/call-minutes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Call Minutes
+         * @description Today's (UTC) Call minutes against the Agent's Call minutes budget, for the Studio's
+         *     meter.
+         */
+        get: operations["getCallMinutes"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/comparison": {
         parameters: {
             query?: never;
@@ -1527,6 +1590,13 @@ export interface paths {
          *     change as ``agent.live_sample_rate_changed``). A Live sample rate above 0 is refused with
          *     the typed error ``evaluation_budget_required`` while the Organisation has no Evaluation
          *     budget.
+         *
+         *     Call settings are refused with a 422 naming the field and reason: turning calling on while
+         *     the Organisation has no voice-capable credential (``no_voice_credential``), a credential
+         *     of another Organisation (``unknown_credential``) or without the voice Capability
+         *     (``not_voice_capable``), a voice its account doesn't offer (``voice_unavailable``), or no
+         *     credential or voice chosen (``missing``). A 502 means the voice layer couldn't set the
+         *     Agent up; nothing is saved then.
          */
         patch: operations["changeOperationalSettings"];
         trace?: never;
@@ -1561,12 +1631,59 @@ export interface paths {
         };
         /**
          * Get Conversation
-         * @description The Playground Conversation and its Messages, oldest first.
+         * @description The Playground Conversation and its Messages, oldest first, each answer with its
+         *     Knowledge Searches' queries and the Chunks it cited, and whether a Playground Call is open
+         *     in it. Messages said in a Playground Call are marked spoken.
          */
         get: operations["getPlaygroundConversation"];
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Call
+         * @description Starts a Call with the Agent's Draft in the Playground Conversation, with the Agent's Call
+         *     settings, answering with the Instructions Draft or the chosen Instructions Version. The
+         *     spoken greeting opens a Conversation with no Messages. The Call token returned is a
+         *     Playground Call token: its turns are answered by the Draft and are kept out of metrics, the
+         *     Token Budget and the Call minutes budget. An Agent with calling off refuses with a 409.
+         */
+        post: operations["startPlaygroundCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/calls/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * End Call
+         * @description Ends the Playground Conversation's open Call, freezing its minutes and Voice Cost; with no
+         *     Call open, nothing changes. What was said stays as Spoken Messages.
+         */
+        delete: operations["endPlaygroundCall"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2800,6 +2917,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/widget/agents/{public_id}/conversation/calls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Call
+         * @description Starts a Call in the token's Conversation with the Agent's Live Version, which the Call
+         *     records. Admission control runs first, as for a message (the rate limits and the Token
+         *     Budget; the start counts against the rate limits), then the Call limits (one Call at a time
+         *     in a Conversation, two at once for an IP address with the Agent, the day's Call minutes
+         *     budget): a refusal is a 503 with the Agent's unavailable text and the reason, and so is a
+         *     voice layer that can't start the Call; nothing is recorded then. The first refusal of a day
+         *     for the Call minutes budget raises the Agent's alert and emails its Owners. An Agent with
+         *     calling off refuses with a 409.
+         */
+        post: operations["startWidgetCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/widget/agents/{public_id}/conversation/calls/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * End Call
+         * @description Ends the token's Conversation's open Call, recording when it ended and adding its minutes
+         *     (rounded up) to the Agent's Call minutes for the day; with no Call open, nothing changes.
+         *     What was said stays in the Conversation as Spoken Messages.
+         */
+        delete: operations["endWidgetCall"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/widget/agents/{public_id}/conversation/calls/current/interruptions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Interrupt Call
+         * @description The Visitor talked over the reply being spoken in the token's Conversation's open Call:
+         *     that Agent Message is marked interrupted, and keeps its whole text. With no reply being
+         *     spoken, nothing changes.
+         */
+        post: operations["interruptWidgetCall"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/widget/agents/{public_id}/conversation/rating": {
         parameters: {
             query?: never;
@@ -2858,6 +3046,29 @@ export interface paths {
          *     token.
          */
         post: operations["startWidgetConversation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/widget/agents/{public_id}/llm/v1/chat/completions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Chat Completions
+         * @description Answers one turn of a Call, for the voice layer. The Visitor's words (the last user
+         *     message) are answered by the Agent's Live Version as a typed widget message is, with the
+         *     earlier turns of the Conversation as history, and saved with the reply as Spoken Messages
+         *     of the Call.
+         */
+        post: operations["answerCallTurn"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2956,6 +3167,10 @@ export interface components {
             block_rate_alert: boolean;
             /** Budget Exhausted */
             budget_exhausted: boolean;
+            /** Call Budget Exhausted */
+            call_budget_exhausted: boolean;
+            /** Calls Failing */
+            calls_failing: boolean;
             /**
              * Created At
              * Format: date-time
@@ -3235,11 +3450,73 @@ export interface components {
             /** Remove */
             remove?: string[];
         };
+        /** CallJoinOut */
+        CallJoinOut: {
+            /** Conversation Token */
+            conversation_token: string;
+            /** Greet */
+            greet: boolean;
+            /**
+             * Voice Layer
+             * @enum {string}
+             */
+            voice_layer: "elevenlabs" | "fake";
+        };
+        /** CallMinutesOut */
+        CallMinutesOut: {
+            /** Call Minutes Budget */
+            call_minutes_budget: number;
+            /**
+             * Date
+             * Format: date
+             */
+            date: string;
+            /** Exhausted */
+            exhausted: boolean;
+            /** Minutes Used */
+            minutes_used: number;
+            /**
+             * Resets At
+             * Format: date-time
+             */
+            resets_at: string;
+        };
+        /** CallOut */
+        CallOut: {
+            /** End Reason */
+            end_reason: string | null;
+            /** Ended At */
+            ended_at: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Minutes */
+            minutes: number | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Voice Cost Usd */
+            voice_cost_usd: string | null;
+        };
+        /** CallRefusedOut */
+        CallRefusedOut: {
+            /** Detail */
+            detail: string;
+            /**
+             * Reason
+             * @enum {string}
+             */
+            reason: "rate_limited" | "budget_exhausted" | "call_open" | "too_many_calls" | "call_minutes_exhausted" | "voice_unavailable";
+        };
         /**
          * Capability
          * @enum {string}
          */
-        Capability: "chat" | "embeddings" | "rerank";
+        Capability: "chat" | "embeddings" | "rerank" | "voice";
         /** CapabilityModelsOut */
         CapabilityModelsOut: {
             capability: components["schemas"]["Capability"];
@@ -3338,6 +3615,25 @@ export interface components {
          * @enum {string}
          */
         ChangeState: "clean" | "applied" | "clash";
+        /**
+         * ChatCompletionRequest
+         * @description An OpenAI chat completions request. Only the last user message and the Call token count;
+         *     the model, the history and any other options are ignored.
+         */
+        ChatCompletionRequest: {
+            elevenlabs_extra_body?: components["schemas"]["VoiceLayerExtraBody"] | null;
+            /** Messages */
+            messages: components["schemas"]["ChatMessage"][];
+        };
+        /** ChatMessage */
+        ChatMessage: {
+            /** Content */
+            content?: string | {
+                [key: string]: unknown;
+            }[] | null;
+            /** Role */
+            role: string;
+        };
         /** CheckFailedResponse */
         CheckFailedResponse: {
             /** Detail */
@@ -3447,6 +3743,8 @@ export interface components {
             agent_id: string;
             /** Agent Name */
             agent_name: string;
+            /** Calls */
+            calls: components["schemas"]["CallOut"][];
             /**
              * Created At
              * Format: date-time
@@ -3476,6 +3774,8 @@ export interface components {
             agent_version_id: string | null;
             /** Agent Version Number */
             agent_version_number: number | null;
+            /** Call Id */
+            call_id: string | null;
             /** Config Source */
             config_source: string | null;
             /** Content */
@@ -3505,6 +3805,8 @@ export interface components {
             instructions_version_id: string | null;
             /** Instructions Version Number */
             instructions_version_number: number | null;
+            /** Interrupted */
+            interrupted: boolean;
             /** Latency Ms */
             latency_ms: number | null;
             /** Model Name */
@@ -3517,6 +3819,8 @@ export interface components {
             purged_at: string | null;
             /** Role */
             role: string;
+            /** Spoken */
+            spoken: boolean;
         };
         /** ConversationOut */
         ConversationOut: {
@@ -3525,6 +3829,8 @@ export interface components {
              * Format: uuid
              */
             agent_id: string;
+            /** Call Open */
+            call_open: boolean;
             /**
              * Created At
              * Format: date-time
@@ -3543,7 +3849,7 @@ export interface components {
              */
             last_activity_at: string;
             /** Messages */
-            messages: components["schemas"]["MessageOut"][];
+            messages: components["schemas"]["PlaygroundMessageOut"][];
         };
         /** ConversationPageOut */
         ConversationPageOut: {
@@ -3590,6 +3896,10 @@ export interface components {
             agent_id: string;
             /** Agent Name */
             agent_name: string;
+            /** Call Minutes */
+            call_minutes: number;
+            /** Calls */
+            calls: number;
             /**
              * Created At
              * Format: date-time
@@ -3698,6 +4008,8 @@ export interface components {
             total_usd: string;
             /** Visitor Usd */
             visitor_usd: string;
+            /** Voice Usd */
+            voice_usd: string;
         };
         /**
          * CostGroup
@@ -3711,6 +4023,8 @@ export interface components {
             per_conversation_usd: string | null;
             /** Total Usd */
             total_usd: string;
+            /** Voice Usd */
+            voice_usd: string;
         };
         /** CostRowOut */
         CostRowOut: {
@@ -3733,6 +4047,8 @@ export interface components {
             total_usd: string;
             /** Visitor Usd */
             visitor_usd: string;
+            /** Voice Usd */
+            voice_usd: string;
         };
         /** CreateAgentRequest */
         CreateAgentRequest: {
@@ -3797,7 +4113,7 @@ export interface components {
              * Provider
              * @enum {string}
              */
-            provider: "anthropic" | "openai" | "voyage" | "demo";
+            provider: "anthropic" | "openai" | "voyage" | "elevenlabs" | "demo";
         };
         /** CreateInviteRequest */
         CreateInviteRequest: {
@@ -3884,6 +4200,7 @@ export interface components {
              * @constant
              */
             unit: "per million tokens";
+            voice: components["schemas"]["VoicePriceOut"] | null;
         };
         /** CredentialReferenceOut */
         CredentialReferenceOut: {
@@ -4965,47 +5282,6 @@ export interface components {
              */
             updated_at: string;
         };
-        /** MessageOut */
-        MessageOut: {
-            /** Agent Version Id */
-            agent_version_id: string | null;
-            /** Config Source */
-            config_source: string | null;
-            /** Content */
-            content: string;
-            /** Cost Usd */
-            cost_usd: string | null;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at: string;
-            /** First Token Ms */
-            first_token_ms: number | null;
-            /**
-             * Id
-             * Format: uuid
-             */
-            id: string;
-            /** Input Tokens */
-            input_tokens: number | null;
-            /** Instructions Source */
-            instructions_source: ("draft" | "version") | null;
-            /** Instructions Version Id */
-            instructions_version_id: string | null;
-            /** Instructions Version Number */
-            instructions_version_number: number | null;
-            /** Latency Ms */
-            latency_ms: number | null;
-            /** Model Name */
-            model_name: string | null;
-            /** Model Provider */
-            model_provider: string | null;
-            /** Output Tokens */
-            output_tokens: number | null;
-            /** Role */
-            role: string;
-        };
         /** MetricRowOut */
         MetricRowOut: {
             /** A */
@@ -5123,6 +5399,14 @@ export interface components {
         OperationalSettingsChange: {
             /** Allowed Origins */
             allowed_origins?: string[] | null;
+            /** Call Credential Id */
+            call_credential_id?: string | null;
+            /** Call Minutes Budget */
+            call_minutes_budget?: number | null;
+            /** Call Voice Id */
+            call_voice_id?: string | null;
+            /** Calls Enabled */
+            calls_enabled?: boolean | null;
             /** Conversation Messages Per Minute */
             conversation_messages_per_minute?: number | null;
             /** Daily Token Budget */
@@ -5131,6 +5415,10 @@ export interface components {
             ip_messages_per_minute?: number | null;
             /** Live Sample Rate */
             live_sample_rate?: number | null;
+            /** Max Call Minutes */
+            max_call_minutes?: number | null;
+            /** Spoken Greeting */
+            spoken_greeting?: string | null;
             /** Unavailable Text */
             unavailable_text?: string | null;
         };
@@ -5138,6 +5426,16 @@ export interface components {
         OperationalSettingsOut: {
             /** Allowed Origins */
             allowed_origins: string[];
+            /** Call Credential Id */
+            call_credential_id: string | null;
+            /** Call Minutes Budget */
+            call_minutes_budget: number;
+            /** Call Voice Id */
+            call_voice_id: string | null;
+            /** Calls Enabled */
+            calls_enabled: boolean;
+            /** Calls Failing */
+            calls_failing: boolean;
             /** Conversation Messages Per Minute */
             conversation_messages_per_minute: number;
             /** Daily Token Budget */
@@ -5146,6 +5444,10 @@ export interface components {
             ip_messages_per_minute: number;
             /** Live Sample Rate */
             live_sample_rate: number;
+            /** Max Call Minutes */
+            max_call_minutes: number;
+            /** Spoken Greeting */
+            spoken_greeting: string;
             /** Unavailable Text */
             unavailable_text: string;
         };
@@ -5245,6 +5547,15 @@ export interface components {
             /** Output */
             output?: number | string | null;
         };
+        /**
+         * OverrideVoicePriceRequest
+         * @description The voice credential's price per Call minute, in US dollars; null clears the override,
+         *     so the platform's price applies.
+         */
+        OverrideVoicePriceRequest: {
+            /** Per Minute */
+            per_minute: number | string | null;
+        };
         /** PasswordResetAccepted */
         PasswordResetAccepted: {
             /** Detail */
@@ -5264,6 +5575,66 @@ export interface components {
             id: string;
             /** Name */
             name: string;
+        };
+        /** PlaygroundCitationOut */
+        PlaygroundCitationOut: {
+            /** Chunk Id */
+            chunk_id: string | null;
+            /** Document Id */
+            document_id: string | null;
+            /** Document Name */
+            document_name: string | null;
+            /** Label */
+            label: string;
+            /** Rank */
+            rank: number;
+        };
+        /** PlaygroundMessageOut */
+        PlaygroundMessageOut: {
+            /** Agent Version Id */
+            agent_version_id: string | null;
+            /** Citations */
+            citations: components["schemas"]["PlaygroundCitationOut"][];
+            /** Config Source */
+            config_source: string | null;
+            /** Content */
+            content: string;
+            /** Cost Usd */
+            cost_usd: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** First Token Ms */
+            first_token_ms: number | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Input Tokens */
+            input_tokens: number | null;
+            /** Instructions Source */
+            instructions_source: ("draft" | "version") | null;
+            /** Instructions Version Id */
+            instructions_version_id: string | null;
+            /** Instructions Version Number */
+            instructions_version_number: number | null;
+            /** Latency Ms */
+            latency_ms: number | null;
+            /** Model Name */
+            model_name: string | null;
+            /** Model Provider */
+            model_provider: string | null;
+            /** Output Tokens */
+            output_tokens: number | null;
+            /** Role */
+            role: string;
+            /** Searches */
+            searches: string[];
+            /** Spoken */
+            spoken: boolean;
         };
         /** PrefillOut */
         PrefillOut: {
@@ -5385,7 +5756,7 @@ export interface components {
          * Provider
          * @enum {string}
          */
-        Provider: "anthropic" | "openai" | "bedrock" | "voyage" | "demo";
+        Provider: "anthropic" | "openai" | "bedrock" | "voyage" | "elevenlabs" | "demo";
         /** ProviderOut */
         ProviderOut: {
             /** Auth Kinds */
@@ -5992,6 +6363,11 @@ export interface components {
             /** Url */
             url: string;
         };
+        /** StartPlaygroundCallRequest */
+        StartPlaygroundCallRequest: {
+            /** Instructions Version Id */
+            instructions_version_id?: string | null;
+        };
         /** StartUploadRequest */
         StartUploadRequest: {
             /** Filename */
@@ -6022,6 +6398,19 @@ export interface components {
             upload_id: string;
             /** Url */
             url: string;
+        };
+        /** StartedCallOut */
+        StartedCallOut: {
+            /**
+             * Call Id
+             * Format: uuid
+             */
+            call_id: string;
+            /** Call Token */
+            call_token: string;
+            join: components["schemas"]["CallJoinOut"];
+            /** Max Call Minutes */
+            max_call_minutes: number;
         };
         /** SuggestedChangeOut */
         SuggestedChangeOut: {
@@ -6471,7 +6860,7 @@ export interface components {
          * @description What a time series measures, over each of its periods.
          * @enum {string}
          */
-        TimeSeriesMetric: "conversations" | "replies" | "cost_usd" | "mean_tokens" | "thumbs_up_rate" | "mean_rating" | "fallback_rate" | "p95_latency_ms" | "live_score";
+        TimeSeriesMetric: "conversations" | "replies" | "cost_usd" | "mean_tokens" | "thumbs_up_rate" | "mean_rating" | "fallback_rate" | "p95_latency_ms" | "live_score" | "calls" | "call_minutes";
         /** TimeSeriesOut */
         TimeSeriesOut: {
             /**
@@ -6620,6 +7009,10 @@ export interface components {
          * @description Overrides of the widget's built-in text. None keeps the built-in text.
          */
         "UiText-Input": {
+            /** Call Choice */
+            call_choice?: string | null;
+            /** Message Choice */
+            message_choice?: string | null;
             /** Rate Conversation */
             rate_conversation?: string | null;
             /** Searching Status */
@@ -6634,6 +7027,10 @@ export interface components {
          * @description Overrides of the widget's built-in text. None keeps the built-in text.
          */
         "UiText-Output": {
+            /** Call Choice */
+            call_choice: string | null;
+            /** Message Choice */
+            message_choice: string | null;
             /** Rate Conversation */
             rate_conversation: string | null;
             /** Searching Status */
@@ -6794,6 +7191,38 @@ export interface components {
             /** Number */
             number: number;
         };
+        /** VoiceLayerExtraBody */
+        VoiceLayerExtraBody: {
+            /**
+             * Call Token
+             * @default
+             */
+            call_token: string;
+        };
+        /** VoiceOut */
+        VoiceOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Sample Url */
+            sample_url: string | null;
+        };
+        /** VoicePriceOut */
+        VoicePriceOut: {
+            /** Effective */
+            effective: string | null;
+            /** Override */
+            override: string | null;
+            /** Platform */
+            platform: string | null;
+            /**
+             * Unit
+             * @default per minute
+             * @constant
+             */
+            unit: "per minute";
+        };
         /** WidgetCitationOut */
         WidgetCitationOut: {
             /** Document Name */
@@ -6803,6 +7232,8 @@ export interface components {
         };
         /** WidgetConversationOut */
         WidgetConversationOut: {
+            /** Call Open */
+            call_open: boolean;
             /** Messages */
             messages: components["schemas"]["WidgetMessageOut"][];
             rating: components["schemas"]["WidgetRatingOut"];
@@ -6829,11 +7260,15 @@ export interface components {
              * Format: uuid
              */
             id: string;
+            /** Interrupted */
+            interrupted: boolean;
             /**
              * Role
              * @enum {string}
              */
             role: "user" | "assistant";
+            /** Spoken */
+            spoken: boolean;
         };
         /** WidgetMessageRequest */
         WidgetMessageRequest: {
@@ -8492,6 +8927,110 @@ export interface operations {
             };
         };
     };
+    overrideCredentialVoicePrice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OverrideVoicePriceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoicePriceOut"];
+                };
+            };
+            /** @description Only Owners can do this */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Not a credential that carries Calls */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listVoices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                credential_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VoiceOut"][];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This credential doesn't have the voice Capability, so it has no voices. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description ElevenLabs couldn't be reached with this credential. Check the credential in Organisation settings, Credentials, or try again shortly. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     getDefaultModel: {
         parameters: {
             query?: never;
@@ -9964,6 +10503,48 @@ export interface operations {
             };
         };
     };
+    getCallMinutes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallMinutesOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     compareVersions: {
         parameters: {
             query: {
@@ -11157,6 +11738,15 @@ export interface operations {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
+            /** @description The voice layer couldn't set the Agent up */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
         };
     };
     startPlaygroundConversation: {
@@ -11232,6 +11822,110 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["ConversationOut"];
                 };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    startPlaygroundCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                conversation_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["StartPlaygroundCallRequest"] | null;
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartedCallOut"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Project or Agent is archived, the Agent's calling is off, or the Conversation already has a Call open. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Instructions Version isn't one of the Project's. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description ElevenLabs couldn't be reached with this credential. Check the credential in Organisation settings, Credentials, or try again shortly. */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    endPlaygroundCall: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                agent_id: string;
+                conversation_id: string;
+                organisation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             /** @description Not found */
             404: {
@@ -12537,6 +13231,8 @@ export interface operations {
                 guardrail?: components["schemas"]["GuardrailFilter"] | null;
                 /** @description Only those with a reply whose Live Verdict passed (`passed`), failed (`failed`) or couldn't be judged (`error`), or with a reply that wasn't chosen to be judged (`not_judged`) */
                 live_verdict?: components["schemas"]["LiveVerdictFilter"] | null;
+                /** @description true: only those with a Call, open or ended; false: only those without */
+                has_call?: boolean | null;
                 page?: number;
                 page_size?: number;
             };
@@ -14891,6 +15587,158 @@ export interface operations {
             };
         };
     };
+    startWidgetCall: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StartedCallOut"];
+                };
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This assistant is no longer available. */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description This assistant doesn't take Calls. */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+            /** @description Admission control refused the Call, or the voice layer couldn't start it */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CallRefusedOut"];
+                };
+            };
+        };
+    };
+    endWidgetCall: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    interruptWidgetCall: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <conversation token>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description This chat has expired. Reload the page to start a new one. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rateConversation: {
         parameters: {
             query?: never;
@@ -15023,6 +15871,62 @@ export interface operations {
             };
             /** @description This assistant is no longer available. */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answerCallTurn: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description `Bearer <the Agent's secret>` */
+                authorization?: string;
+            };
+            path: {
+                public_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChatCompletionRequest"];
+            };
+        };
+        responses: {
+            /** @description Server-Sent Events, as OpenAI streams chat completions: `chat.completion.chunk` objects whose `choices[0].delta.content` is the text to speak (the reply, the Agent's refusal or replacement text, or its unavailable text), then one with `finish_reason` `stop`, then `[DONE]`. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/event-stream": string;
+                };
+            };
+            /** @description The API key isn't this Agent's. */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description The Call token is invalid or expired, or the Call has ended. */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

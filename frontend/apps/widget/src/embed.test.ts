@@ -44,6 +44,13 @@ test("injects an iframe for the Agent's widget shell, served from where the scri
   expect(loader.nextElementSibling).toBe(frame);
 });
 
+test("the widget may ask for the microphone, for Calls", () => {
+  const frame = mount(script({ "data-agent": "agt_abc" }));
+
+  // Set before the frame loads: browsers read `allow` when the frame navigates.
+  expect(frame?.allow).toBe("microphone");
+});
+
 test("the Agent's public ID is escaped into the path", () => {
   const frame = mount(script({ "data-agent": "../../api/x?y#z" }));
 

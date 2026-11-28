@@ -7,7 +7,7 @@ until the budget is raised or the date changes (midnight UTC starts a new counte
 needs no job).
 
 Then ``admit`` checks the Agent's rate limits (Operational Settings) with sliding one-minute windows
-in Redis: one per Conversation token and one per IP address for that Agent. Each window is a
+in Redis: one per Conversation and one per IP address for that Agent. Each window is a
 sorted set of the admitted messages' times; a message is admitted only if both windows hold
 fewer than their limit, and only then is it counted in both, so refused messages never count
 and waiting always works. The check and the count are one Lua script, so concurrent messages
@@ -20,8 +20,8 @@ The Playground never comes through here: it is exempt.
 """
 
 import enum
-import hashlib
 import secrets
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
@@ -88,17 +88,15 @@ class Admission:
         self._redis = redis
         self._clock = clock
 
-    async def admit(self, agent: Limits, token: str, ip: str) -> Refusal | None:
+    async def admit(self, agent: Limits, conversation_id: uuid.UUID, ip: str) -> Refusal | None:
         """None when the message is admitted (and counted), else why it was refused."""
         now_at = self._clock.now()
         if await self.tokens_used(agent.public_id, utc_date(now_at)) >= agent.daily_token_budget:
             return Refusal.TOKEN_BUDGET
-        # The token is hashed so Redis never holds a usable one.
-        conversation = hashlib.sha256(token.encode()).hexdigest()
         windows = [
             (
                 Refusal.CONVERSATION_RATE,
-                f"{_KEY_PREFIX}conversation:{conversation}",
+                f"{_KEY_PREFIX}conversation:{conversation_id}",
                 agent.conversation_messages_per_minute,
             ),
             (

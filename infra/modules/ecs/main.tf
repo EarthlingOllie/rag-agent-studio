@@ -243,8 +243,9 @@ locals {
     RUNS_QUEUE_NAME    = var.queues.runs.name
     RUNS_QUEUE_URL     = var.queues.runs.url
   }
-  # What the API and the worker pools need beyond the data stores: Documents in S3, credential envelopes sealed by KMS, and
-  # the Studio's public address for links in emails.
+  # What the API and the worker pools need beyond the data stores: Documents in S3, credential envelopes sealed by KMS, the
+  # Studio's public address for links in emails, and the platform's public base URL, where ElevenLabs reaches the
+  # turn endpoint for Calls (spec 20). CloudFront serves the API on the Studio's address, so they are the same.
   app_environment = {
     OBJECT_STORE        = "s3"
     OBJECT_STORE_BUCKET = local.documents_bucket
@@ -252,6 +253,7 @@ locals {
     KEY_WRAPPER         = "kms"
     KMS_KEY_ID          = var.credentials_key_arn
     STUDIO_URL          = var.studio_url
+    PUBLIC_BASE_URL     = var.studio_url
   }
   # The proxies whose X-Forwarded-For entries the API believes when finding a Visitor's IP for per-IP rate limits
   # (spec 06; backend/app/core/client_ip.py): the ALB, which connects from inside the VPC, and CloudFront's

@@ -80,10 +80,11 @@ async def prepare_turn(
     conversation_id: uuid.UUID,
     question: str,
     *,
+    call_id: uuid.UUID | None = None,
     now: datetime,
 ) -> PreparedTurn:
     """Saves a Visitor's question, ready for ``app.playground.service.answer`` to answer with
-    the Live Version."""
+    the Live Version; with ``call_id``, as a Spoken Message of that Call."""
     found = await live_agent(session, public_id)
     conversation = await session.scalar(
         select(Conversation).where(
@@ -108,5 +109,6 @@ async def prepare_turn(
         found.live.instructions,
         question,
         agent_version_id=found.live.agent_version_id,
+        call_id=call_id,
         now=now,
     )

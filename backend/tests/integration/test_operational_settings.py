@@ -25,13 +25,20 @@ from tests.integration.test_playground_errors import failing
 
 DEFAULT_UNAVAILABLE = "This assistant is temporarily unavailable. Please try again later."
 CHANGED = "agent.operational_settings_changed"
-# The default rate limits (06-05), Token Budget (06-06) and Live sample rate (15-01), which these
-# tests leave alone.
+# The default rate limits (06-05), Token Budget (06-06), Live sample rate (15-01) and Call
+# settings (20-03), which these tests leave alone.
 LIMITS = {
     "conversation_messages_per_minute": 10,
     "ip_messages_per_minute": 30,
     "daily_token_budget": 1_000_000,
     "live_sample_rate": 0,
+    "calls_enabled": False,
+    "call_credential_id": None,
+    "call_voice_id": None,
+    "spoken_greeting": "",
+    "max_call_minutes": 10,
+    "call_minutes_budget": 60,
+    "calls_failing": False,
 }
 
 
@@ -54,7 +61,8 @@ async def change(member: SignedUpMember, agent: dict[str, Any], **fields: Any) -
 async def csp(visitor: httpx.AsyncClient, agent: dict[str, Any]) -> str:
     shell = await visitor.get(f"/widget/a/{agent['public_id']}")
     assert shell.status_code == 200, shell.text
-    policy: str = shell.headers["content-security-policy"]
+    # Its frame-ancestors directive (connect-src is tested with Calls).
+    policy: str = shell.headers["content-security-policy"].split("; ")[0]
     return policy
 
 

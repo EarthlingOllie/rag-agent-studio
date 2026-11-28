@@ -1,6 +1,7 @@
 """Embedding rules: an Agent's Operational Settings (its Allowed Origins, unavailable text, rate
-limits and Token Budget), the Token Budget's alert, the shell's framing policy, and Visitors'
-Conversations, which are reached only through their Conversation token.
+limits, Token Budget, Call settings and Call limits), the Token Budget's alert, the shell's
+framing policy, and Visitors' Conversations, which are reached only through their Conversation
+token.
 
 Operational Settings are not part of any Draft or Version (ADR-0009): they are edited here, apply
 on the next request without publishing, and every change is an Audit Event with the before and
@@ -14,7 +15,7 @@ from datetime import UTC, datetime, time, timedelta
 from datetime import date as date_type
 from typing import cast
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import exists, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import audit
@@ -24,10 +25,13 @@ from app.agents.models import ORIGIN_MAX, Agent
 from app.agents.service import get_agent
 from app.alert_emails.delivery import raise_alert, send_alert_emails
 from app.alert_emails.models import Alert
-from app.conversations.models import Conversation, Message, MessageRetrieval
+from app.conversations.models import Call, Conversation, Message, MessageRetrieval
 from app.documents.models import Document
+from app.embed import call_limits
 from app.embed.admission import Admission, Limits, Refusal, utc_date
 from app.embed.branding import override_of
+from app.embed.call_settings import CallSettingsChange
+from app.embed.call_settings import apply as apply_call_settings
 from app.embed.tokens import TokenSigner, expired, token_hash
 from app.evaluation.budget import has_budget
 from app.feedback.models import MessageFeedback
@@ -40,6 +44,7 @@ from app.tenancy.repository import OrganisationScope
 from app.theme.resolve import with_colours
 from app.theme.schema import ThemeSettings
 from app.theme.service import StoredImage, ThemeImageKind, organisation_theme
+from app.voice.remote import VoicePorts
 
 ORIGINS_MAX = 50
 DEFAULT_UNAVAILABLE_TEXT = "This assistant is temporarily unavailable. Please try again later."
@@ -95,8 +100,19 @@ def normalise_origins(origins: list[str]) -> list[str]:
 
 
 def frame_ancestors(origins: list[str]) -> str:
-    """The ``Content-Security-Policy`` that lets only those origins frame the widget."""
+    """The ``Content-Security-Policy`` directive that lets only those origins frame the widget."""
     return "frame-ancestors " + (" ".join(origins) if origins else "'none'")
+
+
+# Where the ElevenLabs browser client connects during a Call: its API and its WebRTC servers.
+ELEVENLABS_CONNECT_SOURCES = "https://*.elevenlabs.io wss://*.elevenlabs.io"
+
+
+def shell_policy(origins: list[str], *, calls: bool) -> str:
+    """The widget shell's ``Content-Security-Policy``: framed only by the Allowed Origins, and
+    connecting only to the platform, and to ElevenLabs only for an Agent that takes Calls."""
+    connect = "connect-src 'self'" + (f" {ELEVENLABS_CONNECT_SOURCES}" if calls else "")
+    return f"{frame_ancestors(origins)}; {connect}"
 
 
 class EvaluationBudgetRequiredError(Exception):
@@ -115,6 +131,18 @@ class OperationalSettings:
     daily_token_budget: int
     # The whole percentage of Visitor replies chosen for a Live Verdict.
     live_sample_rate: int
+    # The Call settings (``app.embed.call_settings``): whether the Agent takes Calls, the
+    # voice-capable credential's ID and the voice it speaks with, and the spoken greeting.
+    calls_enabled: bool
+    call_credential_id: str | None
+    call_voice_id: str | None
+    spoken_greeting: str
+    # The Call limits: the Maximum Call length and the Call minutes budget per UTC date.
+    max_call_minutes: int
+    call_minutes_budget: int
+    # The Calls failing alert: the voice layer couldn't start one of the Agent's Calls. Not a
+    # setting, so not audited; saving the Call settings clears it.
+    calls_failing: bool
 
 
 def _settings_of(agent: Agent) -> OperationalSettings:
@@ -125,7 +153,23 @@ def _settings_of(agent: Agent) -> OperationalSettings:
         ip_messages_per_minute=agent.ip_messages_per_minute,
         daily_token_budget=agent.daily_token_budget,
         live_sample_rate=agent.live_sample_rate,
+        calls_enabled=agent.calls_enabled,
+        call_credential_id=None
+        if agent.call_credential_id is None
+        else str(agent.call_credential_id),
+        call_voice_id=agent.call_voice_id,
+        spoken_greeting=agent.spoken_greeting,
+        max_call_minutes=agent.max_call_minutes,
+        call_minutes_budget=agent.call_minutes_budget,
+        calls_failing=agent.calls_failing_at is not None,
     )
+
+
+def _audited(agent: Agent) -> dict[str, object]:
+    """The Agent's Operational Settings as their Audit Events record them."""
+    settings = asdict(_settings_of(agent))
+    del settings["calls_failing"]
+    return settings
 
 
 async def operational_settings(
@@ -146,6 +190,10 @@ async def change_operational_settings(
     ip_messages_per_minute: int | None = None,
     daily_token_budget: int | None = None,
     live_sample_rate: int | None = None,
+    max_call_minutes: int | None = None,
+    call_minutes_budget: int | None = None,
+    call: CallSettingsChange | None = None,
+    voice: VoicePorts,
     now: datetime,
 ) -> OperationalSettings:
     """Changes the settings given (``None`` leaves one as it is; a blank ``unavailable_text``
@@ -153,10 +201,14 @@ async def change_operational_settings(
     ``agent.operational_settings_changed`` Audit Event holding the before and after values of
     the settings that changed, except the Live sample rate's, which is recorded on its own as
     ``agent.live_sample_rate_changed``, so a jump in evaluation spend can be traced; a save that
-    changes nothing records nothing."""
+    changes nothing records nothing.
+
+    A Call settings change (``call``) is checked and brings the Agent's remote agent in step
+    through ``voice`` (``app.embed.call_settings.apply``); it raises ``CallSettingsError`` or
+    ``VoiceLayerError``, and then nothing is saved."""
     origins = None if allowed_origins is None else normalise_origins(allowed_origins)
     agent = (await get_agent(session, scope, project_id, agent_id, lock=True)).agent
-    before = asdict(_settings_of(agent))
+    before = _audited(agent)
     if origins is not None:
         agent.allowed_origins = origins
     if unavailable_text is not None:
@@ -171,7 +223,12 @@ async def change_operational_settings(
         if live_sample_rate > 0 and not await has_budget(session, scope.organisation_id):
             raise EvaluationBudgetRequiredError
         agent.live_sample_rate = live_sample_rate
-    after = asdict(_settings_of(agent))
+    if max_call_minutes is not None:
+        agent.max_call_minutes = max_call_minutes
+    if call_minutes_budget is not None:
+        agent.call_minutes_budget = call_minutes_budget
+    await apply_call_settings(session, scope, agent, call or CallSettingsChange(), voice)
+    after = _audited(agent)
     changed = [key for key in before if before[key] != after[key]]
     for action, keys in (
         (OPERATIONAL_SETTINGS_CHANGED, [key for key in changed if key != LIVE_SAMPLE_RATE]),
@@ -210,6 +267,8 @@ class Shell:
     # The public Experience of the Live Version.
     experience: Experience
     citations: bool
+    # Whether the Agent takes Calls: calling is on and its remote agent is set up.
+    calls: bool
     # Where the widget fetches the Agent's avatar and the Theme's logo, or None.
     avatar_url: str | None
     logo_url: str | None
@@ -247,6 +306,7 @@ async def shell(
         theme=with_colours(theme.settings, override.colours),
         experience=experience,
         citations=found.live.config.retrieval.citations,
+        calls=takes_calls(found.agent),
         avatar_url=avatar_url,
         logo_url=None if logo is None else _image_url(public_id, "logo", logo),
     )
@@ -261,6 +321,11 @@ async def widget_image(session: AsyncSession, public_id: str, kind: str) -> Stor
     if kind == "logo":
         return theme.images[ThemeImageKind.LOGO]
     return override_of(found.agent).avatar or theme.images[ThemeImageKind.AVATAR]
+
+
+def takes_calls(agent: Agent) -> bool:
+    """Whether Visitors can call the Agent: calling is on and its remote agent is set up."""
+    return agent.calls_enabled and agent.remote_agent_id is not None
 
 
 class InvalidTokenError(Exception):
@@ -311,22 +376,52 @@ async def prepare_turn(
     ip: str,
     now: datetime,
 ) -> AdmittedTurn:
-    """Saves the Visitor's question in the token's Conversation, to be answered by the Agent's
-    Live Version at this moment. A valid token's message first goes through admission control
-    with the Agent's current Token Budget and rate limits; a refused one raises
-    ``NotAdmittedError`` and nothing is saved."""
+    """Saves the Visitor's question in the token's Conversation, as ``admit_turn`` does."""
     conversation = await _conversation(session, signer, public_id, token, now=now)
-    agent = await session.get_one(Agent, conversation.agent_id)
-    limits = Limits(
+    agent = await agent_of(session, conversation)
+    return await admit_turn(
+        session, agent, conversation, question, admission=admission, ip=ip, now=now
+    )
+
+
+async def agent_of(session: AsyncSession, conversation: Conversation) -> Agent:
+    """The Agent a Visitor Conversation is with."""
+    return await session.get_one(Agent, conversation.agent_id)
+
+
+def limits_of(agent: Agent) -> Limits:
+    """The Agent's rate limits and Token Budget, as admission control applies them now."""
+    return Limits(
         public_id=agent.public_id,
         conversation_messages_per_minute=agent.conversation_messages_per_minute,
         ip_messages_per_minute=agent.ip_messages_per_minute,
         daily_token_budget=agent.daily_token_budget,
     )
-    refusal = await admission.admit(limits, token, ip)
+
+
+async def admit_turn(
+    session: AsyncSession,
+    agent: Agent,
+    conversation: Conversation,
+    question: str,
+    *,
+    admission: Admission,
+    ip: str,
+    call_id: uuid.UUID | None = None,
+    now: datetime,
+) -> AdmittedTurn:
+    """Saves the Visitor's question in their Conversation, to be answered by the Agent's Live
+    Version at this moment; with ``call_id``, as a Spoken Message of that Call. The message
+    first goes through admission control with the Agent's current Token Budget and rate limits;
+    a refused one raises ``NotAdmittedError`` and nothing is saved. A retired Agent raises
+    ``serving.AgentNotServedError`` or ``serving.AgentNotLiveError`` once admitted."""
+    limits = limits_of(agent)
+    refusal = await admission.admit(limits, conversation.id, ip)
     if refusal is not None:
         raise NotAdmittedError(refusal, agent.id)
-    turn = await serving.prepare_turn(session, public_id, conversation.id, question, now=now)
+    turn = await serving.prepare_turn(
+        session, agent.public_id, conversation.id, question, call_id=call_id, now=now
+    )
     return AdmittedTurn(turn, agent.id, limits)
 
 
@@ -424,17 +519,17 @@ async def budget_exhausted(
 
 
 async def clear_budget_alerts(session: AsyncSession, *, now: datetime) -> int:
-    """Clears the budget alert flags raised before today (UTC), for Beat each hour; returns
-    how many it cleared. A flag raised today stays: today's budget is still spent."""
-    cleared = await session.execute(
-        update(Agent)
-        .where(Agent.budget_exhausted_at < _start_of_day(now))
-        .values(budget_exhausted_at=None)
-        .returning(Agent.id)
-    )
-    count = len(cleared.all())
+    """Clears the Token Budget and Call minutes budget alert flags raised before today (UTC),
+    for Beat each hour; returns how many Agents it cleared. A flag raised today stays:
+    today's budget is still spent."""
+    cleared: set[uuid.UUID] = set()
+    for flag in (Agent.budget_exhausted_at, Agent.call_budget_exhausted_at):
+        rows = await session.execute(
+            update(Agent).where(flag < _start_of_day(now)).values({flag: None}).returning(Agent.id)
+        )
+        cleared.update(rows.scalars())
     await session.commit()
-    return count
+    return len(cleared)
 
 
 async def _conversation(
@@ -473,6 +568,10 @@ class ResumedMessage:
     citations: list[ResumedCitation]
     # The Visitor's Message Feedback on an answer, if they gave some.
     feedback: MessageFeedback | None
+    # Said in a Call rather than typed: a Spoken Message.
+    spoken: bool
+    # A spoken reply the Visitor talked over; it keeps its whole text.
+    interrupted: bool
 
 
 @dataclass(frozen=True)
@@ -480,6 +579,8 @@ class ResumedConversation:
     messages: list[ResumedMessage]
     # The Visitor's Conversation Rating and whether they dismissed the rating prompt.
     rating: RatingState
+    # Whether the Conversation has a Call open.
+    call_open: bool
 
 
 async def resume(
@@ -514,20 +615,38 @@ async def resume(
     given = await feedback_on(session, [m.id for m in messages])
     return ResumedConversation(
         [
-            ResumedMessage(m.id, m.role, m.content, cited.get(m.id, []), given.get(m.id))
+            ResumedMessage(
+                m.id,
+                m.role,
+                m.content,
+                cited.get(m.id, []),
+                given.get(m.id),
+                m.spoken,
+                m.interrupted,
+            )
             for m in messages
         ],
         await rating_state(session, conversation),
+        bool(
+            await session.scalar(
+                select(
+                    exists().where(Call.conversation_id == conversation.id, Call.ended_at.is_(None))
+                )
+            )
+        ),
     )
 
 
 async def end(
     session: AsyncSession, signer: TokenSigner, public_id: str, token: str, *, now: datetime
 ) -> None:
-    """Ends the token's Conversation: its token is forgotten, so it is refused from now on.
-    The Conversation and its Messages are kept. A retired Agent's Conversations can still be
-    ended."""
+    """Ends the token's Conversation: its token is forgotten, so it is refused from now on, and
+    its open Call ends. The Conversation and its Messages are kept. A retired Agent's
+    Conversations can still be ended."""
     conversation = await _conversation(session, signer, public_id, token, now=now)
+    await call_limits.end_open_call(
+        session, conversation, now=now, reason=call_limits.CallEnd.CONVERSATION_ENDED
+    )
     conversation.token_hash = None
     await session.commit()
 

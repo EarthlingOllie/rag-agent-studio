@@ -21,6 +21,8 @@ from app.gateway.adapters import build_model_gateway
 from app.guardrails.pipeline import build_pipeline
 from app.jobs.protection import build_protection, install_protection
 from app.mail.factory import build_mailer
+from app.voice.adapters import build_voice_layer
+from app.voice.remote import VoicePorts, install_voice_ports
 from app.worker.celery_app import configure_celery
 from app.worker.publisher import current_publisher
 
@@ -35,6 +37,15 @@ envelope = build_envelope(settings)
 install_ports(build_ports(settings, envelope))
 # Scale-in protection of this task while it holds a job: ECS task protection on ECS, else none.
 install_protection(build_protection(settings))
+# The voice layer the Project deletion cascade (and the sweeper's run of it) removes its Agents'
+# remote agents through.
+install_voice_ports(
+    VoicePorts(
+        layer=build_voice_layer(settings),
+        envelope=envelope,
+        public_base_url=str(settings.public_base_url or settings.studio_url),
+    )
+)
 # What Evaluation Runs answer and judge through: the gateway, Guardrails and local embedders.
 install_evaluation_ports(
     EvaluationPorts(

@@ -21,9 +21,9 @@ import uuid
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, overload
+from typing import Literal, cast, overload
 
-from sqlalchemy import select
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.agents.config import AgentConfig, Retrieval
@@ -32,6 +32,7 @@ from app.agents.service import active_agent, get_agent
 from app.conversations.models import (
     DRAFT,
     VERSION,
+    Call,
     Conversation,
     InstructionsSource,
     Message,
@@ -58,7 +59,7 @@ from app.projects.service import active_project
 from app.retention.service import purge_messages
 from app.retrieval.service import Candidate, Excluded, RetrievalResult, retrieve
 from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
-from app.runtime.prompt import Turn
+from app.runtime.prompt import Turn, chunk_label
 from app.runtime.runtime import (
     CitationEvent,
     DoneEvent,
@@ -73,6 +74,10 @@ from app.tenancy.repository import OrganisationScope
 
 class ConversationNotFoundError(Exception):
     """No Playground Conversation with that ID for the Agent."""
+
+
+class CallEndedError(Exception):
+    """The Call the words were spoken in has ended."""
 
 
 async def start_conversation(
@@ -122,6 +127,64 @@ async def get_conversation(
     return conversation, list(messages)
 
 
+@dataclass(frozen=True)
+class CitedChunk:
+    label: str
+    # Both None once the Chunk's Document is deleted.
+    chunk_id: uuid.UUID | None
+    document_id: uuid.UUID | None
+    document_name: str | None
+    rank: int
+
+
+@dataclass(frozen=True)
+class ConversationExtras:
+    """What the Playground shows beside a Conversation's Messages."""
+
+    # Each answer's Knowledge Search queries, in order.
+    searches: dict[uuid.UUID, list[str]]
+    # Each answer's cited Chunks, in label order.
+    citations: dict[uuid.UUID, list[CitedChunk]]
+    # Whether a Playground Call is open in the Conversation.
+    call_open: bool
+
+
+async def conversation_extras(
+    session: AsyncSession, conversation: Conversation, messages: list[Message]
+) -> ConversationExtras:
+    """The answers' Searches and citations, and whether a Call is open, for the Playground to
+    show a Conversation read back (a Playground Call's replies arrive this way)."""
+    ids = [m.id for m in messages]
+    searches: dict[uuid.UUID, list[str]] = {}
+    for message_id, query in await session.execute(
+        select(Search.message_id, Search.query)
+        .where(Search.message_id.in_(ids))
+        .order_by(Search.message_id, Search.order)
+    ):
+        searches.setdefault(message_id, []).append(query)
+    citations: dict[uuid.UUID, list[CitedChunk]] = {}
+    cited = await session.scalars(
+        select(MessageRetrieval)
+        .where(MessageRetrieval.message_id.in_(ids), MessageRetrieval.cited.is_(True))
+        .order_by(MessageRetrieval.message_id, MessageRetrieval.rank)
+    )
+    seen: set[tuple[uuid.UUID, uuid.UUID | None]] = set()
+    for row in cited:
+        # A Chunk two Searches found is cited once, by its first label.
+        if row.chunk_id is not None and (row.message_id, row.chunk_id) in seen:
+            continue
+        seen.add((row.message_id, row.chunk_id))
+        # A cited Chunk was given to the model, so it has a rank.
+        rank = cast(int, row.rank)
+        citations.setdefault(row.message_id, []).append(
+            CitedChunk(chunk_label(rank), row.chunk_id, row.document_id, row.document_name, rank)
+        )
+    call_open = await session.scalar(
+        select(exists().where(Call.conversation_id == conversation.id, Call.ended_at.is_(None)))
+    )
+    return ConversationExtras(searches, citations, call_open=bool(call_open))
+
+
 def _turns(messages: list[Message]) -> list[Turn]:
     """Each question with the answer that followed it. A question left unanswered is skipped,
     and so is one the input Guardrail blocked: an attack isn't replayed to the model later. So
@@ -159,6 +222,11 @@ class PreparedTurn:
     agent_version_id: uuid.UUID | None = None
     # The Agent is Agentic but its chat model can't use tools, so ``config`` is Automatic.
     automatic_fallback: bool = False
+    # The Call the question was said in (spec 20): the question and its answer are Spoken
+    # Messages of that Call. None for a typed question.
+    call_id: uuid.UUID | None = None
+    # The saved question's Message ID: in a Call, the turn an interruption names.
+    question_id: uuid.UUID | None = None
 
     @property
     def instructions_source(self) -> InstructionsSource:
@@ -217,6 +285,7 @@ async def save_question(
     *,
     agent_version_id: uuid.UUID | None,
     instructions_version: InstructionsVersion | None = None,
+    call_id: uuid.UUID | None = None,
     now: datetime,
 ) -> PreparedTurn:
     """Resolves ``config``'s models (``NoDefaultModelError`` or ``ProviderCredentialGoneError``
@@ -227,19 +296,28 @@ async def save_question(
     await session.refresh(conversation, with_for_update=True)
     if conversation.deleted_at is not None:
         raise ConversationNotFoundError
+    if call_id is not None:
+        # Locked after the Conversation, as ending a Conversation locks them: a Call that ended
+        # since its turn was checked takes no more words.
+        call = await session.get_one(Call, call_id, with_for_update=True, populate_existing=True)
+        if call.ended_at is not None:
+            raise CallEndedError
     organisation_id = conversation.organisation_id
     resolved = await resolve_models(session, organisation_id, config)
-    session.add(
-        Message(
-            organisation_id=organisation_id,
-            conversation_id=conversation.id,
-            role=MessageRole.USER,
-            content=question,
-            # By the app's clock, as the answer is: usage rollups (spec 07) go by it.
-            created_at=now,
-        )
+    asked = Message(
+        id=uuid.uuid4(),
+        organisation_id=organisation_id,
+        conversation_id=conversation.id,
+        role=MessageRole.USER,
+        content=question,
+        spoken=call_id is not None,
+        call_id=call_id,
+        # By the app's clock, as the answer is: usage rollups (spec 07) go by it.
+        created_at=now,
     )
+    session.add(asked)
     conversation.last_activity_at = now
+    question_id = asked.id
     await session.commit()
     return PreparedTurn(
         organisation_id=organisation_id,
@@ -258,6 +336,8 @@ async def save_question(
         classifier=resolved.classifier,
         agent_version_id=agent_version_id,
         automatic_fallback=resolved.automatic_fallback,
+        call_id=call_id,
+        question_id=question_id,
     )
 
 
@@ -490,6 +570,8 @@ async def answer(
                 guardrail_outcomes=[o.as_dict() for o in event.guardrail_outcomes],
                 search_count=event.search_count,
                 automatic_fallback=prepared.automatic_fallback,
+                spoken=prepared.call_id is not None,
+                call_id=prepared.call_id,
             )
             session.add(message)
             await session.flush()
@@ -503,6 +585,13 @@ async def answer(
                 Conversation, prepared.conversation_id, with_for_update=True
             )
             conversation.last_activity_at = now
+            if prepared.call_id is not None:
+                # Locked after the Conversation, as the Call's turns lock them: the Visitor
+                # talking over this reply either comes first (and is seen here) or finds it.
+                call = await session.get_one(
+                    Call, prepared.call_id, with_for_update=True, populate_existing=True
+                )
+                message.interrupted = call.interrupted_turn_id == prepared.question_id
             if conversation.deleted_at is not None:
                 # Deleted on request while the answer streamed: its text isn't kept either.
                 await purge_messages(session, Message.id == message.id, now=now)

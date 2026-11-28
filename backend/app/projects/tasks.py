@@ -10,6 +10,7 @@ from app.core.settings import load_settings
 from app.documents.ports import current_ports
 from app.jobs import deletions
 from app.projects import service
+from app.voice.remote import current_voice_ports
 from app.worker.celery_app import DELETE_PROJECT_TASK, celery_app
 from app.worker.publisher import current_publisher
 
@@ -19,7 +20,7 @@ async def _delete(project_id: uuid.UUID) -> None:
     sessionmaker = create_sessionmaker(engine)
     try:
         async with sessionmaker() as session:
-            await service.delete_project(session, project_id)
+            await service.delete_project(session, project_id, voice=current_voice_ports())
         await deletions.drain(sessionmaker, current_ports().object_store)
     finally:
         await engine.dispose()
@@ -28,9 +29,10 @@ async def _delete(project_id: uuid.UUID) -> None:
 @celery_app.task(name=DELETE_PROJECT_TASK, ignore_result=True)
 def delete_project(project_id: str, *sent_before: str) -> None:
     """Permanently deletes a Deleting Project: in one transaction, its rows (Documents, Chunks,
-    Tags, Agents, Conversations...) with the ``project.deleted`` Audit Event, and its storage
-    prefix written to the deletions table; then drains the deletions table, removing every
-    object stored under the prefix (originals, converted markdown, unconfirmed uploads).
+    Tags, Agents, Conversations...) with the ``project.deleted`` Audit Event, removing its
+    Agents' remote agents from the voice layer, and its storage prefix written to the deletions
+    table; then drains the deletions table, removing every object stored under the prefix
+    (originals, converted markdown, unconfirmed uploads).
 
     The message carries only the Project: who asked, and when, are on its row.
     ``sent_before`` takes the requester and time that messages sent before the row held them

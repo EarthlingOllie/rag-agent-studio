@@ -41,3 +41,9 @@ a7613be7aa3c5531bfb5fba811bfdc789cc8eeb9:frontend/apps/studio/src/projects/Embed
 # it as its default; it is public, not a secret.
 d3133e45634650c4bfda2b5a272877a62a1303bc:backend/app/core/settings.py:generic-api-key:24
 d3133e45634650c4bfda2b5a272877a62a1303bc:backend/tests/integration/test_settings.py:generic-api-key:64
+# Ticket 20-02 (WIP commit on claude/upbeat-feynman-gf6lxp): made-up ElevenLabs keys the credential
+# tests rotate to ("sk_rotated_elevenlabs_n3wk") and reject ("sk_wrong_key_0000-bad0") through the
+# fake verifier. None is a real secret.
+942ca51256f127af98af62e6f267a2a5074324c5:frontend/apps/studio/src/settings/ElevenLabsCredentials.test.tsx:generic-api-key:93
+942ca51256f127af98af62e6f267a2a5074324c5:frontend/apps/studio/src/settings/ElevenLabsCredentials.test.tsx:generic-api-key:100
+942ca51256f127af98af62e6f267a2a5074324c5:backend/tests/integration/test_elevenlabs_credentials.py:generic-api-key:146

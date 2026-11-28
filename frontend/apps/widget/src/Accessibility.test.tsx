@@ -17,9 +17,10 @@ const boot: Boot = {
   avatar_url: null,
   greeting: "Hi!",
   starter_questions: [],
-  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null, searching_status: null },
+  ui_text: { send_button: null, rate_conversation: null, unavailable_message: null, searching_status: null, message_choice: null, call_choice: null },
   citations: true,
   rating_prompt_after: 0,
+  calls: false,
 };
 
 beforeEach(() => {
@@ -290,4 +291,66 @@ test("the searching status override is what the reply shows and what is announce
   reply.send("done", { message_id: "m1" });
   reply.end();
   expect(await within(announcements).findByText("HR helper: Twenty-five days.")).toBeInTheDocument();
+});
+
+// A Call by keyboard (ticket 20-11)
+
+test("a keyboard Visitor chooses Call, mutes and ends it, with focus kept inside the open widget", async () => {
+  const seen: string[] = [];
+  server.use(
+    http.post("*/api/widget/agents/agt_hr/conversations", () => HttpResponse.json({ conversation_token: "wc1.t" }, { status: 201 })),
+    http.post("*/api/widget/agents/agt_hr/conversation/calls", () =>
+      HttpResponse.json(
+        { call_id: "c1", call_token: "wk2.call", join: { voice_layer: "fake", conversation_token: "fake-call-1", greet: true }, max_call_minutes: 10 },
+        { status: 201 },
+      ),
+    ),
+    http.delete("*/api/widget/agents/agt_hr/conversation/calls/current", () => {
+      seen.push("end call");
+      return new HttpResponse(null, { status: 204 });
+    }),
+    http.get("*/api/widget/agents/agt_hr/conversation", () => HttpResponse.json({ messages: [], rating: { score: null, prompt_dismissed: false }, call_open: false })),
+    // The Visitor hasn't finished speaking: the Call stays listening.
+    http.post("*/api/widget/fake-voice/calls/:join/turns", () => new Promise<Response>(() => undefined)),
+  );
+  const user = userEvent.setup();
+  render(<Widget boot={{ ...boot, calls: true }} />);
+
+  await user.tab();
+  await user.keyboard("{Enter}");
+  const chat = screen.getByRole("region", { name: "Chat with HR helper" });
+  const choice = within(chat).getByRole("group", { name: "How would you like to ask?" });
+  expect(within(choice).getByRole("button", { name: "Message" })).toHaveFocus();
+  await user.tab();
+  expect(within(choice).getByRole("button", { name: "Call" })).toHaveFocus();
+
+  await user.keyboard("{Enter}");
+
+  // The button that started the Call is gone: focus moves to the Call view, not out of the widget.
+  const call = within(chat).getByRole("group", { name: "Call" });
+  expect(call).toHaveFocus();
+  const mute = within(call).getByRole("button", { name: "Mute" });
+  await waitFor(() => {
+    expect(mute).toBeEnabled();
+  });
+  await user.tab();
+  expect(mute).toHaveFocus();
+  await user.keyboard(" ");
+  expect(mute).toHaveAttribute("aria-pressed", "true");
+  await user.tab();
+  const end = within(call).getByRole("button", { name: "End call" });
+  expect(end).toHaveFocus();
+  // Past the last control focus wraps inside the widget.
+  await user.tab();
+  await user.tab();
+  await user.tab();
+  expect(within(chat).getByRole("button", { name: "Close chat" })).toHaveFocus();
+  await user.tab();
+  expect(chat.contains(document.activeElement)).toBe(true);
+  end.focus();
+
+  await user.keyboard("{Enter}");
+
+  expect(await within(chat).findByLabelText("Message")).toHaveFocus();
+  expect(seen).toEqual(["end call"]);
 });

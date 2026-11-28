@@ -1,0 +1,85 @@
+[
+  {
+    "request": {
+      "method": "POST",
+      "url": "https://api.elevenlabs.io/v1/convai/secrets",
+      "json": {
+        "type": "new",
+        "name": "Front desk (agt_frontdesk) turn endpoint key",
+        "value": "sssssssssssssssssssssssssssssssssssssssssss"
+      }
+    },
+    "response": {
+      "status": 200,
+      "json": {
+        "type": "stored",
+        "secret_id": "sec_7Hq2",
+        "name": "Front desk (agt_frontdesk) turn endpoint key"
+      }
+    }
+  },
+  {
+    "request": {
+      "method": "POST",
+      "url": "https://api.elevenlabs.io/v1/convai/agents/create",
+      "json": {
+        "name": "Front desk (agt_frontdesk)",
+        "conversation_config": {
+          "agent": {
+            "first_message": "Hello, how can I help?",
+            "language": "en",
+            "prompt": {
+              "prompt": "",
+              "llm": "custom-llm",
+              "custom_llm": {
+                "url": "https://calls.example.test/api/widget/agents/agt_frontdesk/llm/v1",
+                "api_key": {
+                  "secret_id": "sec_7Hq2"
+                }
+              }
+            }
+          },
+          "tts": {
+            "voice_id": "21m00Tcm4TlvDq8ikWAM"
+          }
+        },
+        "platform_settings": {
+          "overrides": {
+            "custom_llm_extra_body": true,
+            "conversation_config_override": {
+              "agent": {
+                "first_message": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "response": {
+      "status": 422,
+      "json": {
+        "detail": [
+          {
+            "loc": [
+              "body",
+              "conversation_config",
+              "tts",
+              "voice_id"
+            ],
+            "msg": "Voice not found",
+            "type": "value_error"
+          }
+        ]
+      }
+    }
+  },
+  {
+    "request": {
+      "method": "DELETE",
+      "url": "https://api.elevenlabs.io/v1/convai/secrets/sec_7Hq2"
+    },
+    "response": {
+      "status": 204
+    }
+  }
+]

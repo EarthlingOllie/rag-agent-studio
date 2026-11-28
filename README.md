@@ -26,6 +26,7 @@ Contents: [Highlights](#highlights) · [Demo](#demo) · [Quickstart](#quickstart
 - **Defence in depth against prompt injection.** An ingestion scan for indirect injection, an input Guardrail (local ONNX classifier or LLM classifier) in block/warn/log mode, a Canary token that cuts off leaked prompts, and an Attack evaluation suite run in CI and nightly against a live model.
 - **Honest analytics.** Thumbs and ratings from Visitors roll up daily into per-Version KPIs with Wilson score intervals, low-confidence marking below 30 Conversations, and cost per Project and per Agent.
 - **Production concerns built in.** Multi-tenant isolation tested on every route, hand-rolled auth with TOTP MFA, KMS envelope encryption for provider API keys, origin-locked iframe embeds, rate limits, daily Token Budgets, retention, an Audit log, WCAG 2.2 AA, and Terraform for AWS.
+- **Calls, from the same Agent.** A Visitor can talk instead of type, and switch between the two in one Conversation. ElevenLabs only listens, takes turns and speaks; every spoken reply is written by our runtime with the same prompt, retrieval, Guardrails, Trace and Version as a typed one ([ADR-0019](docs/adr/0019-calls-through-a-custom-llm.md)). A Maximum Call length and a daily Call minutes budget bound the bill, each Call records its minutes and Voice Cost, and audio is never stored.
 - **Model-agnostic.** A gateway built on Pydantic AI talks to Anthropic, OpenAI and AWS Bedrock, with per-Organisation defaults, per-Agent overrides and a price table so every reply carries a cost. A labelled demo model lets the whole product run with no API key.
 
 ## Demo
@@ -77,7 +78,8 @@ Then open the Studio at <http://localhost:5173> and sign in:
 **Useful extras**
 
 - **Use a real model:** set `SEED_CREDENTIAL_PROVIDER` (`anthropic` or `openai`) and `SEED_CREDENTIAL_API_KEY` before `make seed`. You can also add credentials in the Studio under **Organisation settings → Credentials**.
-- **Start again:** `make seed-reset` erases and rebuilds only the demo Organisation.
+- **Try a Call:** with an ElevenLabs key and a public address for the API (a tunnel locally), set `VOICE_LAYER=elevenlabs` and `PUBLIC_BASE_URL` in `.env`, restart the stack, then run `SEED_ELEVENLABS_API_KEY=... make seed`: the Product FAQ takes Calls on the demo shop page. Without the key, calling stays off and everything else works. [docs/development.md](docs/development.md#calls-and-the-voice-layer) has the details.
+- **Start again:** `make seed-reset` erases and rebuilds only the demo Organisation (and removes any remote agent the seed made in ElevenLabs).
 - **Run the checks:** `make services` then `make test`; `make lint`; `make e2e` for the full browser suite.
 - `make help` lists every target, and [docs/development.md](docs/development.md) covers settings, ports and each subsystem in depth.
 

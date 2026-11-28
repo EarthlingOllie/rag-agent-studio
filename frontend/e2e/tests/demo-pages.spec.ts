@@ -52,7 +52,7 @@ test.describe("Demo host pages", () => {
   }) => {
     const demo = (await (await page.request.get(`${HOST_URL}/api/demo/agents`)).json()) as DemoAgents;
     const shell = await page.request.get(`${STUDIO_URL}/widget/a/${demo.shop.public_id}`);
-    expect(shell.headers()["content-security-policy"]).toBe(`frame-ancestors ${new URL(HOST_URL).origin}`);
+    expect(shell.headers()["content-security-policy"]).toBe(`frame-ancestors ${new URL(HOST_URL).origin}; connect-src 'self'`);
 
     await page.goto(`${BLOCKED_HOST_URL}/`);
     await expect(page.getByRole("heading", { level: 1, name: "This site may not show the chat" })).toBeVisible();

@@ -2,7 +2,7 @@ import { fireEvent, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { HttpResponse } from "msw";
 
-import { bedrock, claude, defaultDraft, fakeAgentsApi, hrHelper, hrTag, openAi, payTag, voyage } from "../test/agents";
+import { bedrock, claude, defaultDraft, elevenLabs, fakeAgentsApi, hrHelper, hrTag, openAi, payTag, voyage } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeProjectsApi, hrProject } from "../test/projects";
 import { renderStudio } from "../test/render";
@@ -116,6 +116,8 @@ test("an Editor sets every Behaviour, Experience and Guardrails setting", async 
   await userEvent.type(within(experience).getByLabelText(/"Rate this conversation"/), "How did I do?");
   await userEvent.type(within(experience).getByLabelText(/Unavailable message/), "Back soon.");
   await userEvent.type(within(experience).getByLabelText(/Searching status/), "Looking that up…");
+  await userEvent.type(within(experience).getByLabelText(/"Message" choice/), "Type to me");
+  await userEvent.type(within(experience).getByLabelText(/"Call" choice/), "Talk to me");
   await userEvent.clear(within(experience).getByLabelText(/Rating prompt after/));
   await userEvent.type(within(experience).getByLabelText(/Rating prompt after/), "5");
   const guardrails = group("Guardrails");
@@ -138,6 +140,8 @@ test("an Editor sets every Behaviour, Experience and Guardrails setting", async 
         rate_conversation: "How did I do?",
         unavailable_message: "Back soon.",
         searching_status: "Looking that up…",
+        message_choice: "Type to me",
+        call_choice: "Talk to me",
       },
       rating_prompt_after: 5,
     },
@@ -192,7 +196,8 @@ test("a Project without Tags says so", async () => {
 });
 
 test("the model override, reranker and classifier offer only credentials with the right capability", async () => {
-  const { requests } = setUp();
+  // A voice credential is offered in none of them.
+  const { requests } = setUp({ credentials: [openAi, claude, voyage, elevenLabs] });
   await openEditor();
   const model = within(group("Behaviour")).getByRole("group", { name: "Model override" });
   const reranker = within(group("Retrieval")).getByRole("group", { name: "Reranker" });

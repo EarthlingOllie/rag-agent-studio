@@ -17,6 +17,7 @@ const PROVIDER_NAMES: Record<Credential["provider"], string> = {
   openai: "OpenAI",
   bedrock: "Amazon Bedrock",
   voyage: "Voyage AI",
+  elevenlabs: "ElevenLabs",
   // The seeded demo provider: canned answers from the Knowledge Base, never a real model.
   demo: "Demo: canned answers, not a real model",
 };
@@ -855,6 +856,24 @@ export function DraftEditor({
           value={experience.ui_text.searching_status ?? ""}
           onChange={(text) => {
             setUiText({ searching_status: orNull(text) });
+          }}
+        />
+        <TextField
+          label='"Message" choice'
+          hint="For an Agent that takes Calls: the first button Visitors see in the Launcher. Empty keeps “Message”."
+          errors={at("experience.ui_text.message_choice")}
+          value={experience.ui_text.message_choice ?? ""}
+          onChange={(text) => {
+            setUiText({ message_choice: orNull(text) });
+          }}
+        />
+        <TextField
+          label='"Call" choice'
+          hint="For an Agent that takes Calls: the second button Visitors see in the Launcher. Empty keeps “Call”."
+          errors={at("experience.ui_text.call_choice")}
+          value={experience.ui_text.call_choice ?? ""}
+          onChange={(text) => {
+            setUiText({ call_choice: orNull(text) });
           }}
         />
         <NumberField

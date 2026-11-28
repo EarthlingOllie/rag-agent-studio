@@ -92,7 +92,7 @@ def test_a_key_without_a_secret_is_passed_on_as_it_is(settings_env: pytest.Monke
     assert conf.broker_transport_options["is_secure"] is True
 
 
-def test_beat_schedules_the_health_check_budget_alert_reset_usage_rollup_purge_and_sweeper(
+def test_beat_schedules_the_health_check_budget_alert_reset_call_reaper_rollup_purge_sweeper(
     settings_env: pytest.MonkeyPatch,
 ) -> None:
     entrypoint = _import_worker_entrypoint()
@@ -101,6 +101,7 @@ def test_beat_schedules_the_health_check_budget_alert_reset_usage_rollup_purge_a
     assert [entry["task"] for entry in schedule.values()] == [
         "worker.health_check",
         "embed.clear_budget_alerts",
+        "embed.end_idle_calls",
         "analytics.roll_up_usage",
         "retention.purge_expired",
         "jobs.sweep",

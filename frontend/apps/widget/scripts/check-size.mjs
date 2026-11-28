@@ -1,5 +1,7 @@
 // CI's size budget for the Embed Snippet's loader (`dist/embed.js`): it runs on every host page,
-// so it must stay tiny. Run after `pnpm --filter @studio/widget build`.
+// so it must stay tiny. Run after `pnpm --filter @studio/widget build`. It also checks that the
+// widget app leaves ElevenLabs' browser client (and the WebRTC library under it) to a chunk loaded
+// only when a Visitor picks Call.
 import { readFileSync } from "node:fs";
 import { gzipSync } from "node:zlib";
 
@@ -15,3 +17,10 @@ if (source.length > BUDGET_BYTES || gzipped > BUDGET_GZIP_BYTES) {
   console.error("embed.js is over its size budget.");
   process.exit(1);
 }
+
+const widget = readFileSync(new URL("../dist/widget/assets/widget.js", import.meta.url), "utf8");
+if (/livekit|@elevenlabs\/client/i.test(widget)) {
+  console.error("widget.js bundles the ElevenLabs client; it must be imported only when a Visitor picks Call.");
+  process.exit(1);
+}
+console.log("widget.js: the ElevenLabs client is loaded only for Calls");

@@ -27,6 +27,7 @@ from app.mail.factory import build_mailer
 from app.projects.service import finish_deletions
 from app.re_embedding.jobs import RE_EMBED
 from app.suggestions.jobs import SUGGESTION_RUNS
+from app.voice.remote import current_voice_ports
 from app.worker.celery_app import SWEEP_TASK, celery_app
 
 # Every job type the sweeper looks after.
@@ -48,7 +49,7 @@ async def _sweep(at: datetime) -> int | None:
             sessionmaker, POLICIES, now=at, timings=Timings.from_settings(settings)
         )
         if recoveries is not None:
-            projects = await finish_deletions(sessionmaker)
+            projects = await finish_deletions(sessionmaker, current_voice_ports())
             deleted = await deletions.drain(sessionmaker, current_ports().object_store)
             finished = await finish_new_editions(
                 sessionmaker, partial(recheck_document, sessionmaker)

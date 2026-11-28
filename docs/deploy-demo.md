@@ -44,7 +44,7 @@ The API, the two worker pools, Beat, the migration task and the seed task run th
 | Container | Environment | Secrets |
 |---|---|---|
 | all six | `ENVIRONMENT`, `AWS_REGION`, `DATABASE_HOST/PORT/NAME/USER`, `DATABASE_TLS=true`, `REDIS_HOST/PORT`, `REDIS_TLS=true`, `GENERAL_QUEUE_NAME/URL`, `RUNS_QUEUE_NAME/URL` (the queue module's queues) | `LOCAL_KEY_WRAPPER_KEY` (signs widget tokens) |
-| API, both worker pools and seed | `OBJECT_STORE=s3`, `OBJECT_STORE_BUCKET/REGION`, `KEY_WRAPPER=kms`, `KMS_KEY_ID` (the credentials key), `STUDIO_URL` (the CloudFront URL) | `DATABASE_PASSWORD`, `REDIS_AUTH_TOKEN` |
+| API, both worker pools and seed | `OBJECT_STORE=s3`, `OBJECT_STORE_BUCKET/REGION`, `KEY_WRAPPER=kms`, `KMS_KEY_ID` (the credentials key), `STUDIO_URL` and `PUBLIC_BASE_URL` (both the CloudFront URL, which serves the API; ElevenLabs reaches the turn endpoint for Calls at the second) | `DATABASE_PASSWORD`, `REDIS_AUTH_TOKEN` |
 | API only | `BEDROCK_PLATFORM_PRINCIPAL` (its own task role) | `SESSION_SECRET` |
 | Beat | | `REDIS_AUTH_TOKEN` |
 | migration | | `DATABASE_PASSWORD` |

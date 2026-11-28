@@ -583,11 +583,11 @@ test.describe("Agent settings and their effects", () => {
     await expect(card("Tokens per reply")).toContainText("n = 0 replies that asked a model");
     await expect(card("Searches per reply")).toContainText("Retrieval Mode: Agentic");
 
-    // In the Organisation's cost, in the Playground column: what the answer cost.
+    // In the Organisation's cost, in the Playground column: what the answer cost (Visitors, Playground, Evaluation, Voice, Total).
     await openSection(page, "Organisation sections", "Cost");
     const row = page.getByRole("table", { name: "Cost by Project" }).getByRole("row", { name: /^P3 costing HR/ });
     const expected = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumSignificantDigits: 2 }).format(cost);
-    await expect(row.getByRole("cell")).toHaveText(["$0.00", expected, "$0.00", expected], { timeout: 15_000 });
+    await expect(row.getByRole("cell")).toHaveText(["$0.00", expected, "$0.00", "$0.00", expected], { timeout: 15_000 });
   });
 
   test("an Owner finds the Agent they created in the Audit log", async ({ signedInPage: page, member }) => {

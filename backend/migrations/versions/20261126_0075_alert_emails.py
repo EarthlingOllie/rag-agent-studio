@@ -1,8 +1,8 @@
 """Alert emails always arrive (spec 21): each alert email to each Owner is recorded when its
 alert is raised, with when it was sent, so the sweeper sends any left unsent.
 
-Revision ID: 0066_alert_emails
-Revises: 0065_object_deletions
+Revision ID: 0075_alert_emails
+Revises: 0074_object_deletions
 Create Date: 2026-11-26
 """
 
@@ -11,8 +11,8 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "0066_alert_emails"
-down_revision: str | None = "0065_object_deletions"
+revision: str = "0075_alert_emails"
+down_revision: str | None = "0074_object_deletions"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
