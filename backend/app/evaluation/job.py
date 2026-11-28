@@ -20,10 +20,18 @@ the case result an error with its reason; a Guardrail block is an answer, and is
 
 Each answer commits with the Run's progress, so the Studio can poll it. A Run cancelled meanwhile
 stops before its next answer and keeps what it answered and spent. A Run where every answer
-errored (so every case is an Error) ends ``failed``, with the most common error as its message.
+errored (so every case is an Error) ends ``failed``, with the most common error as its message,
+and so does a Run whose job raised an unexpected error, with a reason saying so.
+
+The job claims its Run from Queued (``app.evaluation.jobs``, ADR-0020), so a second delivery of
+its message does nothing and pays for no answer. While it holds the claim it writes a heartbeat,
+in the background and with each answer it commits; a Run whose heartbeat stops (its worker died)
+is ended Interrupted by the sweeper, and this job, if it was only stalled, stops before its next
+answer.
 """
 
 import functools
+import logging
 import uuid
 from collections import Counter
 from dataclasses import dataclass
@@ -36,9 +44,11 @@ from app.agents.config import AgentConfig, Retrieval
 from app.agents.models import Agent, AgentVersion
 from app.agents.resolution import ResolvedModels, resolve_models
 from app.core.clock import Clock
+from app.core.settings import load_settings
 from app.credentials.models import ProviderCredential
 from app.documents.service import current_chunks
 from app.evaluation.expectations import Check, check_expected_source, check_fallback
+from app.evaluation.jobs import RUN_ROWS
 from app.evaluation.judge import (
     CitedExcerpt,
     Judged,
@@ -48,6 +58,7 @@ from app.evaluation.judge import (
     judge,
 )
 from app.evaluation.models import (
+    IN_PROGRESS,
     EvaluationCaseResult,
     EvaluationExpectedSource,
     EvaluationRun,
@@ -62,6 +73,8 @@ from app.evaluation.models import (
 )
 from app.evaluation.ports import EvaluationPorts
 from app.gateway.gateway import ModelGateway
+from app.jobs import reliability
+from app.jobs.reliability import Claim, Timings
 from app.playground.api import GuardrailOutcomeOut, SearchOut, TracedChunkOut, TraceOut
 from app.pricing.service import credential_pricing, price_table
 from app.pricing.table import TokenUsage, cost
@@ -69,6 +82,10 @@ from app.projects.models import InstructionsVersion, Project
 from app.retrieval.service import Candidate, Excluded, RetrievalResult, retrieve
 from app.runtime.errors import PROVIDER_ERRORS, ErrorEvent, provider_error
 from app.runtime.runtime import DoneEvent
+
+UNEXPECTED = "The Run stopped on an unexpected error. What it answered is kept; run it again."
+
+logger = logging.getLogger(__name__)
 
 
 def _chunk(found: Candidate | Excluded, cited: set[uuid.UUID]) -> TracedChunkOut:
@@ -381,47 +398,81 @@ async def run_evaluation(
     run_id: uuid.UUID,
     clock: Clock,
 ) -> None:
-    """Runs a queued Run to its end, or until it is cancelled. A Run that isn't queued (already
-    picked up, or cancelled before it was) is left."""
-    async with sessionmaker() as session:
-        run = await session.get_one(EvaluationRun, run_id, with_for_update=True)
-        if run.status != RunStatus.QUEUED:
-            return
-        run.status = RunStatus.RUNNING
-        await session.commit()
-        sides = await _sides(session, run)
-        cases = list(
-            await session.scalars(
-                select(EvaluationRunCase)
-                .where(EvaluationRunCase.run_id == run.id)
-                .order_by(EvaluationRunCase.position)
+    """Runs a queued Run to its end, or until it is cancelled or interrupted. A Run that isn't
+    queued (already picked up, or cancelled before it was) is left. An unexpected error ends the
+    Run ``failed`` with a reason, keeping what it answered and spent, so it never stays in
+    progress."""
+    timings = Timings.from_settings(load_settings())
+    try:
+        async with sessionmaker() as session:
+            found = await reliability.claim(
+                session, RUN_ROWS, run_id, now=clock.now(), dead_after=timings.dead_after
             )
+            await session.commit()
+            if found is None:
+                return
+            async with reliability.heartbeat(sessionmaker, found, clock, timings.heartbeat_seconds):
+                await _run_to_end(session, ports, gateway, found, clock)
+    except Exception:
+        logger.exception("Evaluation Run failed", extra={"evaluation_run_id": str(run_id)})
+        async with sessionmaker() as session:
+            await session.execute(
+                update(EvaluationRun)
+                .where(EvaluationRun.id == run_id, EvaluationRun.status.in_(IN_PROGRESS))
+                .values(
+                    status=RunStatus.FAILED,
+                    error_message=UNEXPECTED,
+                    finished_at=clock.now(),
+                    claim_id=None,
+                    heartbeat_at=None,
+                )
+            )
+            await session.commit()
+
+
+async def _run_to_end(
+    session: AsyncSession,
+    ports: EvaluationPorts,
+    gateway: ModelGateway,
+    found: Claim,
+    clock: Clock,
+) -> None:
+    run = await session.get_one(EvaluationRun, found.row_id)
+    sides = await _sides(session, run)
+    cases = list(
+        await session.scalars(
+            select(EvaluationRunCase)
+            .where(EvaluationRunCase.run_id == run.id)
+            .order_by(EvaluationRunCase.position)
         )
-        agent = await session.get_one(Agent, run.agent_id)
-        project = await session.get_one(Project, agent.project_id)
-        # Each error reason, by how many answers it stopped.
-        errors: Counter[str | None] = Counter()
-        for case in cases:
-            for repeat in range(1, run.repeats + 1):
-                for side in sides:
-                    # Cancelled meanwhile: stop before the next answer.
-                    await session.refresh(run, ["status"])
-                    if run.status == RunStatus.CANCELLED:
-                        return
-                    result = await _answer_and_judge(
-                        session, ports, gateway, run, side, project, case, repeat, clock
-                    )
-                    errors[result.error_reason] += result.status == ResultStatus.ERROR
-                    run.answers_done += 1
-                    await session.commit()
-        # Cancelled during the last answer: it stays cancelled.
-        await session.refresh(run, ["status"], with_for_update=True)
-        if run.status == RunStatus.CANCELLED:
-            return
-        if errors.total() == run.answers_done:
-            run.status = RunStatus.FAILED
-            run.error_message = errors.most_common(1)[0][0]
-        else:
-            run.status = RunStatus.COMPLETED
-        run.finished_at = clock.now()
-        await session.commit()
+    )
+    agent = await session.get_one(Agent, run.agent_id)
+    project = await session.get_one(Project, agent.project_id)
+    # Each error reason, by how many answers it stopped.
+    errors: Counter[str | None] = Counter()
+    for case in cases:
+        for repeat in range(1, run.repeats + 1):
+            for side in sides:
+                # Cancelled (or ended) meanwhile: stop before the next answer.
+                await session.refresh(run, ["status"])
+                if run.status != RunStatus.RUNNING:
+                    return
+                result = await _answer_and_judge(
+                    session, ports, gateway, run, side, project, case, repeat, clock
+                )
+                errors[result.error_reason] += result.status == ResultStatus.ERROR
+                run.answers_done += 1
+                await reliability.beat(session, found, clock.now())
+                await session.commit()
+    # Cancelled (or ended) during the last answer: it stays so.
+    await session.refresh(run, ["status"], with_for_update=True)
+    if run.status != RunStatus.RUNNING:
+        return
+    if errors.total() == run.answers_done:
+        run.status = RunStatus.FAILED
+        run.error_message = errors.most_common(1)[0][0]
+    else:
+        run.status = RunStatus.COMPLETED
+    run.finished_at = clock.now()
+    reliability.released(run)
+    await session.commit()

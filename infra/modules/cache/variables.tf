@@ -103,3 +103,14 @@ variable "auth_token_version" {
     error_message = "auth_token_version must be a positive whole number."
   }
 }
+
+variable "maintenance_window" {
+  description = "Weekly UTC window for maintenance, ddd:hh24:mi-ddd:hh24:mi, after the 02:00-03:00 snapshot window. Null leaves it to the service: an emulator stores no window, so a second plan would show a change (ticket 23-01)."
+  type        = string
+  default     = "sun:03:30-sun:04:30"
+
+  validation {
+    condition     = var.maintenance_window == null ? true : can(regex("^(mon|tue|wed|thu|fri|sat|sun):[0-2][0-9]:[0-5][0-9]-(mon|tue|wed|thu|fri|sat|sun):[0-2][0-9]:[0-5][0-9]$", var.maintenance_window))
+    error_message = "maintenance_window must look like sun:03:30-sun:04:30 (UTC), or be null."
+  }
+}

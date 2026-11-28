@@ -1215,3 +1215,117 @@ test("a Rollout evaluation is in the Run history: the Live Version against its r
     "Version 1 · Instructions v1 · openai gpt-4.1-mini against Rollout of Version 1 · Instructions v2 · openai gpt-4.1-mini",
   );
 });
+
+// Interrupted Runs (spec 21)
+
+const INTERRUPTED = "Its worker stopped before it finished. The answers it gave and what it spent are kept.";
+
+test("an Interrupted Run says why in the history and on its page, with its partial results, and runs again with the same sides after the estimate", async () => {
+  const user = userEvent.setup();
+  const runId = "rd000000-0000-4000-8000-00000000000d";
+  const againId = "re000000-0000-4000-8000-00000000000e";
+  const withInstructions = { ...draftSide, instructions_draft: false, instructions_version_number: 1 };
+  const interrupted = results(
+    run(runId, "interrupted", 1, 2, { finished_at: "2026-11-12T10:06:00Z", sides: [liveSide, withInstructions] }),
+    [[leaveCase, [onSide(passed, "first")]]],
+  );
+  const { requests, estimates } = setUpPublished({ cases: [leaveCase], runs: [interrupted], started: [results(twoSided(againId), [])] });
+  renderStudio(agentPage(hrHelper.id));
+
+  const runs = await screen.findByRole("list", { name: "Evaluation Runs" }, { timeout: 5000 });
+  expect(runs).toHaveTextContent("Interrupted");
+  expect(runs).toHaveTextContent(INTERRUPTED);
+  expect(runs).toHaveTextContent("1 / 2 answers");
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" });
+  expect(within(detail).getByText(`This Run was interrupted. ${INTERRUPTED}`)).toBeInTheDocument();
+  // Its partial results: each side's score and the answers it gave.
+  expect(detail).toHaveTextContent("Repeat 1: Pass");
+  expect(within(detail).queryByRole("button", { name: "Cancel Run" })).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Evaluate" })).toBeEnabled();
+
+  await user.click(within(detail).getByRole("button", { name: "Run again" }));
+
+  const dialog = await screen.findByRole("dialog", { name: "Evaluate" });
+  expect(within(dialog).getByLabelText("First side")).toHaveValue(agentVersion(1).id);
+  expect(within(dialog).getByLabelText("Second side")).toHaveDisplayValue("Draft");
+  await waitFor(() => {
+    expect(within(dialog).getByLabelText("Draft's Instructions")).toHaveDisplayValue("Instructions v1");
+  });
+  const sameSides = {
+    sides: [{ kind: "version", version_id: agentVersion(1).id }, { kind: "draft" }],
+    instructions_draft: false,
+    instructions_version_id: instructionsVersion(1).id,
+  };
+  await waitFor(() => {
+    expect(within(dialog).getByRole("status", { name: "Estimated Cost" })).toHaveTextContent("About $0.006");
+  });
+  expect(estimates).toEqual([sameSides]);
+  await user.click(within(dialog).getByRole("button", { name: "Start Run" }));
+
+  await waitFor(() => {
+    expect(requests.filter((request) => request.route === "start")).toEqual([{ route: "start", body: sameSides }]);
+  });
+});
+
+test("running again a Draft that answered with the Instructions Draft, or with none, chooses the same", async () => {
+  const user = userEvent.setup();
+  const alone = { ...draftSide, position: "first" };
+  const interrupted = (id: string, side: typeof draftSide) =>
+    results(run(id, "interrupted", 0, 1, { sides: [side] }), []);
+  const { estimates } = setUpPublished({
+    cases: [leaveCase],
+    runs: [
+      interrupted("rf000000-0000-4000-8000-00000000000f", alone),
+      interrupted("rf000000-0000-4000-8000-000000000010", { ...alone, instructions_draft: false, instructions_version_number: null }),
+      interrupted("rf000000-0000-4000-8000-000000000011", { ...alone, instructions_draft: false, instructions_version_number: 9 }),
+    ],
+  });
+  renderStudio(agentPage(hrHelper.id));
+  const runs = await screen.findByRole("list", { name: "Evaluation Runs" }, { timeout: 5000 });
+  const choose = async (index: number) => {
+    await user.click(within(runs).getAllByRole("button", { name: "Run of 2026-11-12 10:00 UTC" })[index] as HTMLElement);
+    const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" });
+    await user.click(await within(detail).findByRole("button", { name: "Run again" }));
+    const dialog = await screen.findByRole("dialog", { name: "Evaluate" });
+    expect(within(dialog).getByLabelText("First side")).toHaveDisplayValue("Draft");
+    expect(within(dialog).getByLabelText("Second side")).toHaveDisplayValue("None: the first side runs alone");
+    const shown = within(dialog).getByLabelText("Draft's Instructions");
+    return { dialog, shown };
+  };
+
+  const drafted = await choose(0);
+  expect(drafted.shown).toHaveDisplayValue("Instructions Draft");
+  await user.click(within(drafted.dialog).getByRole("button", { name: "Cancel" }));
+  // With no Instructions Version then, or one that is gone, the Current Instructions Version.
+  for (const index of [1, 2]) {
+    const { dialog, shown } = await choose(index);
+    await waitFor(() => {
+      expect(shown).toHaveDisplayValue("Current Instructions Version (v2)");
+    });
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+  }
+  expect(estimates).toContainEqual({ sides: [{ kind: "draft" }], instructions_draft: true, instructions_version_id: null });
+  expect(estimates).toContainEqual({ sides: [{ kind: "draft" }], instructions_draft: false, instructions_version_id: null });
+});
+
+test("an Interrupted Rollout evaluation has no Run again: only Rollout evaluation starts one", async () => {
+  const rolloutSide = { ...liveSide, position: "second", kind: "rollout", instructions_version_number: 2 };
+  setUpPublished({
+    cases: [leaveCase],
+    runs: [results(run("rg000000-0000-4000-8000-000000000012", "interrupted", 1, 2, { kind: "rollout", sides: [liveSide, rolloutSide] }), [])],
+  });
+  renderStudio(agentPage(hrHelper.id));
+
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" }, { timeout: 5000 });
+  expect(within(detail).getByText(`This Run was interrupted. ${INTERRUPTED}`)).toBeInTheDocument();
+  expect(within(detail).queryByRole("button", { name: "Run again" })).not.toBeInTheDocument();
+});
+
+test("an archived Agent's Interrupted Run can't be run again", async () => {
+  setUp({ cases: [leaveCase], runs: [results(run("rh000000-0000-4000-8000-000000000013", "interrupted", 0, 1), [])] }, [oldHelper]);
+  renderStudio(agentPage(oldHelper.id));
+
+  const detail = await screen.findByRole("region", { name: "Run of 2026-11-12 10:00 UTC" }, { timeout: 5000 });
+  expect(within(detail).getByText(`This Run was interrupted. ${INTERRUPTED}`)).toBeInTheDocument();
+  expect(within(detail).queryByRole("button", { name: "Run again" })).not.toBeInTheDocument();
+});

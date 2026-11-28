@@ -1,0 +1,5 @@
+# Same calls against the make dev Floci (4566, no catalog) and the spike Floci (4577, catalog mounted)
+http://localhost:4566 []
+fck-nat AMIs: [('ami-04505b4804505b480', 'fck-nat-al2023-20260101-arm64-ebs', '568608671756')]
+http://localhost:4577 [('pl-93a247fa', 'com.amazonaws.global.cloudfront.origin-facing')]
+fck-nat AMIs: [('ami-04505b4804505b480', 'fck-nat-al2023-20260101-arm64-ebs', '568608671756')]

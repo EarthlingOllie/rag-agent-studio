@@ -40,19 +40,20 @@ Every spec tests at the **highest seam available** and uses as few seams as poss
 
 | Port | Production adapter | Test fake |
 |---|---|---|
-| Chat model | Pydantic AI provider models | Pydantic AI `TestModel` / `FunctionModel` |
-| Document converter | Docling | Fake converter returning fixed markdown and structure |
-| Embedder | Local `multilingual-e5-small`, Voyage, OpenAI, Bedrock | Deterministic hash-based embedder |
+| Chat model | Pydantic AI provider models | Pydantic AI `TestModel` / `FunctionModel`; a test's model builder that raises `JobKilled` (`app/jobs/faults.py`) stops the job at that model as a dead worker would |
+| Document converter | Docling | Fake converter returning fixed markdown and structure; its kill switch stops the job at a conversion as a dead worker would |
+| Embedder | Local `multilingual-e5-small`, Voyage, OpenAI, Bedrock | Deterministic hash-based embedder, with a kill switch at its embedding calls |
 | Injection classifier | Local ONNX model, LLM classifier | Rule-driven fake |
 | Credential verifier | Live provider call | Fake returning success or a chosen failure |
 | Key wrapper | AWS KMS | Local static-key wrapper (also used in `docker compose`) |
-| Object store | S3 | RustFS in integration tests; in-memory fake in unit tests |
+| Object store | S3 | RustFS in integration tests; in-memory fake in unit tests, with a kill switch at its writes |
 | Mailer | SES | In-memory outbox; Mailpit in `docker compose` |
 | Clock | System clock | Controllable clock |
 | Voice layer | ElevenLabs Agents | Scripted fake: a Call with no audio, whose turns the test drives |
-| Job publisher | Celery (Redis; SQS from spec 22) | Fake that records what was sent and can lose or hold a message |
-| Scale-in protection | ECS task protection | Fake that records protect, renew and release |
+| Job publisher | Celery (Redis; SQS from spec 22) | Fake that records what was sent and can lose or hold a message, and release held ones (`jobs` fixture, `tests/fakes/jobs.py`) |
+| Scale-in protection | ECS task protection (the ECS agent's endpoint); a no-op adapter where there is no ECS | Fake that records protect, renew and release, and can fail a step (`protection` fixture, `tests/fakes/protection.py`) |
 
+- **A killed worker:** the kill switches (`app/jobs/faults.py`) raise `JobKilled`, a `BaseException`, so the job's own error handling never runs; the Job publisher fake swallows it where it delivers the job, as the broker loses a dead worker's message. Tests then move the controllable clock and call the sweeper task (`jobs.sweep`) directly.
 - **Live suite:** tests marked `live` call real providers and real Docling. They run nightly and on demand, outside the coverage gate.
 
 ### Frontend

@@ -1,0 +1,3 @@
+FAIL deploys_in_order_at_the_given_tag: exit 3, expected 0. Output: ==> terraform init (state bucket rag-agent-studio-tfstate-123456789012)
+==> Making sure the ECR repositories exist
+==> rag-agent-studio/api:0123abc is already in ECR

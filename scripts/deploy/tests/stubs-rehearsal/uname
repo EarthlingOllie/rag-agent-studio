@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Stand-in for uname in the rehearsal wrapper's tests: the machine is STUB_MACHINE (default x86_64).
+[ "$*" = -m ] && echo "${STUB_MACHINE:-x86_64}" || exec /usr/bin/uname "$@"

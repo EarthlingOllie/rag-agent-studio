@@ -1,29 +1,37 @@
 """Shared fixtures for the API seam.
 
 Tests talk to the FastAPI app through an in-process async HTTP client, against real
-Postgres and Redis (``docker compose up postgres redis`` locally, service containers in CI).
+Postgres and Redis (``make services`` locally, service containers in CI), and Floci's SQS for
+the few tests that start a real worker.
 """
 
 import base64
 import os
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import AsyncExitStack
 from dataclasses import dataclass, replace
 from pathlib import Path
+from typing import Any
 
 import httpx
 import pytest
 from alembic import command
 from alembic.config import Config
 from asgi_lifespan import LifespanManager
+from celery import Task
 from fastapi import FastAPI
 
 from app.core.clock import Clock
+from app.jobs.protection import NoProtection, install_protection
 from app.mail.outbox import OutboxMailer
 from app.main import create_app
+from app.worker.celery_app import celery_app
+from app.worker.publisher import install_publisher
 from tests.fakes.clock import ControllableClock
-from tests.worker_resources import worker_database_url, worker_redis_url
+from tests.fakes.jobs import RecordingJobPublisher
+from tests.fakes.protection import RecordingProtection
+from tests.worker_resources import worker_database_url, worker_queue_name, worker_redis_url
 
 BASE_DATABASE_URL = os.environ.get(
     "TEST_DATABASE_URL", "postgresql+asyncpg://studio:studio@localhost:5432/studio_test"
@@ -34,6 +42,13 @@ BASE_REDIS_URL = os.environ.get("TEST_REDIS_URL", "redis://localhost:6379/15")
 WORKER_ID = os.environ.get("PYTEST_XDIST_WORKER")
 TEST_DATABASE_URL = worker_database_url(BASE_DATABASE_URL, WORKER_ID)
 TEST_REDIS_URL = worker_redis_url(BASE_REDIS_URL, WORKER_ID)
+# Jobs go through SQS on Floci (``docker compose up floci``); each worker has its own queues. The
+# suite runs jobs eagerly, so only the tests that start a real worker or read a queue reach it.
+TEST_SQS_ENDPOINT_URL = os.environ.get("TEST_SQS_ENDPOINT_URL", "http://localhost:4566")
+TEST_QUEUES = {queue: worker_queue_name(queue, WORKER_ID) for queue in ("general", "runs")}
+TEST_QUEUE_URLS = {
+    queue: f"{TEST_SQS_ENDPOINT_URL}/000000000000/{name}" for queue, name in TEST_QUEUES.items()
+}
 # 32 bytes, base64: the local static-key wrapper's key for the test run.
 TEST_LOCAL_KEY_WRAPPER_KEY = base64.b64encode(b"test-only-local-key-wrapper-key!").decode()
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
@@ -48,6 +63,14 @@ def _set_test_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", TEST_DATABASE_URL)
     monkeypatch.setenv("REDIS_URL", TEST_REDIS_URL)
     monkeypatch.setenv("CELERY_TASK_ALWAYS_EAGER", "true")
+    monkeypatch.setenv("GENERAL_QUEUE_NAME", TEST_QUEUES["general"])
+    monkeypatch.setenv("GENERAL_QUEUE_URL", TEST_QUEUE_URLS["general"])
+    monkeypatch.setenv("RUNS_QUEUE_NAME", TEST_QUEUES["runs"])
+    monkeypatch.setenv("RUNS_QUEUE_URL", TEST_QUEUE_URLS["runs"])
+    monkeypatch.setenv("SQS_ENDPOINT_URL", TEST_SQS_ENDPOINT_URL)
+    monkeypatch.setenv("AWS_REGION", "eu-west-2")
+    monkeypatch.setenv("SQS_ACCESS_KEY_ID", "test")
+    monkeypatch.setenv("SQS_SECRET_ACCESS_KEY", "test")
     monkeypatch.setenv("LOCAL_KEY_WRAPPER_KEY", TEST_LOCAL_KEY_WRAPPER_KEY)
     monkeypatch.setenv("MAILER", "outbox")
     monkeypatch.setenv("STUDIO_URL", STUDIO_URL)
@@ -102,6 +125,51 @@ def clock(app: FastAPI) -> ControllableClock:
     controllable = ControllableClock()
     app.state.clock = controllable
     return controllable
+
+
+@pytest.fixture
+def jobs(app: FastAPI) -> RecordingJobPublisher:
+    """Replaces the app's Job publisher with the fake, which records every job sent and can
+    lose, hold or fail one; jobs it delivers still run eagerly."""
+    fake = RecordingJobPublisher(deliver_to=app.state.jobs)
+    app.state.jobs = fake
+    install_publisher(fake)
+    return fake
+
+
+# Registers a test-only Celery task under a name for the current test (the `test_task` fixture).
+type RegisterTestTask = Callable[[str, Callable[..., Any]], Task[..., Any]]
+
+
+@pytest.fixture
+def test_task() -> Iterator[RegisterTestTask]:
+    """Registers a test-only Celery task for one test, and unregisters it afterwards.
+
+    A task registered with ``@celery_app.task`` at module level stays in ``celery_app.tasks``
+    for the rest of the process, so it would show up as a job the worker runs (ticket 22-08's
+    guide check) in whichever test shares that process.
+    """
+    names: list[str] = []
+
+    # Quoted: Task is generic only in its type stubs, so the bare annotation fails at runtime.
+    def register(name: str, function: Callable[..., Any]) -> "Task[..., Any]":
+        celery_app.finalize()  # a finalized app registers the task now, not on first use
+        names.append(name)
+        return celery_app.task(name=name)(function)
+
+    yield register
+    for name in names:
+        celery_app.tasks.unregister(name)
+
+
+@pytest.fixture
+def protection() -> Iterator[RecordingProtection]:
+    """Replaces the Scale-in protection adapter (a no-op outside ECS) with the fake, which records
+    each protect, renew and release, and can fail a step."""
+    fake = RecordingProtection()
+    install_protection(fake)
+    yield fake
+    install_protection(NoProtection())
 
 
 ClientFactory = Callable[[], Awaitable[httpx.AsyncClient]]

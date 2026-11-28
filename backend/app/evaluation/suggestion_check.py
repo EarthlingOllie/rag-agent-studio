@@ -12,15 +12,12 @@ import enum
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from decimal import Decimal
 
-from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agents.config import AgentConfig
 from app.evaluation.models import (
     IN_PROGRESS,
-    EvaluationCaseResult,
     EvaluationRun,
     RunKind,
     RunStatus,
@@ -98,26 +95,21 @@ async def stop_check(session: AsyncSession, run_id: uuid.UUID, now: datetime) ->
         run.finished_at = now
 
 
-async def check_cost(session: AsyncSession, run_id: uuid.UUID) -> Decimal | None:
-    """What the check has spent, answering and judging, at the prices frozen as each ran: nothing
-    before its first answer, and None when it answered but no price was known."""
-    answered, answers, judging = (
-        await session.execute(
-            select(
-                func.count(EvaluationCaseResult.id),
-                func.sum(EvaluationCaseResult.cost_usd),
-                func.sum(EvaluationCaseResult.judge_cost_usd),
-            ).where(EvaluationCaseResult.run_id == run_id)
-        )
-    ).one()
-    if answered and answers is None and judging is None:
-        return None
-    return Decimal(answers or 0) + Decimal(judging or 0)
+async def fail_check(session: AsyncSession, run_id: uuid.UUID, reason: str, now: datetime) -> None:
+    """Ends the check ``failed`` with ``reason`` if it is still queued or running, for the caller
+    to commit: its Suggestion run hit an unexpected error. What it answered so far is kept."""
+    run = await session.get_one(EvaluationRun, run_id, with_for_update=True)
+    if run.status in IN_PROGRESS:
+        run.status = RunStatus.FAILED
+        run.error_message = reason
+        run.finished_at = now
 
 
 _STATES = {
     RunStatus.FAILED: CheckState.FAILED,
     RunStatus.CANCELLED: CheckState.CANCELLED,
+    # Its worker stopped: read as a cancelled check (spec 21).
+    RunStatus.INTERRUPTED: CheckState.CANCELLED,
 }
 
 

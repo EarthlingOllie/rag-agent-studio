@@ -18,30 +18,42 @@
 
 A replacement goes through the same steps as the Document's staged edition: its Chunks are
 written under the new edition number, and in the same transaction the staged edition is swapped
-in and the old edition's Chunks removed, so retrieval goes from the old edition to the new one
-in one step. Once that commits, ``on_new_edition`` is told, so the Document's Expected sources are
-matched again at once. Until then, and if the replacement fails, the old edition keeps serving. A
-replacement doesn't add a Document, so the quota doesn't apply to it.
+in, the old edition's Chunks removed and its stored objects written to the deletions table, so
+retrieval goes from the old edition to the new one in one step. Once that commits, the
+object-deletion job is sent and ``on_new_edition`` is told, so the Document's Expected sources are
+matched again at once. The Document is marked until that is done, and if the worker dies first
+the sweeper finishes it (``finish_new_editions``). Until the swap, and if the replacement fails,
+the old edition keeps serving. A replacement doesn't add a Document, so the quota doesn't apply
+to it.
 
-A failure sets Failed with a ``FailureCategory`` and a readable message. A transient failure
-(the Embedding Model's provider failing) instead puts the edition back to Queued and asks the
-task to run again after a backoff, until the last attempt.
+A failure sets Failed with a ``FailureCategory`` and a readable message. Conversion that runs
+longer than its limit is stopped (the job stops waiting for it) and fails as a conversion error.
+A transient failure (the Embedding Model's provider failing) instead puts the edition back to
+Queued, recording when the next attempt is due, and asks the task to run again after a backoff,
+until the last attempt. Which attempt a run is comes from the edition's row (each claim counts
+one), never from the message, so a lost, late or repeated message can't add attempts.
 """
 
 import asyncio
+import dataclasses
 import logging
 import uuid
 from collections.abc import Awaitable, Callable
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from functools import partial
 
-from sqlalchemy import delete, func, select
+from docling_core.types.doc.document import DoclingDocument
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.core.clock import Clock
 from app.credentials.models import ProviderCredential
 from app.documents import limits
 from app.documents.chunking import ChunkDraft, chunk_document
-from app.documents.converter import UnsupportedContentError
+from app.documents.converter import DocumentConverter, UnsupportedContentError
+from app.documents.jobs import DOCUMENT_ROWS, STAGED_ROWS
 from app.documents.models import Chunk, Document, DocumentStatus, FailureCategory, StagedEdition
 from app.documents.ports import IngestionPorts
 from app.embeddings.port import Embedder, EmbeddingProviderError
@@ -49,6 +61,8 @@ from app.embeddings.provider import UNUSABLE_ERRORS, EmbeddingSizeError, resolve
 from app.embeddings.registry import embedding_model
 from app.gateway.gateway import ModelGateway
 from app.guardrails.classifier import InjectionFlag
+from app.jobs import deletions, reliability
+from app.jobs.reliability import Claim, Timings
 from app.projects.models import Project
 from app.re_embedding.models import ReEmbedJob, ReEmbedStatus
 from app.storage.port import ObjectNotFoundError
@@ -58,8 +72,9 @@ logger = logging.getLogger(__name__)
 EMBED_BATCH_SIZE = 32
 
 
-DeleteObjects = Callable[[list[str]], Awaitable[None]]
-"""Schedules deletion of stored objects, by key (the ``documents.delete_objects`` task)."""
+DeleteObjects = Callable[[], Awaitable[None]]
+"""Sends the object-deletion job (``documents.delete_objects``), once keys written to the
+deletions table are committed."""
 
 NewEdition = Callable[[uuid.UUID], Awaitable[None]]
 """Told the Document's ID once a Staged edition has been swapped in and committed, for other
@@ -68,7 +83,8 @@ modules that check text against its Chunks (the evaluation module's Expected sou
 
 @dataclass(frozen=True)
 class Attempt:
-    """Which automatic attempt this run is (from 1), of how many, and the backoff between."""
+    """Which automatic attempt this run is (from 1), of how many, and the backoff between.
+    Ingestion takes the number from the edition's row when it claims it."""
 
     number: int = 1
     max_attempts: int = 1
@@ -100,6 +116,10 @@ class _Job:
     mime_type: str
     object_key: str
     staged: bool
+    # The ingestion's hold on the edition's row (job reliability, ADR-0020).
+    claim: Claim
+    # Which automatic attempt this is, from the row (its claims, interrupted ones not counted).
+    attempt_number: int
     # The Project's settings, read when the edition is claimed.
     embedding_model_id: str
     ocr: bool
@@ -111,41 +131,68 @@ class _Job:
     pending_credential: ProviderCredential | None = None
 
 
-async def _start(session: AsyncSession, document_id: uuid.UUID) -> _Job | None:
-    """Claims the Document's Queued edition by setting it to Processing: the Document itself
-    when it is Queued, otherwise its staged edition when that is. ``None`` if neither is. A
-    Queued Document the Project's quota no longer has room for is set to Failed instead. The job
-    carries the Project's Embedding Model and the credential it is called through."""
+async def _start(
+    session: AsyncSession, document_id: uuid.UUID, *, now: datetime, timings: Timings
+) -> _Job | None:
+    """Claims the Document's Queued edition, setting it to Processing with one conditional
+    update: the Document itself when it is Queued (or Processing with a stale heartbeat, its
+    ingestion having died), otherwise its staged edition likewise. ``None`` if neither can be
+    claimed: another copy of the job holds it, or there is nothing to do. A claimed Document the
+    Project's quota no longer has room for is set to Failed instead. The job carries the
+    Project's Embedding Model and the credential it is called through."""
     row = (
         await session.execute(
-            select(Document, Project, ProviderCredential)
-            .join(Project, Project.id == Document.project_id)
+            select(Project, ProviderCredential)
+            .join(Document, Document.project_id == Project.id)
             .outerjoin(ProviderCredential, ProviderCredential.id == Project.embedding_credential_id)
             .where(Document.id == document_id)
-            # Locking the Project too makes the quota check below one at a time per Project.
-            .with_for_update(of=[Document, Project])
+            # Locking the Project makes the quota check below one at a time per Project.
+            .with_for_update(of=Project)
         )
     ).one_or_none()
     if row is None:
         return None
-    document, project, credential = row
-    claimed: Document | StagedEdition = document
-    if document.status != DocumentStatus.QUEUED:
-        staged = await session.get(StagedEdition, document.id, with_for_update=True)
-        if staged is None or staged.status != DocumentStatus.QUEUED:
-            return None
-        claimed = staged
-    claimed.attempt_count += 1
-    claimed.updated_at = func.now()
-    if claimed is document:
-        others = await limits.documents_counted(session, project.id, excluding=document.id)
+    project, credential = row
+    claimed: Document | StagedEdition
+    claim = await reliability.claim(
+        session,
+        DOCUMENT_ROWS,
+        document_id,
+        now=now,
+        dead_after=timings.dead_after,
+        values={
+            "attempt_count": Document.attempt_count + 1,
+            "retry_at": None,
+            "updated_at": func.now(),
+        },
+    )
+    if claim is not None:
+        claimed = await session.get_one(Document, document_id, populate_existing=True)
+        others = await limits.documents_counted(session, project.id, excluding=document_id)
         if others >= project.document_quota:
-            document.status = DocumentStatus.FAILED
-            document.error_category = FailureCategory.QUOTA
-            document.error_message = limits.quota_failure_message(project.document_quota)
+            claimed.status = DocumentStatus.FAILED
+            claimed.error_category = FailureCategory.QUOTA
+            claimed.error_message = limits.quota_failure_message(project.document_quota)
+            reliability.released(claimed)
             await session.commit()
             return None
-    claimed.status = DocumentStatus.PROCESSING
+    else:
+        claim = await reliability.claim(
+            session,
+            STAGED_ROWS,
+            document_id,
+            now=now,
+            dead_after=timings.dead_after,
+            values={
+                "attempt_count": StagedEdition.attempt_count + 1,
+                "retry_at": None,
+                "updated_at": func.now(),
+            },
+        )
+        if claim is None:
+            await session.rollback()
+            return None
+        claimed = await session.get_one(StagedEdition, document_id, populate_existing=True)
     pending = (
         await session.execute(
             select(ReEmbedJob, ProviderCredential)
@@ -157,14 +204,16 @@ async def _start(session: AsyncSession, document_id: uuid.UUID) -> _Job | None:
         )
     ).one_or_none()
     job = _Job(
-        document_id=document.id,
-        organisation_id=document.organisation_id,
-        project_id=document.project_id,
+        document_id=document_id,
+        organisation_id=claimed.organisation_id,
+        project_id=claimed.project_id,
         edition=claimed.edition,
         name=claimed.name,
         mime_type=claimed.mime_type,
         object_key=claimed.object_key,
-        staged=claimed is not document,
+        staged=claim.table is STAGED_ROWS,
+        claim=claim,
+        attempt_number=claimed.attempt_count,
         embedding_model_id=project.embedding_model_id,
         ocr=project.ocr_enabled,
         credential=credential,
@@ -183,8 +232,29 @@ async def _embed(embedder: Embedder, drafts: list[ChunkDraft]) -> list[list[floa
     return vectors
 
 
+async def _convert(
+    converter: DocumentConverter, original: bytes, job: _Job, *, timeout_seconds: float
+) -> DoclingDocument:
+    """Converts in a thread of its own, waiting at most ``timeout_seconds``. Past the limit
+    the job stops waiting and raises ``TimeoutError``; the thread is abandoned, not joined, so
+    the job ends and its worker is free for the next one."""
+    executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="convert")
+    try:
+        conversion = asyncio.get_running_loop().run_in_executor(
+            executor, partial(converter.convert, ocr=job.ocr), original, job.name
+        )
+        return await asyncio.wait_for(conversion, timeout_seconds)
+    finally:
+        executor.shutdown(wait=False, cancel_futures=True)
+
+
 async def _process(
-    ports: IngestionPorts, gateway: ModelGateway, job: _Job, *, chunk_max_tokens: int
+    ports: IngestionPorts,
+    gateway: ModelGateway,
+    job: _Job,
+    *,
+    chunk_max_tokens: int,
+    conversion_timeout_seconds: float,
 ) -> tuple[list[ChunkDraft], dict[str, list[list[float]]], list[InjectionFlag | None]]:
     """Steps 2 to 6. Raises ``IngestionFailedError`` for a failure that isn't transient. The
     vectors are by Embedding Model: the active one's, and the pending one's when made."""
@@ -197,9 +267,18 @@ async def _process(
             FailureCategory.UNSUPPORTED_CONTENT, limits.wrong_type_message(job.mime_type)
         )
     try:
-        converted = await asyncio.to_thread(
-            partial(ports.converter.convert, ocr=job.ocr), original, job.name
+        converted = await _convert(
+            ports.converter, original, job, timeout_seconds=conversion_timeout_seconds
         )
+    except TimeoutError:
+        logger.warning(
+            "Conversion ran past its limit and was stopped",
+            extra={
+                "document_id": str(job.document_id),
+                "limit_seconds": conversion_timeout_seconds,
+            },
+        )
+        raise IngestionFailedError(FailureCategory.CONVERSION, limits.CONVERSION_FAILED) from None
     except UnsupportedContentError:
         raise IngestionFailedError(
             FailureCategory.UNSUPPORTED_CONTENT, limits.UNREADABLE_CONTENT
@@ -270,22 +349,61 @@ async def ingest(
     document_id: uuid.UUID,
     *,
     chunk_max_tokens: int,
+    conversion_timeout_seconds: float,
     delete_objects: DeleteObjects,
     on_new_edition: NewEdition,
     attempt: Attempt,
+    clock: Clock,
+    timings: Timings,
 ) -> float | None:
     """Processes the Document's Queued edition. Returns the seconds to wait before running
-    again when a transient failure should be retried, and ``None`` otherwise."""
+    again when a transient failure should be retried, and ``None`` otherwise. A heartbeat is
+    written for as long as the edition is claimed, through conversion and embedding.
+    ``attempt`` gives the limits of the automatic retries; its number is the row's."""
     async with sessionmaker() as session:
-        job = await _start(session, document_id)
+        job = await _start(session, document_id, now=clock.now(), timings=timings)
     if job is None:
         return None
+    async with reliability.heartbeat(sessionmaker, job.claim, clock, timings.heartbeat_seconds):
+        return await _ingest_claimed(
+            sessionmaker,
+            ports,
+            gateway,
+            job,
+            chunk_max_tokens=chunk_max_tokens,
+            conversion_timeout_seconds=conversion_timeout_seconds,
+            delete_objects=delete_objects,
+            on_new_edition=on_new_edition,
+            attempt=dataclasses.replace(attempt, number=job.attempt_number),
+            clock=clock,
+        )
+
+
+async def _ingest_claimed(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    ports: IngestionPorts,
+    gateway: ModelGateway,
+    job: _Job,
+    *,
+    chunk_max_tokens: int,
+    conversion_timeout_seconds: float,
+    delete_objects: DeleteObjects,
+    on_new_edition: NewEdition,
+    attempt: Attempt,
+    clock: Clock,
+) -> float | None:
+    document_id = job.document_id
+    settle = partial(_settle, sessionmaker, job, delete_objects, clock)
     try:
         drafts, by_model, flags = await _process(
-            ports, gateway, job, chunk_max_tokens=chunk_max_tokens
+            ports,
+            gateway,
+            job,
+            chunk_max_tokens=chunk_max_tokens,
+            conversion_timeout_seconds=conversion_timeout_seconds,
         )
     except IngestionFailedError as failure:
-        await _fail(sessionmaker, job, delete_objects, failure.category, failure.message)
+        await settle(DocumentStatus.FAILED, failure.message, failure.category)
         return None
     except EmbeddingProviderError:
         logger.warning(
@@ -294,29 +412,35 @@ async def ingest(
         )
         if attempt.number >= attempt.max_attempts:
             message = limits.provider_failed_message(attempt.max_attempts)
-            await _fail(sessionmaker, job, delete_objects, FailureCategory.PROVIDER, message)
+            await settle(DocumentStatus.FAILED, message, FailureCategory.PROVIDER)
             return None
         message = limits.provider_retrying_message(attempt.number + 1, attempt.max_attempts)
-        if not await _requeue(sessionmaker, job, delete_objects, message):
-            return None
-        return limits.retry_delay(
+        delay = limits.retry_delay(
             attempt.number,
             base_seconds=attempt.retry_base_seconds,
             max_seconds=attempt.retry_max_seconds,
         )
+        if not await settle(DocumentStatus.QUEUED, message, None, retry_in=delay):
+            return None
+        return delay
     except Exception:
         logger.exception("Ingestion failed", extra={"document_id": str(document_id)})
-        await _fail(
-            sessionmaker, job, delete_objects, FailureCategory.CONVERSION, limits.PROCESSING_FAILED
-        )
+        await settle(DocumentStatus.FAILED, limits.PROCESSING_FAILED, FailureCategory.CONVERSION)
         return None
     stale = False
+    held = False
     async with sessionmaker() as session, session.begin():
         document = await session.get(Document, job.document_id, with_for_update=True)
-        if document is not None:
+        if document is None:
+            # Deleted while it was being processed: nothing refers to what was just stored.
+            deletions.schedule(session, stored_keys(job.object_key))
+        else:
+            # A copy given up for dead and replaced by another writes nothing.
+            held = await reliability.holds(session, job.claim)
+        if held:
             models = await _current_models(session, job.project_id)
             stale = models[0] not in by_model
-        if document is not None and not stale:
+        if document is not None and held and not stale:
             # Leftovers of an interrupted run of this edition; no reader asks for them.
             await session.execute(
                 delete(Chunk).where(Chunk.document_id == document.id, Chunk.edition == job.edition)
@@ -344,23 +468,64 @@ async def ingest(
                     zip(drafts, by_model[model_id], flags, strict=True)
                 )
             )
-            replaced = await _swap(session, document) if job.staged else []
+            if job.staged:
+                await _swap(session, document)
             document.status = DocumentStatus.READY
             document.error_message = None
             document.error_category = None
             document.markdown_key = markdown_key(job.object_key)
             document.updated_at = func.now()
+            reliability.released(document)
     if document is None:
-        # Deleted while it was being processed: nothing refers to what was just stored.
-        await delete_objects(stored_keys(job.object_key))
+        await delete_objects()
+    elif not held:
+        logger.warning(
+            "Ingestion lost its claim; another copy is ingesting the Document",
+            extra={"document_id": str(document_id)},
+        )
     elif stale:
         # The Project switched to a model this run didn't embed with: process it again.
-        await _requeue(sessionmaker, job, delete_objects, limits.MODEL_CHANGED)
+        await settle(DocumentStatus.QUEUED, limits.MODEL_CHANGED, None, retry_in=0.0)
         return 0.0
-    elif replaced:
-        await delete_objects(replaced)
-        await on_new_edition(job.document_id)
+    elif job.staged:
+        await delete_objects()
+        await _finish_new_edition(sessionmaker, on_new_edition, job.document_id, job.edition)
     return None
+
+
+async def _finish_new_edition(
+    sessionmaker: async_sessionmaker[AsyncSession],
+    on_new_edition: NewEdition,
+    document_id: uuid.UUID,
+    edition: int,
+) -> None:
+    """Tells ``on_new_edition``, then clears the Document's mark, unless a newer edition has
+    been swapped in meanwhile (that one's own ingestion, or the sweeper, finishes it)."""
+    await on_new_edition(document_id)
+    async with sessionmaker() as session, session.begin():
+        await session.execute(
+            update(Document)
+            .where(Document.id == document_id, Document.edition == edition)
+            .values(recheck_due=False)
+            .execution_options(synchronize_session=False)
+        )
+
+
+async def finish_new_editions(
+    sessionmaker: async_sessionmaker[AsyncSession], on_new_edition: NewEdition
+) -> int:
+    """Finishes the work after a new edition that an ingestion which died didn't get to (the
+    sweeper's part): ``on_new_edition`` for every marked Document. Telling it twice is harmless,
+    so a Document whose ingestion is just doing it too comes to no harm. Returns how many."""
+    async with sessionmaker() as session:
+        due = (
+            await session.execute(
+                select(Document.id, Document.edition).where(Document.recheck_due.is_(True))
+            )
+        ).all()
+    for document_id, edition in due:
+        await _finish_new_edition(sessionmaker, on_new_edition, document_id, edition)
+    return len(due)
 
 
 async def _current_models(session: AsyncSession, project_id: uuid.UUID) -> list[str]:
@@ -380,12 +545,13 @@ def stored_keys(object_key: str) -> list[str]:
     return [object_key, markdown_key(object_key)]
 
 
-async def _swap(session: AsyncSession, document: Document) -> list[str]:
+async def _swap(session: AsyncSession, document: Document) -> None:
     """Makes the staged edition, whose Chunks are already written, the Document's edition, and
     removes the old edition's Chunks, all in the caller's transaction. The Document keeps its ID
-    (and so its Tags). Returns the old edition's stored objects, to delete once committed."""
+    (and so its Tags). The old edition's stored objects go to the deletions table, and the
+    Document is marked for its Expected sources to be matched again."""
     staged = await session.get_one(StagedEdition, document.id, with_for_update=True)
-    replaced = stored_keys(document.object_key)
+    deletions.schedule(session, stored_keys(document.object_key))
     await session.execute(
         delete(Chunk).where(Chunk.document_id == document.id, Chunk.edition != staged.edition)
     )
@@ -396,28 +562,37 @@ async def _swap(session: AsyncSession, document: Document) -> list[str]:
     document.content_hash = staged.content_hash
     document.object_key = staged.object_key
     document.attempt_count = staged.attempt_count
+    document.interruption_count = staged.interruption_count
+    document.recheck_due = True
     await session.delete(staged)
-    return replaced
 
 
 async def _settle(
     sessionmaker: async_sessionmaker[AsyncSession],
     job: _Job,
     delete_objects: DeleteObjects,
+    clock: Clock,
     status: DocumentStatus,
     message: str,
     category: FailureCategory | None,
+    *,
+    retry_in: float = 0.0,
 ) -> bool:
     """Sets the job's edition (the Document, or its staged edition) to the status, with the
-    message and category. A failed staged edition leaves the Document as it was, so its current
-    edition keeps serving; a failed Document loses any Chunks it had. ``False`` if the Document
-    was deleted meanwhile."""
+    message and category, if the job still holds its claim. A failed staged edition leaves the
+    Document as it was, so its current edition keeps serving; a failed Document loses any Chunks
+    it had. Queued (for an automatic retry) records when, and when the retry is due, ``retry_in``
+    seconds from now. ``False`` if the Document was deleted meanwhile, or another copy of the
+    job has taken the edition over."""
     async with sessionmaker() as session, session.begin():
         document = await session.get(Document, job.document_id, with_for_update=True)
-        if document is not None:
+        if document is None:
+            deletions.schedule(session, stored_keys(job.object_key))
+        held = document is not None and await reliability.holds(session, job.claim)
+        if document is not None and held:
             settled: Document | StagedEdition = document
             if job.staged:
-                settled = await session.get_one(StagedEdition, document.id, with_for_update=True)
+                settled = await session.get_one(StagedEdition, document.id)
             elif status == DocumentStatus.FAILED:
                 # A Document reprocessed from Ready that fails no longer serves its old Chunks.
                 await session.execute(delete(Chunk).where(Chunk.document_id == document.id))
@@ -425,27 +600,10 @@ async def _settle(
             settled.error_message = message
             settled.error_category = category
             settled.updated_at = func.now()
+            reliability.released(settled)
+            if status == DocumentStatus.QUEUED:
+                settled.queued_at = clock.now()
+                settled.retry_at = clock.now() + timedelta(seconds=retry_in)
     if document is None:
-        await delete_objects(stored_keys(job.object_key))
-        return False
-    return True
-
-
-async def _fail(
-    sessionmaker: async_sessionmaker[AsyncSession],
-    job: _Job,
-    delete_objects: DeleteObjects,
-    category: FailureCategory,
-    message: str,
-) -> None:
-    await _settle(sessionmaker, job, delete_objects, DocumentStatus.FAILED, message, category)
-
-
-async def _requeue(
-    sessionmaker: async_sessionmaker[AsyncSession],
-    job: _Job,
-    delete_objects: DeleteObjects,
-    message: str,
-) -> bool:
-    """Puts the edition back to Queued for an automatic retry, saying why."""
-    return await _settle(sessionmaker, job, delete_objects, DocumentStatus.QUEUED, message, None)
+        await delete_objects()
+    return held

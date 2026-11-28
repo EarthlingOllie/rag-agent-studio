@@ -21,10 +21,11 @@ the Agent has never been Published), as many times as the Organisation's Evaluat
 background task. A Version answers with the Instructions it pins, the Draft with the Instructions
 Version or Instructions Draft chosen (the Current Instructions Version by default). The Run is
 returned ``queued`` (or, when tasks run eagerly, already finished) and the Studio polls it until
-it is ``completed``, ``failed`` (every case errored) or ``cancelled``. An Agent has at most one
-queued or running Run: a second start is refused with a conflict, and a Run in progress can be
-cancelled, keeping what it spent. A Run with a Draft side is ``stale`` once the Draft has a newer
-Draft revision.
+it is ``completed``, ``failed`` (every case errored), ``cancelled`` or ``interrupted`` (its worker
+stopped, spec 21). An Agent has at most one queued or running Run: a second start is refused with
+a conflict, and a Run in progress can be cancelled, keeping what it spent. An Interrupted Run
+keeps its answers, Verdicts and Cost too; running it again is starting a Run with its sides. A
+Run with a Draft side is ``stale`` once the Draft has a newer Draft revision.
 
 Its results hold each case as the Run copied it, Regressions (pass on the first side, fail on the
 second) first, then improvements, then the rest, with each repeat's answer on each side, its
@@ -392,7 +393,8 @@ class RunOut(BaseModel):
     # ``agent`` (started from the Agent), ``rollout`` (started by Rollout evaluation) or
     # ``suggestion`` (a Suggestion's check, started by its Suggestion run).
     kind: str
-    # ``queued``, ``running``, ``completed``, ``failed`` or ``cancelled``.
+    # ``queued``, ``running``, ``completed``, ``failed``, ``cancelled`` or ``interrupted`` (its
+    # worker stopped; what it answered and spent is kept, as for ``cancelled``).
     status: str
     created_at: datetime
     finished_at: datetime | None
@@ -866,7 +868,7 @@ async def start_run(
 ) -> RunOut | JSONResponse:
     """Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft
     (the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll
-    it until it is ``completed``, ``failed`` or ``cancelled``."""
+    it until it is ``completed``, ``failed``, ``cancelled`` or ``interrupted``."""
     try:
         with _start_refused():
             run = await service.start_run(

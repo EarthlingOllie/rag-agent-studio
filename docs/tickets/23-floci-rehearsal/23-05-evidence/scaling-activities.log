@@ -1,0 +1,80 @@
+# Application Auto Scaling activities and the published figures during make rehearse-scale (2026-11-27)
+2026-11-27T15:58:08.744000+00:00	service/studio-local-ecs/studio-local-ecs-worker-general	Setting desired capacity to 2
+2026-11-27T15:58:08.755000+00:00	service/studio-local-ecs/studio-local-ecs-worker-runs	Setting desired capacity to 1
+2026-11-27T15:59:08.746000+00:00	service/studio-local-ecs/studio-local-ecs-worker-general	Setting desired capacity to 1
+2026-11-27T15:59:08.759000+00:00	service/studio-local-ecs/studio-local-ecs-api	Setting desired capacity to 2
+2026-11-27T16:00:08.749000+00:00	service/studio-local-ecs/studio-local-ecs-worker-runs	Setting desired capacity to 0
+2026-11-27T16:15:08.753000+00:00	service/studio-local-ecs/studio-local-ecs-api	Setting desired capacity to 1
+## Rehearsal/SQS Jobs (Maximum per minute), published by drive-scaling.sh
+-- studio-local-queue-general
+2026-11-27T15:56:00+00:00	0.0
+2026-11-27T15:57:00+00:00	12.0
+2026-11-27T15:58:00+00:00	0.0
+2026-11-27T15:59:00+00:00	0.0
+2026-11-27T16:00:00+00:00	0.0
+2026-11-27T16:01:00+00:00	0.0
+2026-11-27T16:02:00+00:00	0.0
+2026-11-27T16:03:00+00:00	0.0
+2026-11-27T16:04:00+00:00	0.0
+2026-11-27T16:05:00+00:00	0.0
+2026-11-27T16:06:00+00:00	0.0
+2026-11-27T16:07:00+00:00	0.0
+2026-11-27T16:08:00+00:00	0.0
+2026-11-27T16:09:00+00:00	0.0
+2026-11-27T16:10:00+00:00	0.0
+2026-11-27T16:11:00+00:00	0.0
+2026-11-27T16:12:00+00:00	0.0
+2026-11-27T16:13:00+00:00	0.0
+2026-11-27T16:14:00+00:00	0.0
+2026-11-27T16:15:00+00:00	0.0
+-- studio-local-queue-runs
+2026-11-27T15:56:00+00:00	0.0
+2026-11-27T15:57:00+00:00	1.0
+2026-11-27T15:58:00+00:00	1.0
+2026-11-27T15:59:00+00:00	0.0
+2026-11-27T16:00:00+00:00	0.0
+2026-11-27T16:01:00+00:00	0.0
+2026-11-27T16:02:00+00:00	0.0
+2026-11-27T16:03:00+00:00	0.0
+2026-11-27T16:04:00+00:00	0.0
+2026-11-27T16:05:00+00:00	0.0
+2026-11-27T16:06:00+00:00	0.0
+2026-11-27T16:07:00+00:00	0.0
+2026-11-27T16:08:00+00:00	0.0
+2026-11-27T16:09:00+00:00	0.0
+2026-11-27T16:10:00+00:00	0.0
+2026-11-27T16:11:00+00:00	0.0
+2026-11-27T16:12:00+00:00	0.0
+2026-11-27T16:13:00+00:00	0.0
+2026-11-27T16:14:00+00:00	0.0
+2026-11-27T16:15:00+00:00	0.0
+## AWS/ECS CPUUtilization for studio-local-ecs-api (Average per minute), published by drive-scaling.sh
+2026-11-27T15:56:00+00:00	76.0
+2026-11-27T15:57:00+00:00	102.66666666666667
+2026-11-27T15:58:00+00:00	100.66666666666667
+2026-11-27T15:59:00+00:00	84.33333333333333
+2026-11-27T16:00:00+00:00	49.5
+2026-11-27T16:01:00+00:00	0.0
+2026-11-27T16:02:00+00:00	0.3333333333333333
+2026-11-27T16:03:00+00:00	0.0
+2026-11-27T16:04:00+00:00	0.0
+2026-11-27T16:05:00+00:00	0.3333333333333333
+2026-11-27T16:06:00+00:00	0.0
+2026-11-27T16:07:00+00:00	0.0
+2026-11-27T16:08:00+00:00	0.0
+2026-11-27T16:09:00+00:00	0.0
+2026-11-27T16:10:00+00:00	0.0
+2026-11-27T16:11:00+00:00	0.3333333333333333
+2026-11-27T16:12:00+00:00	0.0
+2026-11-27T16:13:00+00:00	0.3333333333333333
+2026-11-27T16:14:00+00:00	0.0
+2026-11-27T16:15:00+00:00	0.0
+## Alarms now
+studio-local-ecs-worker-general-jobs	OK	Rehearsal/SQS	Jobs
+studio-local-ecs-worker-general-idle	ALARM	Rehearsal/SQS	Jobs
+studio-local-ecs-worker-runs-jobs	OK	Rehearsal/SQS	Jobs
+studio-local-ecs-worker-runs-idle	ALARM	Rehearsal/SQS	Jobs
+TargetTracking-service/studio-local-ecs/studio-local-ecs-api-AlarmLow-77e0a5be-3660-4fe8-986d-3a9a329786b5	ALARM	AWS/ECS	CPUUtilization
+studio-local-queue-general-dlq-depth	OK	AWS/SQS	ApproximateNumberOfMessagesVisible
+studio-local-queue-runs-dlq-depth	OK	AWS/SQS	ApproximateNumberOfMessagesVisible
+TargetTracking-service/studio-local-ecs/studio-local-ecs-api-AlarmHigh-1562e3b1-1bab-4b06-9925-f9d1e3fdf01d	OK	AWS/ECS	CPUUtilization

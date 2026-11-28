@@ -58,6 +58,7 @@ from app.suggestions.models import (
     EvidenceKind,
     SuggestedChange,
     Suggestion,
+    SuggestionFailure,
     SuggestionOutcome,
     SuggestionStatus,
 )
@@ -155,11 +156,13 @@ class SuggestionCheckSummaryOut(BaseModel):
     """The check of a Suggestion's configuration change against the Live Version on the
     Evaluation Set."""
 
-    # ``not_checked``: the Agent had no Evaluation Set. Else the check's Evaluation Run is
+    # ``not_checked``: the Agent had no Evaluation Set, or the check stopped before it finished
+    # (its Evaluation Run, still linked, was cancelled directly or interrupted). Else the check's
+    # Evaluation Run is
     # ``running``, ``clear``, found ``regressions`` (a warning: the Suggestion still applies),
     # ``failed`` (every answer errored) or was ``cancelled``.
     state: Literal["not_checked", "running", "clear", "regressions", "failed", "cancelled"]
-    # The check's Evaluation Run, which Run detail opens; null when not checked.
+    # The check's Evaluation Run, which Run detail opens; null when there was none.
     evaluation_run_id: uuid.UUID | None
     # The Live Version's and the Suggestion's Evaluation scores; null while either has none.
     live_score: float | None
@@ -191,6 +194,9 @@ class SuggestionSummaryOut(BaseModel):
     # How much evidence the range held (at most 50 pieces are used).
     evidence_total: int
     error_message: str | None
+    # ``interrupted`` for a failed run whose worker stopped before its proposal existed; null
+    # otherwise.
+    failure_reason: SuggestionFailure | None
     cost: SuggestionCostOut
     created_at: datetime
     finished_at: datetime | None
@@ -341,6 +347,9 @@ def _summary(
         outcome=None if suggestion.outcome is None else SuggestionOutcome(suggestion.outcome),
         evidence_total=suggestion.evidence_total,
         error_message=suggestion.error_message,
+        failure_reason=None
+        if suggestion.failure_reason is None
+        else SuggestionFailure(suggestion.failure_reason),
         cost=SuggestionCostOut(
             estimated_proposing_usd=suggestion.estimated_proposing_cost_usd,
             estimated_checking_usd=suggestion.estimated_checking_cost_usd,

@@ -6,6 +6,8 @@ const BADGES = {
   draft: { label: "Draft", className: "bg-sand text-sand-ink" },
   notLive: { label: "Not live", className: "bg-sunken text-muted" },
   archived: { label: "Archived", className: "bg-sunken text-muted" },
+  /** A Project an Owner asked to delete permanently: it is gone once the deletion finishes. */
+  deleting: { label: "Deleting", className: "bg-danger-soft text-danger" },
   instructionsBehind: { label: "Instructions behind", className: "bg-flag-soft text-flag" },
   budgetSpent: { label: "Budget spent", className: "bg-danger-soft text-danger" },
   /** An Agent whose daily Call minutes budget is spent, so Calls are refused. */
@@ -56,7 +58,7 @@ export const BADGE_LABELS = Object.fromEntries(
 const PILL = "inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium";
 
 /**
- * A small pill. `kind` picks the words and colour (Live, Draft, Not live, Archived, Instructions
+ * A small pill. `kind` picks the words and colour (Live, Draft, Not live, Archived, Deleting, Instructions
  * behind, Budget spent, Blocked by guardrail, Live score drop, Low sample, Flagged, Working, Check failed, and an
  * Evaluation Case's Pass, Fail, Unsteady or Error);
  * `kind="version"` is a Version chip.

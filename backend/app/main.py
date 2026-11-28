@@ -1,5 +1,6 @@
 """FastAPI application. Settings are loaded and validated when the app starts."""
 
+import asyncio
 import logging
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
@@ -10,6 +11,7 @@ import logfire
 from fastapi import APIRouter, FastAPI
 from opentelemetry.sdk.trace import SpanProcessor
 from redis.asyncio import Redis
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.agents import api as agents_api
 from app.agents import bulk_api
@@ -66,6 +68,8 @@ from app.voice import fake_api as fake_voice_api
 from app.voice.adapters import build_voice_layer
 from app.voice.remote import VoicePorts, install_voice_ports
 from app.worker.celery_app import configure_celery
+from app.worker.publisher import CeleryJobPublisher, install_publisher
+from app.worker.queues import create_queues
 
 logger = logging.getLogger(__name__)
 
@@ -134,6 +138,9 @@ def _lifespan(
         app.state.envelope = build_envelope(settings)
         app.state.widget_tokens = TokenSigner(settings.local_key_wrapper_key.get_secret_value())
         configure_celery(settings)
+        # Every background job is sent through the Job publisher; tests install the fake.
+        app.state.jobs = CeleryJobPublisher()
+        install_publisher(app.state.jobs)
         app.state.engine = create_engine(settings)
         instrument_engine(app.state.engine)
         app.state.sessionmaker = create_sessionmaker(app.state.engine)
@@ -164,6 +171,7 @@ def _lifespan(
         # Ingestion tasks enqueued from here run in the worker; in tests they run eagerly in
         # this process and use these same adapters.
         app.state.ingestion = build_ports(settings, app.state.envelope)
+        app.state.ingestion.clock = lambda: app.state.clock
         install_ports(app.state.ingestion)
         # The Guardrails around the Agent runtime: the input classifier checks every message.
         app.state.guardrails = build_pipeline(settings)
@@ -183,6 +191,8 @@ def _lifespan(
         seed_draws(settings.live_sample_seed)
         if settings.object_store_create_bucket:
             await app.state.ingestion.object_store.prepare()
+        if settings.sqs_create_queues:
+            await asyncio.to_thread(create_queues, settings)
         logger.info("API started", extra={"environment": settings.environment})
         try:
             yield
@@ -210,6 +220,8 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     app.state.credential_references.register(call_settings_references)
     for router in ROUTERS:
         app.include_router(router)
+    # A refusal because the Project is being deleted says so (``app.projects.api``).
+    app.add_exception_handler(StarletteHTTPException, projects_api.refuse_with_the_reason)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.
     logfire.instrument_fastapi(app, capture_headers=True)
     return app

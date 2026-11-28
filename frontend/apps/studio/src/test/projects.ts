@@ -8,6 +8,7 @@ export type Project = Schemas["ProjectOut"];
 export const PROJECT_ARCHIVED = "This Project is archived. An Owner can restore it.";
 export const ARCHIVE_BEFORE_DELETING = "Only an archived Project can be deleted. Archive it first.";
 export const NAME_MISMATCH = "Type the Project's name exactly to delete it.";
+export const PROJECT_DELETING = "This Project is being deleted. A deleted Project can't be restored.";
 
 export const STALE_INSTRUCTIONS =
   "Someone else saved these Instructions after you opened them. Load their changes, or save yours over them.";
@@ -40,6 +41,7 @@ export const hrProject: Project = {
   description: "Policies for the HR Agent",
   created_at: "2026-10-01T09:30:00Z",
   archived_at: null,
+  deleting: false,
   document_count: 12,
   agent_count: 2,
   embedding_model_id: "multilingual-e5-small",
@@ -54,6 +56,7 @@ export const salesProject: Project = {
   description: "",
   created_at: "2026-10-02T09:30:00Z",
   archived_at: null,
+  deleting: false,
   document_count: 0,
   agent_count: 0,
   embedding_model_id: "multilingual-e5-small",
@@ -68,6 +71,7 @@ export const oldProject: Project = {
   description: "Retired",
   created_at: "2026-09-01T09:30:00Z",
   archived_at: "2026-10-20T08:00:00Z",
+  deleting: false,
   document_count: 3,
   agent_count: 1,
   embedding_model_id: "multilingual-e5-small",
@@ -80,7 +84,8 @@ const ARCHIVED_AT = "2026-11-05T09:00:00Z";
 
 /**
  * A stateful stand-in for the Projects API: creating, editing, archiving, restoring and deleting change
- * what it lists, and it refuses what the real API refuses. Records the requests it receives.
+ * what it lists (a deleted Project stays in the archived list, Deleting), and it refuses what the real API
+ * refuses. Records the requests it receives.
  */
 export function fakeProjectsApi(
   options: {
@@ -129,6 +134,7 @@ export function fakeProjectsApi(
         description: body.description.trim(),
         created_at: ARCHIVED_AT,
         archived_at: null,
+        deleting: false,
         document_count: 0,
         agent_count: 0,
         embedding_model_id: "multilingual-e5-small",
@@ -234,7 +240,9 @@ export function fakeProjectsApi(
     http.post("*/api/organisations/:organisationId/projects/:projectId/restore", ({ params }) => {
       const projectId = params.projectId as string;
       requests.push({ route: "restore", projectId });
-      return replace({ ...(find(projectId) as Project), archived_at: null });
+      const project = find(projectId) as Project;
+      if (project.deleting) return HttpResponse.json({ detail: PROJECT_DELETING }, { status: 409 });
+      return replace({ ...project, archived_at: null });
     }),
     http.delete("*/api/organisations/:organisationId/projects/:projectId", async ({ params, request }) => {
       const projectId = params.projectId as string;
@@ -244,7 +252,8 @@ export function fakeProjectsApi(
       if (!project) return notFound();
       if (project.archived_at === null) return HttpResponse.json({ detail: ARCHIVE_BEFORE_DELETING }, { status: 409 });
       if (body.confirm_name !== project.name) return HttpResponse.json({ detail: NAME_MISMATCH }, { status: 400 });
-      projects = projects.filter((candidate) => candidate.id !== projectId);
+      // The Project is Deleting, and stays in the archived list until the deletion finishes.
+      replace({ ...project, deleting: true });
       return new HttpResponse(null, { status: 202 });
     }),
   );

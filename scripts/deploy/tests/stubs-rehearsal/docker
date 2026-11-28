@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Stand-in for docker in the rehearsal wrapper's tests: logs each call and answers as the STUB_* variables say.
+echo "docker $*" >>"$STUB_CALLS"
+case "$*" in
+  "info") exit "${STUB_DOCKER_INFO_EXIT:-0}" ;;
+  "info --format {{.MemTotal}}") echo "${STUB_MEMORY:-17179869184}" ;;
+  "ps -q --filter label=com.docker.compose.service=floci --filter publish=4566") echo "${STUB_PORT_HOLDERS:-}" ;;
+  # Containers whose ID has "rehearsal" in it belong to the rehearsal's Compose project.
+  "inspect --format"*) [[ "${*: -1}" == *rehearsal* ]] && echo studio-rehearsal || echo rag-agent-studio ;;
+  "pull "*)
+    image=$2
+    [ "$image" = "${STUB_RATE_LIMITED:-}" ] && { echo "Error response from daemon: toomanyrequests: You have reached your unauthenticated pull rate limit."; exit 1; }
+    [ "$image" = "${STUB_PULL_FAILS:-}" ] && { echo "manifest unknown"; exit 1; }
+    exit 0 ;;
+  "compose -f "*" ps -q floci") [ "${STUB_FLOCI_RUNNING:-0}" = 1 ] && echo 0123456789ab; exit 0 ;;
+  "compose -f "*" cp "*) touch "${*: -1}" ;;
+  "ps -aq --filter label=floci=true") echo "${STUB_FLOCI_CONTAINERS:-}" ;;
+  "volume ls -q --filter name=floci-aws-") echo "${STUB_FLOCI_VOLUMES:-}" ;;
+esac
+exit 0

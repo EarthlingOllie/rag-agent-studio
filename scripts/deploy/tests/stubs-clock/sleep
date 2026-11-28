@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# Stand-in for sleep in the deploy script tests: logs the wait and returns at once.
+echo "sleep $*" >>"$STUB_CALLS"

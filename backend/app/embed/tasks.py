@@ -1,7 +1,8 @@
 """The embed's Beat tasks.
 
-- At midnight UTC: a new UTC date starts a new Token Budget and a new Call minutes counter
-  (both are keyed by date), so the alert flags raised for the day before are cleared.
+- Hourly: a new UTC date starts a new Token Budget and a new Call minutes counter (both are
+  keyed by date), so the alert flags raised before it are cleared. Keyed on the UTC date, the
+  first run after midnight resets the day that ended, even when Beat missed midnight itself.
 - Every 15 seconds: Calls that reached their Maximum Call length or have had no turn for a
   minute are ended (``app.embed.call_limits``).
 """
@@ -33,8 +34,8 @@ def _moment(now: str | None) -> datetime:
 
 @celery_app.task(name=CLEAR_BUDGET_ALERTS_TASK)
 def clear_budget_alerts(now: str | None = None) -> int:
-    """Clears every Agent's budget alerts raised before today (UTC); Beat runs it at midnight
-    UTC. ``now`` (ISO 8601) stands in for the system clock. Returns how many it cleared."""
+    """Clears every Agent's budget alerts raised before today (UTC); Beat runs it hourly, on the
+    hour. ``now`` (ISO 8601) stands in for the system clock. Returns how many it cleared."""
     moment = _moment(now)
     return asyncio.run(_run(lambda session: service.clear_budget_alerts(session, now=moment)))
 

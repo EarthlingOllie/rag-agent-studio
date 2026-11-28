@@ -79,7 +79,11 @@ const estimateWords = (estimate: string | null) => (estimate === null ? "no esti
 /** What checking cost against its estimate, once the check stopped; until then, its estimate. */
 function checkingText(suggestion: SuggestionSummary): string {
   const { checking_usd: spent, estimated_checking_usd: estimate } = suggestion.cost;
-  if (suggestion.check?.state === "not_checked") return "Not checked.";
+  if (suggestion.check?.state === "not_checked") {
+    // A check that stopped before it finished still spent something.
+    if (suggestion.check.evaluation_run_id === null) return "Not checked.";
+    return `Not checked: the check stopped after costing ${spent === null ? "an unknown amount" : dollars(spent)}.`;
+  }
   if (suggestion.check !== null && suggestion.check.state !== "running") {
     return `Checking cost ${spent === null ? "unknown" : dollars(spent)} (${estimateWords(estimate)}).`;
   }
@@ -181,7 +185,13 @@ function CheckSection({ path, suggestion }: { path: AgentPath; suggestion: Sugge
       <h4 id={headingId} className="font-medium text-ink">
         Check against the Evaluation Set
       </h4>
-      {check.state === "not_checked" && <p className="text-sm text-ink-2">Not checked: this Agent had no Evaluation Set, so nothing verified this Suggestion.</p>}
+      {check.state === "not_checked" && (
+        <p className="text-sm text-ink-2">
+          {check.evaluation_run_id === null
+            ? "Not checked: this Agent had no Evaluation Set, so nothing verified this Suggestion."
+            : "Not checked: its check Run was cancelled or interrupted before it finished, so nothing verified this Suggestion. The proposal and what it cost are kept."}
+        </p>
+      )}
       {check.state === "running" && (
         <p role="status" className="text-sm text-ink-2">
           Checking against the Evaluation Set…
@@ -569,7 +579,13 @@ function SuggestionDetail({
       )}
       {cancel.isError && <Notice tone="error">{evaluationFailure(cancel.error)}</Notice>}
       {suggestion.status === "cancelled" && <Notice tone="info">This run was cancelled. It stopped before its next phase and keeps what it spent.</Notice>}
-      {suggestion.status === "failed" && <Notice tone="error">{suggestion.error_message}</Notice>}
+      {suggestion.status === "failed" && (
+        <Notice tone="error">
+          {suggestion.failure_reason === "interrupted"
+            ? "Interrupted: the worker running this Suggestion run stopped before its proposal was made, so nothing was proposed. Start a new run."
+            : suggestion.error_message}
+        </Notice>
+      )}
       {suggestion.explanation !== null && <p className="text-[15px] text-ink">{suggestion.explanation}</p>}
       {suggestion.outcome === "no_change" && <p className="text-sm font-medium text-ink-2">No change suggested.</p>}
       {suggestion.outcome === "gaps_only" && <p className="text-sm font-medium text-ink-2">No configuration change.</p>}

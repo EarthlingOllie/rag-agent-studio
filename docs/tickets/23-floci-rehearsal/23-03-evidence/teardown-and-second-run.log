@@ -1,0 +1,48 @@
+# Teardown of the first rehearsal, then a second make rehearse from nothing (2026-11-27)
+## destroy.sh on infra/envs/local, through the wrapper's tool settings (the destroy step of rehearse-down)
+Destroy complete! Resources: 166 destroyed.
+The demo environment is destroyed.
+## left after the destroy, removed with docker rm -f / volume rm / network rm (the rest of rehearse-down; see the ticket's gaps)
+containers: floci-aws-ecr-registry (label floci=true), studio-rehearsal-floci-1
+volumes: floci-aws-ecr-registry-data, floci-aws-rds-db-DD863844BA5343FD886B3F89-dde02f, studio-rehearsal-floci-data
+networks: studio-rehearsal, studio-rehearsal-tools
+## second make rehearse, first attempt: the providers step read the state through the first run's backend note and failed (fixed: the wrapper forgets that note first)
+Error: Error loading state: ... lookup floci on 8.8.8.8:53: no such host
+## second make rehearse after the fix
+==> Pulling the emulator's images
+==> Starting Floci
+==> Adding Floci's CA to rag-agent-studio/api:rehearsal
+==> Installing the Terraform providers
+==> terraform init (state bucket studio-local-tfstate)
+==> Making sure the ECR repositories exist
+Plan: 6 to add, 0 to change, 0 to destroy.
+Apply complete! Resources: 5 added, 0 changed, 0 destroyed.
+==> Pushing the images at rehearsal to localhost:4566
+Login Succeeded
+==> terraform apply at image tag rehearsal
+Plan: 161 to add, 0 to change, 0 to destroy.
+Apply complete! Resources: 161 added, 0 changed, 0 destroyed.
+==> Running the migration task
+==> Rolling studio-local-ecs-api onto arn:aws:ecs:eu-west-2:000000000000:task-definition/studio-local-ecs-api:1
+==> Rolling studio-local-ecs-beat onto arn:aws:ecs:eu-west-2:000000000000:task-definition/studio-local-ecs-beat:1
+==> Rolling studio-local-ecs-worker-general onto arn:aws:ecs:eu-west-2:000000000000:task-definition/studio-local-ecs-worker-general:1
+==> Rolling studio-local-ecs-worker-runs onto arn:aws:ecs:eu-west-2:000000000000:task-definition/studio-local-ecs-worker-runs:1
+==> Waiting for studio-local-ecs-api to stabilise
+studio-local-ecs-api is stable
+==> Waiting for studio-local-ecs-beat to stabilise
+studio-local-ecs-beat is stable
+==> Waiting for studio-local-ecs-worker-general to stabilise
+studio-local-ecs-worker-general is stable
+==> Waiting for studio-local-ecs-worker-runs to stabilise
+studio-local-ecs-worker-runs is stable
+==> Uploading the Studio and widget builds and the demo pages to studio-local-static-000000000000
+==> Invalidating the HTML, the loader and the demo pages in E3YXDXLEL6U7YX
+==> Smoke checking http://e3yxdxlel6u7yx.cloudfront.localhost:4566
+ok   health
+ok   studio
+ok   widget_shell
+Smoke check passed: http://e3yxdxlel6u7yx.cloudfront.localhost:4566
+Deployed rehearsal: http://e3yxdxlel6u7yx.cloudfront.localhost:4566
+The rehearsal is up. `make rehearse-down` removes it.
+## the state and its lock file setting: objects in the state bucket after the run
+envs/local/terraform.tfstate

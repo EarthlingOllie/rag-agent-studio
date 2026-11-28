@@ -17,6 +17,16 @@ locals {
   account_id = data.aws_caller_identity.current.account_id
   partition  = data.aws_partition.current.partition
   iam_arn    = "arn:${local.partition}:iam::${local.account_id}"
+  # Every environment's queues (ticket 22-02), in any region of this account.
+  project_queues_arn = "arn:${local.partition}:sqs:*:${local.account_id}:${var.managed_resource_prefix}*"
+  # Every environment's ECS services (cluster studio-<env>-ecs, services studio-<env>-ecs-<service>), in any region.
+  project_services_arn = "arn:${local.partition}:ecs:*:${local.account_id}:service/${var.managed_resource_prefix}*/${var.managed_resource_prefix}*"
+  # Every environment's ECS tasks (cluster studio-<env>-ecs).
+  project_tasks_arn = "arn:${local.partition}:ecs:*:${local.account_id}:task/${var.managed_resource_prefix}*/*"
+  scaling_changes = [
+    "application-autoscaling:DeleteScalingPolicy", "application-autoscaling:DeregisterScalableTarget",
+    "application-autoscaling:PutScalingPolicy", "application-autoscaling:RegisterScalableTarget",
+  ]
 
   deploy_policy = {
     Version = "2012-10-17"
@@ -68,6 +78,72 @@ locals {
           "kms:DisableKey", "kms:DisableKeyRotation", "kms:PutKeyPolicy", "kms:ScheduleKeyDeletion",
         ]
         Resource = [aws_s3_bucket.state.arn, aws_kms_key.state.arn]
+      },
+      {
+        # What Terraform needs for the queue module's queues and their redrive policies.
+        Sid    = "ManageProjectQueues"
+        Effect = "Allow"
+        Action = [
+          "sqs:CreateQueue", "sqs:DeleteQueue", "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:ListDeadLetterSourceQueues",
+          "sqs:ListQueueTags", "sqs:SetQueueAttributes", "sqs:TagQueue", "sqs:UntagQueue",
+        ]
+        Resource = local.project_queues_arn
+      },
+      {
+        # PowerUserAccess allows every SQS action on every queue; CI may touch only this project's.
+        Sid         = "NoOtherQueues"
+        Effect      = "Deny"
+        Action      = "sqs:*"
+        NotResource = local.project_queues_arn
+      },
+      {
+        # Autoscaling of the API and the worker pools (ticket 22-05): scalable targets, their policies and tags.
+        Sid    = "ManageScalingOfEcsServices"
+        Effect = "Allow"
+        Action = [
+          "application-autoscaling:DeleteScalingPolicy", "application-autoscaling:DeregisterScalableTarget",
+          "application-autoscaling:DescribeScalableTargets", "application-autoscaling:DescribeScalingActivities",
+          "application-autoscaling:DescribeScalingPolicies", "application-autoscaling:ListTagsForResource",
+          "application-autoscaling:PutScalingPolicy", "application-autoscaling:RegisterScalableTarget",
+          "application-autoscaling:TagResource", "application-autoscaling:UntagResource",
+        ]
+        Resource  = "*"
+        Condition = { StringEquals = { "application-autoscaling:service-namespace" = "ecs" } }
+      },
+      {
+        # Scalable targets have no names to scope by. Registering one for an ECS service needs DescribeServices and
+        # UpdateService on that service, so these, and the deny below, keep CI's scaling to this project's services.
+        Sid      = "UpdateProjectServices"
+        Effect   = "Allow"
+        Action   = ["ecs:DescribeServices", "ecs:UpdateService"]
+        Resource = local.project_services_arn
+      },
+      {
+        Sid         = "NoOtherServices"
+        Effect      = "Deny"
+        Action      = ["ecs:DeleteService", "ecs:UpdateService"]
+        NotResource = local.project_services_arn
+      },
+      {
+        # PowerUserAccess allows scaling anything (DynamoDB, Lambda...); CI may scale ECS services only.
+        Sid       = "NoScalingOfOtherResources"
+        Effect    = "Deny"
+        Action    = local.scaling_changes
+        Resource  = "*"
+        Condition = { StringNotEqualsIfExists = { "application-autoscaling:service-namespace" = "ecs" } }
+      },
+      {
+        # The deploy script waits for old worker tasks that still hold a job, then clears their protection (ticket 22-06).
+        Sid      = "ReadAndClearProjectTaskProtection"
+        Effect   = "Allow"
+        Action   = ["ecs:GetTaskProtection", "ecs:UpdateTaskProtection"]
+        Resource = local.project_tasks_arn
+      },
+      {
+        Sid         = "NoOtherTaskProtection"
+        Effect      = "Deny"
+        Action      = ["ecs:GetTaskProtection", "ecs:UpdateTaskProtection"]
+        NotResource = local.project_tasks_arn
       },
     ]
   }

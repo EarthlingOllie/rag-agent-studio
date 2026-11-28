@@ -1,0 +1,75 @@
+# autoscaling-probe-1.log
+target service/studio-local-ecs/studio-local-ecs-api 1 3 {'DynamicScalingInSuspended': False, 'DynamicScalingOutSuspended': False, 'ScheduledScalingSuspended': False}
+target service/studio-local-ecs/studio-local-ecs-worker-general 1 3 {'DynamicScalingInSuspended': False, 'DynamicScalingOutSuspended': False, 'ScheduledScalingSuspended': False}
+target service/studio-local-ecs/studio-local-ecs-worker-runs 0 2 {'DynamicScalingInSuspended': False, 'DynamicScalingOutSuspended': False, 'ScheduledScalingSuspended': False}
+policy studio-local-ecs-api-cpu TargetTrackingScaling ['TargetTracking-service/studio-local-ecs/studio-local-ecs-api-AlarmHigh-9bae80c2-61b3-4362-b32a-8bdd4e8076b6', 'TargetTracking-service/studio-local-ecs/studio-local-ecs-api-AlarmLow-df333dac-391e-4264-88a3-4ca85a9c9991']
+policy studio-local-ecs-worker-general-idle StepScaling []
+policy studio-local-ecs-worker-general-jobs StepScaling []
+policy studio-local-ecs-worker-runs-idle StepScaling []
+policy studio-local-ecs-worker-runs-jobs StepScaling []
+alarm TargetTracking-service/studio-local-ecs/studio-local-ecs-api-AlarmLow-df333dac-391e-4264-88a3-4ca85a9c9991 INSUFFICIENT_DATA CPUUtilization AWS/ECS [] 60 15
+alarm studio-local-ecs-worker-general-jobs INSUFFICIENT_DATA None None ['waiting', 'jobs', 'in_flight'] None 1
+alarm studio-local-ecs-worker-general-idle INSUFFICIENT_DATA None None ['waiting', 'jobs', 'in_flight'] None 5
+alarm studio-local-ecs-worker-runs-jobs INSUFFICIENT_DATA None None ['waiting', 'in_flight', 'jobs'] None 1
+alarm studio-local-ecs-worker-runs-idle INSUFFICIENT_DATA None None ['waiting', 'in_flight', 'jobs'] None 5
+alarm studio-local-queue-general-dlq-depth OK ApproximateNumberOfMessagesVisible AWS/SQS [] 300 1
+alarm studio-local-queue-runs-dlq-depth OK ApproximateNumberOfMessagesVisible AWS/SQS [] 300 1
+alarm TargetTracking-service/studio-local-ecs/studio-local-ecs-api-AlarmHigh-9bae80c2-61b3-4362-b32a-8bdd4e8076b6 INSUFFICIENT_DATA CPUUtilization AWS/ECS [] 60 3
+
+# autoscaling-probe-2.log
+queue https://floci-spike:4566/000000000000/studio-local-queue-runs
+0 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+20 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+40 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+60 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+80 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+100 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+120 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+140 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+160 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+180 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+200 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+220 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+240 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+260 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+280 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+300 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+320 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+340 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+360 visible 6 {'jobs:worker-runs-jo': 'INSUFFICIENT_DATA', 'idle:worker-runs-id': 'INSUFFICIENT_DATA'} desired 0
+sqs metrics ['ApproximateAgeOfOldestMessage', 'ApproximateNumberOfMessagesDelayed', 'ApproximateNumberOfMessagesNotVisible', 'ApproximateNumberOfMessagesVisible', 'NumberOfEmptyReceives', 'NumberOfMessagesDeleted', 'NumberOfMessagesReceived', 'NumberOfMessagesSent', 'SentMessageSize']
+ev (service studio-local-ecs-worker-runs) has reached a steady state.
+
+# autoscaling-probe-3.log
+[{"Id": "waiting", "MetricStat": {"Metric": {"Namespace": "AWS/SQS", "MetricName": "ApproximateNumberOfMessagesVisible", "Dimensions": [{"Name": "QueueName", "Value": "studio-local-queue-runs"}]}, "Period": 60, "Stat": "Maximum"}, "ReturnData": false}, {"Id": "in_flight", "MetricStat": {"Metric": {"Namespace": "AWS/SQS", "MetricName": "ApproximateNumberOfMessagesNotVisible", "Dimensions": [{"Name": "QueueName", "Value": "studio-local-queue-runs"}]}, "Period": 60, "Stat": "Maximum"}, "ReturnData": false}, {"Id": "jobs", "Expression": "waiting + in_flight", "Label": "Jobs waiting or in flight", "ReturnData": true}]
+threshold 1.0 GreaterThanOrEqualToThreshold notBreaching
+0 {'spike-plain': 'INSUFFICIENT_DATA', 'spike-math': 'INSUFFICIENT_DATA'}
+20 {'spike-plain': 'ALARM', 'spike-math': 'INSUFFICIENT_DATA'}
+40 {'spike-plain': 'ALARM', 'spike-math': 'INSUFFICIENT_DATA'}
+60 {'spike-plain': 'ALARM', 'spike-math': 'INSUFFICIENT_DATA'}
+80 {'spike-plain': 'ALARM', 'spike-math': 'INSUFFICIENT_DATA'}
+100 {'spike-plain': 'ALARM', 'spike-math': 'INSUFFICIENT_DATA'}
+120 {'spike-plain': 'ALARM', 'spike-math': 'INSUFFICIENT_DATA'}
+140 {'spike-plain': 'ALARM', 'spike-math': 'INSUFFICIENT_DATA'}
+160 {'spike-plain': 'ALARM', 'spike-math': 'INSUFFICIENT_DATA'}
+180 {'spike-plain': 'ALARM', 'spike-math': 'INSUFFICIENT_DATA'}
+200 {'spike-plain': 'ALARM', 'spike-math': 'INSUFFICIENT_DATA'}
+220 {'spike-plain': 'ALARM', 'spike-math': 'INSUFFICIENT_DATA'}
+
+# autoscaling-probe-4.log
+{"AdjustmentType": "ExactCapacity", "StepAdjustments": [{"MetricIntervalLowerBound": 0.0, "MetricIntervalUpperBound": 2.0, "ScalingAdjustment": 1}, {"MetricIntervalLowerBound": 2.0, "ScalingAdjustment": 2}], "Cooldown": 60, "MetricAggregationType": "Maximum"}
+0 INSUFFICIENT_DATA desired 0
+15 ALARM desired 2
+activity Successful Setting desired capacity to 2 monitor alarm spike-plain-action in state ALARM triggered policy studio-local-ecs-worker-runs-jobs
+
+# autoscaling-probe-cpu.log
+0 AlarmHigh ['INSUFFICIENT_DATA'] desired 1
+20 AlarmHigh ['OK'] desired 1
+40 AlarmHigh ['OK'] desired 1
+60 AlarmHigh ['OK'] desired 1
+80 AlarmHigh ['OK'] desired 1
+100 AlarmHigh ['OK'] desired 1
+120 AlarmHigh ['OK'] desired 1
+140 AlarmHigh ['ALARM'] desired 2
+activity Successful Setting desired capacity to 2
+

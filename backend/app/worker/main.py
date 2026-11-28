@@ -4,10 +4,11 @@ Settings are validated on import, so a misconfigured worker exits before it conn
 and telemetry are configured here too, under the service name of the command being run.
 """
 
+import asyncio
 import sys
 from typing import Any
 
-from celery.signals import setup_logging, worker_process_init
+from celery.signals import setup_logging, worker_process_init, worker_ready
 
 from app.core.clock import SystemClock
 from app.core.logs import configure_logging
@@ -18,10 +19,12 @@ from app.documents.ports import build_ports, current_ports, install_ports, warm_
 from app.evaluation.ports import EvaluationPorts, install_evaluation_ports
 from app.gateway.adapters import build_model_gateway
 from app.guardrails.pipeline import build_pipeline
+from app.jobs.protection import build_protection, install_protection
 from app.mail.factory import build_mailer
 from app.voice.adapters import build_voice_layer
 from app.voice.remote import VoicePorts, install_voice_ports
 from app.worker.celery_app import configure_celery
+from app.worker.publisher import current_publisher
 
 SERVICE_NAME = "beat" if "beat" in sys.argv else "worker"
 
@@ -32,7 +35,10 @@ app = configure_celery(settings)
 # The adapters ingestion runs through, chosen by the settings.
 envelope = build_envelope(settings)
 install_ports(build_ports(settings, envelope))
-# The voice layer the Project deletion cascade removes its Agents' remote agents through.
+# Scale-in protection of this task while it holds a job: ECS task protection on ECS, else none.
+install_protection(build_protection(settings))
+# The voice layer the Project deletion cascade (and the sweeper's run of it) removes its Agents'
+# remote agents through.
 install_voice_ports(
     VoicePorts(
         layer=build_voice_layer(settings),
@@ -65,3 +71,10 @@ def _warm_up(**_: Any) -> None:
     """Each worker process loads the ingestion scan's local model as it starts (after the fork:
     an ONNX Runtime session isn't fork-safe), not in the middle of its first ingestion."""
     warm_up(current_ports())
+
+
+@worker_ready.connect(weak=False, dispatch_uid="app.worker.main.sweep")
+def _sweep_on_start(**_: Any) -> None:
+    """A worker that starts sends the job sweeper once, so jobs left behind by a worker that died
+    are dealt with now rather than at Beat's next minute (ADR-0020)."""
+    asyncio.run(current_publisher().sweep())

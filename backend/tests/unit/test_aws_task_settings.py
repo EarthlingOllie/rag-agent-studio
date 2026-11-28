@@ -18,6 +18,7 @@ from redis import Redis
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.core.settings import Settings, load_settings
+from app.worker.celery_app import broker_url
 
 CONTRACT = Path(__file__).resolve().parents[3] / "infra/modules/ecs/tests/task-settings.json"
 # Secret values in the shapes the Terraform modules generate them, plus characters a
@@ -52,8 +53,16 @@ def task_env(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) ->
     return _use_task_env(request.param, monkeypatch)
 
 
-def test_the_contract_names_the_api_worker_beat_migration_and_seed_containers() -> None:
-    assert sorted(_containers()) == ["api", "beat", "migrate", "seed", "worker"]
+def test_the_contract_names_the_api_both_worker_pools_beat_migration_and_seed_containers() -> None:
+    # Ticket 22-04: the worker is two pools, each serving its own queue.
+    assert sorted(_containers()) == [
+        "api",
+        "beat",
+        "migrate",
+        "seed",
+        "worker-general",
+        "worker-runs",
+    ]
 
 
 def test_each_container_loads_settings_that_reach_rds_and_elasticache_over_tls(
@@ -86,10 +95,30 @@ def test_each_container_can_build_its_database_and_redis_clients(
     assert isinstance(celery.backend, RedisBackend)
 
 
+def test_each_container_sends_jobs_to_the_terraform_queues_on_aws_sqs(
+    task_env: dict[str, str],
+) -> None:
+    """Ticket 22-03: the queue module's names and URLs, AWS SQS through the task role, and no
+    queue created by the services."""
+    settings = load_settings()
+
+    assert (settings.general_queue_name, str(settings.general_queue_url)) == (
+        task_env["GENERAL_QUEUE_NAME"],
+        task_env["GENERAL_QUEUE_URL"],
+    )
+    assert (settings.runs_queue_name, str(settings.runs_queue_url)) == (
+        task_env["RUNS_QUEUE_NAME"],
+        task_env["RUNS_QUEUE_URL"],
+    )
+    assert broker_url(settings) == "sqs://"
+    assert settings.aws_region == "eu-west-2"
+    assert settings.sqs_create_queues is False
+
+
 # The seed task (ticket 10-05) runs the API in process, so it seals the demo credential and
 # uploads the demo Documents as the API does.
-@pytest.mark.parametrize("container", ["api", "worker", "seed"])
-def test_the_api_worker_and_seed_seal_with_kms_and_keep_documents_in_the_bucket(
+@pytest.mark.parametrize("container", ["api", "worker-general", "worker-runs", "seed"])
+def test_the_api_workers_and_seed_seal_with_kms_and_keep_documents_in_the_bucket(
     container: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     task_env = _use_task_env(container, monkeypatch)
@@ -122,8 +151,8 @@ def test_the_api_is_told_its_own_bedrock_trust_principal(monkeypatch: pytest.Mon
 
 # Calls (spec 20): ElevenLabs reaches the turn endpoint at the public base URL, CloudFront's
 # address, which serves the API; the seed turns calling on only when it is set.
-@pytest.mark.parametrize("container", ["api", "worker", "seed"])
-def test_the_api_worker_and_seed_are_told_the_public_base_url(
+@pytest.mark.parametrize("container", ["api", "worker-general", "worker-runs", "seed"])
+def test_the_api_worker_pools_and_seed_are_told_the_public_base_url(
     container: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _use_task_env(container, monkeypatch)

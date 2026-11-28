@@ -41,6 +41,13 @@ mock_provider "aws" {
     }
   }
 
+  # Real-looking scaling policy ARNs: the worker pools' alarms act on them (ticket 22-05).
+  mock_resource "aws_appautoscaling_policy" {
+    defaults = {
+      arn = "arn:aws:autoscaling:eu-west-2:123456789012:scalingPolicy:00000000-0000-0000-0000-000000000000:resource/ecs/service/studio-demo-ecs/mocked:policyName/mocked"
+    }
+  }
+
   mock_resource "aws_lb" {
     defaults = {
       arn      = "arn:aws:elasticloadbalancing:eu-west-2:123456789012:loadbalancer/app/studio-demo-ecs/0123456789abcdef"
@@ -82,6 +89,24 @@ mock_provider "aws" {
   }
 }
 
+# Real-looking queue ARNs and URLs (ticket 22-02), so the compute module's queue validation and policies run against a
+# mocked apply. The mock provider would otherwise give both queues the same random values.
+override_resource {
+  target = module.queue.aws_sqs_queue.this["general"]
+  values = {
+    arn = "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-general"
+    url = "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-general"
+  }
+}
+
+override_resource {
+  target = module.queue.aws_sqs_queue.this["runs"]
+  values = {
+    arn = "arn:aws:sqs:eu-west-2:123456789012:studio-demo-queue-runs"
+    url = "https://sqs.eu-west-2.amazonaws.com/123456789012/studio-demo-queue-runs"
+  }
+}
+
 run "wires_every_module_with_the_environment_prefix" {
   command = plan
 
@@ -94,6 +119,7 @@ run "wires_every_module_with_the_environment_prefix" {
       ecs      = "studio-demo-ecs"
       kms      = "studio-demo-kms"
       network  = "studio-demo-network"
+      queue    = "studio-demo-queue"
       storage  = "studio-demo-storage"
     }
     error_message = "Every module must be named from the demo prefix."
@@ -153,18 +179,64 @@ run "wires_the_compute_module_into_the_data_modules" {
   }
 
   assert {
-    condition     = { for k, r in module.database.admitted_client_security_group_ids : k => r } == { api = module.ecs.service_security_group_ids["api"], worker = module.ecs.service_security_group_ids["worker"], migrate = module.ecs.migration_security_group_id, seed = module.ecs.seed_security_group_id }
-    error_message = "Only the API, the worker, the migration task and the seed task may connect to the database."
+    condition     = { for k, r in module.database.admitted_client_security_group_ids : k => r } == { api = module.ecs.service_security_group_ids["api"], "worker-general" = module.ecs.service_security_group_ids["worker-general"], "worker-runs" = module.ecs.service_security_group_ids["worker-runs"], migrate = module.ecs.migration_security_group_id, seed = module.ecs.seed_security_group_id }
+    error_message = "Only the API, both worker pools, the migration task and the seed task may connect to the database (ticket 22-04)."
   }
 
   assert {
-    condition     = module.cache.admitted_client_security_group_ids == merge(module.ecs.service_security_group_ids, { seed = module.ecs.seed_security_group_id })
-    error_message = "The API, worker, Beat and the seed task may connect to Redis."
+    condition     = keys(module.cache.admitted_client_security_group_ids) == ["api", "beat", "seed", "worker-general", "worker-runs"] && module.cache.admitted_client_security_group_ids == merge(module.ecs.service_security_group_ids, { seed = module.ecs.seed_security_group_id })
+    error_message = "The API, both worker pools, Beat and the seed task may connect to Redis (ticket 22-04)."
   }
 
   assert {
-    condition     = keys(module.ecs.service_names) == ["api", "beat", "worker"] && var.image_tag == "bootstrap"
-    error_message = "The demo must run the three services, at the bootstrap tag until the deploy workflow sets one."
+    condition     = keys(module.ecs.service_names) == ["api", "beat", "worker-general", "worker-runs"] && var.image_tag == "bootstrap"
+    error_message = "The demo must run the four services, at the bootstrap tag until the deploy workflow sets one."
+  }
+
+  assert {
+    condition     = module.ecs.capacity_providers == { api = "FARGATE", beat = "FARGATE", "worker-general" = "FARGATE_SPOT", "worker-runs" = "FARGATE" }
+    error_message = "The demo's general pool must run on Fargate Spot by default (ticket 22-04)."
+  }
+}
+
+run "worker_spot_moves_the_demos_general_pool_to_regular_fargate" {
+  command = plan
+
+  variables {
+    worker_spot = false
+  }
+
+  assert {
+    condition     = alltrue([for p in values(module.ecs.capacity_providers) : p == "FARGATE"])
+    error_message = "worker_spot = false must reach the ecs module, so a Spot shortage is one change away from fixed (spec 22 story 10)."
+  }
+}
+
+run "wires_the_queues_into_the_services_settings_and_task_roles" {
+  command = apply
+
+  assert {
+    condition     = { for k, q in module.queue.queues : k => q.name } == { general = "studio-demo-queue-general", runs = "studio-demo-queue-runs" }
+    error_message = "The demo must have the general and runs queues, named from the demo prefix."
+  }
+
+  assert {
+    condition = alltrue([for env in values(module.ecs.task_environment) :
+      env.GENERAL_QUEUE_NAME == module.queue.queues.general.name && env.RUNS_QUEUE_NAME == module.queue.queues.runs.name &&
+      env.GENERAL_QUEUE_URL == module.queue.queues.general.url && env.RUNS_QUEUE_URL == module.queue.queues.runs.url
+    ])
+    error_message = "Every service must be given the demo's queue names and URLs as settings."
+  }
+
+  assert {
+    condition = alltrue([
+      contains(module.ecs.task_role_policies.api.Statement, { Sid = "SendJobsToBothQueues", Effect = "Allow", Action = ["sqs:SendMessage"], Resource = [module.queue.queues.general.arn, module.queue.queues.runs.arn] }),
+      contains(module.ecs.task_role_policies["worker-general"].Statement, { Sid = "SendJobsToBothQueues", Effect = "Allow", Action = ["sqs:SendMessage"], Resource = [module.queue.queues.general.arn, module.queue.queues.runs.arn] }),
+      contains(module.ecs.task_role_policies["worker-general"].Statement, { Sid = "ReceiveJobsFromItsOwnQueue", Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"], Resource = module.queue.queues.general.arn }),
+      contains(module.ecs.task_role_policies["worker-runs"].Statement, { Sid = "ReceiveJobsFromItsOwnQueue", Effect = "Allow", Action = ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:ChangeMessageVisibility", "sqs:GetQueueAttributes"], Resource = module.queue.queues.runs.arn }),
+      module.ecs.task_role_policies.beat.Statement[0].Resource == module.queue.queues.general.arn,
+    ])
+    error_message = "The task roles must name the demo's own queues."
   }
 }
 
@@ -177,8 +249,8 @@ run "wires_the_cdn_in_front_of_the_static_bucket_and_the_alb" {
   }
 
   assert {
-    condition     = module.ecs.task_environment.api.STUDIO_URL == module.cdn.url && module.ecs.task_environment.worker.STUDIO_URL == module.cdn.url
-    error_message = "The API and worker must put the CloudFront URL in links in emails (STUDIO_URL)."
+    condition     = alltrue([for k in ["api", "worker-general", "worker-runs"] : module.ecs.task_environment[k].STUDIO_URL == module.cdn.url])
+    error_message = "The API and the worker pools must put the CloudFront URL in links in emails (STUDIO_URL)."
   }
 
   assert {
@@ -223,15 +295,16 @@ run "outputs_everything_the_deploy_workflow_needs" {
     condition = output.deploy == {
       image_tag                  = "0123abc"
       cluster_name               = "studio-demo-ecs"
-      services                   = { api = "studio-demo-ecs-api", worker = "studio-demo-ecs-worker", beat = "studio-demo-ecs-beat" }
+      services                   = { api = "studio-demo-ecs-api", "worker-general" = "studio-demo-ecs-worker-general", "worker-runs" = "studio-demo-ecs-worker-runs", beat = "studio-demo-ecs-beat" }
       task_definition_arns       = module.ecs.task_definition_arns
       migration_task             = module.ecs.migration_task
       seed_task                  = module.ecs.seed_task
+      queue_names                = { general = "studio-demo-queue-general", runs = "studio-demo-queue-runs" }
       static_bucket_name         = "studio-demo-static-123456789012"
       cloudfront_distribution_id = module.cdn.distribution_id
       cloudfront_url             = "https://d111111abcdef8.cloudfront.net"
     }
-    error_message = "The deploy output must name the cluster, services, task definitions, migration task, seed task, static bucket and distribution."
+    error_message = "The deploy output must name the cluster, services, task definitions, migration task, seed task, job queues (for scripts/deploy/scale.sh), static bucket and distribution."
   }
 
   assert {
@@ -245,7 +318,7 @@ run "outputs_everything_the_deploy_workflow_needs" {
   }
 
   assert {
-    condition     = alltrue([for arn in values(output.deploy.task_definition_arns) : arn != null]) && keys(output.deploy.task_definition_arns) == ["api", "beat", "worker"]
+    condition     = alltrue([for arn in values(output.deploy.task_definition_arns) : arn != null]) && keys(output.deploy.task_definition_arns) == ["api", "beat", "worker-general", "worker-runs"]
     error_message = "The deploy output must carry a task definition for each service at the new tag."
   }
 }
@@ -272,3 +345,57 @@ run "rejects_an_unknown_environment" {
 
   expect_failures = [var.environment]
 }
+
+# Ticket 23-02 added module inputs a local environment sets (spec 23). The demo sets none of them, so with their
+# defaults its plan is what it was before: each module reports what it built, and it matches the pre-23-02 values.
+run "the_local_environment_inputs_leave_the_demo_unchanged" {
+  command = apply
+
+  assert {
+    condition     = module.ecs.cpu_architecture == "ARM64"
+    error_message = "Every demo task definition must stay ARM64 (Graviton)."
+  }
+
+  assert {
+    condition = jsonencode({ for k, e in module.ecs.task_environment : k => sort(keys(e)) }) == jsonencode({
+      api              = ["AWS_REGION", "BEDROCK_PLATFORM_PRINCIPAL", "DATABASE_HOST", "DATABASE_NAME", "DATABASE_PORT", "DATABASE_TLS", "DATABASE_USER", "DEMO_PAGES", "ENVIRONMENT", "GENERAL_QUEUE_NAME", "GENERAL_QUEUE_URL", "KEY_WRAPPER", "KMS_KEY_ID", "OBJECT_STORE", "OBJECT_STORE_BUCKET", "OBJECT_STORE_REGION", "PUBLIC_BASE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_TLS", "RUNS_QUEUE_NAME", "RUNS_QUEUE_URL", "STUDIO_URL", "TRUSTED_PROXIES"]
+      "worker-general" = ["AWS_REGION", "DATABASE_HOST", "DATABASE_NAME", "DATABASE_PORT", "DATABASE_TLS", "DATABASE_USER", "ENVIRONMENT", "GENERAL_QUEUE_NAME", "GENERAL_QUEUE_URL", "KEY_WRAPPER", "KMS_KEY_ID", "OBJECT_STORE", "OBJECT_STORE_BUCKET", "OBJECT_STORE_REGION", "PUBLIC_BASE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_TLS", "RUNS_QUEUE_NAME", "RUNS_QUEUE_URL", "STUDIO_URL"]
+      "worker-runs"    = ["AWS_REGION", "DATABASE_HOST", "DATABASE_NAME", "DATABASE_PORT", "DATABASE_TLS", "DATABASE_USER", "ENVIRONMENT", "GENERAL_QUEUE_NAME", "GENERAL_QUEUE_URL", "KEY_WRAPPER", "KMS_KEY_ID", "OBJECT_STORE", "OBJECT_STORE_BUCKET", "OBJECT_STORE_REGION", "PUBLIC_BASE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_TLS", "RUNS_QUEUE_NAME", "RUNS_QUEUE_URL", "STUDIO_URL"]
+      beat             = ["AWS_REGION", "DATABASE_HOST", "DATABASE_NAME", "DATABASE_PORT", "DATABASE_TLS", "DATABASE_USER", "ENVIRONMENT", "GENERAL_QUEUE_NAME", "GENERAL_QUEUE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_TLS", "RUNS_QUEUE_NAME", "RUNS_QUEUE_URL"]
+      migrate          = ["AWS_REGION", "DATABASE_HOST", "DATABASE_NAME", "DATABASE_PORT", "DATABASE_TLS", "DATABASE_USER", "ENVIRONMENT", "GENERAL_QUEUE_NAME", "GENERAL_QUEUE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_TLS", "RUNS_QUEUE_NAME", "RUNS_QUEUE_URL"]
+      seed             = ["AWS_REGION", "DATABASE_HOST", "DATABASE_NAME", "DATABASE_PORT", "DATABASE_TLS", "DATABASE_USER", "ENVIRONMENT", "GENERAL_QUEUE_NAME", "GENERAL_QUEUE_URL", "KEY_WRAPPER", "KMS_KEY_ID", "OBJECT_STORE", "OBJECT_STORE_BUCKET", "OBJECT_STORE_REGION", "PUBLIC_BASE_URL", "REDIS_HOST", "REDIS_PORT", "REDIS_TLS", "RUNS_QUEUE_NAME", "RUNS_QUEUE_URL", "STUDIO_URL"]
+    })
+    error_message = "The demo's containers must get exactly the module's settings, with no extra environment."
+  }
+
+  assert {
+    condition     = module.database.port == 5432 && alltrue([for e in values(module.ecs.task_environment) : e.DATABASE_PORT == "5432"])
+    error_message = "The demo database must stay on Postgres's port 5432, and every container must be told so."
+  }
+
+  assert {
+    condition     = alltrue([for e in values(module.ecs.task_environment) : e.DATABASE_TLS == "true"])
+    error_message = "Every demo container must keep connecting to the database over TLS (ticket 23-03's database.tls defaults on)."
+  }
+
+  assert {
+    condition     = module.kms.rotation_period_in_days == { credentials = 365, data = 365 }
+    error_message = "Both demo KMS keys must keep a one-year rotation period."
+  }
+
+  assert {
+    condition     = module.cache.maintenance_window == "sun:03:30-sun:04:30"
+    error_message = "The demo cache must keep its Sunday 03:30-04:30 UTC maintenance window."
+  }
+
+  assert {
+    condition     = module.cdn.custom_error_responses == [] && module.cdn.api_origin_domain == module.ecs.alb_dns_name
+    error_message = "The demo distribution must have no custom error response and must send the API's paths to the ALB."
+  }
+
+  assert {
+    condition     = module.cdn.distribution_domain_name == "d111111abcdef8.cloudfront.net"
+    error_message = "The cdn module must report the distribution's own domain."
+  }
+}
+

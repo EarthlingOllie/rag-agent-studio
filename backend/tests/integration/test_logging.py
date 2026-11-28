@@ -24,7 +24,15 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 
 from app.main import create_app
 from app.worker.celery_app import celery_app
-from tests.conftest import TEST_DATABASE_URL, TEST_LOCAL_KEY_WRAPPER_KEY, TEST_REDIS_URL
+from tests.conftest import (
+    TEST_DATABASE_URL,
+    TEST_LOCAL_KEY_WRAPPER_KEY,
+    TEST_QUEUES,
+    TEST_REDIS_URL,
+    TEST_SQS_ENDPOINT_URL,
+    RegisterTestTask,
+)
+from tests.sqs import empty_queues
 
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 MESSAGE_TEXT = "please cancel my order 8812"
@@ -112,6 +120,25 @@ def _free_port() -> int:
         return port
 
 
+# The service processes get queues of their own. A worker process stopped while it waits for a
+# message (SQS long polling) can leave that wait open on Floci for a few seconds, and a message
+# sent then would go to it; on these queues, no other test sends one.
+SERVICE_QUEUES = {kind: f"{name}-services" for kind, name in TEST_QUEUES.items()}
+
+
+def _url(queue: str) -> str:
+    return f"{TEST_SQS_ENDPOINT_URL}/000000000000/{queue}"
+
+
+@pytest.fixture
+def service_queues(settings_env: pytest.MonkeyPatch) -> None:
+    """The service processes' queues exist and start empty."""
+    for kind, name in SERVICE_QUEUES.items():
+        settings_env.setenv(f"{kind.upper()}_QUEUE_NAME", name)
+        settings_env.setenv(f"{kind.upper()}_QUEUE_URL", _url(name))
+    empty_queues(SERVICE_QUEUES.values())
+
+
 def _service_env() -> dict[str, str]:
     env = {
         key: value for key, value in os.environ.items() if not key.startswith(("COV_", "LOGFIRE_"))
@@ -120,6 +147,14 @@ def _service_env() -> dict[str, str]:
         ENVIRONMENT="test",
         DATABASE_URL=TEST_DATABASE_URL,
         REDIS_URL=TEST_REDIS_URL,
+        GENERAL_QUEUE_NAME=SERVICE_QUEUES["general"],
+        GENERAL_QUEUE_URL=_url(SERVICE_QUEUES["general"]),
+        RUNS_QUEUE_NAME=SERVICE_QUEUES["runs"],
+        RUNS_QUEUE_URL=_url(SERVICE_QUEUES["runs"]),
+        SQS_ENDPOINT_URL=TEST_SQS_ENDPOINT_URL,
+        SQS_ACCESS_KEY_ID="test",
+        SQS_SECRET_ACCESS_KEY="test",  # noqa: S106 - Floci takes any static keys
+        AWS_REGION="eu-west-2",
         LOCAL_KEY_WRAPPER_KEY=TEST_LOCAL_KEY_WRAPPER_KEY,
         OBJECT_STORE="memory",
         # A worker process loads the ingestion scan's model as it starts; the rule-driven fake
@@ -176,8 +211,11 @@ class _Service:
 
 
 @pytest.fixture
-def empty_broker() -> Iterator[None]:
+def empty_broker(settings_env: pytest.MonkeyPatch) -> Iterator[None]:
+    """The test queues on Floci start and end empty; the replies in Redis go too."""
+    empty_queues()
     yield
+    empty_queues()
     with redis.Redis.from_url(TEST_REDIS_URL) as connection:
         connection.flushdb()
 
@@ -238,7 +276,7 @@ def test_the_api_server_leaves_forwarding_headers_to_the_app(
     assert "203.0.113.7" not in access["message"]
 
 
-def test_the_worker_writes_only_json_lines(empty_broker: None) -> None:
+def test_the_worker_writes_only_json_lines(service_queues: None) -> None:
     service = _Service(
         sys.executable, "-m", "celery", "-A", "app.worker.main", "--quiet",
         "worker", "--pool", "solo", "--loglevel", "INFO",
@@ -251,7 +289,7 @@ def test_the_worker_writes_only_json_lines(empty_broker: None) -> None:
     _assert_every_line_is_json_from(output, "worker")
 
 
-def test_beat_writes_only_json_lines(empty_broker: None, tmp_path: Path) -> None:
+def test_beat_writes_only_json_lines(service_queues: None, tmp_path: Path) -> None:
     service = _Service(
         sys.executable, "-m", "celery", "-A", "app.worker.main", "--quiet",
         "beat", "--loglevel", "INFO", "--schedule", str(tmp_path / "beat-schedule"),
@@ -280,21 +318,24 @@ def test_migrations_write_only_json_lines() -> None:
     assert {entry["logger"] for entry in logs} >= {"alembic.runtime.migration"}
 
 
-@celery_app.task(name="test.echo")
 def _echo(content: str) -> str:
     """A stand-in for a task that carries Message text in and out."""
     return content
 
 
 def test_worker_task_logs_leave_out_task_arguments_and_results(
-    settings_env: pytest.MonkeyPatch, empty_broker: None, capsys: pytest.CaptureFixture[str]
+    settings_env: pytest.MonkeyPatch,
+    empty_broker: None,
+    capsys: pytest.CaptureFixture[str],
+    test_task: RegisterTestTask,
 ) -> None:
     settings_env.setenv("CELERY_TASK_ALWAYS_EAGER", "false")
     sys.modules.pop("app.worker.main", None)
     __import__("app.worker.main")  # the worker entrypoint configures logging and Celery
+    echo = test_task("test.echo", _echo)
 
     with start_worker(celery_app, pool="solo", perform_ping_check=False):
-        assert _echo.delay(MESSAGE_TEXT).get(timeout=10) == MESSAGE_TEXT
+        assert echo.delay(MESSAGE_TEXT).get(timeout=10) == MESSAGE_TEXT
 
     output = capsys.readouterr().out
     assert MESSAGE_TEXT not in output

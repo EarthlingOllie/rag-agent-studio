@@ -5,7 +5,7 @@ A serial run (no worker id) keeps the configured names exactly.
 
 import pytest
 
-from tests.worker_resources import worker_database_url, worker_redis_url
+from tests.worker_resources import worker_database_url, worker_queue_name, worker_redis_url
 
 DATABASE = "postgresql+asyncpg://studio:studio@localhost:5432/studio_test"
 REDIS = "redis://localhost:6379/15"
@@ -48,3 +48,8 @@ def test_more_workers_than_redis_databases_is_refused() -> None:
 def test_a_redis_url_without_a_database_counts_down_from_database_0() -> None:
     with pytest.raises(ValueError, match="gw0"):
         worker_redis_url("redis://localhost:6379", "gw0")
+
+
+def test_each_worker_gets_its_own_queues() -> None:
+    assert worker_queue_name("general", None) == "studio-test-general"
+    assert worker_queue_name("runs", "gw3") == "studio-test-gw3-runs"

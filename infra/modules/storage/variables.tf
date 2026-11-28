@@ -35,13 +35,15 @@ variable "force_destroy" {
 }
 
 variable "documents_cors_allowed_origin" {
-  description = "The CloudFront origin (https://<distribution>.cloudfront.net, or the custom domain) that browsers upload Documents from with presigned URLs. Null means no cross-origin access at all. The demo passes the cdn module's url."
+  description = "The CloudFront origin (https://<distribution>.cloudfront.net, or the custom domain) that browsers upload Documents from with presigned URLs. Null means no cross-origin access at all. The demo passes the cdn module's url; a local environment its emulated distribution's http://<id>.cloudfront.localhost:<port> address."
   type        = string
   default     = null
 
   validation {
-    condition     = var.documents_cors_allowed_origin == null || can(regex("^https://[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$", var.documents_cors_allowed_origin))
-    error_message = "documents_cors_allowed_origin must be a single https:// origin with no wildcard, port or path."
+    condition = var.documents_cors_allowed_origin == null || can(regex("^https://[a-z0-9]([a-z0-9-]*[a-z0-9])?(\\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$", var.documents_cors_allowed_origin)) || (
+      can(regex("^http://([a-z0-9]([a-z0-9-]*[a-z0-9])?\\.)+localhost(:[0-9]{1,5})?$", var.documents_cors_allowed_origin))
+    )
+    error_message = "documents_cors_allowed_origin must be a single https:// origin with no wildcard, port or path, or an emulator's http://<name>.localhost[:port] (ticket 23-04)."
   }
 }
 

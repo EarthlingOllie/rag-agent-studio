@@ -57,3 +57,65 @@ async def test_startup_fails_fast_on_a_trusted_proxy_that_is_not_an_address(
     ):
         async with LifespanManager(create_app()):
             pass  # startup must not complete
+
+
+# --- The job queues (ticket 22-03) --------------------------------------------------------------
+
+
+@pytest.mark.parametrize("setting", ["GENERAL_QUEUE_NAME", "RUNS_QUEUE_URL"])
+async def test_startup_fails_fast_without_a_queue_setting_and_never_falls_back_to_redis(
+    settings_env: pytest.MonkeyPatch, setting: str
+) -> None:
+    # Redis is configured, but it is not a broker: without both queues the service won't start.
+    settings_env.delenv(setting)
+
+    with pytest.raises(SettingsError, match=rf"{setting}: Field required"):
+        async with LifespanManager(create_app()):
+            pass  # startup must not complete
+
+
+async def test_startup_fails_fast_on_a_queue_name_sqs_would_refuse(
+    settings_env: pytest.MonkeyPatch,
+) -> None:
+    settings_env.setenv("RUNS_QUEUE_NAME", "runs queue!")
+
+    with pytest.raises(SettingsError, match=r"RUNS_QUEUE_NAME: String should match pattern"):
+        async with LifespanManager(create_app()):
+            pass  # startup must not complete
+
+
+async def test_startup_fails_fast_when_a_queue_url_is_not_its_queues(
+    settings_env: pytest.MonkeyPatch,
+) -> None:
+    settings_env.setenv("GENERAL_QUEUE_URL", "http://localhost:4566/000000000000/another-queue")
+
+    with pytest.raises(
+        SettingsError, match=r"GENERAL_QUEUE_URL must be the URL of GENERAL_QUEUE_NAME"
+    ):
+        async with LifespanManager(create_app()):
+            pass  # startup must not complete
+
+
+async def test_startup_fails_fast_when_both_queue_settings_name_one_queue(
+    settings_env: pytest.MonkeyPatch,
+) -> None:
+    settings_env.setenv("RUNS_QUEUE_NAME", "studio-jobs")
+    settings_env.setenv("RUNS_QUEUE_URL", "http://localhost:4566/000000000000/studio-jobs")
+    settings_env.setenv("GENERAL_QUEUE_NAME", "studio-jobs")
+    settings_env.setenv("GENERAL_QUEUE_URL", "http://localhost:4566/000000000000/studio-jobs")
+
+    with pytest.raises(SettingsError, match=r"must name two queues"):
+        async with LifespanManager(create_app()):
+            pass  # startup must not complete
+
+
+async def test_startup_fails_fast_on_a_retry_backoff_longer_than_five_minutes(
+    settings_env: pytest.MonkeyPatch,
+) -> None:
+    settings_env.setenv("INGESTION_RETRY_MAX_SECONDS", "301")
+
+    with pytest.raises(
+        SettingsError, match=r"INGESTION_RETRY_MAX_SECONDS: Input should be less than or equal"
+    ):
+        async with LifespanManager(create_app()):
+            pass  # startup must not complete

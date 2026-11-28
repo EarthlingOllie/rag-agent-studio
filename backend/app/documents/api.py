@@ -172,7 +172,8 @@ class DocumentOut(BaseModel):
     error_message: str | None
     # What kind of failure it was, while Failed.
     error_category: FailureCategory | None
-    # How many times processing has started, automatic retries included.
+    # How many times processing has started since it was last queued by hand, automatic retries
+    # included and interrupted runs not.
     attempt_count: int
     edition: int
     chunk_count: int
@@ -439,6 +440,7 @@ async def confirm_upload(
     redis: RedisDep,
     store: StoreDep,
     settings: SettingsDep,
+    clock: ClockDep,
 ) -> DocumentOut | JSONResponse:
     """Records the uploaded file's content hash, creates the Document as Queued and starts
     ingestion. The Document then moves to Processing and Ready (or Failed). A file whose content
@@ -453,6 +455,7 @@ async def confirm_upload(
             upload_id=body.upload_id,
             content_hash=body.content_hash,
             max_bytes=settings.max_upload_bytes,
+            queued_at=clock.now(),
         )
     except ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
@@ -658,12 +661,12 @@ async def delete_document(
     """Deletes the Document and its Chunks: it stops being retrieved at once. Its stored files
     are deleted in the background. Records ``document.deleted``."""
     try:
-        keys = await service.delete_document(db, scope, project_id, document_id, now=clock.now())
+        await service.delete_document(db, scope, project_id, document_id, now=clock.now())
     except (ProjectNotFoundError, service.DocumentNotFoundError):
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except ProjectArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_ARCHIVED) from None
-    await enqueue_object_deletion(keys)
+    await enqueue_object_deletion()
 
 
 @router.post(
@@ -692,6 +695,7 @@ async def replace_document(
     redis: RedisDep,
     store: StoreDep,
     settings: SettingsDep,
+    clock: ClockDep,
 ) -> DocumentOut | JSONResponse:
     """Confirms an uploaded file as the Document's newer edition and starts ingesting it. The
     current edition keeps serving until the new one is Ready; then the new one replaces it in
@@ -707,6 +711,7 @@ async def replace_document(
             upload_id=body.upload_id,
             content_hash=body.content_hash,
             max_bytes=settings.max_upload_bytes,
+            queued_at=clock.now(),
         )
     except (ProjectNotFoundError, service.DocumentNotFoundError):
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
@@ -733,7 +738,7 @@ async def replace_document(
         replacement.staged,
     )
     if replacement.discarded:
-        await enqueue_object_deletion(replacement.discarded)
+        await enqueue_object_deletion()
     await enqueue_ingestion(document.id)
     return accepted
 
@@ -752,14 +757,16 @@ async def replace_document(
     },
 )
 async def retry_document(
-    project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db
+    project_id: uuid.UUID, document_id: uuid.UUID, scope: Scope, db: Db, clock: ClockDep
 ) -> DocumentOut | JSONResponse:
     """Processes a Document again from its stored file: it goes back to Queued. When the
     Document's newer edition is what failed, that edition is retried instead; a Ready Document
     is processed again with the Project's current settings (such as OCR), its Chunks serving
     until the new ones replace them."""
     try:
-        document, staged = await service.retry_document(db, scope, project_id, document_id)
+        document, staged = await service.retry_document(
+            db, scope, project_id, document_id, queued_at=clock.now()
+        )
     except (ProjectNotFoundError, service.DocumentNotFoundError):
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except ProjectArchivedError:

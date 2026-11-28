@@ -23,6 +23,8 @@ from app.agents import serving
 from app.agents.config import Experience
 from app.agents.models import ORIGIN_MAX, Agent
 from app.agents.service import get_agent
+from app.alert_emails.delivery import raise_alert, send_alert_emails
+from app.alert_emails.models import Alert
 from app.conversations.models import Call, Conversation, Message, MessageRetrieval
 from app.documents.models import Document
 from app.embed import call_limits
@@ -38,7 +40,6 @@ from app.mail import templates
 from app.mail.port import Mailer
 from app.playground.service import PreparedTurn
 from app.runtime.prompt import chunk_label
-from app.tenancy.models import Member, Membership, Role
 from app.tenancy.repository import OrganisationScope
 from app.theme.resolve import with_colours
 from app.theme.schema import ThemeSettings
@@ -479,7 +480,8 @@ async def budget_exhausted(
     """Raises the Agent's budget alert flag for today and emails every Owner of its
     Organisation, once per Agent per UTC date: only the call that raises today's flag sends,
     so concurrent replies and refusals can't send twice. A flag left from an earlier day counts
-    as no flag."""
+    as no flag. The emails are recorded with the flag and sent once it commits, so the sweeper
+    sends any this process didn't (``app.alert_emails``)."""
     raised = await session.scalar(
         update(Agent)
         .where(
@@ -491,34 +493,34 @@ async def budget_exhausted(
         .values(budget_exhausted_at=now)
         .returning(Agent.id)
     )
-    await session.commit()
     if raised is None:
+        await session.commit()
         return
     agent = await session.get_one(Agent, agent_id)
-    owners = await session.execute(
-        select(Member.name, Member.email)
-        .join(Membership, Membership.member_id == Member.id)
-        .where(Membership.organisation_id == agent.organisation_id, Membership.role == Role.OWNER)
-        .order_by(Member.email)
-    )
     link = templates.agent_link(
         studio_url, str(agent.organisation_id), str(agent.project_id), str(agent.id)
     )
-    for name, email in owners:
-        await mailer.send(
-            templates.token_budget_exhausted(
-                to=email,
-                name=name,
-                agent_name=agent.name,
-                budget=agent.daily_token_budget,
-                link=link,
-            )
-        )
+    emails = await raise_alert(
+        session,
+        Alert.TOKEN_BUDGET_EXHAUSTED,
+        organisation_id=agent.organisation_id,
+        agent_id=agent.id,
+        raised_at=now,
+        render=lambda name, email: templates.token_budget_exhausted(
+            to=email,
+            name=name,
+            agent_name=agent.name,
+            budget=agent.daily_token_budget,
+            link=link,
+        ),
+    )
+    await session.commit()
+    await send_alert_emails(session, mailer, now=now, ids=emails)
 
 
 async def clear_budget_alerts(session: AsyncSession, *, now: datetime) -> int:
     """Clears the Token Budget and Call minutes budget alert flags raised before today (UTC),
-    for Beat at midnight; returns how many Agents it cleared. A flag raised today stays:
+    for Beat each hour; returns how many Agents it cleared. A flag raised today stays:
     today's budget is still spent."""
     cleared: set[uuid.UUID] = set()
     for flag in (Agent.budget_exhausted_at, Agent.call_budget_exhausted_at):

@@ -1,0 +1,265 @@
+# make infra-check on the 23-05 working tree, 2026-11-27 (filtered: test results, summaries, exit status)
+ok   demo: S3 backend with native locking
+ok   local: S3 backend with native locking
+ok   envs/demo composes cache
+ok   envs/demo composes cdn
+ok   infra/bootstrap composes ci-oidc
+ok   envs/demo composes database
+ok   envs/demo composes ecr
+ok   envs/demo composes ecs
+ok   envs/demo composes kms
+ok   envs/demo composes network
+ok   envs/demo composes queue
+ok   envs/demo composes storage
+ok   envs/local composes the same modules as envs/demo
+ok   passes_when_health_studio_a_deep_link_an_api_404_and_the_widget_shell_respond
+ok   passes_against_a_live_agent_whose_shell_names_its_allowed_origins
+ok   fails_when_the_health_endpoint_reports_an_error
+ok   fails_when_health_answers_200_without_status_ok
+ok   fails_when_the_studio_is_not_served
+ok   fails_when_the_studio_page_is_not_the_studio
+ok   fails_when_the_studio_is_not_html
+ok   fails_when_a_deep_link_is_a_404
+ok   fails_when_a_deep_link_is_not_the_studio
+ok   fails_when_an_api_404_is_replaced_by_the_studio
+ok   fails_when_an_api_404_keeps_its_status_but_not_its_body
+ok   fails_when_the_widget_shell_has_no_csp
+ok   fails_when_the_widget_shell_csp_has_no_frame_ancestors
+ok   fails_when_the_widget_shell_errors
+ok   retries_each_check_before_failing
+ok   retries_the_health_check_3_times
+ok   passes_once_a_failing_check_recovers
+ok   fails_when_the_site_is_unreachable
+ok   rejects_bad_arguments ''
+ok   rejects_bad_arguments 'ftp://example.com'
+ok   rejects_bad_arguments 'https://d111111abcdef8.cloudfront.net/studio'
+ok   deploys_in_order_at_the_given_tag
+ok   runs_the_migration_task_in_the_private_subnets
+ok   rolls_the_api_both_worker_pools_and_beat_onto_their_new_task_definitions
+ok   reports_each_service_as_stable
+ok   uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader
+ok   prints_the_cloudfront_url_in_the_job_summary
+ok   finds_old_worker_tasks_and_asks_whether_they_are_protected
+ok   waits_while_old_worker_tasks_are_protected_and_lets_the_roll_finish_when_their_jobs_end
+ok   clears_protection_on_old_tasks_after_30_minutes_and_lets_the_roll_finish
+ok   the_wait_for_protected_tasks_is_an_argument
+ok   no_wait_clears_protection_at_once
+ok   a_failure_to_clear_protection_stops_the_deploy
+ok   rejects_the_wait_'abc'
+ok   rejects_the_wait_'-1'
+ok   rejects_the_wait_'1.5'
+ok   pushes_locally_built_images_when_the_tag_is_not_in_ecr
+ok   pushes_to_the_registry_terraform_outputs
+ok   pushes_images_of_the_architecture_given
+ok   refuses_images_not_of_the_architecture_given
+ok   rejects_the_architecture_'x86_64'
+ok   rejects_the_architecture_'ARM64'
+ok   rejects_the_architecture_''
+ok   refuses_to_push_images_that_are_not_arm64
+ok   fails_when_the_tag_is_neither_in_ecr_nor_built
+ok   a_failed_migration_stops_before_any_service_rolls
+ok   a_migration_that_never_ran_stops_the_deploy
+ok   a_migration_task_that_cannot_start_stops_the_deploy
+ok   services_that_do_not_stabilise_fail_before_uploading
+ok   a_worker_pool_that_does_not_stabilise_is_named_and_stops_the_deploy
+ok   a_failed_apply_stops_the_deploy
+ok   a_failed_smoke_check_fails_the_deploy
+ok   smoke_checks_a_live_agent_when_given
+ok   rejects_the_tag_''
+ok   rejects_the_tag_'latest'
+ok   rejects_the_tag_'has space'
+ok   rejects_the_tag_'../etc'
+ok   rejects_the_tag_'aaaaaaaaaaaaaaaaaaaa'
+ok   requires_the_state_bucket
+ok   requires_the_frontend_builds
+ok   requires_the_demo_pages
+ok   destroys_the_demo_when_the_confirmation_is_typed_exactly
+ok   refuses_without_a_confirmation
+ok   refuses_a_confirmation_that_is_nearly_right
+ok   refuses_a_confirmation_with_extra_text
+ok   refuses_the_environment_name_alone
+ok   requires_the_state_bucket
+ok   a_failed_destroy_fails_the_run
+ok   rejects_missing_arguments
+ok   runs_the_seed_as_a_one_off_ecs_task_and_prints_its_output
+ok   never_applies_or_changes_the_infrastructure
+ok   running_it_again_runs_the_same_non_destructive_seed
+ok   reset_overrides_the_command_with_seed_reset
+ok   keeps_waiting_while_the_seed_runs
+ok   a_seed_that_never_stops_fails_the_run
+ok   a_failed_seed_fails_the_run_and_shows_its_output
+ok   a_seed_task_that_never_ran_fails_the_run
+ok   a_seed_task_that_cannot_start_fails_the_run
+ok   missing_logs_do_not_hide_a_successful_seed
+ok   an_environment_deployed_without_the_seed_task_asks_for_a_deploy
+ok   an_environment_that_is_not_deployed_asks_for_a_deploy
+ok   requires_the_state_bucket
+ok   requires_the_region
+ok   rejects_the_arguments_'--wipe'
+ok   rejects_the_arguments_'--reset extra'
+ok   rejects_the_arguments_'reset'
+ok   rejects_a_wait_that_is_not_a_positive_number
+ok   puts_work_on_the_demo_and_prints_a_timeline_until_every_service_is_back_at_its_minimum
+ok   keeps_a_secure_session_cookie_over_plain_http
+ok   follows_a_renewed_session_cookie
+ok   takes_the_copies_and_runs_as_arguments
+ok   a_longer_load_keeps_polling_while_it_lasts
+ok   shows_its_defaults_in_the_usage
+ok   fails_naming_the_runs_pool_when_it_never_scaled_out
+ok   fails_naming_the_api_when_it_never_scaled_out
+ok   a_desired_count_alone_is_not_a_scale_out
+ok   fails_naming_the_service_that_never_came_back_to_its_minimum
+ok   a_queue_still_holding_jobs_keeps_it_polling
+ok   deletes_its_project_and_cancels_its_runs_when_interrupted
+ok   fails_when_the_owner_cannot_sign_in
+ok   fails_when_the_owner_uses_mfa
+ok   fails_when_the_member_is_not_an_owner
+ok   fails_when_the_demo_is_not_seeded
+ok   fails_and_cleans_up_when_an_upload_is_refused
+ok   fails_and_cleans_up_when_the_presigned_upload_fails
+ok   says_so_when_its_project_could_not_be_deleted
+ok   fails_when_the_project_cannot_be_created
+ok   fails_when_the_environment_is_not_deployed
+ok   fails_when_the_deploy_output_has_no_job_queues
+ok   fails_when_the_studio_is_unreachable
+ok   copies_pdf_and_text_documents_too
+ok   refuses_a_document_it_cannot_copy
+ok   fails_when_a_service_has_no_scalable_target
+ok   rejects_bad_arguments ''
+ok   rejects_bad_arguments 'ftp://example.com'
+ok   rejects_bad_arguments 'https://d111111abcdef8.cloudfront.net/studio'
+ok   rejects_bad_arguments '--copies'
+ok   rejects_bad_arguments '--copies 0 https://x.example'
+ok   rejects_bad_arguments '--runs two https://x.example'
+ok   rejects_bad_arguments '--bogus https://x.example'
+ok   rejects_bad_arguments 'https://a.example https://b.example'
+ok   needs_OWNER_EMAIL
+ok   needs_OWNER_PASSWORD
+ok   needs_TF_STATE_BUCKET
+ok   needs_AWS_REGION
+ok   up_runs_the_unchanged_deploy_on_the_local_environment_against_floci
+ok   up_stops_make_devs_floci_then_starts_the_rehearsals_and_reads_its_ca
+ok   up_pulls_the_images_floci_starts_by_name_and_the_front_ends_before_starting_them
+ok   up_builds_the_images_for_this_machine_and_adds_flocis_ca_to_the_backend_image
+ok   up_creates_the_state_bucket_in_the_region_and_installs_the_providers_before_deploying
+ok   up_forgets_the_backend_a_previous_rehearsal_configured_before_installing_the_providers
+ok   up_checks_that_a_second_plan_after_the_apply_shows_no_changes
+ok   up_fails_when_the_plan_after_the_apply_shows_changes
+ok   up_fails_when_the_plan_after_the_apply_fails
+ok   up_keeps_an_existing_state_bucket
+ok   up_leaves_the_rehearsals_own_floci_running
+ok   up_rehearses_arm64_tasks_on_an_arm64_machine
+ok   up_can_use_the_images_already_built
+ok   up_pulls_through_a_docker_hub_mirror_and_tags_the_names_floci_asks_for
+ok   up_fails_clearly_on_a_docker_hub_rate_limit
+ok   up_reports_any_other_failed_pull
+ok   up_says_so_when_docker_does_not_answer_on_its_socket
+ok   up_says_so_when_docker_has_too_little_memory
+ok   up_refuses_an_unknown_machine_architecture
+ok   up_fails_when_the_deploy_fails
+ok   rejects_the_arguments_''
+ok   rejects_the_arguments_'sideways'
+ok   rejects_the_arguments_'up latest'
+ok   rejects_the_arguments_'up a b'
+ok   rejects_the_arguments_'down now'
+ok   rejects_the_arguments_'up has/slash'
+ok   rejects_the_arguments_'seed now'
+ok   rejects_the_arguments_'seed --reset x'
+ok   seed_runs_the_unchanged_seed_script_on_the_local_environment
+ok   seed_passes_reset_on
+ok   seed_fails_when_the_seed_fails
+ok   scale_runs_the_unchanged_scaling_script_on_the_seeded_rehearsal_with_laptop_sized_load
+ok   scale_publishes_the_figures_floci_does_not_compute_while_the_script_runs_and_stops_after
+ok   scale_passes_options_through_and_they_win_over_the_defaults
+ok   scale_fails_when_a_service_never_scaled
+ok   down_destroys_the_local_environment_then_removes_floci_and_its_data
+ok   down_without_a_running_floci_only_removes_what_is_left
+ok   down_still_removes_floci_when_the_destroy_fails
+ok   down_says_so_when_docker_does_not_answer
+ok   terraform_runs_in_a_container_on_the_tools_network_with_only_the_rehearsals_settings
+ok   the_aws_cli_runs_in_a_container_on_the_tools_network
+ok   the_tools_network_image_and_extra_docker_arguments_can_be_given
+ok   run_tool_refuses_another_tool
+ok   publishes_each_pools_waiting_plus_in_flight_jobs_as_the_metric_its_alarms_watch
+ok   empty_queues_publish_zero_jobs
+ok   publishes_the_api_services_average_cpu_from_its_task_containers
+ok   publishes_no_cpu_when_no_api_task_runs
+ok   a_failed_publish_is_reported_and_the_driver_carries_on
+ok   rejects_missing_arguments
+ok   repeats_until_stopped
+ok   looks_up_each_queue_url_once
+ok 1 - a deep link to a Studio route loads the Studio's index.html
+ok 2 - the root loads index.html
+ok 3 - a route with a trailing slash loads index.html
+ok 4 - a request for a file is passed through unchanged, so a missing asset is a 404, not HTML
+ok 5 - the demo pages' folder loads the demo shop, not the Studio (ticket 10-03)
+ok 6 - /demo redirects to /demo/, so the pages' relative links stay in the folder
+ok 7 - a demo page is a file and passes through
+ok 8 - a dot in an earlier path segment does not make a route a file
+ok 9 - the rest of the request (method, query string, headers, cookies) is untouched
+ok 10 - a Studio deep link reaches Floci as /index.html, so a refresh loads the Studio
+ok 11 - the query string of a deep link is kept
+ok 12 - an API 404 survives: /api/* is its own behaviour on CloudFront and is never rewritten
+ok 13 - the widget shell, the widget's assets and embed.js are never rewritten
+ok 14 - a missing asset is passed through, so it stays a 404 rather than HTML
+ok 15 - /demo is redirected by the function itself, without reaching Floci
+ok 16 - requests for Floci's own services (S3, the registry, the APIs) pass through untouched
+ok 17 - the Host header and method reach Floci unchanged, and the client's address is added to X-Forwarded-For
+ok 18 - without an X-Forwarded-For the client's address starts one
+ok 19 - /demo/ loads the demo pages' index, as the function says
+ok 20 - the front end answers 502 when Floci does not answer
+ok 21 - the paths it leaves alone are exactly the cdn module's ordered cache behaviours
+ok 22 - run as a program it listens on FRONT_PORT and forwards to FLOCI_URL
+# tests 22
+# pass 22
+# fail 0
+#    front.mjs              | 100.00 |   100.00 |  100.00 | 
+# all files                 | 100.00 |   100.00 |  100.00 | 
+ok   runs_when_the_secret_is_set_and_infra_changed
+ok   runs_when_the_infra_workflow_changed
+ok   skips_without_the_secret
+ok   skips_when_no_infrastructure_changed
+ok   fails_when_the_state_bucket_is_missing
+ok   fails_when_the_base_commit_is_unknown
+ok   rejects_missing_arguments
+== infra/bootstrap/
+Success! The configuration is valid.
+Success! 11 passed, 0 failed.
+== infra/envs/demo/
+Success! The configuration is valid.
+Success! 10 passed, 0 failed.
+== infra/envs/local/
+Success! The configuration is valid.
+Success! 11 passed, 0 failed.
+== infra/modules/cache/
+Success! The configuration is valid.
+Success! 22 passed, 0 failed.
+== infra/modules/cdn/
+Success! The configuration is valid.
+Success! 33 passed, 0 failed.
+== infra/modules/ci-oidc/
+Success! The configuration is valid.
+Success! 11 passed, 0 failed.
+== infra/modules/database/
+Success! The configuration is valid.
+Success! 25 passed, 0 failed.
+== infra/modules/ecr/
+Success! The configuration is valid.
+Success! 14 passed, 0 failed.
+== infra/modules/ecs/
+Success! The configuration is valid.
+Success! 102 passed, 0 failed.
+== infra/modules/kms/
+Success! The configuration is valid.
+Success! 14 passed, 0 failed.
+== infra/modules/network/
+Success! The configuration is valid.
+Success! 16 passed, 0 failed.
+== infra/modules/queue/
+Success! The configuration is valid.
+Success! 14 passed, 0 failed.
+== infra/modules/storage/
+Success! The configuration is valid.
+Success! 21 passed, 0 failed.
+Passed checks: 280, Failed checks: 0, Skipped checks: 79
+exit=0

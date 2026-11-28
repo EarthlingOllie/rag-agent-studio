@@ -17,6 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import audit
 from app.documents.models import Chunk
+from app.jobs import reliability
 from app.projects.models import Project
 from app.re_embedding.models import ReEmbedJob, ReEmbedStatus
 
@@ -82,12 +83,27 @@ async def end(
     job.status = status
     job.error_message = error
     job.finished_at = func.now()
+    reliability.released(job)
     if status != ReEmbedStatus.COMPLETED:
         await session.execute(
             delete(Chunk).where(
                 Chunk.project_id == job.project_id, Chunk.embedding_model_id == job.model_id
             )
         )
+
+
+async def fail(session: AsyncSession, job: ReEmbedJob, message: str) -> None:
+    """Fails a running job in the caller's transaction with a readable message, deleting its
+    vectors; the Project keeps its active model. Records ``project.re_embed_failed``."""
+    await end(session, job, ReEmbedStatus.FAILED, error=message)
+    await audit.record(
+        session,
+        organisation_id=job.organisation_id,
+        actor_id=None,
+        action=FAILED,
+        target=audit.AuditTarget("project", job.project_id),
+        after={"model_id": job.model_id, "error_message": message},
+    )
 
 
 def summary(project: Project, job: ReEmbedJob | None) -> dict[str, str | None]:
@@ -144,6 +160,7 @@ async def start(
         embedded_chunks=0,
         total_chunks=0,
         started_by=actor_id,
+        queued_at=now,
     )
     session.add(job)
     await session.flush()

@@ -1,0 +1,36 @@
+# Does Floci 2.5.0 run a step policy on an alarm state set by hand? (ticket 23-05, 2026-11-27, x86_64 sandbox)
+# A probe ECS service (cluster probe, 0-3 tasks, alpine sleep) with the worker pools' policy shape, through the AWS CLI
+# 2.31.0 on the rehearsal's tools network (AWS_ENDPOINT_URL=http://floci:4566, dummy credentials).
+
+## 1. Step policy (ExactCapacity: 0..1 -> 1, 1..2 -> 2, 2.. -> 3) driven by a metric-math alarm (waiting + in_flight)
+$ aws application-autoscaling register-scalable-target ... --resource-id service/probe/probe --min-capacity 0 --max-capacity 3
+$ aws application-autoscaling put-scaling-policy ... --policy-name probe-jobs --policy-type StepScaling
+arn:aws:autoscaling:eu-west-2:000000000000:scalingPolicy:fad79c53-...:resource/ecs/service/probe/probe:policyName/probe-jobs
+$ aws cloudwatch put-metric-alarm --alarm-name probe-jobs ... --metrics '[waiting, in_flight, {"Id":"jobs","Expression":"waiting + in_flight"}]'
+$ aws cloudwatch set-alarm-state --alarm-name probe-jobs --state-value ALARM --state-reason "probe: 3 jobs" \
+    --state-reason-data '{"version":"1.0","queryDate":"2026-11-27T16:00:00.000+0000","recentDatapoints":[3.0],"threshold":1.0}'
+time      desired running  alarm
+15:27:22  0       0
+15:27:28  0       0        ALARM  probe: 3 jobs
+15:27:53  0       0        ALARM  probe: 3 jobs
+15:28:18  0       0        ALARM  probe: 3 jobs
+15:28:41  0       0        ALARM  probe: 3 jobs
+$ aws application-autoscaling describe-scaling-activities --service-namespace ecs --resource-id service/probe/probe
+{ "ScalingActivities": [] }
+=> the alarm state is stored, but no scaling action runs.
+
+## 2. The same policy driven by a plain alarm on a published metric
+$ aws cloudwatch delete-alarms --alarm-names probe-jobs
+$ aws cloudwatch put-metric-data --namespace Rehearsal/Jobs --metric-name Jobs --dimensions QueueName=probe-q --value 3
+$ aws cloudwatch put-metric-alarm --alarm-name probe-jobs2 --namespace Rehearsal/Jobs --metric-name Jobs \
+    --dimensions Name=QueueName,Value=probe-q --period 60 --statistic Maximum --threshold 1 \
+    --comparison-operator GreaterThanOrEqualToThreshold --evaluation-periods 1 --treat-missing-data notBreaching --alarm-actions <probe-jobs policy>
+time      desired running  alarm
+15:29:24  0       0        INSUFFICIENT_DATA
+15:29:39  0       0        OK
+15:29:54  0       0        OK
+15:30:08  3       0        ALARM
+15:30:27  3       0        ALARM
+(scaling activity 2026-11-27T15:30:08.800Z service/probe/probe "Setting desired capacity to 3")
+=> Floci evaluates the plain alarm and runs the step the metric's value selects (3 - threshold 1 = 2 -> 3 tasks).
+The probe service, its target, alarm and cluster were deleted afterwards.

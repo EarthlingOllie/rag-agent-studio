@@ -49,9 +49,27 @@ x-backend: &backend
     OBJECT_STORE_PUBLIC_ENDPOINT_URL: ${STUDIO_URL:-http://localhost:5173}
     OBJECT_STORE_ACCESS_KEY_ID: studio
     OBJECT_STORE_SECRET_ACCESS_KEY: studio-secret
+    # Jobs go through SQS, as in AWS (ADR-0021): Floci provides it locally. The API creates both
+    # queues at start-up; the one worker serves both. Floci takes any static keys. Redis keeps
+    # sessions, rate limits, Token Budgets and the health probe's reply, but is not a broker.
+    GENERAL_QUEUE_NAME: studio-general
+    GENERAL_QUEUE_URL: http://floci:4566/000000000000/studio-general
+    RUNS_QUEUE_NAME: studio-runs
+    RUNS_QUEUE_URL: http://floci:4566/000000000000/studio-runs
+    SQS_ENDPOINT_URL: http://floci:4566
+    SQS_CREATE_QUEUES: "true"
+    AWS_REGION: eu-west-2
+    SQS_ACCESS_KEY_ID: test
+    SQS_SECRET_ACCESS_KEY: test
     # Docling converts uploads, and the local Embedding Model (bundled in the image) embeds
     # them. EMBEDDER=fake in .env uses the deterministic embedder instead (no model download).
     DOCUMENT_CONVERTER: ${DOCUMENT_CONVERTER:-docling}
+    # Test-only, set by `make e2e`: the converter's interruption switch (a file whose first line
+    # starts `%INTERRUPT-ONCE ` is interrupted at its first conversion) and short job-reliability
+    # timings, so the sweeper recovers an interrupted ingestion within a minute or two.
+    CONVERTER_TEST_INTERRUPTS: ${CONVERTER_TEST_INTERRUPTS:-false}
+    JOB_HEARTBEAT_SECONDS: ${JOB_HEARTBEAT_SECONDS:-30}
+    JOB_DEAD_AFTER_SECONDS: ${JOB_DEAD_AFTER_SECONDS:-300}
     EMBEDDER: ${EMBEDDER:-local}
     # The ingestion scan flags Chunks that look like instructions to an AI with the same local
     # ONNX prompt-injection model as the input Guardrail (bundled in the image). A stack built with
@@ -71,6 +89,8 @@ x-backend: &backend
     redis:
       condition: service_healthy
     rustfs:
+      condition: service_healthy
+    floci:
       condition: service_healthy
     mailpit:
       condition: service_started
@@ -116,6 +136,19 @@ services:
       timeout: 3s
       retries: 30
 
+  # Floci, an AWS emulator, used for SQS only: the job queues (ADR-0021). Its state is kept in a
+  # volume, so queued jobs survive a restart. The image's own health check reports it ready.
+  floci:
+    image: floci/floci:2.5.0
+    environment:
+      FLOCI_STORAGE_MODE: persistent
+      FLOCI_DEFAULT_REGION: eu-west-2
+      # Queue URLs name the host the other containers reach Floci at.
+      FLOCI_HOSTNAME: floci
+    ports: ["4566:4566"]
+    volumes:
+      - floci-data:/app/data
+
   mailpit:
     image: axllent/mailpit:v1.27
     ports: ["1025:1025", "8025:8025"]
@@ -130,13 +163,19 @@ services:
       timeout: 3s
       retries: 30
 
+  # One worker serves both queues (no -Q); AWS runs a pool per queue. It and Beat start once the
+  # API is healthy, which is after it has created the queues.
   worker:
     <<: *backend
     command: ["celery", "-A", "app.worker.main", "--quiet", "worker", "--loglevel=INFO", "--concurrency=2"]
+    depends_on: &after-api
+      api:
+        condition: service_healthy
 
   beat:
     <<: *backend
     command: ["celery", "-A", "app.worker.main", "--quiet", "beat", "--loglevel=INFO", "--schedule=/tmp/celerybeat-schedule"]
+    depends_on: *after-api
 
   studio:
     build:
@@ -197,3 +236,4 @@ services:
 volumes:
   postgres-data:
   rustfs-data:
+  floci-data:

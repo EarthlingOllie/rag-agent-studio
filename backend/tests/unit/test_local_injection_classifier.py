@@ -17,6 +17,7 @@ from app.guardrails.heuristic import HeuristicClassifier
 from app.guardrails.local import LoadedModel, LocalClassifier, windows
 from app.guardrails.pipeline import build_pipeline
 from tests.conftest import TEST_LOCAL_KEY_WRAPPER_KEY
+from tests.queues import QUEUE_SETTINGS
 
 CLS, SEP, ATTACK = 1, 2, 99
 INJECTION_PROBABILITY = round(float(1 / (1 + np.exp(-4))), 4)  # softmax of (-2, 2)
@@ -178,7 +179,7 @@ def test_the_settings_choose_the_input_classifier(monkeypatch: pytest.MonkeyPatc
             database_url="postgresql+asyncpg://u:p@localhost/db",
             redis_url="redis://localhost:6379/0",
             local_key_wrapper_key=TEST_LOCAL_KEY_WRAPPER_KEY,
-            **values,  # type: ignore[arg-type]
+            **(QUEUE_SETTINGS | values),  # type: ignore[arg-type]
         )
         return build_pipeline(settings).classifier
 

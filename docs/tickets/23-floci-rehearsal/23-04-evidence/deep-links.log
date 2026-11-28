@@ -1,0 +1,49 @@
+# Deep links through the rehearsal's front end (ticket 23-04), 2026-11-27T15:42:05Z, Floci 2.5.0, x86_64 sandbox
+## make rehearse (REHEARSAL_BUILD=false, images built beforehand), its steps and smoke check
+==> Pulling the emulator's images
+==> Starting Floci and its front end
+==> Adding Floci's CA to rag-agent-studio/api:rehearsal
+==> Creating the state bucket studio-local-tfstate in Floci
+==> Installing the Terraform providers
+==> terraform init (state bucket studio-local-tfstate)
+==> Making sure the ECR repositories exist
+Apply complete! Resources: 5 added, 0 changed, 0 destroyed.
+==> Pushing the images at rehearsal to localhost:4566
+==> terraform apply at image tag rehearsal
+Apply complete! Resources: 161 added, 0 changed, 0 destroyed.
+==> Running the migration task
+==> Rolling studio-local-ecs-api onto arn:aws:ecs:eu-west-2:000000000000:task-definition/studio-local-ecs-api:1
+==> Rolling studio-local-ecs-beat onto arn:aws:ecs:eu-west-2:000000000000:task-definition/studio-local-ecs-beat:1
+==> Rolling studio-local-ecs-worker-general onto arn:aws:ecs:eu-west-2:000000000000:task-definition/studio-local-ecs-worker-general:1
+==> Rolling studio-local-ecs-worker-runs onto arn:aws:ecs:eu-west-2:000000000000:task-definition/studio-local-ecs-worker-runs:1
+==> Waiting for studio-local-ecs-api to stabilise
+==> Waiting for studio-local-ecs-beat to stabilise
+==> Waiting for studio-local-ecs-worker-general to stabilise
+==> Waiting for studio-local-ecs-worker-runs to stabilise
+==> Uploading the Studio and widget builds and the demo pages to studio-local-static-000000000000
+==> Invalidating the HTML, the loader and the demo pages in EH0GQWFAC4C4JZ
+==> Smoke checking http://eh0gqwfac4c4jz.cloudfront.localhost:4566
+ok   health
+ok   studio
+ok   deep_link
+ok   api_404
+ok   widget_shell
+Smoke check passed: http://eh0gqwfac4c4jz.cloudfront.localhost:4566
+==> Planning again: the plan after the apply must show no changes
+The plan after the apply shows no changes.
+The rehearsal is up. `make rehearse-seed` seeds the demo Organisation; `make rehearse-down` removes it.
+## containers: the front end publishes 4566; Floci publishes nothing
+studio-rehearsal-front-1  node:22.23.5-alpine3.24  0.0.0.0:4566->4566/tcp
+studio-rehearsal-floci-1  floci/floci:2.5.0  4566/tcp
+## each path through the distribution: status, content type, first bytes
+/projects/abc/agents           200 text/html <!doctype html> <html lang="en">   <head>     <met
+/accept-invite?token=x         200 text/html <!doctype html> <html lang="en">   <head>     <met
+/api/smoke-check-not-found     404 application/json {"detail":"Not Found"}
+/assets/missing-123.js         404 text/plain The specified key does not exist.
+/widget/a/nope                 404 csp=yes text/html; <!doctype html> <html lang="en"> <head> <meta char
+/demo                          301 location=/demo/ 
+/demo/                         200 text/html <!doctype html> <html lang="en"> <head> <meta char
+/embed.js                      200 text/javascript (function(){function e(e){console.warn(`RAG Agent 
+## per-Visitor address through the front end: failed sign-ins without and with X-Forwarded-For: 203.0.113.9
+sign-in-failures:ip:172.29.0.1
+sign-in-failures:ip:203.0.113.9

@@ -122,6 +122,40 @@ output "seed_execution_role_policy" {
 }
 
 output "task_environment" {
-  description = "Plain environment variables of each container (api, worker, beat, migrate, seed), keyed by name. Secrets are not included: they are injected by reference to Secrets Manager."
-  value       = merge(local.environment, { migrate = local.migrate_environment, seed = local.seed_environment })
+  description = "Plain environment variables of each container (api, worker-general, worker-runs, beat, migrate, seed), keyed by name, extra_environment included. Secrets are not included: they are injected by reference to Secrets Manager."
+  value       = local.container_environment
+}
+
+output "capacity_providers" {
+  description = "Capacity provider each service runs on, keyed by service: FARGATE_SPOT for the general worker pool unless worker_spot is false, FARGATE for the rest (ticket 22-04)."
+  value       = local.capacity_providers
+}
+
+output "scalable_targets" {
+  description = "Each autoscaled service's Application Auto Scaling resource ID and its minimum and maximum task counts, keyed by service (ticket 22-05). Beat is not scaled."
+  value       = { for k, t in aws_appautoscaling_target.this : k => { resource_id = t.resource_id, min = t.min_capacity, max = t.max_capacity } }
+}
+
+output "cpu_architecture" {
+  description = "CPU architecture every task definition runs on (ARM64 or X86_64): the platform the backend image must be built for."
+  value       = one(distinct([for t in concat(values(aws_ecs_task_definition.this), [aws_ecs_task_definition.migrate, aws_ecs_task_definition.seed]) : one(t.runtime_platform).cpu_architecture]))
+}
+
+output "service_tasks" {
+  description = "Each service's task as its task definition has it, keyed by service: CPU units, memory (MiB) and the container's command (the worker pools' with their --concurrency). An environment's tests read its sizes from here (ticket 23-03)."
+  value = { for k, t in aws_ecs_task_definition.this : k => {
+    cpu     = tonumber(t.cpu)
+    memory  = tonumber(t.memory)
+    command = jsondecode(t.container_definitions)[0].command
+  } }
+}
+
+output "scaling" {
+  description = "The scaling settings in effect, defaults filled in: each autoscaled service's bounds, cooldowns, CPU target or slots and idle minutes (ticket 22-05)."
+  value       = var.scaling
+}
+
+output "jobs_metric_namespace" {
+  description = "Null when the worker pools' alarms add their queue's two SQS metrics themselves (AWS); otherwise the namespace of the published <namespace>/Jobs metric they watch, which the Floci rehearsal's scale command publishes (ticket 23-05)."
+  value       = var.jobs_metric_namespace
 }

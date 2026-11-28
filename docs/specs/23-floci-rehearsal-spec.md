@@ -61,18 +61,19 @@ The rehearsal proves the wiring, the deploy order and the scripts. It does not p
 ## Implementation Decisions
 
 - **`local` environment.** A new environment root beside `demo` that composes the same modules. It differs only in inputs and provider settings (path-style S3, skipped credential checks, endpoint from the environment). Its state is in an S3 backend with a lock file, in a bucket the wrapper creates in Floci.
-- **Rehearsal Compose file.** A separate Compose file, not part of `make dev`, that runs Floci with the Docker socket mounted so it can start the emulated database, cache, registry and tasks as containers on one network. The emulator's settings live in this file. It is the same pinned Floci version that `make dev` uses for SQS.
+- **Rehearsal Compose file.** A separate Compose file, not part of `make dev`, that runs Floci with the Docker socket mounted so it can start the emulated database, cache, registry and tasks as containers on one network, and the front end that publishes its port (see Deep links). The emulator's settings live in this file. It is the same pinned Floci version that `make dev` uses for SQS. Both publish port 4566 (Floci's health check and its queue URLs assume 4566, so another port doesn't work), so the rehearsal stops `make dev`'s Floci first. Floci pulls the pgvector, Valkey and registry images by name from Docker Hub; the rehearsal pre-pulls them so a Docker Hub rate limit gives a clear message rather than a failed apply.
 - **Module inputs added so `local` can differ without branching.**
-  - Compute: the CPU architecture of tasks; extra environment variables for the services.
-  - Database: the port and storage type, which the emulator reads back differently.
-  - CDN: optional custom error responses; the distribution's domain as an output; the origin's address as an input the environment can override.
-  - Network: `local` sets the existing managed-NAT toggle, because the `fck-nat` image lookup has no answer in the emulator.
+  - Compute: the CPU architecture of tasks; extra environment variables for the services; an image repository address that may be the emulator's path-style registry (`localhost:<port>/<account>/<region>/<repo>`), which the module's validation refuses today.
+  - Database: the port, which the emulator reads back differently (the spike found the storage type reads back unchanged, so no input is needed for it). The emulator's database serves no TLS, so the compute module's database connection takes a TLS switch, on by default (ticket 23-03).
+  - Drift the spike found elsewhere: the KMS keys' rotation period reads back as 0 and the cache's maintenance window is not stored, so both become inputs `local` can leave unset.
+  - CDN: optional custom error responses (which `local` does not use, see Deep links); the distribution's domain as an output; the origin's address as an input the environment can override (`localhost` in `local`), with the module's `.elb.amazonaws.com` validation moved onto that input.
+  - Network: `local` sets the existing managed-NAT toggle, because the emulator cannot set the `fck-nat` network interface's source/destination check (the image lookup itself works).
 - **CloudFront's origin-facing addresses.** The managed prefix list the load balancer admits is supplied to the emulator as a catalogue file containing loopback and the Docker network range. The same ranges are added to the trusted proxies in `local`.
 - **Addresses.** The emulated distribution is served on a `cloudfront.localhost` name over HTTP. That URL is the Studio URL and the uploads CORS origin in `local`. Presigned links use a public endpoint override that the browser can reach.
-- **Deep links.** `local` adds a 404-to-index custom error response, because the emulator stores CloudFront Functions without running them.
-- **Database and cache images.** The emulator is told to use the same pgvector image as `make dev`, and a Valkey release compatible with Redis 7. Its own certificate authority is trusted by the tasks it launches, so the cache's TLS setting stays on.
-- **Deploy script.** Takes the registry address from Terraform's outputs and the expected image architecture from an argument, defaulting to today's behaviour. A wrapper script exports the emulator endpoint and test credentials, creates the state bucket, selects the `local` environment and calls the unchanged deploy, seed and destroy scripts.
-- **Scaling helper.** A script that queues jobs through the API, publishes a CPU figure for the API service to the emulator's CloudWatch, and prints the same timeline as spec 22's scaling script. Worker scaling needs no help: the emulator reports queue depth itself.
+- **Deep links.** The emulator stores CloudFront Functions without running them, and a 404-to-index custom error response is distribution-wide: it would also replace the API's own 404s (ticket 23-04 tried it). So the rehearsal publishes the emulator's port through a small front end that runs the Studio's SPA fallback function file itself, only for requests to an emulated distribution and only outside the ordered behaviours (`/api/*`, `/widget/a/*`, `/widget/assets/*`, `/embed.js`), as CloudFront does on the default behaviour. On AWS the function does the work; the smoke check asserts both a deep link and an API 404, and real AWS proves the function (ticket 22-09). Decided by the repository owner, 2026-11-27.
+- **Database and cache images.** The emulator is told to use the same pgvector image as `make dev`, and a Valkey release compatible with Redis 7. The emulator does not give its tasks its certificate authority (the spike found no CA bundle in task containers), so the rehearsal adds the emulator's CA to the image it pushes and points `SSL_CERT_FILE` at it through the services' extra environment; the cache's TLS setting then stays on. With TLS on, the queue URLs are HTTPS too, and need the same CA.
+- **Deploy script.** Takes the registry address from Terraform's outputs and the expected image architecture from an argument, defaulting to today's behaviour. It logs in to the registry host in the repository address (the emulator's login endpoint names a different host). A wrapper script exports the emulator endpoint and test credentials, makes `<account>.<endpoint host>` resolve to the emulator (the AWS provider reads bucket tags through S3 Control, which prefixes the account ID to the host), creates the state bucket in the region, selects the `local` environment and calls the unchanged deploy, seed and destroy scripts.
+- **Scaling helper.** A script that queues jobs through the API, publishes a CPU figure for the API service to the emulator's CloudWatch, and prints the same timeline as spec 22's scaling script. Worker scaling needs help too: the emulator publishes queue depth itself, but it never evaluates metric-math alarms, and the pools' alarms add two queue metrics. Ticket 23-05 found the emulator does not run a step policy on an alarm state set by hand (`set-alarm-state`), so the fallback was taken: a compute-module input (`jobs_metric_namespace`) switches the pools' alarms to a single published metric per queue, and the helper publishes each queue's waiting plus in-flight jobs as that metric while it runs.
 - **Security groups and IAM.** Left unenforced in the emulator, which is its default. The guide says so.
 - **Make targets.** `rehearse`, `rehearse-scale`, `rehearse-down`, and the `local` environment added to `infra-check`.
 - **CI.** One workflow, run by hand, that runs `make rehearse` and `make rehearse-down` and uploads the logs.
@@ -81,11 +82,11 @@ The rehearsal proves the wiring, the deploy order and the scripts. It does not p
 ## Testing Decisions
 
 - **Good tests** assert what a module produces for given inputs, and what a script does to its environment; the rehearsal itself is the integration test.
-- **Module seam (`terraform test`).** Each new input: the architecture reaches every task definition; extra environment variables reach the services and nothing else; the database port and storage type; the CDN's error responses appear only when given; the origin override. The demo environment's plan is unchanged by the new inputs' defaults.
+- **Module seam (`terraform test`).** Each new input: the architecture reaches every task definition; extra environment variables reach the services and nothing else; the database port; the KMS rotation period and the cache maintenance window left unset; the image repository address accepting the emulator's registry; the CDN's error responses appear only when given; the origin override. The demo environment's plan is unchanged by the new inputs' defaults.
 - **Static analysis.** The `local` environment passes `fmt`, `validate`, `tflint` and `checkov`, and the existing backend test accepts its state key.
 - **Deploy script tests** (the existing suite with a stubbed `aws`): the registry comes from the outputs; the architecture check honours the argument; the wrapper sets the endpoint and selects `local`.
 - **Rehearsal run.** `make rehearse` ending in a passing smoke check is the acceptance test, run by hand and by the on-demand workflow. `make rehearse-scale` is accepted when its timeline shows each service scale out and in. A second plan showing no changes is asserted by the wrapper.
-- **Prior art.** Spec 09's module tests and the deploy scripts' tests; the smoke check is reused unchanged.
+- **Prior art.** Spec 09's module tests and the deploy scripts' tests; the smoke check is reused, and gains a deep link and an API 404 (ticket 23-04).
 
 ## Out of Scope
 
@@ -93,13 +94,13 @@ The rehearsal proves the wiring, the deploy order and the scripts. It does not p
 - Replacing RustFS or Mailpit with Floci in `make dev`.
 - Making the rehearsal a required check on every push.
 - Enforcing IAM or security groups in the emulator.
-- Emulating Spot interruptions, Bedrock, or the CloudFront Function.
+- Emulating Spot interruptions, Bedrock, or CloudFront Functions in general (the rehearsal's front end runs only the Studio's SPA fallback, ticket 23-04).
 - Changes to Floci itself.
 
 ## Further Notes
 
 - The [research](../tickets/23-floci-rehearsal/research/floci-findings.md) found nine things that would stop a rehearsal and seven that would break something after it. It was done by reading Floci 2.5.0's source and nothing was run, so several fixes are marked inferred there. The first ticket should be a spike that gets `terraform apply` through and corrects this spec where the emulator behaves differently.
 - Two findings no longer apply after spec 22: the interface endpoints are gone, and worker scaling uses queue depth, which the emulator reports.
-- Whether the emulator supports ECS task protection was not checked. If it doesn't, the scale-in protection adapter is a no-op in `local`, as it is in `make dev`.
+- The spike (ticket 23-01) found the emulator accepts the ECS task protection API but has no ECS agent endpoint, so tasks get no `ECS_AGENT_URI` and the scale-in protection adapter is a no-op in `local`, as it is in `make dev`. Fargate Spot strategies are stored and honoured as records.
 - The emulator moves quickly: an issue the research depended on was opened the day it was written. Pinning the version is what keeps the rehearsal stable.
-- The whole stack needs roughly 12 to 16 GB of memory with the worker at its AWS size, which is why `local` sizes it down.
+- Measured in the spike: the API with its local models takes about 2.3 GB, one general worker process ingesting about 2.3 GB, one runs process about 2.35 GB; the emulator and its database, cache and registry about 0.2 GB. At the AWS settings the stack needs about 12.5 GB, so `local` runs each pool with one job per task at 1 vCPU / 3 GB, and the API at 3 GB (its AWS size, 1 GB, is below what its models take: ticket 22-09 checks this on AWS). The whole stack then peaks at about 8 GB.

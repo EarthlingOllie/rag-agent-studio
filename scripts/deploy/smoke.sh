@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# The deploy workflow's smoke check (spec 09 story 32): the API is healthy, the Studio loads, and the widget shell
-# answers with a Content-Security-Policy that has frame-ancestors, all through the CloudFront URL.
+# The deploy workflow's smoke check (spec 09 story 32): the API is healthy, the Studio loads, a deep link loads the
+# Studio while an unknown API path keeps the API's JSON 404 (ticket 23-04), and the widget shell answers with a
+# Content-Security-Policy that has frame-ancestors, all through the CloudFront URL.
 # Each check is retried (SMOKE_ATTEMPTS, default 20, SMOKE_DELAY_SECONDS apart, default 15) while new tasks
 # register with the ALB and the invalidation settles.
 # The widget shell is checked for an unknown Agent (404 with `frame-ancestors *`) unless a live Agent's public ID is
@@ -43,6 +44,23 @@ check_studio() {
   return 1
 }
 
+# A Studio route loads index.html after a refresh: the SPA fallback CloudFront Function on AWS, the rehearsal's front
+# end on Floci (ticket 23-04).
+check_deep_link() {
+  fetch /projects
+  [ "$code" = 200 ] && [[ "$(header Content-Type)" == text/html* ]] && grep -q '<div id="root"></div>' "$work/body" && return 0
+  problem="deep link: /projects answered $code ($(header Content-Type)), not the Studio's index.html"
+  return 1
+}
+
+# The API's own 404s survive the deep-link fallback: still a 404, still JSON (ticket 23-04).
+check_api_404() {
+  fetch /api/smoke-check-not-found
+  [ "$code" = 404 ] && [[ "$(header Content-Type)" == application/*json* ]] && return 0
+  problem="api 404: /api/smoke-check-not-found answered $code ($(header Content-Type)), not the API's JSON 404"
+  return 1
+}
+
 check_widget_shell() {
   fetch "/widget/a/$agent"
   local csp
@@ -52,7 +70,7 @@ check_widget_shell() {
   return 1
 }
 
-for check in check_health check_studio check_widget_shell; do
+for check in check_health check_studio check_deep_link check_api_404 check_widget_shell; do
   problem=""
   for attempt in $(seq "$attempts"); do
     if "$check"; then echo "ok   ${check#check_}"; break; fi

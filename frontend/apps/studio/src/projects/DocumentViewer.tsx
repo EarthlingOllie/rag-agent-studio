@@ -12,10 +12,13 @@ import {
   downloadPath,
   useChunkPage,
   useClearChunkFlag,
+  retryFailure,
   useDocument,
   useExpectedSources,
+  useRetryDocument,
 } from "./documents";
-import { fileType, formatSize, STATUS_LABELS, STATUS_TONES } from "./DocumentsTab";
+import { CATEGORY_LABELS, fileType, formatSize, STATUS_LABELS, STATUS_TONES } from "./DocumentsTab";
+import { useProject } from "./projects";
 
 type Chunk = ChunkPage["items"][number];
 
@@ -180,7 +183,30 @@ function ChunkList({ organisationId, projectId, documentId }: { organisationId: 
   );
 }
 
-function DocumentHeader({ document, download }: { document: DocumentDetail; download: string }) {
+/** Retry, for a Failed Document in a Project that isn't archived; a refused retry says why. */
+function RetryButton({ at, document }: { at: DocumentRef; document: DocumentDetail }) {
+  const project = useProject(at.organisationId, at.projectId);
+  const retry = useRetryDocument(at.organisationId, at.projectId);
+  const editable = project.data !== undefined && project.data.archived_at === null;
+  if (!editable || document.status !== "failed") return null;
+  return (
+    <>
+      <button
+        type="button"
+        className={button.secondary}
+        disabled={retry.isPending}
+        onClick={() => {
+          retry.mutate(at.documentId);
+        }}
+      >
+        Retry
+      </button>
+      {retry.error && <Notice tone="error">{retryFailure(retry.error)}</Notice>}
+    </>
+  );
+}
+
+function DocumentHeader({ document, download, at }: { document: DocumentDetail; download: string; at: DocumentRef }) {
   const chunks = document.chunk_count;
   return (
     <div className="flex flex-col gap-4">
@@ -194,6 +220,9 @@ function DocumentHeader({ document, download }: { document: DocumentDetail; down
                 {document.error_message && `: ${document.error_message}`}
               </Status>
             </li>
+            {document.status === "failed" && document.error_category && (
+              <li className="text-xs font-medium text-danger">{CATEGORY_LABELS[document.error_category]}</li>
+            )}
             <li className="font-mono text-xs">{fileType(document.name)}</li>
             <li className="font-mono text-xs">{formatSize(document.size_bytes)}</li>
             <li className="font-mono text-xs">{`${String(chunks)} ${chunks === 1 ? "chunk" : "chunks"}`}</li>
@@ -204,9 +233,12 @@ function DocumentHeader({ document, download }: { document: DocumentDetail; down
             )}
           </ul>
         </div>
-        <a href={download} download={document.name} className={button.secondary}>
-          Download original
-        </a>
+        <div className="flex flex-wrap items-start gap-2">
+          <RetryButton at={at} document={document} />
+          <a href={download} download={document.name} className={button.secondary}>
+            Download original
+          </a>
+        </div>
       </div>
       {document.flagged_chunk_count > 0 && (
         <Notice tone="warning">
@@ -238,7 +270,11 @@ export function DocumentViewer() {
   } else {
     content = (
       <>
-        <DocumentHeader document={document.data} download={downloadPath(organisationId, projectId, documentId)} />
+        <DocumentHeader
+          document={document.data}
+          download={downloadPath(organisationId, projectId, documentId)}
+          at={{ organisationId, projectId, documentId }}
+        />
         <div className="grid gap-6 lg:grid-cols-2">
           <section aria-labelledby="markdown-heading" className="flex min-w-0 flex-col gap-3">
             <h3 id="markdown-heading" className={text.heading}>

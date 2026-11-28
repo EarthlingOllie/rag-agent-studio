@@ -1,0 +1,88 @@
+name: rehearsal
+
+# Rehearses the AWS deployment on Floci, an AWS emulator, with no AWS account (spec 23, ticket 23-06): `make rehearse`
+# (apply infra/envs/local, push the images, migrate, roll the services, upload the Studio, smoke check, and a second
+# plan that must show no changes), `make rehearse-seed`, then `make rehearse-down`. Run it by hand on the branch of a
+# pull request that touches the infrastructure (Actions, rehearsal, Run workflow, pick the branch). It is not a required
+# check, and nothing here can reach AWS: terraform and the AWS CLI run in containers on a network that reaches only
+# Floci, with dummy credentials (scripts/deploy/rehearsal/run-tool.sh).
+# Docker Hub limits anonymous pulls (ticket 23-01 hit the limit): with the DOCKERHUB_USERNAME variable and the
+# DOCKERHUB_TOKEN secret set it logs in, otherwise the emulator's images come through mirror.gcr.io.
+on:
+  workflow_dispatch:
+    inputs:
+      scale:
+        description: "Also run make rehearse-scale (each worker pool and the API scale out and back in; about 15 minutes more)."
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rehearsal-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  rehearse:
+    name: make rehearse on Floci
+    # The stack needs about 8 GB of memory (rehearse.sh checks); GitHub's standard Linux runner for public
+    # repositories has 16 GB.
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: frontend/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install the frontend's dependencies
+        working-directory: frontend
+        run: pnpm install --frozen-lockfile
+      - name: Log in to Docker Hub, or pull through a mirror
+        run: |
+          if [ -n "$DOCKERHUB_USERNAME" ] && [ -n "$DOCKERHUB_TOKEN" ]; then
+            echo "$DOCKERHUB_TOKEN" | docker login --username "$DOCKERHUB_USERNAME" --password-stdin
+          else
+            echo "No Docker Hub login configured: pulling the emulator's images through mirror.gcr.io."
+            echo "REHEARSAL_IMAGE_MIRROR=mirror.gcr.io" >>"$GITHUB_ENV"
+          fi
+      - name: make rehearse
+        run: |
+          mkdir -p "$RUNNER_TEMP/rehearsal-logs"
+          set -o pipefail
+          make rehearse 2>&1 | tee "$RUNNER_TEMP/rehearsal-logs/rehearse.log"
+      - name: make rehearse-seed
+        run: |
+          set -o pipefail
+          make rehearse-seed 2>&1 | tee "$RUNNER_TEMP/rehearsal-logs/seed.log"
+      - name: make rehearse-scale
+        if: inputs.scale
+        run: |
+          set -o pipefail
+          make rehearse-scale 2>&1 | tee "$RUNNER_TEMP/rehearsal-logs/scale.log"
+      - name: Collect the emulator's and the tasks' logs
+        if: ${{ !cancelled() }}
+        run: |
+          docker compose -f infra/rehearsal/compose.yml logs --no-color >"$RUNNER_TEMP/rehearsal-logs/floci.log" 2>&1 || true
+          for id in $(docker ps -aq --filter label=floci=true); do
+            name=$(docker inspect --format '{{.Name}}' "$id" | tr -d /)
+            docker logs "$id" >"$RUNNER_TEMP/rehearsal-logs/$name.log" 2>&1 || true
+          done
+          docker ps -a >"$RUNNER_TEMP/rehearsal-logs/containers.txt"
+      - name: make rehearse-down
+        if: always()
+        run: make rehearse-down 2>&1 | tee "$RUNNER_TEMP/rehearsal-logs/down.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rehearsal-logs
+          path: ${{ runner.temp }}/rehearsal-logs
+          retention-days: 14

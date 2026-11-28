@@ -44,6 +44,7 @@ from app.documents.models import (
 )
 from app.documents.pipeline import stored_keys
 from app.evaluation.models import EvaluationExpectedSource, StaleReason
+from app.jobs import deletions
 from app.projects import service as projects
 from app.projects.models import Project
 from app.storage.port import ObjectNotFoundError, ObjectStore
@@ -243,9 +244,11 @@ async def confirm_upload(
     upload_id: uuid.UUID,
     content_hash: str | None,
     max_bytes: int,
+    queued_at: datetime,
 ) -> Document:
-    """Creates the Document as Queued; the caller enqueues ingestion after this commits. The
-    Project stays locked until then, so concurrent confirms can't overfill its quota."""
+    """Creates the Document as Queued, since ``queued_at``; the caller enqueues ingestion after
+    this commits. The Project stays locked until then, so concurrent confirms can't overfill its
+    quota."""
     project = await projects.active_project(session, scope, project_id, lock=True)
     await _check_quota(session, project)
     received = await _receive(
@@ -266,6 +269,7 @@ async def confirm_upload(
         content_hash=received.content_hash,
         object_key=received.object_key,
         status=DocumentStatus.QUEUED,
+        queued_at=queued_at,
         attempt_count=0,
         edition=1,
     )
@@ -310,7 +314,12 @@ async def set_document_quota(
 
 
 async def retry_document(
-    session: AsyncSession, scope: OrganisationScope, project_id: uuid.UUID, document_id: uuid.UUID
+    session: AsyncSession,
+    scope: OrganisationScope,
+    project_id: uuid.UUID,
+    document_id: uuid.UUID,
+    *,
+    queued_at: datetime,
 ) -> tuple[Document, StagedEdition | None]:
     """Puts what failed back to Queued, for the caller to enqueue ingestion once this commits:
     a Failed Document, or, when the Document is Ready and its newer edition is what failed,
@@ -340,6 +349,11 @@ async def retry_document(
         if duplicate is not None and duplicate.id != document.id:
             raise DuplicateDocumentError(duplicate)
     retried.status = DocumentStatus.QUEUED
+    retried.queued_at = queued_at
+    # A manual Retry starts both counts again: fresh automatic attempts and interruptions.
+    retried.attempt_count = 0
+    retried.interruption_count = 0
+    retried.retry_at = None
     retried.error_message = None
     retried.error_category = None
     retried.updated_at = func.now()
@@ -615,11 +629,12 @@ async def delete_document(
     document_id: uuid.UUID,
     *,
     now: datetime,
-) -> list[str]:
+) -> None:
     """Deletes the Document and its Chunks in one transaction, so retrieval stops at once, and
     records ``document.deleted``. Its Expected sources become Stale expectations
-    (``document_deleted``). Returns its stored objects (originals and converted markdown,
-    of the current and any staged edition) for the caller to schedule deletion of."""
+    (``document_deleted``). Its stored objects (originals and converted markdown, of the current
+    and any staged edition) go to the deletions table in the same transaction; the caller sends
+    the object-deletion job once it commits."""
     project = await projects.active_project(session, scope, project_id)
     document = await session.scalar(
         select(Document)
@@ -658,17 +673,18 @@ async def delete_document(
         },
         occurred_at=now,
     )
+    deletions.schedule(session, keys)
     await session.delete(document)
     await session.commit()
-    return keys
 
 
 @dataclass(frozen=True)
 class Replacement:
     document: Document
     staged: StagedEdition
-    # A previous failed replacement's stored objects, which nothing refers to any more.
-    discarded: list[str]
+    # Whether a previous failed replacement was discarded: its stored objects, which nothing
+    # refers to any more, are in the deletions table.
+    discarded: bool
 
 
 async def replace_document(
@@ -682,6 +698,7 @@ async def replace_document(
     upload_id: uuid.UUID,
     content_hash: str | None,
     max_bytes: int,
+    queued_at: datetime,
 ) -> Replacement:
     """Stages the uploaded file as the Document's next edition, Queued; the caller enqueues
     ingestion after this commits. The current edition keeps serving until the staged one is
@@ -709,14 +726,14 @@ async def replace_document(
         content_hash=content_hash,
         max_bytes=max_bytes,
     )
-    discarded: list[str] = []
+    discarded = staged is not None
     if staged is None:
         staged = StagedEdition(
             document_id=document.id, organisation_id=document.organisation_id, project_id=project.id
         )
         session.add(staged)
     else:
-        discarded = stored_keys(staged.object_key)
+        deletions.schedule(session, stored_keys(staged.object_key))
     staged.edition = document.edition + 1
     staged.name = received.name
     staged.mime_type = received.mime_type
@@ -724,9 +741,12 @@ async def replace_document(
     staged.content_hash = received.content_hash
     staged.object_key = received.object_key
     staged.status = DocumentStatus.QUEUED
+    staged.queued_at = queued_at
     staged.error_message = None
     staged.error_category = None
     staged.attempt_count = 0
+    staged.interruption_count = 0
+    staged.retry_at = None
     staged.updated_at = func.now()
     await session.commit()
     await redis.delete(received.pending_key)

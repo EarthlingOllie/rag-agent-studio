@@ -1,0 +1,15 @@
+Ticket 22-05, red runs before the implementation (2026-11-26):
+
+infra/modules/ecs: terraform test, after adding the autoscaling runs to tests/contract.tftest.hcl
+  Error: Reference to undeclared resource: A managed resource "aws_appautoscaling_target" "this" has not been declared in the root module.
+  Error: Reference to undeclared output value: An output value with the name "scalable_targets" has not been declared.
+  Failure! 69 passed, 1 failed, 11 skipped.
+
+infra/bootstrap: terraform test, after adding lets_the_deploy_role_manage_scaling_of_this_projects_services_only
+  Failure! 9 passed, 1 failed.   (no ManageScalingOfEcsServices / UpdateProjectServices / NoOtherServices / NoScalingOfOtherResources statements)
+
+infra/envs/demo: terraform test, first run after the ecs module gained the worker alarms
+  Error: "alarm_actions.0" (vu7xrx3z) is an invalid ARN: arn: invalid prefix   (the demo suite's mock provider needed a real-looking aws_appautoscaling_policy ARN)
+  Failure! 1 passed, 1 failed, 7 skipped.
+
+Green: ecs 81 passed, bootstrap 10 passed, demo 9 passed (infra-check.log).

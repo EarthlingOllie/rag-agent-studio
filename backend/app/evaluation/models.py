@@ -59,6 +59,9 @@ class RunStatus(enum.StrEnum):
     FAILED = "failed"
     # Stopped by an Editor; what it answered and spent so far is kept.
     CANCELLED = "cancelled"
+    # Its worker stopped (no heartbeat for the dead-after time, ADR-0020); what it answered and
+    # spent so far is kept, and the Editor may run it again.
+    INTERRUPTED = "interrupted"
 
 
 # Queued or running: an Agent has at most one such Run.
@@ -222,6 +225,11 @@ class EvaluationRun(IdMixin, Base):
     # None when a price it needed is unknown. Its actual Cost is its case results'.
     estimated_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # When it was last put on Queued, and, while Running, the claim of the job answering it and
+    # that job's last heartbeat (``app.jobs.reliability``, ADR-0020).
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    claim_id: Mapped[uuid.UUID | None] = mapped_column()
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class EvaluationRunSide(IdMixin, Base):
@@ -339,7 +347,8 @@ class LiveStatus(enum.StrEnum):
     # Chosen; its judging task hasn't finished.
     PENDING = "pending"
     JUDGED = "judged"
-    # The Evaluation Model failed or timed out; left out of the Live score.
+    # The Evaluation Model failed or timed out, or judging hit an unexpected error; left out of
+    # the Live score.
     ERROR = "error"
     # Its text was Purged before it was judged.
     SKIPPED = "skipped"
@@ -388,6 +397,12 @@ class LiveVerdict(IdMixin, Base):
     # When the Purge cleared its reasons, with its Message's text (``app.retention``): they can
     # quote the Visitor. Its outcomes, Cost and counts stay.
     purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Job reliability (ADR-0020, ``app.evaluation.live_jobs``): when the sweeper last sent its
+    # job again (None until then: it is Pending since it was created), how many times it has,
+    # and the claim of the copy of the job judging it.
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resends: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    claim_id: Mapped[uuid.UUID | None] = mapped_column()
 
 
 class EvaluationSpend(IdMixin, Base):
@@ -405,5 +420,6 @@ class EvaluationSpend(IdMixin, Base):
     month: Mapped[date] = mapped_column(Date)
     # US dollars, the sum of the month's Live Verdicts' frozen Costs.
     spent_usd: Mapped[Decimal] = mapped_column(Numeric(18, 9), server_default=text("0"))
-    # Set by the judgement that took the spend to or past the budget, which emailed the Owners.
+    # Set by the judgement that took the spend to or past the budget, which raised the alert
+    # emailing the Owners (``app.alert_emails``).
     budget_spent_emailed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

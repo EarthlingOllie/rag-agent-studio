@@ -384,3 +384,34 @@ run "rejects_an_invalid_prefix" {
 
   expect_failures = [var.name_prefix]
 }
+
+# Ticket 23-02: an emulator gives its database another port (23-01: Floci gives 7001 for 5432), so a second plan
+# would show a change unless the environment can ask for that port.
+run "the_port_reaches_the_instance_and_the_ingress_rules" {
+  command = apply
+
+  variables {
+    port                      = 7001
+    client_security_group_ids = { api = "sg-0aaaaaaaaaaaaaaa1" }
+  }
+
+  assert {
+    condition     = aws_db_instance.this.port == 7001 && output.port == 7001
+    error_message = "The port must reach the instance and the port output."
+  }
+
+  assert {
+    condition     = alltrue([for r in aws_vpc_security_group_ingress_rule.clients : r.from_port == 7001 && r.to_port == 7001])
+    error_message = "The clients must be admitted on that port and no other."
+  }
+}
+
+run "rejects_a_port_rds_does_not_allow" {
+  command = plan
+
+  variables {
+    port = 80
+  }
+
+  expect_failures = [var.port]
+}

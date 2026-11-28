@@ -187,6 +187,112 @@ run "lets_the_deploy_role_use_the_state_and_manage_prefixed_iam_only" {
   }
 }
 
+run "lets_the_deploy_role_manage_queues_named_for_this_project_only" {
+  command = plan
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "ManageProjectQueues"] == [{
+      Sid    = "ManageProjectQueues"
+      Effect = "Allow"
+      Action = [
+        "sqs:CreateQueue", "sqs:DeleteQueue", "sqs:GetQueueAttributes", "sqs:GetQueueUrl", "sqs:ListDeadLetterSourceQueues",
+        "sqs:ListQueueTags", "sqs:SetQueueAttributes", "sqs:TagQueue", "sqs:UntagQueue",
+      ]
+      Resource = "arn:aws:sqs:*:123456789012:studio-*"
+    }]
+    error_message = "The deploy role may manage the queues environments create (studio-*) in this account (ticket 22-02)."
+  }
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "NoOtherQueues"] == [{
+      Sid         = "NoOtherQueues"
+      Effect      = "Deny"
+      Action      = "sqs:*"
+      NotResource = "arn:aws:sqs:*:123456789012:studio-*"
+    }]
+    error_message = "PowerUserAccess would otherwise let CI touch any queue: every queue not named for this project must be denied."
+  }
+}
+
+run "lets_the_deploy_role_manage_scaling_of_this_projects_services_only" {
+  command = plan
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "ManageScalingOfEcsServices"] == [{
+      Sid    = "ManageScalingOfEcsServices"
+      Effect = "Allow"
+      Action = [
+        "application-autoscaling:DeleteScalingPolicy", "application-autoscaling:DeregisterScalableTarget",
+        "application-autoscaling:DescribeScalableTargets", "application-autoscaling:DescribeScalingActivities",
+        "application-autoscaling:DescribeScalingPolicies", "application-autoscaling:ListTagsForResource",
+        "application-autoscaling:PutScalingPolicy", "application-autoscaling:RegisterScalableTarget",
+        "application-autoscaling:TagResource", "application-autoscaling:UntagResource",
+      ]
+      Resource  = "*"
+      Condition = { StringEquals = { "application-autoscaling:service-namespace" = "ecs" } }
+    }]
+    error_message = "The deploy role may manage scalable targets and scaling policies of ECS services (ticket 22-05)."
+  }
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "UpdateProjectServices"] == [{
+      Sid      = "UpdateProjectServices"
+      Effect   = "Allow"
+      Action   = ["ecs:DescribeServices", "ecs:UpdateService"]
+      Resource = "arn:aws:ecs:*:123456789012:service/studio-*/studio-*"
+    }]
+    error_message = "Registering an ECS service's scalable target needs DescribeServices and UpdateService on that service: allowed on this project's services."
+  }
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "NoOtherServices"] == [{
+      Sid         = "NoOtherServices"
+      Effect      = "Deny"
+      Action      = ["ecs:DeleteService", "ecs:UpdateService"]
+      NotResource = "arn:aws:ecs:*:123456789012:service/studio-*/studio-*"
+    }]
+    error_message = "PowerUserAccess would otherwise let CI change, or register scaling on, any ECS service: every service not named for this project must be denied."
+  }
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "NoScalingOfOtherResources"] == [{
+      Sid    = "NoScalingOfOtherResources"
+      Effect = "Deny"
+      Action = [
+        "application-autoscaling:DeleteScalingPolicy", "application-autoscaling:DeregisterScalableTarget",
+        "application-autoscaling:PutScalingPolicy", "application-autoscaling:RegisterScalableTarget",
+      ]
+      Resource  = "*"
+      Condition = { StringNotEqualsIfExists = { "application-autoscaling:service-namespace" = "ecs" } }
+    }]
+    error_message = "CI may not change scaling of anything but ECS services."
+  }
+}
+
+run "lets_the_deploy_role_read_and_clear_task_protection_in_this_projects_clusters_only" {
+  command = plan
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "ReadAndClearProjectTaskProtection"] == [{
+      Sid      = "ReadAndClearProjectTaskProtection"
+      Effect   = "Allow"
+      Action   = ["ecs:GetTaskProtection", "ecs:UpdateTaskProtection"]
+      Resource = "arn:aws:ecs:*:123456789012:task/studio-*/*"
+    }]
+    error_message = "The deploy script reads and clears protection on old worker tasks in this project's clusters (ticket 22-06)."
+  }
+
+  assert {
+    condition = [for st in output.deploy_policy.Statement : st if st.Sid == "NoOtherTaskProtection"] == [{
+      Sid         = "NoOtherTaskProtection"
+      Effect      = "Deny"
+      Action      = ["ecs:GetTaskProtection", "ecs:UpdateTaskProtection"]
+      NotResource = "arn:aws:ecs:*:123456789012:task/studio-*/*"
+    }]
+    error_message = "PowerUserAccess would otherwise let CI change protection on any task: tasks outside this project's clusters must be denied."
+  }
+}
+
 run "rejects_a_name_prefix_that_would_let_the_role_manage_itself" {
   command = plan
 

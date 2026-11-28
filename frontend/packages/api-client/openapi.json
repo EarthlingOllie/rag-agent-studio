@@ -4345,7 +4345,8 @@
           "unsupported_content",
           "conversion",
           "provider",
-          "quota"
+          "quota",
+          "interrupted"
         ],
         "title": "FailureCategory",
         "type": "string"
@@ -7316,6 +7317,10 @@
             "title": "Created At",
             "type": "string"
           },
+          "deleting": {
+            "title": "Deleting",
+            "type": "boolean"
+          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -7363,6 +7368,7 @@
           "description",
           "created_at",
           "archived_at",
+          "deleting",
           "document_count",
           "agent_count",
           "embedding_model_id",
@@ -9694,6 +9700,14 @@
         "title": "SuggestionEstimateOut",
         "type": "object"
       },
+      "SuggestionFailure": {
+        "description": "Why a failed run failed, when it was not the Evaluation Model or an error of its own.",
+        "enum": [
+          "interrupted"
+        ],
+        "title": "SuggestionFailure",
+        "type": "string"
+      },
       "SuggestionOut": {
         "properties": {
           "applied_at": {
@@ -9785,6 +9799,16 @@
             ],
             "title": "Explanation"
           },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionFailure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "finished_at": {
             "anyOf": [
               {
@@ -9855,6 +9879,7 @@
           "outcome",
           "evidence_total",
           "error_message",
+          "failure_reason",
           "cost",
           "created_at",
           "finished_at",
@@ -9990,6 +10015,16 @@
             "title": "Evidence Total",
             "type": "integer"
           },
+          "failure_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SuggestionFailure"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "finished_at": {
             "anyOf": [
               {
@@ -10045,6 +10080,7 @@
           "outcome",
           "evidence_total",
           "error_message",
+          "failure_reason",
           "cost",
           "created_at",
           "finished_at",
@@ -15580,7 +15616,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}": {
       "delete": {
-        "description": "Permanently deletes an archived Project (Owners only), once ``confirm_name`` is its\nname. A Celery task removes the Project and everything in it (Documents, Chunks, stored\nfiles, Agents and Conversations) and records ``project.deleted``. This can't be undone.",
+        "description": "Permanently deletes an archived Project (Owners only), once ``confirm_name`` is its\nname. The Project is Deleting at once (hidden from normal use, and it can't be restored);\na job, finished by the sweeper if it is lost, then removes it and everything in it\n(Documents, Chunks, stored files, Agents and Conversations) and records\n``project.deleted``. Asking again while it is Deleting is accepted and changes nothing.\nThis can't be undone.",
         "operationId": "deleteProject",
         "parameters": [
           {
@@ -18167,7 +18203,7 @@
         ]
       },
       "post": {
-        "description": "Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft\n(the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll\nit until it is ``completed``, ``failed`` or ``cancelled``.",
+        "description": "Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft\n(the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll\nit until it is ``completed``, ``failed``, ``cancelled`` or ``interrupted``.",
         "operationId": "startEvaluationRun",
         "parameters": [
           {
@@ -24114,7 +24150,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/restore": {
       "post": {
-        "description": "Restores an archived Project to the main list (Owners only). Records\n``project.restored``.",
+        "description": "Restores an archived Project to the main list (Owners only). Records\n``project.restored``. A Project being deleted can't be restored.",
         "operationId": "restoreProject",
         "parameters": [
           {
@@ -24177,7 +24213,7 @@
                 }
               }
             },
-            "description": "This Project isn't archived."
+            "description": "This Project isn't archived. Or: This Project is being deleted. A deleted Project can't be restored."
           },
           "422": {
             "content": {

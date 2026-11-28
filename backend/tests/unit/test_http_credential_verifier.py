@@ -20,6 +20,7 @@ from app.credentials.verifier import (
     CheckResult,
     FakeCredentialVerifier,
 )
+from tests.queues import QUEUE_SETTINGS
 
 KEY = "sk-test-only-0000000000000000"
 
@@ -186,6 +187,7 @@ def _settings(**values: str) -> Settings:
     base = {
         "database_url": "postgresql+asyncpg://u:p@localhost/db",
         "redis_url": "redis://localhost:6379/0",
+        **QUEUE_SETTINGS,
         "local_key_wrapper_key": "dGVzdC1vbmx5LWxvY2FsLWtleS13cmFwcGVyLWtleSE=",
     }
     return Settings.model_validate(base | values)

@@ -1,4 +1,4 @@
-"""Retention: the Organisation's Retention Window, the daily purge of Message text and feedback
+"""Retention: the Organisation's Retention Window, the hourly purge of Message text and feedback
 comments older than it, and Conversations an Owner deletes on request.
 
 Purging clears a Message's ``content``, the reasons in its Guardrail outcomes, the queries of its
@@ -6,10 +6,10 @@ Searches (Agentic Retrieval Mode: the model writes them from the Visitor's text)
 of any Message Feedback on it and the reasons of its Live Verdict, and sets ``purged_at``;
 every number and attribution (tokens, cost, latency, Agent Version, thumbs, ratings, retrievals,
 Searches made, verdicts, Live Verdict outcomes and Cost) stays, so
-the metrics are the same before and after. The daily purge and a deletion go through the same
+the metrics are the same before and after. The hourly purge and a deletion go through the same
 ``purge_messages``.
 
-Rollups come first: the daily purge clears a Visitor reply only once the ``usage_daily`` rollup
+Rollups come first: the hourly purge clears a Visitor reply only once the ``usage_daily`` rollup
 of its day is final (``app.analytics.rollup``), so no metric is ever worked out from a purged
 day that wasn't already counted."""
 

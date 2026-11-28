@@ -10,7 +10,7 @@ endpoint (identical before and after a purge), the Trace (tombstones) and Audit 
 import asyncio
 import json
 from collections.abc import AsyncIterator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from typing import Any
 
 import httpx
@@ -308,21 +308,41 @@ async def test_the_purge_waits_until_the_rollup_of_the_day_is_final(
     assert await all_metrics(owner, agent) == before
 
 
-async def test_the_beat_schedule_purges_daily_after_the_rollup_finalises_the_day(
-    app: FastAPI,
-) -> None:
+async def test_the_beat_schedule_purges_hourly_after_the_rollup(app: FastAPI) -> None:
     schedule = {e["task"]: e["schedule"] for e in celery_app.conf.beat_schedule.values()}
     purge_at, roll_up_at = schedule[PURGE_TASK], schedule[ROLL_UP_TASK]
-    assert (purge_at.hour, purge_at.minute) == ({0}, {35})
-    # The 00:05 rollup finalises the previous day half an hour before.
-    assert 0 in roll_up_at.hour
+    assert (purge_at.hour, purge_at.minute) == (set(range(24)), {35})
+    # Each hour's rollup (the 00:05 one finalises the previous day) runs half an hour before.
+    assert roll_up_at.hour == purge_at.hour
     assert max(roll_up_at.minute) < min(purge_at.minute)
+
+
+async def test_a_skipped_purge_is_made_up_by_the_next_hourly_run(
+    app: FastAPI, owner: SignedUpMember, visitor: httpx.AsyncClient, clock: ControllableClock
+) -> None:
+    agent = await live_agent(app, owner)
+    assert (await set_window(owner, 7)).status_code == 200
+    await chat(visitor, agent, "How much leave?")  # Nov 5, 09:00
+    # Nov 12, 09:35: the Conversation is past its window, but Beat is down and the run is skipped.
+    clock.advance(timedelta(days=7, minutes=35))
+    await roll_up(clock.now() - timedelta(minutes=30))
+
+    # The next hour's run purges it, an hour past its window.
+    clock.advance(timedelta(hours=1))
+    await purge(clock.now())
+
+    (messages,) = await conversation_messages(owner, agent["project_id"])
+    assert texts(messages) == ["", ""]
 
 
 async def test_without_a_time_the_purge_runs_as_of_now(app: FastAPI, owner: SignedUpMember) -> None:
     # A seed test earlier in this worker may have left the demo Organisation, whose Retention
     # Window of two weeks its Seeded history outlives.
     await erase_demo(app)
+    # Tests that run the clock in the past (test_live_score, test_live_verdict_context) can leave
+    # Messages in this worker's database that are past their Retention Window as of now, from
+    # this run or an earlier one on the same database. Purge them first so only this run counts.
+    await purge(datetime.now(UTC))
     result = await asyncio.to_thread(purge_expired.apply)
 
     # An Organisation with no Messages has nothing to purge.

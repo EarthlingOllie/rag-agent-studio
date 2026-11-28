@@ -1,0 +1,17 @@
+# One runs-pool worker process (run-memory.py), local models, x86_64 sandbox, 2026-11-26
+imported worker app: rss=322 MB
+after warm-up (Guardrail classifier loaded): rss=1479 MB
+  case 20: rss=2352 MB
+  case 40: rss=2352 MB
+  case 60: rss=2352 MB
+  case 80: rss=2352 MB
+  case 100: rss=2352 MB
+  case 120: rss=2353 MB
+after 120 Run cases (query embeddings + input-Guardrail classifications): rss=2352 MB, peak=2352 MB, 191s
+
+# The real worker tree: celery -A app.worker.main --quiet worker --loglevel=INFO --concurrency=2 --queues=mem2204-runs, after 'ready' (warm-up done)
+# pid ppid rss_kB Rss Pss (from /proc/<pid>/smaps_rollup); first row is the uv wrapper, second the Celery parent, then the two pool processes
+30492     1 37592 Rss:               37592 kB Pss:               35354 kB 
+30498 30492 383952 Rss:              383952 kB Pss:              217591 kB 
+30620 30498 1521572 Rss:             1521572 kB Pss:             1422784 kB 
+30629 30498 1491708 Rss:             1491708 kB Pss:             1318962 kB 

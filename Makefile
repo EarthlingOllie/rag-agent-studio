@@ -7,19 +7,19 @@ API_CLIENT_DIR := frontend/packages/api-client
 
 .PHONY: help dev down services install test test-backend test-live test-frontend lint lint-backend lint-frontend \
 	gen-client check-client migrate infra-check images security secret-scan audit image-scan e2e e2e-install eval eval-live \
-	seed seed-reset link-check
+	seed seed-reset link-check rehearse rehearse-seed rehearse-scale rehearse-down
 
 help: ## List targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-16s %s\n", $$1, $$2}'
 
-dev: ## Start the whole stack (Postgres+pgvector, Redis, RustFS, Mailpit, API, worker, Beat, Studio, widget, demo host page)
+dev: ## Start the whole stack (Postgres+pgvector, Redis, RustFS, Floci (SQS), Mailpit, API, worker, Beat, Studio, widget, demo host page)
 	$(COMPOSE) up --build
 
 down: ## Stop the stack
 	$(COMPOSE) down
 
-services: ## Start only Postgres, Redis and RustFS, for running the test suites on the host
-	$(COMPOSE) up -d --wait postgres redis rustfs
+services: ## Start only Postgres, Redis, RustFS and Floci (SQS), for running the test suites on the host
+	$(COMPOSE) up -d --wait postgres redis rustfs floci
 
 install: ## Install backend and frontend dependencies
 	cd backend && uv sync --frozen
@@ -99,8 +99,11 @@ infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on
 	scripts/deploy/tests/deploy.test.sh
 	scripts/deploy/tests/destroy.test.sh
 	scripts/deploy/tests/seed.test.sh
+	scripts/deploy/tests/scale.test.sh
+	scripts/deploy/tests/rehearse.test.sh
+	scripts/deploy/tests/drive-scaling.test.sh
 	node --test --experimental-test-coverage --test-coverage-lines=100 --test-coverage-branches=100 --test-coverage-functions=100 \
-		$(wildcard infra/modules/*/functions/*.test.mjs)
+		$(wildcard infra/modules/*/functions/*.test.mjs) infra/rehearsal/front/front.test.mjs
 	scripts/ci/tests/plan-gate.test.sh
 	@set -e; for root in $(TF_ROOTS); do \
 		echo "== $$root"; \
@@ -110,6 +113,20 @@ infra-check: ## Terraform fmt, validate, tflint, checkov and `terraform test` on
 	done
 	cd infra && tflint --init && tflint --recursive --config "$$PWD/.tflint.hcl"
 	cd infra && checkov --config-file .checkov.yaml
+
+# The rehearsal (spec 23): the AWS deployment on Floci, an AWS emulator, with no AWS account. Needs Docker with socket
+# access and about 8 GB of memory for it; terraform and the AWS CLI run in containers. See scripts/deploy/rehearse.sh.
+rehearse: ## Rehearse the AWS deployment on Floci: apply infra/envs/local, push the images, migrate, roll the services, upload the Studio, smoke check
+	scripts/deploy/rehearse.sh up
+
+rehearse-seed: ## Seed the rehearsal's demo Organisation as a one-off task and print its sign-in details (REHEARSAL_SEED_ARGS=--reset seeds it again)
+	scripts/deploy/rehearse.sh seed $(REHEARSAL_SEED_ARGS)
+
+rehearse-scale: ## Show each worker pool and the API scale out and back in on the seeded rehearsal (scale.sh's timeline; REHEARSAL_SCALE_ARGS passes its options)
+	scripts/deploy/rehearse.sh scale $(REHEARSAL_SCALE_ARGS)
+
+rehearse-down: ## Destroy the rehearsal and remove Floci's containers and data
+	scripts/deploy/rehearse.sh down
 
 images: ## Build the API (also used by the worker and Beat) and Studio images; IMAGE_PLATFORM=linux/arm64 builds for Fargate
 	docker build $(if $(IMAGE_PLATFORM),--platform $(IMAGE_PLATFORM)) --build-context seed=seed -t rag-agent-studio/api:$(IMAGE_TAG) backend
@@ -132,8 +149,12 @@ image-scan: images ## Trivy scan of the built images; fails on any fixable HIGH 
 e2e-install: ## Install the Playwright browser the end-to-end suite uses
 	cd frontend && pnpm exec playwright install --with-deps chromium
 
+# The suite interrupts an ingestion through the converter's test-only switch, and waits for the
+# sweeper to recover it, so the stack runs with the switch on and a short dead-after time.
+E2E_STACK_ENV := CONVERTER_TEST_INTERRUPTS=true JOB_HEARTBEAT_SECONDS=2 JOB_DEAD_AFTER_SECONDS=20
+
 e2e: ## Start the stack, wait for health checks, seed the demo and run the Playwright suite against it
-	$(COMPOSE) up -d --build --wait
+	$(E2E_STACK_ENV) $(COMPOSE) up -d --build --wait
 	$(MAKE) seed
 	cd frontend && pnpm e2e
 

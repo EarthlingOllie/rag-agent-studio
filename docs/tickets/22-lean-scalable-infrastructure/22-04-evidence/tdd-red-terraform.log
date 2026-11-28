@@ -1,0 +1,8 @@
+  run "runs_api_both_worker_pools_and_beat_on_arm64_fargate"... fail
+  run "the_cluster_offers_fargate_and_fargate_spot"... fail
+Failure! 0 passed, 2 failed, 67 skipped.
+  run "wires_every_module_with_the_environment_prefix"... fail
+Failure! 0 passed, 1 failed, 8 skipped.
+  run "runs_api_both_worker_pools_and_beat_on_arm64_fargate"... fail
+tests/contract.tftest.hcl... fail
+Failure! 68 passed, 1 failed.

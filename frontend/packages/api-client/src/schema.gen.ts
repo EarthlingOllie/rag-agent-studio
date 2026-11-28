@@ -1007,8 +1007,11 @@ export interface paths {
         /**
          * Delete Project
          * @description Permanently deletes an archived Project (Owners only), once ``confirm_name`` is its
-         *     name. A Celery task removes the Project and everything in it (Documents, Chunks, stored
-         *     files, Agents and Conversations) and records ``project.deleted``. This can't be undone.
+         *     name. The Project is Deleting at once (hidden from normal use, and it can't be restored);
+         *     a job, finished by the sweeper if it is lost, then removes it and everything in it
+         *     (Documents, Chunks, stored files, Agents and Conversations) and records
+         *     ``project.deleted``. Asking again while it is Deleting is accepted and changes nothing.
+         *     This can't be undone.
          */
         delete: operations["deleteProject"];
         options?: never;
@@ -1451,7 +1454,7 @@ export interface paths {
          * Start Run
          * @description Starts a Run of the Agent's Evaluation Set, by default the Live Version against the Draft
          *     (the Draft alone while the Agent has never been Published), storing its estimated Cost. Poll
-         *     it until it is ``completed``, ``failed`` or ``cancelled``.
+         *     it until it is ``completed``, ``failed``, ``cancelled`` or ``interrupted``.
          */
         post: operations["startEvaluationRun"];
         delete?: never;
@@ -2628,7 +2631,7 @@ export interface paths {
         /**
          * Restore Project
          * @description Restores an archived Project to the main list (Owners only). Records
-         *     ``project.restored``.
+         *     ``project.restored``. A Project being deleted can't be restored.
          */
         post: operations["restoreProject"];
         delete?: never;
@@ -4678,7 +4681,7 @@ export interface components {
          * @description Why a Document failed, so an Editor knows whether to fix the file or retry it.
          * @enum {string}
          */
-        FailureCategory: "unsupported_content" | "conversion" | "provider" | "quota";
+        FailureCategory: "unsupported_content" | "conversion" | "provider" | "quota" | "interrupted";
         /** FallbackOut */
         FallbackOut: {
             /** Count */
@@ -5728,6 +5731,8 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Deleting */
+            deleting: boolean;
             /** Description */
             description: string;
             /** Document Count */
@@ -6555,6 +6560,12 @@ export interface components {
             /** Total Usd */
             total_usd: string | null;
         };
+        /**
+         * SuggestionFailure
+         * @description Why a failed run failed, when it was not the Evaluation Model or an error of its own.
+         * @enum {string}
+         */
+        SuggestionFailure: "interrupted";
         /** SuggestionOut */
         SuggestionOut: {
             /** Applied At */
@@ -6584,6 +6595,7 @@ export interface components {
             evidence_total: number;
             /** Explanation */
             explanation: string | null;
+            failure_reason: components["schemas"]["SuggestionFailure"] | null;
             /** Finished At */
             finished_at: string | null;
             /** Gaps */
@@ -6652,6 +6664,7 @@ export interface components {
             error_message: string | null;
             /** Evidence Total */
             evidence_total: number;
+            failure_reason: components["schemas"]["SuggestionFailure"] | null;
             /** Finished At */
             finished_at: string | null;
             /**
@@ -14654,7 +14667,7 @@ export interface operations {
                     "application/json": components["schemas"]["ErrorResponse"];
                 };
             };
-            /** @description This Project isn't archived. */
+            /** @description This Project isn't archived. Or: This Project is being deleted. A deleted Project can't be restored. */
             409: {
                 headers: {
                     [name: string]: unknown;

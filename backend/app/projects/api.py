@@ -4,11 +4,13 @@ its path through the policy dependency, and finds the Project only inside that O
 
 import uuid
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, StringConstraints
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.auth.api import Db, ErrorResponse
 from app.core.clock import Clock, get_clock
@@ -30,6 +32,7 @@ PROJECT_ARCHIVED = "This Project is archived. An Owner can restore it."
 PROJECT_NOT_ARCHIVED = "This Project isn't archived."
 ARCHIVE_BEFORE_DELETING = "Only an archived Project can be deleted. Archive it first."
 NAME_MISMATCH = "Type the Project's name exactly to delete it."
+PROJECT_DELETING = "This Project is being deleted. A deleted Project can't be restored."
 
 ClockDep = Annotated[Clock, Depends(get_clock)]
 
@@ -55,6 +58,9 @@ class ProjectOut(BaseModel):
     created_at: datetime
     # Set while the Project is archived.
     archived_at: datetime | None
+    # True while the Project is Deleting: an Owner asked for it to be deleted permanently, and
+    # it is gone once the deletion finishes. A Deleting Project is archived too.
+    deleting: bool
     document_count: int
     agent_count: int
     # The Embedding Model the Project's Documents are embedded with.
@@ -94,6 +100,7 @@ def _out(summary: service.ProjectSummary) -> ProjectOut:
         description=project.description,
         created_at=project.created_at,
         archived_at=project.archived_at,
+        deleting=project.deletion_requested_at is not None,
         document_count=summary.document_count,
         agent_count=summary.agent_count,
         embedding_model_id=project.embedding_model_id,
@@ -196,18 +203,23 @@ async def archive_project(
     responses={
         403: {"model": ErrorResponse, "description": OWNERS_ONLY},
         **_NOT_FOUND,
-        409: {"model": ErrorResponse, "description": PROJECT_NOT_ARCHIVED},
+        409: {
+            "model": ErrorResponse,
+            "description": f"{PROJECT_NOT_ARCHIVED} Or: {PROJECT_DELETING}",
+        },
     },
 )
 async def restore_project(
     project_id: uuid.UUID, scope: OwnerScope, db: Db, clock: ClockDep
 ) -> ProjectOut:
     """Restores an archived Project to the main list (Owners only). Records
-    ``project.restored``."""
+    ``project.restored``. A Project being deleted can't be restored."""
     try:
         project = await service.restore_project(db, scope, project_id, now=clock.now())
     except service.ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
+    except service.ProjectDeletingError:
+        raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_DELETING) from None
     except service.ProjectNotArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, PROJECT_NOT_ARCHIVED) from None
     return await respond(db, project)
@@ -234,20 +246,34 @@ async def delete_project(
     project_id: uuid.UUID, body: DeleteProjectRequest, scope: OwnerScope, db: Db, clock: ClockDep
 ) -> Response:
     """Permanently deletes an archived Project (Owners only), once ``confirm_name`` is its
-    name. A Celery task removes the Project and everything in it (Documents, Chunks, stored
-    files, Agents and Conversations) and records ``project.deleted``. This can't be undone."""
+    name. The Project is Deleting at once (hidden from normal use, and it can't be restored);
+    a job, finished by the sweeper if it is lost, then removes it and everything in it
+    (Documents, Chunks, stored files, Agents and Conversations) and records
+    ``project.deleted``. Asking again while it is Deleting is accepted and changes nothing.
+    This can't be undone."""
     try:
-        await service.check_deletion(db, scope, project_id, confirm_name=body.confirm_name)
+        await service.request_deletion(
+            db, scope, project_id, confirm_name=body.confirm_name, now=clock.now()
+        )
     except service.ProjectNotFoundError:
         raise HTTPException(status.HTTP_404_NOT_FOUND, NOT_FOUND) from None
     except service.ProjectNotArchivedError:
         raise HTTPException(status.HTTP_409_CONFLICT, ARCHIVE_BEFORE_DELETING) from None
     except service.ProjectNameMismatchError:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, NAME_MISMATCH) from None
-    # End the read transaction before the task (eager in tests) locks the row.
-    await db.rollback()
-    await enqueue_deletion(project_id, actor_id=scope.member_id, requested_at=clock.now())
+    await enqueue_deletion(project_id)
     return Response(status_code=status.HTTP_202_ACCEPTED)
+
+
+async def refuse_with_the_reason(request: Request, exc: Exception) -> Response:
+    """The app's handler for HTTP errors. Every route refuses a change to an archived Project
+    with ``PROJECT_ARCHIVED``; when the Project is in fact being deleted (the refusal was raised
+    while handling ``ProjectDeletingError``), the reason says so instead."""
+    # Registered for HTTP errors only.
+    error = cast(StarletteHTTPException, exc)
+    if isinstance(error.__context__, service.ProjectDeletingError):
+        error = StarletteHTTPException(error.status_code, PROJECT_DELETING, error.headers)
+    return await http_exception_handler(request, error)
 
 
 class ProjectInstructions(BaseModel):

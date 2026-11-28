@@ -25,7 +25,7 @@ module "network" {
   availability_zones = ["${var.aws_region}a", "${var.aws_region}b"]
 }
 
-# Only the API, the worker and the one-off migration and seed tasks connect to Postgres; Beat only needs Redis.
+# Only the API, the worker pools and the one-off migration and seed tasks connect to Postgres; Beat only needs Redis.
 module "database" {
   source      = "../../modules/database"
   name_prefix = local.name_prefix
@@ -34,7 +34,7 @@ module "database" {
   subnet_ids  = module.network.private_subnet_ids
   kms_key_arn = module.kms.data_key_arn
   client_security_group_ids = merge(
-    { for k in ["api", "worker"] : k => module.ecs.service_security_group_ids[k] },
+    { for k in ["api", "worker-general", "worker-runs"] : k => module.ecs.service_security_group_ids[k] },
     { migrate = module.ecs.migration_security_group_id, seed = module.ecs.seed_security_group_id },
   )
 }
@@ -46,11 +46,18 @@ module "cache" {
   vpc_id      = module.network.vpc_id
   subnet_ids  = module.network.private_subnet_ids
   kms_key_arn = module.kms.data_key_arn
-  # The seed task (ticket 10-05) queues the demo Documents' ingestion for the worker.
+  # Every service uses Redis; so does the seed task (ticket 10-05), which runs the API in process.
   client_security_group_ids = merge(
-    { for k in ["api", "worker", "beat"] : k => module.ecs.service_security_group_ids[k] },
+    { for k in ["api", "worker-general", "worker-runs", "beat"] : k => module.ecs.service_security_group_ids[k] },
     { seed = module.ecs.seed_security_group_id },
   )
+}
+
+# The general and runs job queues (ADR-0021). Their names and URLs reach the services as settings (ticket 22-02).
+module "queue" {
+  source      = "../../modules/queue"
+  name_prefix = local.name_prefix
+  tags        = local.tags
 }
 
 # Browsers upload Documents only from the CloudFront origin, and only the distribution reads static assets.
@@ -70,7 +77,7 @@ module "kms" {
   tags        = local.tags
 }
 
-# The deploy workflow pushes rag-agent-studio/api (API, worker and Beat) and rag-agent-studio/studio.
+# The deploy workflow pushes rag-agent-studio/api (API, worker pools and Beat) and rag-agent-studio/studio.
 module "ecr" {
   source           = "../../modules/ecr"
   name_prefix      = local.name_prefix
@@ -98,6 +105,8 @@ module "ecs" {
   studio_url           = module.cdn.url
   # The demo pages under /demo/ (ticket 10-03) ask the API which seeded Agents to embed.
   demo_pages = true
+  # The general worker pool on Fargate Spot, or regular Fargate during a Spot shortage (ticket 22-04).
+  worker_spot = var.worker_spot
 
   database = {
     address             = module.database.address
@@ -114,6 +123,8 @@ module "ecs" {
     auth_token_secret_arn = module.cache.auth_token_secret_arn
     security_group_id     = module.cache.security_group_id
   }
+
+  queues = module.queue.queues
 }
 
 # One distribution serves the Studio and widget from the static bucket and the API from the ALB (ADR-0011).

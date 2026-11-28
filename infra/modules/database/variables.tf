@@ -49,6 +49,17 @@ variable "client_security_group_ids" {
   default     = {}
 }
 
+variable "port" {
+  description = "Postgres port. 5432 on AWS; an emulator may give its database another one, which the environment must then ask for so a second plan shows no change (ticket 23-01). RDS Postgres allows 1150-65535."
+  type        = number
+  default     = 5432
+
+  validation {
+    condition     = var.port >= 1150 && var.port <= 65535 && floor(var.port) == var.port
+    error_message = "port must be a whole number from 1150 to 65535, the ports RDS Postgres allows."
+  }
+}
+
 variable "engine_version" {
   description = "Postgres engine version. Must be major version 16; a bare \"16\" takes the newest 16.x minor."
   type        = string

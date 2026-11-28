@@ -9,6 +9,7 @@ import base64
 import pytest
 
 from app.core.settings import SettingsError, load_settings
+from tests.queues import QUEUE_SETTINGS
 
 KEY = base64.b64encode(b"unit-test-local-key-wrapper-key!").decode()
 PARTS = (
@@ -38,6 +39,8 @@ def env(monkeypatch: pytest.MonkeyPatch) -> pytest.MonkeyPatch:
     monkeypatch.setenv("DATABASE_USER", "studio")
     monkeypatch.setenv("REDIS_HOST", "cache.internal.example")
     monkeypatch.setenv("REDIS_PORT", "6379")
+    for name, value in QUEUE_SETTINGS.items():
+        monkeypatch.setenv(name.upper(), value)
     return monkeypatch
 
 

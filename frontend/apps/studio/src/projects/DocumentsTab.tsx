@@ -72,11 +72,12 @@ export const STATUS_TONES: Record<DocumentStatus, "ready" | "working" | "failed"
   failed: "failed",
 };
 
-const CATEGORY_LABELS: Record<FailureCategory, string> = {
+export const CATEGORY_LABELS: Record<FailureCategory, string> = {
   unsupported_content: "Unsupported content",
   conversion: "Conversion error",
   provider: "Provider error",
   quota: "Quota reached",
+  interrupted: "Interrupted",
 };
 
 /** How the Studio names a Document's file type, from its extension. */

@@ -22,3 +22,8 @@ output "data_key_arn" {
   description = "ARN of the key that encrypts data at rest in RDS, ElastiCache, the Documents bucket and the platform secrets."
   value       = aws_kms_key.this["data"].arn
 }
+
+output "rotation_period_in_days" {
+  description = "Each key's rotation period in days as the service reports it, keyed by credentials and data."
+  value       = { for k, key in aws_kms_key.this : k => key.rotation_period_in_days }
+}

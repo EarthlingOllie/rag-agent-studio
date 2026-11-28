@@ -346,9 +346,11 @@ async def test_the_beat_task_clears_the_alert_flags_at_midnight_utc(
     visitor: httpx.AsyncClient,
     clock: ControllableClock,
 ) -> None:
+    # Hourly, on the hour: the first run of a new UTC date is midnight's, or the next one after
+    # a midnight Beat missed.
     schedule = celery_app.conf.beat_schedule["clear-token-budget-alerts"]
     assert schedule["task"] == CLEAR_BUDGET_ALERTS_TASK
-    assert schedule["schedule"] == crontab(minute="0", hour="0")
+    assert schedule["schedule"] == crontab(minute="0")
     assert str(celery_app.conf.timezone) == "UTC"
     await budget(owner, agent, 1)
     token = await conversation_token(visitor, agent["public_id"])
@@ -362,6 +364,45 @@ async def test_the_beat_task_clears_the_alert_flags_at_midnight_utc(
     await run_beat_task(datetime(2026, 11, 6, 0, 0, tzinfo=UTC))
 
     assert await alert(owner, agent) == (False, [False])
+
+
+async def test_a_run_after_a_missed_midnight_resets_the_day_that_ended(
+    owner: SignedUpMember,
+    agent: dict[str, Any],
+    visitor: httpx.AsyncClient,
+    clock: ControllableClock,
+) -> None:
+    await budget(owner, agent, 1)
+    token = await conversation_token(visitor, agent["public_id"])
+    assert await outcome(visitor, agent, token) == "answered"  # exhausted at 09:00 on 5 Nov
+    assert await alert(owner, agent) == (True, [True])
+
+    # Beat was down over midnight; it is back at 01:00 on 6 November.
+    clock.advance(timedelta(hours=16))
+    await run_beat_task(clock.now())
+
+    assert await alert(owner, agent) == (False, [False])
+
+
+async def test_a_late_run_keeps_an_alert_raised_on_the_new_day(
+    owner: SignedUpMember,
+    agent: dict[str, Any],
+    visitor: httpx.AsyncClient,
+    clock: ControllableClock,
+) -> None:
+    await budget(owner, agent, 1)
+    token = await conversation_token(visitor, agent["public_id"])
+    assert await outcome(visitor, agent, token) == "answered"  # exhausted at 09:00 on 5 Nov
+    # Midnight is missed; at 00:30 on 6 November the new day's budget is spent too.
+    clock.advance(timedelta(hours=15, minutes=30))
+    assert await outcome(visitor, agent, token) == "answered"
+    assert await alert(owner, agent) == (True, [True])
+
+    # The 01:00 run resets only the day that ended: today's alert stays.
+    clock.advance(timedelta(minutes=30))
+    await run_beat_task(clock.now())
+
+    assert await alert(owner, agent) == (True, [True])
 
 
 async def test_the_beat_task_runs_on_the_system_clock(

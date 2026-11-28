@@ -2,7 +2,7 @@ import { Outlet, useMatchRoute, useNavigate, useParams } from "@tanstack/react-r
 import { useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
-import { button, ConfirmDialog, EmptyState, field, Icon, Menu, type MenuItem, PageHeader, Skeleton, ToastProvider } from "../design";
+import { button, ConfirmDialog, EmptyState, field, Icon, Menu, type MenuItem, Notice, PageHeader, Skeleton, ToastProvider } from "../design";
 import { AGENT } from "../shell/projectNavigation";
 import { EditProjectDialog } from "./ProjectDetailsDialog";
 import {
@@ -99,13 +99,21 @@ function DeleteDialog({ project, organisationId, onDone }: { project: Project; o
         </form>
       }
     >
-      Deleting {project.name} removes its Documents, stored files, Agents and Conversations for good. This can&apos;t be undone.
+      Deleting {project.name} removes its Documents, stored files, Agents and Conversations for good. A deleted Project can&apos;t be
+      restored.
     </ConfirmDialog>
   );
 }
 
 function ArchivedNotice({ project, organisationId, isOwner }: { project: Project; organisationId: string; isOwner: boolean }) {
   const restore = useArchiveOrRestore(organisationId, "restore");
+  if (project.deleting)
+    return (
+      <Notice tone="warning">
+        This Project is being deleted. A deleted Project can&apos;t be restored. It is hidden from the Projects list and doesn&apos;t
+        serve.
+      </Notice>
+    );
   return (
     <div role="status" className="space-y-2 rounded-2xl border border-flag bg-flag-soft p-4 text-sm text-flag">
       <p>
@@ -144,7 +152,7 @@ function ProjectHeader({ project, organisationId, isOwner }: { project: Project;
   };
 
   const actions: MenuItem[] = archived
-    ? isOwner
+    ? isOwner && !project.deleting
       ? [{ label: "Delete permanently", danger: true, onSelect: () => { setConfirming("delete"); } }]
       : []
     : [

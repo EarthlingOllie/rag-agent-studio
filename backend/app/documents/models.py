@@ -10,6 +10,7 @@ from typing import Any
 from pgvector.sqlalchemy import HALFVEC, Vector
 from sqlalchemy import (
     BigInteger,
+    Boolean,
     CheckConstraint,
     Computed,
     DateTime,
@@ -21,6 +22,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     cast,
+    false,
     func,
     literal,
 )
@@ -61,6 +63,8 @@ class FailureCategory(enum.StrEnum):
     PROVIDER = "provider"
     # The Project already holds as many Documents as its quota allows.
     QUOTA = "quota"
+    # Its ingestion was cut short (the worker died) too many times in a row.
+    INTERRUPTED = "interrupted"
 
 
 class Document(IdMixin, Base):
@@ -87,6 +91,20 @@ class Document(IdMixin, Base):
     # The converted markdown in the object store, once converted.
     markdown_key: Mapped[str | None] = mapped_column(Text)
     edition: Mapped[int] = mapped_column(Integer, default=1)
+    # Job reliability (ADR-0020, ``app.jobs.reliability``): when the edition was last put on
+    # Queued, the claim of the ingestion that holds it while Processing, and that ingestion's
+    # last heartbeat. Only the reliability module reads them.
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    claim_id: Mapped[uuid.UUID | None] = mapped_column()
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # How many times its ingestion was cut short since it was last queued by hand (kept apart
+    # from ``attempt_count``, which counts the automatic attempts that ran to an end), and,
+    # while Queued for an automatic retry, when that retry is due.
+    interruption_count: Mapped[int] = mapped_column(Integer, default=0)
+    retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set when a new edition is swapped in, cleared once its Expected sources have been matched
+    # again; the sweeper finishes that for a Document whose ingestion died first.
+    recheck_due: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
@@ -118,6 +136,17 @@ class StagedEdition(Base):
     # A ``FailureCategory``, while the staged edition is Failed.
     error_category: Mapped[str | None] = mapped_column(String(30))
     attempt_count: Mapped[int] = mapped_column(Integer, default=0)
+    # Job reliability (ADR-0020, ``app.jobs.reliability``): when the edition was last put on
+    # Queued, the claim of the ingestion that holds it while Processing, and that ingestion's
+    # last heartbeat. Only the reliability module reads them.
+    queued_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    claim_id: Mapped[uuid.UUID | None] = mapped_column()
+    heartbeat_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # How many times its ingestion was cut short since it was last queued by hand (kept apart
+    # from ``attempt_count``, which counts the automatic attempts that ran to an end), and,
+    # while Queued for an automatic retry, when that retry is due.
+    interruption_count: Mapped[int] = mapped_column(Integer, default=0)
+    retry_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

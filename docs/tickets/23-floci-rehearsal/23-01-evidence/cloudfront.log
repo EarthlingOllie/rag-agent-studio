@@ -1,0 +1,9 @@
+# Requests to the emulated distribution (Host: euo8ndca67i42o.cloudfront.localhost, Floci's port) with cdn alb_dns_name = "localhost"
+# and FLOCI_SERVICES_CLOUDFRONT_ALLOWED_PRIVATE_ORIGIN_HOSTS=localhost. No API task was running (no app image).
+/api/health           503 No targets available     <- CloudFront reached the ALB listener on localhost:80 and passed its origin-header rule
+/                     404 before index.html was uploaded; 200 "<html>spike studio</html>" after (default_root_object works)
+/settings/deep        404 The specified key does not exist.   <- the SPA-fallback CloudFront Function is not run
+http://euo8ndca67i42o.cloudfront.localhost:4577/ from the host: resolved and served (curl resolves *.localhost); the module's url output is https://<id>.cloudfront.localhost (no port)
+# The ALB listener directly, without the origin header, from the internal network:
+GET http://floci-spike:80/api/health   403 Forbidden   <- the fixed-response default action
+328:2026-11-26 23:47:02,441 INFO  [io.flo.aws.ser.elb.ElbV2DataPlane] ELBv2 HTTP listener port started on 80

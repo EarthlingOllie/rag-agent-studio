@@ -1,0 +1,46 @@
+# The rehearsal as a browser uses it (2026-11-27), on the environment the first 23-04 runs applied
+
+## make rehearse-seed REHEARSAL_SEED_ARGS=--reset (seed.sh as a one-off task)
+==> terraform init (state bucket studio-local-tfstate)
+==> Running the seed task with --reset: the demo Organisation is erased and seeded again
+==> Waiting for arn:aws:ecs:eu-west-2:000000000000:task/studio-local-ecs/d0e358f5406b41779f62e93f52e9c548
+The demo environment is seeded: http://e3yxdxlel6u7yx.cloudfront.localhost:4566
+
+## sign in as the demo Owner, upload a Document through a presigned link, wait for Ready (/tmp/claude-0/-home-user-rag-agent-studio/46baa4a5-d251-517d-a872-c8ba52cc8b5a/scratchpad/w15/usable.sh, run from this machine)
+## sign in at http://e3yxdxlel6u7yx.cloudfront.localhost:4566
+POST /api/auth/sign-in -> 200
+set-cookie: studio_session=<token>; HttpOnly; Max-Age=1209600; Path=/; SameSite=lax; Secure
+organisation f5d5e20a-ed74-495a-97b7-220e25040f7b, project 6b4a9e93-92fa-4f90-9dd7-b156ca65158e
+presigned URL host: http://localhost:4566
+## CORS preflight from the Studio's origin
+HTTP/1.1 200 OK
+Access-Control-Allow-Methods: GET, PUT
+Access-Control-Allow-Origin: http://e3yxdxlel6u7yx.cloudfront.localhost:4566
+## PUT the file from the Studio's origin
+HTTP/1.1 200 OK
+Access-Control-Allow-Origin: http://e3yxdxlel6u7yx.cloudfront.localhost:4566
+ETag: "f755036392336504ef3f52a384da6bef"
+confirmed: Document 183e1ea4-189c-439b-9675-5a36d0b79790
+after 8 s: ready chunks=2 error=null
+## every Document in the Project
+ready chunks=2
+ready chunks=5
+ready chunks=5
+ready chunks=5
+ready chunks=8
+
+## the Studio and API settings the tasks were given
+OBJECT_STORE_PUBLIC_ENDPOINT_URL=http://localhost:4566
+STUDIO_URL=http://e3yxdxlel6u7yx.cloudfront.localhost:4566
+TRUSTED_PROXIES=10.0.0.0/16,127.0.0.0/8,172.29.0.0/16
+worker-general: STUDIO_URL=http://e3yxdxlel6u7yx.cloudfront.localhost:4566 and OBJECT_STORE_PUBLIC_ENDPOINT_URL unset
+
+## per-Visitor address: two failed sign-ins through the distribution, then the sign-in counters' keys in the cache
+plain request, and one with X-Forwarded-For: 203.0.113.9 -> 401, 401
+sign-in-failures:ip:203.0.113.9
+sign-in-failures:ip:127.0.0.1
+the API's peer for the same requests (its access log):
+172.29.0.2:48714 - "POST /api/auth/sign-in HTTP/1.1" 401
+
+## a deep link after a refresh (the known gap)
+GET /projects/x/documents -> 404 text/plain

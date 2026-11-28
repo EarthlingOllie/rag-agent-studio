@@ -380,3 +380,66 @@ async def test_each_agent_has_its_own_alert(
     assert (await get_agent(owner, attacked))["block_rate_alert"] is True
     assert (await get_agent(stranger, quiet))["block_rate_alert"] is False
     assert [to for to, _ in spike_emails(task_outbox, owner, stranger)] == [owner.email]
+
+
+# Catching up on hours Beat missed
+
+
+async def test_a_spike_during_an_outage_is_alerted_on_by_the_next_run(
+    app: FastAPI,
+    owner: SignedUpMember,
+    visitor: httpx.AsyncClient,
+    clock: ControllableClock,
+    task_outbox: OutboxMailer,
+) -> None:
+    agent = await guarded_agent(app, owner)
+    await ask_all(visitor, clock, agent, BENIGN)
+    await roll_up(clock.now())  # 09:00: checked, calm
+    # Beat is down for four hours. In the second hour an attack comes and goes.
+    clock.advance(timedelta(hours=1))
+    await ask_all(visitor, clock, agent, BENIGN)
+    clock.advance(timedelta(hours=1))
+    await ask_all(visitor, clock, agent, *[ATTACK] * 5)
+    clock.advance(timedelta(hours=1))
+    await ask_all(visitor, clock, agent, BENIGN)
+    clock.advance(timedelta(hours=1))
+    await ask_all(visitor, clock, agent, BENIGN)
+
+    # Back up: the run checks every hour since 09:00, the attack's included.
+    await roll_up(clock.now())
+
+    email = next(e for e in task_outbox.sent if e.to == owner.email)
+    assert "5 of the last hour's 5 Visitor messages (100%)" in email.text
+    assert spike_emails(task_outbox, owner) == [(owner.email, SPIKE_SUBJECT)]
+    # The current hour is calm, so the alert is down again.
+    assert (await get_agent(owner, agent))["block_rate_alert"] is False
+
+    # The next run starts from the hour it last covered: the attack isn't alerted on again.
+    clock.advance(timedelta(hours=1))
+    await ask_all(visitor, clock, agent, BENIGN)
+    await roll_up(clock.now())
+    assert spike_emails(task_outbox, owner) == [(owner.email, SPIKE_SUBJECT)]
+
+
+async def test_a_run_by_hand_for_an_earlier_time_doesnt_move_the_covered_hour_back(
+    app: FastAPI,
+    owner: SignedUpMember,
+    visitor: httpx.AsyncClient,
+    clock: ControllableClock,
+    task_outbox: OutboxMailer,
+) -> None:
+    agent = await guarded_agent(app, owner)
+    await ask_all(visitor, clock, agent, *[ATTACK] * 5)
+    clock.advance(timedelta(hours=1))
+    await ask_all(visitor, clock, agent, BENIGN)
+    await roll_up(clock.now())  # 10:00: the attack is more than an hour old
+    assert spike_emails(task_outbox, owner) == []
+
+    # A rollup redone by hand as of 08:00 covers nothing new, and the hourly run after it
+    # carries on from 10:00, not 08:00.
+    await roll_up(clock.now() - timedelta(hours=2))
+    clock.advance(timedelta(hours=1))
+    await roll_up(clock.now())
+
+    assert spike_emails(task_outbox, owner) == []
+    assert (await get_agent(owner, agent))["block_rate_alert"] is False

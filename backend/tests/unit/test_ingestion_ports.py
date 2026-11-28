@@ -2,6 +2,7 @@
 installed them."""
 
 import base64
+import uuid
 
 import httpx2
 import pytest
@@ -10,7 +11,12 @@ from app.core.settings import Settings
 from app.crypto.envelope import EnvelopeEncryption
 from app.crypto.local_key_wrapper import LocalKeyWrapper
 from app.documents import ports
-from app.documents.converter import DoclingConverter, FakeConverter
+from app.documents.converter import (
+    INTERRUPT_MARKER,
+    DoclingConverter,
+    FakeConverter,
+    InterruptibleConverter,
+)
 from app.embeddings.fake import HashEmbedder
 from app.embeddings.local import LocalEmbedder
 from app.gateway.fakes import FakeModelAdapters
@@ -18,9 +24,11 @@ from app.gateway.live import LiveModelAdapters
 from app.guardrails.fake import RuleDrivenClassifier
 from app.guardrails.heuristic import HeuristicClassifier
 from app.guardrails.local import LocalClassifier
+from app.jobs.faults import JobKilled
 from app.storage.memory import InMemoryObjectStore
 from app.storage.s3 import S3ObjectStore
 from tests.conftest import TEST_LOCAL_KEY_WRAPPER_KEY
+from tests.queues import QUEUE_SETTINGS
 
 ENVELOPE = EnvelopeEncryption(LocalKeyWrapper(base64.b64encode(b"P" * 32).decode()))
 
@@ -30,7 +38,7 @@ def _settings(**values: str) -> Settings:
         database_url="postgresql+asyncpg://u:p@localhost/db",
         redis_url="redis://localhost:6379/0",
         local_key_wrapper_key=TEST_LOCAL_KEY_WRAPPER_KEY,
-        **values,  # type: ignore[arg-type]
+        **(QUEUE_SETTINGS | values),  # type: ignore[arg-type]
     )
 
 
@@ -95,6 +103,31 @@ def test_tests_use_the_in_memory_store_and_the_fakes() -> None:
     assert isinstance(chosen.converter, FakeConverter)
     assert isinstance(chosen.embedders["multilingual-e5-small"], HashEmbedder)
     assert isinstance(chosen.classifier, RuleDrivenClassifier)
+
+
+def test_the_end_to_end_stack_can_interrupt_an_ingestion_whatever_converts_it() -> None:
+    """Test-only: the interruption switch goes in front of the configured converter (Docling on
+    the compose stack), so a file carrying the marker is interrupted once, then converted."""
+    plain = ports.build_ports(_settings(object_store="memory"), ENVELOPE)
+    chosen = ports.build_ports(
+        _settings(object_store="memory", converter_test_interrupts="true"), ENVELOPE
+    )
+    faked = ports.build_ports(
+        _settings(
+            object_store="memory", document_converter="fake", converter_test_interrupts="true"
+        ),
+        ENVELOPE,
+    )
+    marked = f"{INTERRUPT_MARKER}{uuid.uuid4()}\n# Leave\n\nTwenty-five days.\n".encode()
+
+    assert isinstance(plain.converter, DoclingConverter)
+    assert isinstance(chosen.converter, InterruptibleConverter)
+    assert isinstance(chosen.converter.converter, DoclingConverter)
+    assert isinstance(faked.converter, InterruptibleConverter)
+    with pytest.raises(JobKilled):
+        faked.converter.convert(marked, "leave.md", ocr=False)
+    converted = faked.converter.convert(marked, "leave.md", ocr=False)
+    assert converted.export_to_markdown() == "## Leave\n\nTwenty-five days."
 
 
 def test_a_task_needs_the_adapters_installed(monkeypatch: pytest.MonkeyPatch) -> None:

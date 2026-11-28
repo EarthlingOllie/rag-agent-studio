@@ -91,7 +91,7 @@ resource "aws_elasticache_replication_group" "this" {
 
   snapshot_retention_limit   = var.snapshot_retention_days
   snapshot_window            = "02:00-03:00"
-  maintenance_window         = "sun:03:30-sun:04:30"
+  maintenance_window         = var.maintenance_window
   auto_minor_version_upgrade = "true"
   apply_immediately          = true
 

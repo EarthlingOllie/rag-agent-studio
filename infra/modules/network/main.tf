@@ -210,11 +210,8 @@ resource "aws_route" "private_egress" {
   network_interface_id   = var.managed_nat ? null : aws_network_interface.fck_nat[0].id
 }
 
-# VPC endpoints: ECS image pulls, logs and secrets stay inside AWS instead of crossing the NAT.
-locals {
-  interface_endpoint_services = toset(["ecr.api", "ecr.dkr", "logs", "secretsmanager"])
-}
-
+# One VPC endpoint: the free S3 gateway, so data and ECR image layers stay off the NAT. There are no interface
+# endpoints (ADR-0021): ECR, CloudWatch Logs and Secrets Manager are reached through the NAT.
 data "aws_region" "current" {}
 
 resource "aws_vpc_endpoint" "s3" {
@@ -224,36 +221,4 @@ resource "aws_vpc_endpoint" "s3" {
   route_table_ids   = [aws_route_table.private.id]
 
   tags = merge(local.tags, { Name = "${local.name}-s3" })
-}
-
-resource "aws_security_group" "endpoints" {
-  name        = "${local.name}-endpoints"
-  description = "VPC interface endpoints: HTTPS from inside the VPC only"
-  vpc_id      = aws_vpc.this.id
-
-  tags = merge(local.tags, { Name = "${local.name}-endpoints" })
-}
-
-resource "aws_vpc_security_group_ingress_rule" "endpoints_https" {
-  security_group_id = aws_security_group.endpoints.id
-  description       = "HTTPS from inside the VPC"
-  cidr_ipv4         = var.vpc_cidr
-  ip_protocol       = "tcp"
-  from_port         = 443
-  to_port           = 443
-
-  tags = local.tags
-}
-
-resource "aws_vpc_endpoint" "interface" {
-  for_each = local.interface_endpoint_services
-
-  vpc_id              = aws_vpc.this.id
-  service_name        = "com.amazonaws.${data.aws_region.current.region}.${each.key}"
-  vpc_endpoint_type   = "Interface"
-  private_dns_enabled = true
-  subnet_ids          = aws_subnet.private[*].id
-  security_group_ids  = [aws_security_group.endpoints.id]
-
-  tags = merge(local.tags, { Name = "${local.name}-${replace(each.key, ".", "-")}" })
 }

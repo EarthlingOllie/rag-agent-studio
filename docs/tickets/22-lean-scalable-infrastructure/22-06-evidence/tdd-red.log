@@ -1,0 +1,38 @@
+22-06 red 1 (task seam): ImportError while loading conftest: ModuleNotFoundError: No module named 'app.jobs.protection'
+22-06 red 2 (task seam, port in place, reliability not calling it): 8 failed (holders() empty: ValueError not enough values to unpack), 1 error
+22-06 red (ecs terraform test, after adding the protection statement to the expected pool policies and the new run): Failure! 79 passed, 3 failed (the_general_pool_..., the_runs_pool_..., only_the_worker_pools_may_set_task_protection_and_only_on_their_own_tasks)
+22-06 red (bootstrap terraform test, after adding lets_the_deploy_role_read_and_clear_task_protection_in_this_projects_clusters_only): Failure! 10 passed, 1 failed
+
+22-06 red (deploy.test.sh, after adding the protected-task tests, before deploy.sh waited): 32 FAIL lines:
+FAIL finds_old_worker_tasks_and_asks_whether_they_are_protected: no list-tasks for worker-general
+FAIL finds_old_worker_tasks_and_asks_whether_they_are_protected: no old-task lookup for worker-general: aws ecs describe-tasks --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task
+FAIL finds_old_worker_tasks_and_asks_whether_they_are_protected: no protection lookup for worker-general
+FAIL finds_old_worker_tasks_and_asks_whether_they_are_protected: no list-tasks for worker-runs
+FAIL finds_old_worker_tasks_and_asks_whether_they_are_protected: no old-task lookup for worker-runs: aws ecs describe-tasks --cluster studio-demo-ecs --tasks arn:aws:ecs:eu-west-2:123456789012:task/st
+FAIL finds_old_worker_tasks_and_asks_whether_they_are_protected: no protection lookup for worker-runs
+FAIL finds_old_worker_tasks_and_asks_whether_they_are_protected: expected '^aws ecs update-service .*--service studio-demo-ecs-worker-runs ' (line 13) before '^aws ecs list-tasks' (line none)
+FAIL waits_while_old_worker_tasks_are_protected_and_lets_the_roll_finish_when_their_jobs_end: expected 3 waits of 30 s, got 0
+FAIL waits_while_old_worker_tasks_are_protected_and_lets_the_roll_finish_when_their_jobs_end: expected 'Waiting for 1 old worker task still running a job (0 of 30 minutes)' in: ==> terraform init (sta
+FAIL waits_while_old_worker_tasks_are_protected_and_lets_the_roll_finish_when_their_jobs_end: the services were waited on before the protected tasks finished
+FAIL clears_protection_on_old_tasks_after_30_minutes_and_lets_the_roll_finish: expected 60 waits of 30 s (30 minutes), got 0
+FAIL clears_protection_on_old_tasks_after_30_minutes_and_lets_the_roll_finish: protection was not cleared: 
+FAIL clears_protection_on_old_tasks_after_30_minutes_and_lets_the_roll_finish: expected '^sleep 30' (line none) before '^aws ecs update-task-protection' (line none)
+FAIL clears_protection_on_old_tasks_after_30_minutes_and_lets_the_roll_finish: expected '^aws ecs update-task-protection' (line none) before '^aws ecs wait services-stable' (line 14)
+FAIL clears_protection_on_old_tasks_after_30_minutes_and_lets_the_roll_finish: expected 'Clearing scale-in protection on 1 old worker task after 30 minutes' in: ==> terraform init (state bucket rag-ag
+FAIL the_wait_for_protected_tasks_is_an_argument: exit 2, expected 0. Output: usage: /home/user/rag-agent-studio/scripts/deploy/tests/../deploy.sh <image tag> (1-128 of A-Z a-z 0-9 . _ -, not latest)
+FAIL the_wait_for_protected_tasks_is_an_argument: expected 10 waits of 30 s (5 minutes), got 0
+FAIL the_wait_for_protected_tasks_is_an_argument: protection was not cleared on both pools: 
+FAIL the_wait_for_protected_tasks_is_an_argument: expected 'Clearing scale-in protection on 2 old worker tasks after 5 minutes' in: usage: /home/user/rag-agent-studio/scripts/deploy/tests/../deploy.sh
+FAIL no_wait_clears_protection_at_once: exit 2, expected 0. Output: usage: /home/user/rag-agent-studio/scripts/deploy/tests/../deploy.sh <image tag> (1-128 of A-Z a-z 0-9 . _ -, not latest)
+FAIL no_wait_clears_protection_at_once: protection was not cleared
+FAIL a_failure_to_clear_protection_stops_the_deploy: exit 2, expected 1. Output: usage: /home/user/rag-agent-studio/scripts/deploy/tests/../deploy.sh <image tag> (1-128 of A-Z a-z 0-9 . _ -, not lates
+FAIL a_failure_to_clear_protection_stops_the_deploy: expected 'Could not clear scale-in protection' in: usage: /home/user/rag-agent-studio/scripts/deploy/tests/../deploy.sh <image tag> (1-128 of A-Z a
+FAIL uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader: sync was: 
+FAIL uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader: no no-cache upload of index.html
+FAIL uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader: no no-cache upload of embed.js
+FAIL uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader: no no-cache upload of widget/assets/widget.js
+FAIL uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader: no no-cache upload of demo/attacks.html
+FAIL uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader: no no-cache upload of demo/budget.html
+FAIL uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader: no no-cache upload of demo/index.html
+FAIL uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader: no no-cache upload of demo/inline.html
+FAIL uploads_the_studio_widget_and_demo_pages_and_invalidates_html_and_the_loader: invalidation was: 

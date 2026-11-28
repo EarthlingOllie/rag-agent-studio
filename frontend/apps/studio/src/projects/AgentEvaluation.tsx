@@ -156,7 +156,22 @@ const STATUS = {
   completed: { tone: "ready", label: "Completed" },
   failed: { tone: "failed", label: "Failed" },
   cancelled: { tone: "flagged", label: "Cancelled" },
+  interrupted: { tone: "flagged", label: "Interrupted" },
 } as const;
+
+/** Why a Run is Interrupted, in one line: the Run history and the Run page say it. */
+const INTERRUPTED = "Its worker stopped before it finished. The answers it gave and what it spent are kept.";
+
+/** The choices that start a Run with the same sides as `run`, for "Run again"; `null` for a Rollout evaluation or a Suggestion's check, which only they start. */
+function sameSides(run: EvaluationRun): RunAgain | null {
+  if (run.kind !== "agent") return null;
+  const [first, second] = run.sides.map((side) => (side.kind === "draft" ? DRAFT_SIDE : (side.agent_version_id as string)));
+  const draft = run.sides.find((side) => side.kind === "draft");
+  let instructions: RunAgain["instructions"] = { number: null };
+  if (draft?.instructions_draft) instructions = INSTRUCTIONS_DRAFT;
+  else if (draft?.instructions_version_number != null) instructions = { number: draft.instructions_version_number };
+  return { first: first as string, second: second ?? NO_SECOND_SIDE, instructions };
+}
 
 function RunStatus({ run }: { run: EvaluationRun }) {
   const status = STATUS[run.status as keyof typeof STATUS];
@@ -317,7 +332,19 @@ function changesSummary(cases: { change: string | null }[]): string {
  * A Run: its status and progress while it runs (with Cancel), then each side's Evaluation score and
  * each case, Regressions first, then improvements, then the rest, with every side's answers.
  */
-function RunDetail({ path, runId, readOnly, focusCase }: { path: AgentPath; runId: string; readOnly: boolean; focusCase: string | undefined }) {
+function RunDetail({
+  path,
+  runId,
+  readOnly,
+  focusCase,
+  onRunAgain,
+}: {
+  path: AgentPath;
+  runId: string;
+  readOnly: boolean;
+  focusCase: string | undefined;
+  onRunAgain: (again: RunAgain) => void;
+}) {
   const headingId = useId();
   const focused = useRef<HTMLLIElement>(null);
   const results = useEvaluationRunResults(path, runId);
@@ -332,6 +359,7 @@ function RunDetail({ path, runId, readOnly, focusCase }: { path: AgentPath; runI
   const { run, cases } = results.data;
   const twoSided = run.sides.length > 1;
   const names = twoSided ? Object.fromEntries(run.sides.map((side) => [side.position, sideName(side)])) : null;
+  const again = run.status === "interrupted" && !readOnly ? sameSides(run) : null;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -356,12 +384,24 @@ function RunDetail({ path, runId, readOnly, focusCase }: { path: AgentPath; runI
             Cancel Run
           </button>
         )}
+        {again !== null && (
+          <button
+            type="button"
+            className={button.secondary}
+            onClick={() => {
+              onRunAgain(again);
+            }}
+          >
+            Run again
+          </button>
+        )}
       </div>
       <FormError message={evaluationFailure(cancel.error)} />
       {run.stale && (
         <Notice tone="warning">The Draft has changed since this Run: its results describe an earlier Draft revision.</Notice>
       )}
       {run.status === "cancelled" && <Notice tone="info">This Run was cancelled. The answers it gave before stopping are kept.</Notice>}
+      {run.status === "interrupted" && <Notice tone="warning">This Run was interrupted. {INTERRUPTED}</Notice>}
       {!inProgress(run) && (
         <div className="flex flex-wrap gap-x-8 gap-y-3">
           {run.sides.map((side) => (
@@ -435,6 +475,7 @@ function RunList({ runs, chosen, onChoose }: { runs: EvaluationRun[]; chosen: st
           {run.kind === "rollout" && <span className="font-medium text-ink-2">Rollout evaluation</span>}
           {run.kind === "suggestion" && <span className="font-medium text-ink-2">Suggestion&apos;s check</span>}
           {run.stale && <Badge kind="runStale" />}
+          {run.status === "interrupted" && <span className="text-ink-2">{INTERRUPTED}</span>}
           <span className="text-ink-2">
             {run.sides.map((side) => `${sideName(side)}: ${inProgress(run) ? "running" : percent(side.score)}`).join(" · ")}
           </span>
@@ -452,6 +493,9 @@ const DRAFT_SIDE = "draft";
 const NO_SECOND_SIDE = "";
 const CURRENT_INSTRUCTIONS = "current";
 const INSTRUCTIONS_DRAFT = "instructions-draft";
+
+/** What "Run again" opens the Evaluate dialog with: a Run's sides, and the Instructions its Draft answered with (an Instructions Version's number, the Instructions Draft, or `null` for none). */
+type RunAgain = { first: string; second: string; instructions: typeof INSTRUCTIONS_DRAFT | { number: number | null } };
 
 /** The estimated Cost of the Run the Evaluate dialog would start, read again as the choices change. */
 function EstimatedCost({ path, choice }: { path: AgentPath; choice: EvaluationRunChoice | null }) {
@@ -483,17 +527,34 @@ function EstimatedCost({ path, choice }: { path: AgentPath; choice: EvaluationRu
 }
 
 /**
+ * The Instructions the Evaluate dialog starts with: the Current Instructions Version, or for "Run
+ * again" what the Run's Draft answered with. An Instructions Version is named by number, so it is
+ * `undefined` until the history has loaded.
+ */
+function startingInstructions(again: RunAgain | null, versions: { id: string; number: number }[] | undefined): string | undefined {
+  if (again === null) return CURRENT_INSTRUCTIONS;
+  if (again.instructions === INSTRUCTIONS_DRAFT) return INSTRUCTIONS_DRAFT;
+  const { number } = again.instructions;
+  if (number === null) return CURRENT_INSTRUCTIONS;
+  if (versions === undefined) return undefined;
+  return versions.find((version) => version.number === number)?.id ?? CURRENT_INSTRUCTIONS;
+}
+
+/**
  * The Evaluate dialog: the two sides (the Live Version against the Draft by default, or the Draft
  * alone for an Agent never Published) and the Instructions the Draft answers with.
  */
 function EvaluateDialog({
   agent,
   organisationId,
+  again,
   onStarted,
   onClose,
 }: {
   agent: Agent;
   organisationId: string;
+  /** Starting from a Run's sides ("Run again") rather than the defaults. */
+  again: RunAgain | null;
   onStarted: (runId: string) => void;
   onClose: () => void;
 }) {
@@ -504,9 +565,9 @@ function EvaluateDialog({
   const instructions = useInstructionsVersions(organisationId, agent.project_id);
   const start = useStartEvaluationRun(path);
   const live = agent.live_version;
-  const [first, setFirst] = useState(live === null ? DRAFT_SIDE : live.id);
-  const [second, setSecond] = useState(live === null ? NO_SECOND_SIDE : DRAFT_SIDE);
-  const [draftInstructions, setDraftInstructions] = useState(CURRENT_INSTRUCTIONS);
+  const [first, setFirst] = useState(again?.first ?? (live === null ? DRAFT_SIDE : live.id));
+  const [second, setSecond] = useState(again?.second ?? (live === null ? NO_SECOND_SIDE : DRAFT_SIDE));
+  const [chosenInstructions, setDraftInstructions] = useState<string | null>(null);
   const same = first === second;
   const versionOptions = versions.data?.versions ?? (live === null ? [] : [{ id: live.id, number: live.number }]);
   const sideOptions = [
@@ -518,6 +579,10 @@ function EvaluateDialog({
   ];
   const history = instructions.data;
   const current = history?.versions.find((version) => version.id === history.current_version_id);
+  const starting = startingInstructions(again, history?.versions);
+  const draftInstructions = chosenInstructions ?? starting ?? CURRENT_INSTRUCTIONS;
+  // "Run again" waits for its Instructions Version to be found before it estimates or starts.
+  const ready = !same && (chosenInstructions !== null || starting !== undefined);
   const side = (value: string): NonNullable<EvaluationRunChoice["sides"]>[number] =>
     value === DRAFT_SIDE ? { kind: "draft" } : { kind: "version", version_id: value };
   const choice: EvaluationRunChoice = {
@@ -544,7 +609,7 @@ function EvaluateDialog({
           <button type="button" className={button.secondary} onClick={onClose}>
             Cancel
           </button>
-          <button type="submit" form={formId} className={button.primary} disabled={same || start.isPending}>
+          <button type="submit" form={formId} className={button.primary} disabled={!ready || start.isPending}>
             Start Run
           </button>
         </>
@@ -619,7 +684,7 @@ function EvaluateDialog({
             <p className={field.hint}>A Version always answers with the Instructions it pins.</p>
           </div>
         )}
-        <EstimatedCost path={path} choice={same ? null : choice} />
+        <EstimatedCost path={path} choice={ready ? choice : null} />
       </form>
     </Dialog>
   );
@@ -844,7 +909,8 @@ function EvaluationSetAndRuns({ agent, organisationId, focus }: { agent: Agent; 
   const cases = useEvaluationCases(path, filters);
   const runs = useEvaluationRuns(path);
   const remove = useDeleteEvaluationCase(path);
-  const [evaluating, setEvaluating] = useState(false);
+  // The Evaluate dialog: closed, open with the defaults (`null`), or open with a Run's sides ("Run again").
+  const [evaluating, setEvaluating] = useState<RunAgain | null | false>(false);
   const [copying, setCopying] = useState(false);
   const [editing, setEditing] = useState<EvaluationCase | "new" | null>(null);
   const [deleting, setDeleting] = useState<EvaluationCase | null>(null);
@@ -885,7 +951,7 @@ function EvaluationSetAndRuns({ agent, organisationId, focus }: { agent: Agent; 
                   className={button.primary}
                   disabled={noCases || running}
                   onClick={() => {
-                    setEvaluating(true);
+                    setEvaluating(null);
                   }}
                 >
                   {running ? "Evaluating…" : "Evaluate"}
@@ -940,13 +1006,21 @@ function EvaluationSetAndRuns({ agent, organisationId, focus }: { agent: Agent; 
         {runs.data && runs.data.length === 0 && <p className={text.muted}>No Runs yet. Evaluate to answer the set with the Draft.</p>}
         {runs.data && runs.data.length > 0 && <RunList runs={runs.data} chosen={shownRun} onChoose={setChosen} />}
         {shownRun !== null && (
-          <RunDetail key={shownRun} path={path} runId={shownRun} readOnly={archived} focusCase={shownRun === focus.run ? focus.case : undefined} />
+          <RunDetail
+            key={shownRun}
+            path={path}
+            runId={shownRun}
+            readOnly={archived}
+            focusCase={shownRun === focus.run ? focus.case : undefined}
+            onRunAgain={setEvaluating}
+          />
         )}
       </section>
-      {evaluating && (
+      {evaluating !== false && (
         <EvaluateDialog
           agent={agent}
           organisationId={organisationId}
+          again={evaluating}
           onStarted={(runId) => {
             setEvaluating(false);
             setChosen(runId);

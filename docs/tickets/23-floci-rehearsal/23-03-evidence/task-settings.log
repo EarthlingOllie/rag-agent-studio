@@ -1,0 +1,19 @@
+# The worker task's settings for the CA, queues, cache and database, and a job it took from the HTTPS queue
+AWS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+AWS_ENDPOINT_URL=http://floci:4566
+DATABASE_HOST=172.29.0.2
+DATABASE_PORT=7001
+DATABASE_TLS=false
+GENERAL_QUEUE_URL=https://floci:4566/000000000000/studio-local-queue-general
+REDIS_HOST=floci
+REDIS_TLS=true
+REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+149
+floci-root-ca.crt
+cache TLS verified: ((('commonName', 'Floci Local CA'),),)
+Connected to sqs://:**@localhost//
+Task jobs.sweep[6736ac80-e363-4f62-8514-8f0a55d9ae7c] succeeded in 0.19478604600590188s: [Redacted]
+# The API task (second run): the proxies it trusts and its cache token
+TRUSTED_PROXIES=10.0.0.0/16,127.0.0.0/8,172.29.0.0/16
+REDIS_AUTH_TOKEN=<set from Secrets Manager>

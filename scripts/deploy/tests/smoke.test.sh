@@ -34,8 +34,15 @@ routes() {
   jq -n --arg hs "$1" --arg hb "$2" --arg ss "$3" --arg st "$4" --arg sb "$5" --arg wp "$6" --arg ws "$7" --arg csp "$8" '{
     "/api/health": {status: ($hs | tonumber), headers: {"Content-Type": "application/json"}, body: $hb},
     "/": {status: ($ss | tonumber), headers: {"Content-Type": $st}, body: $sb},
-    ($wp): {status: ($ws | tonumber), headers: ({"Content-Type": "text/html; charset=utf-8"} + (if $csp == "" then {} else {"Content-Security-Policy": $csp} end)), body: "<!doctype html><title>shell</title>"}
+    ($wp): {status: ($ws | tonumber), headers: ({"Content-Type": "text/html; charset=utf-8"} + (if $csp == "" then {} else {"Content-Security-Policy": $csp} end)), body: "<!doctype html><title>shell</title>"},
+    "/projects": {status: ($ss | tonumber), headers: {"Content-Type": $st}, body: $sb},
+    "/api/smoke-check-not-found": {status: 404, headers: {"Content-Type": "application/json"}, body: "{\"detail\":\"Not Found\"}"}
   }'
+}
+
+# with <routes json> <path> <status> <content type> <body>: the routes with one path's answer replaced.
+with() {
+  jq --arg p "$2" --arg s "$3" --arg t "$4" --arg b "$5" '.[$p] = {status: ($s | tonumber), headers: {"Content-Type": $t}, body: $b}' <<<"$1"
 }
 
 url=""
@@ -59,7 +66,7 @@ check() {
 shell=/widget/a/smoke-check
 ok_routes=$(routes 200 "$HEALTHY" 200 "text/html" "$STUDIO" "$shell" 404 "frame-ancestors *")
 
-check passes_when_health_studio_and_the_widget_shell_respond 0 "Smoke check passed" "$ok_routes"
+check passes_when_health_studio_a_deep_link_an_api_404_and_the_widget_shell_respond 0 "Smoke check passed" "$ok_routes"
 check passes_against_a_live_agent_whose_shell_names_its_allowed_origins 0 "Smoke check passed" \
   "$(routes 200 "$HEALTHY" 200 "text/html; charset=utf-8" "$STUDIO" /widget/a/agt_live123 200 "frame-ancestors https://example.com")" agt_live123
 check fails_when_the_health_endpoint_reports_an_error 1 "health: /api/health" \
@@ -72,6 +79,16 @@ check fails_when_the_studio_page_is_not_the_studio 1 "studio: /" \
   "$(routes 200 "$HEALTHY" 200 "text/html" "<html><body>Welcome to nginx</body></html>" "$shell" 404 "frame-ancestors *")"
 check fails_when_the_studio_is_not_html 1 "studio: /" \
   "$(routes 200 "$HEALTHY" 200 "text/plain" "$STUDIO" "$shell" 404 "frame-ancestors *")"
+# Deep links load the Studio (the SPA fallback function on AWS, the front end on the rehearsal: ticket 23-04), and the
+# API's own 404s survive it.
+check fails_when_a_deep_link_is_a_404 1 "deep link: /projects" \
+  "$(with "$ok_routes" /projects 404 "application/xml" "<Error>NoSuchKey</Error>")"
+check fails_when_a_deep_link_is_not_the_studio 1 "deep link: /projects" \
+  "$(with "$ok_routes" /projects 200 "text/html" "<html><body>Welcome to nginx</body></html>")"
+check fails_when_an_api_404_is_replaced_by_the_studio 1 "api 404: /api/smoke-check-not-found" \
+  "$(with "$ok_routes" /api/smoke-check-not-found 200 "text/html" "$STUDIO")"
+check fails_when_an_api_404_keeps_its_status_but_not_its_body 1 "api 404: /api/smoke-check-not-found" \
+  "$(with "$ok_routes" /api/smoke-check-not-found 404 "text/html" "$STUDIO")"
 check fails_when_the_widget_shell_has_no_csp 1 "widget shell: $shell" \
   "$(routes 200 "$HEALTHY" 200 "text/html" "$STUDIO" "$shell" 404 "")"
 check fails_when_the_widget_shell_csp_has_no_frame_ancestors 1 "widget shell: $shell" \

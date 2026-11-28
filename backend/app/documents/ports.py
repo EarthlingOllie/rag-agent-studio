@@ -12,9 +12,15 @@ from dataclasses import dataclass
 
 import httpx2
 
+from app.core.clock import Clock, SystemClock
 from app.core.settings import Settings
 from app.crypto.envelope import EnvelopeEncryption
-from app.documents.converter import DoclingConverter, DocumentConverter, FakeConverter
+from app.documents.converter import (
+    DoclingConverter,
+    DocumentConverter,
+    FakeConverter,
+    InterruptibleConverter,
+)
 from app.embeddings.fake import HashEmbedder
 from app.embeddings.port import Embedder
 from app.gateway.adapters import build_model_gateway
@@ -39,6 +45,9 @@ class IngestionPorts:
     open_gateway: Callable[[httpx2.AsyncClient], ModelGateway]
     # Flags Chunks that look like instructions aimed at an AI.
     classifier: InjectionClassifier
+    # The clock claims and heartbeats are timed by (job reliability, ADR-0020). The API points
+    # it at its own clock, so tests that move theirs move ingestion's too.
+    clock: Callable[[], Clock] = SystemClock
 
 
 def _local_embedder(settings: Settings) -> Embedder:
@@ -64,6 +73,8 @@ def build_ports(settings: Settings, envelope: EnvelopeEncryption) -> IngestionPo
     converter: DocumentConverter = (
         FakeConverter() if settings.document_converter == "fake" else DoclingConverter()
     )
+    if settings.converter_test_interrupts:
+        converter = InterruptibleConverter(converter)
     embedder = _local_embedder(settings)
     return IngestionPorts(
         object_store=build_object_store(settings),

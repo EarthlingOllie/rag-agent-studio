@@ -48,7 +48,7 @@ output "private_route_table_id" {
   value       = aws_route_table.private.id
 }
 
-output "endpoint_security_group_id" {
-  description = "Security group on the interface endpoints. It already admits HTTPS from the whole VPC."
-  value       = aws_security_group.endpoints.id
+output "vpc_endpoints" {
+  description = "Every VPC endpoint the module creates, as service name to endpoint type. Only the S3 gateway: no interface endpoints."
+  value       = { (aws_vpc_endpoint.s3.service_name) = aws_vpc_endpoint.s3.vpc_endpoint_type }
 }
