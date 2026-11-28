@@ -84,6 +84,8 @@ test("each metric reads in its own units, with what its sample size counts", asy
     fallback_rate: [0.25, "25%", "n (replies)"],
     p95_latency_ms: [1480, "1.5 s", "n (replies)"],
     live_score: [0.75, "75%", "n (judged replies)"],
+    calls: [4, "4", "n (Calls)"],
+    call_minutes: [11, "11 min", "n (Calls)"],
   };
   setUp({
     respond: (query) => ({
@@ -105,6 +107,8 @@ test("each metric reads in its own units, with what its sample size counts", asy
     "Fallback rate",
     "p95 latency",
     "Live score",
+    "Calls",
+    "Call minutes",
   ]);
   const read: string[][] = [];
   for (const option of options) {

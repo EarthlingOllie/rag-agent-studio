@@ -79,7 +79,13 @@ function Kpis({ kpis }: { kpis: VersionKpis }) {
       <KpiCard
         title="Cost per Conversation"
         value={cost.per_conversation_usd === null ? "No Conversations yet" : dollars(cost.per_conversation_usd)}
-        details={<p>{`${dollars(cost.total_usd)} in total, at the prices of the time`}</p>}
+        details={
+          <p>
+            {Number(cost.voice_usd) === 0
+              ? `${dollars(cost.total_usd)} in total, at the prices of the time`
+              : `${dollars(cost.total_usd)} in total, including ${dollars(cost.voice_usd)} of Voice Cost for Calls, at the prices of the time`}
+          </p>
+        }
       />
       <KpiCard
         title="Thumbs-up rate"

@@ -40,6 +40,8 @@ export const defaultDraft: Draft = {
       rate_conversation: null,
       unavailable_message: null,
       searching_status: null,
+      message_choice: null,
+      call_choice: null,
     },
     rating_prompt_after: 3,
   },
@@ -97,6 +99,13 @@ export const bedrock = credential(
   ["chat"],
 );
 
+export const elevenLabs = credential(
+  "c1000000-0000-4000-8000-000000000005",
+  "ElevenLabs",
+  "elevenlabs",
+  ["voice"],
+);
+
 /** Models per credential and capability, as `GET …/credentials/{id}/models/{capability}` answers. */
 export const offeredModels: Record<string, ModelOut[]> = {
   [`${openAi.id}/chat`]: [
@@ -115,6 +124,15 @@ export const offeredModels: Record<string, ModelOut[]> = {
   [`${voyage.id}/rerank`]: [
     { id: "rerank-2.5", name: "rerank-2.5", supports_tools: false },
     { id: "rerank-2.5-lite", name: "rerank-2.5-lite", supports_tools: false },
+  ],
+};
+
+/** The voices of each voice-capable credential's account, as `GET …/credentials/{id}/voices`
+ * answers. */
+export const offeredVoices: Record<string, Schemas["VoiceOut"][]> = {
+  [elevenLabs.id]: [
+    { id: "voice-ada", name: "Ada", sample_url: "https://voices.example.test/ada.mp3" },
+    { id: "voice-bryn", name: "Bryn", sample_url: null },
   ],
 };
 
@@ -152,6 +170,8 @@ export const hrHelper: Agent = {
   live_version: null,
   has_unpublished_changes: false,
   budget_exhausted: false,
+  call_budget_exhausted: false,
+  calls_failing: false,
   block_rate_alert: false,
   live_score_drop_alert: false,
 };
@@ -460,6 +480,16 @@ export function fakeAgentsApi(
     tokensUsed?: number;
     /** Answers each read of today's usage instead of the stored one. */
     tokenUsage?: () => Response | undefined;
+    /** Today's Call minutes (0 when left out). */
+    callMinutesUsed?: number;
+    /** Answers each read of today's Call minutes instead of the stored ones. */
+    callMinutes?: () => Response | undefined;
+    /** The Call settings every Agent starts with; calling off when left out. */
+    callSettings?: Partial<Schemas["OperationalSettingsOut"]>;
+    /** Decides each Operational Settings change's response instead of accepting it. */
+    changeSettings?: (
+      change: Schemas["OperationalSettingsChange"],
+    ) => Response | undefined;
     /** Each Agent's Versions, newest first. */
     versions?: Record<string, AgentVersion[]>;
     /** Decides each diff's response; by default no changes. `from` and `to` are as sent. */
@@ -526,8 +556,30 @@ export function fakeAgentsApi(
     ip_messages_per_minute: 30,
     daily_token_budget: 1_000_000,
     live_sample_rate: 0,
+    calls_enabled: false,
+    call_credential_id: null,
+    call_voice_id: null,
+    spoken_greeting: "",
+    max_call_minutes: 10,
+    call_minutes_budget: 60,
+    calls_failing: false,
+    ...options.callSettings,
   };
   server.use(
+    http.get(
+      "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/call-minutes",
+      () => {
+        const used = options.callMinutesUsed ?? 0;
+        const minutes: Schemas["CallMinutesOut"] = {
+          date: "2026-11-05",
+          minutes_used: used,
+          call_minutes_budget: settings.call_minutes_budget,
+          exhausted: used >= settings.call_minutes_budget,
+          resets_at: "2026-11-06T00:00:00Z",
+        };
+        return options.callMinutes?.() ?? HttpResponse.json(minutes);
+      },
+    ),
     http.get(
       "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/token-usage",
       () => {
@@ -551,6 +603,8 @@ export function fakeAgentsApi(
       async ({ request }) => {
         const body = (await request.json()) as Schemas["OperationalSettingsChange"];
         requests.push({ route: "operational-settings", body });
+        const refused = options.changeSettings?.(body);
+        if (refused) return refused;
         // Like the API: lower-cased, without a trailing slash; a non-origin is a 422.
         const origins = body.allowed_origins?.map((origin) =>
           origin.trim().toLowerCase().replace(/\/$/, ""),
@@ -581,6 +635,14 @@ export function fakeAgentsApi(
           ip_messages_per_minute: body.ip_messages_per_minute ?? settings.ip_messages_per_minute,
           daily_token_budget: body.daily_token_budget ?? settings.daily_token_budget,
           live_sample_rate: body.live_sample_rate ?? settings.live_sample_rate,
+          calls_enabled: body.calls_enabled ?? settings.calls_enabled,
+          call_credential_id: body.call_credential_id ?? settings.call_credential_id,
+          call_voice_id: body.call_voice_id ?? settings.call_voice_id,
+          spoken_greeting: body.spoken_greeting?.trim() ?? settings.spoken_greeting,
+          max_call_minutes: body.max_call_minutes ?? settings.max_call_minutes,
+          call_minutes_budget: body.call_minutes_budget ?? settings.call_minutes_budget,
+          // Like the API: saving the Call settings sets the remote agent up again, clearing the alert.
+          calls_failing: body.calls_enabled === undefined ? settings.calls_failing : false,
         };
         return HttpResponse.json(settings);
       },
@@ -835,6 +897,18 @@ export function fakeAgentsApi(
     ),
     http.get("*/api/organisations/:organisationId/credentials", () =>
       HttpResponse.json(options.credentials ?? [openAi, claude, voyage]),
+    ),
+    http.get(
+      "*/api/organisations/:organisationId/credentials/:credentialId/voices",
+      ({ params }) => {
+        const voices = offeredVoices[params.credentialId as string];
+        return voices
+          ? HttpResponse.json(voices)
+          : HttpResponse.json(
+              { detail: "This credential doesn't have the voice Capability, so it has no voices." },
+              { status: 422 },
+            );
+      },
     ),
     http.get(
       "*/api/organisations/:organisationId/credentials/:credentialId/models/:capability",

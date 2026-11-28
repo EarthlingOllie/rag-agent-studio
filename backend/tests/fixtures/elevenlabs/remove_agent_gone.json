@@ -1,0 +1,17 @@
+[
+  {
+    "request": {
+      "method": "GET",
+      "url": "https://api.elevenlabs.io/v1/convai/agents/agent_gone"
+    },
+    "response": {
+      "status": 404,
+      "json": {
+        "detail": {
+          "status": "agent_not_found",
+          "message": "Agent not found"
+        }
+      }
+    }
+  }
+]

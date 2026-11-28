@@ -418,7 +418,11 @@ async def test_a_version_with_no_visitor_use_has_empty_kpis(
         "messages": 0,
         "low_confidence": True,
         "tokens": {"n": 0, "mean": None, "p95": None},
-        "cost": {"total_usd": "0.000000000", "per_conversation_usd": None},
+        "cost": {
+            "total_usd": "0.000000000",
+            "per_conversation_usd": None,
+            "voice_usd": "0.000000000",
+        },
         "thumbs_up": {
             "up": 0,
             "down": 0,

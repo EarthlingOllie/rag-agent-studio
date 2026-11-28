@@ -35,7 +35,8 @@ from app.default_model.service import default_model_references
 from app.documents import api as documents_api
 from app.documents.ports import build_ports, install_ports
 from app.embed import api as embed_api
-from app.embed import branding_api
+from app.embed import branding_api, calls_api, turn_api
+from app.embed.call_settings import call_settings_references
 from app.embed.tokens import TokenSigner
 from app.evaluation import api as evaluation_api
 from app.evaluation import rollout_api as evaluation_rollout_api
@@ -48,6 +49,7 @@ from app.gateway.adapters import build_model_gateway
 from app.guardrails.pipeline import build_pipeline
 from app.mail.factory import build_mailer
 from app.playground import api as playground_api
+from app.playground import calls_api as playground_calls_api
 from app.pricing import api as pricing_api
 from app.projects import api as projects_api
 from app.projects import embedding_api, instructions_api
@@ -59,6 +61,10 @@ from app.tags import api as tags_api
 from app.tenancy import api as tenancy_api
 from app.tenancy import invites_api, members_api, switcher_api
 from app.theme import api as theme_api
+from app.voice import api as voice_api
+from app.voice import fake_api as fake_voice_api
+from app.voice.adapters import build_voice_layer
+from app.voice.remote import VoicePorts, install_voice_ports
 from app.worker.celery_app import configure_celery
 
 logger = logging.getLogger(__name__)
@@ -77,6 +83,7 @@ ROUTERS: Sequence[APIRouter] = (
     switcher_api.router,
     credentials_api.router,
     credentials_api.providers_router,
+    voice_api.router,
     default_model_api.router,
     evaluation_settings_api.router,
     pricing_api.router,
@@ -91,6 +98,7 @@ ROUTERS: Sequence[APIRouter] = (
     agent_versions_api.router,
     bulk_api.router,
     playground_api.router,
+    playground_calls_api.router,
     evaluation_api.router,
     evaluation_api.documents_router,
     evaluation_rollout_api.router,
@@ -102,6 +110,9 @@ ROUTERS: Sequence[APIRouter] = (
     embed_api.settings_router,
     branding_api.router,
     embed_api.widget_router,
+    calls_api.router,
+    turn_api.router,
+    fake_voice_api.router,
     feedback_api.widget_router,
     feedback_api.rating_router,
     embed_api.shell_router,
@@ -134,6 +145,16 @@ def _lifespan(
         )
         app.state.credential_verifier = build_verifier(
             settings, app.state.provider_http, app.state.clock
+        )
+        # The voice layer behind Calls: ElevenLabs, or the scripted fake.
+        app.state.voice_layer = build_voice_layer(settings)
+        # Tasks that run eagerly here (tests) reach remote agents through it too.
+        install_voice_ports(
+            VoicePorts(
+                layer=app.state.voice_layer,
+                envelope=app.state.envelope,
+                public_base_url=str(settings.public_base_url or settings.studio_url),
+            )
         )
         # Pydantic AI's provider clients take httpx2 clients; every model call shares this one.
         app.state.model_http = httpx2.AsyncClient(timeout=settings.model_timeout_seconds)
@@ -186,6 +207,7 @@ def create_app(*, extra_span_processors: Sequence[SpanProcessor] = ()) -> FastAP
     app.state.credential_references.register(agent_references)
     app.state.credential_references.register(project_embedding_references)
     app.state.credential_references.register(evaluation_model_references)
+    app.state.credential_references.register(call_settings_references)
     for router in ROUTERS:
         app.include_router(router)
     # Headers are captured for debugging; the scrubbing processor redacts the sensitive ones.

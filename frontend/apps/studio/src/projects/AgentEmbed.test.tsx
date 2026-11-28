@@ -2,7 +2,7 @@ import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { http, HttpResponse } from "msw";
 
-import { DEFAULT_UNAVAILABLE_TEXT, fakeAgentsApi, hrHelper, oldHelper } from "../test/agents";
+import { DEFAULT_UNAVAILABLE_TEXT, elevenLabs, fakeAgentsApi, hrHelper, oldHelper, openAi } from "../test/agents";
 import { adaSession, fakeAuthApi } from "../test/auth";
 import { fakeEvaluationBudgetApi } from "../test/models";
 import { fakeProjectsApi, hrProject } from "../test/projects";
@@ -280,7 +280,9 @@ test("an Editor sets the rate limits per Conversation and per IP address", async
   const embed = await embedSection();
   const perConversation = within(embed).getByLabelText("Messages per minute per Conversation");
   const perIp = within(embed).getByLabelText("Messages per minute per IP address");
-  expect(await within(embed).findByDisplayValue("10")).toBe(perConversation);
+  await waitFor(() => {
+    expect(perConversation).toHaveValue(10);
+  });
   expect(perIp).toHaveValue(30);
 
   await user.clear(perConversation);
@@ -381,6 +383,102 @@ test("the snippet chooses a bubble or an inline container by its data attributes
   expect(within(embed).getByLabelText("Embed Snippet")).toHaveTextContent(`${start} data-launcher="inline" async></script>`);
 });
 
+// The Call limits
+
+test("the Call minutes meter shows today's minutes against the Call minutes budget, beside the Token Budget", async () => {
+  setUp({ callMinutesUsed: 15 });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  const card = within(embed).getByRole("region", { name: "Call limits" });
+  const meter = await within(card).findByRole("meter", { name: "Call minutes today" });
+  await waitFor(() => {
+    expect(meter).toHaveAttribute("aria-valuenow", "15");
+  });
+  expect(meter).toHaveAttribute("aria-valuemax", "60");
+  expect(within(card).getByText("15 of 60 Call minutes used today (25%).")).toBeInTheDocument();
+  expect(within(card).getByLabelText("Maximum Call length (minutes)")).toHaveValue(10);
+  expect(within(card).getByLabelText("Call minutes per day")).toHaveValue(60);
+  expect(within(card).queryByText(/Call minutes budget is spent/)).not.toBeInTheDocument();
+  // Beside the Token Budget's card.
+  const regions = within(embed).getAllByRole("region").map((region) => region.getAttribute("aria-label"));
+  expect(regions.indexOf("Call limits")).toBe(regions.indexOf("Token Budget") + 1);
+});
+
+test("a spent Call minutes budget is explained beside its meter", async () => {
+  setUp({ callMinutesUsed: 63 });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  expect(
+    await within(embed).findByText(
+      "Today's Call minutes budget is spent: Calls are refused and Visitors are offered messaging until midnight UTC, or until you raise the budget.",
+    ),
+  ).toBeInTheDocument();
+  expect(within(embed).getByRole("meter", { name: "Call minutes today" })).toHaveAttribute("aria-valuenow", "60");
+  expect(within(embed).getByText("63 of 60 Call minutes used today (100%).")).toBeInTheDocument();
+});
+
+test("today's Call minutes that can't be loaded say so", async () => {
+  setUp({ callMinutes: () => HttpResponse.json({ detail: "Boom" }, { status: 500 }) });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+
+  expect(await within(embed).findByText("Today's Call minutes could not be loaded.")).toBeInTheDocument();
+  expect(within(embed).queryByRole("meter", { name: "Call minutes today" })).not.toBeInTheDocument();
+});
+
+test("an Editor sets the Maximum Call length and the Call minutes budget, and the meter follows", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({ callMinutesUsed: 30 });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const card = within(embed).getByRole("region", { name: "Call limits" });
+  const length = within(card).getByLabelText("Maximum Call length (minutes)");
+  const budget = within(card).getByLabelText("Call minutes per day");
+  expect(await within(card).findByDisplayValue("10")).toBe(length);
+
+  await user.clear(length);
+  await user.type(length, "5");
+  await user.clear(budget);
+  await user.type(budget, "120");
+  await user.click(within(card).getByRole("button", { name: "Save Call limits" }));
+
+  expect(await within(card).findByText("Saved. The new limits apply to the next Call.")).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "operational-settings")).toEqual([
+    { route: "operational-settings", body: { max_call_minutes: 5, call_minutes_budget: 120 } },
+  ]);
+  expect(await within(card).findByText("30 of 120 Call minutes used today (25%).")).toBeInTheDocument();
+  expect(length).toHaveValue(5);
+  expect(budget).toHaveValue(120);
+});
+
+test("refused Call limits are explained", async () => {
+  const user = userEvent.setup();
+  setUp({
+    changeSettings: () =>
+      HttpResponse.json(
+        {
+          detail: [
+            { loc: ["body", "call_minutes_budget"], msg: "Input should be less than or equal to 1000000", type: "less_than_equal" },
+          ],
+        },
+        { status: 422 },
+      ),
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const embed = await embedSection();
+  const card = within(embed).getByRole("region", { name: "Call limits" });
+  const budget = within(card).getByLabelText("Call minutes per day");
+  await within(card).findByDisplayValue("60");
+
+  await user.clear(budget);
+  await user.type(budget, "2000000");
+  await user.click(within(card).getByRole("button", { name: "Save Call limits" }));
+
+  expect(await within(card).findByRole("alert")).toHaveTextContent(/less than or equal to 1000000/);
+});
+
 // The Token Budget
 
 const usagePath = "*/api/organisations/:organisationId/projects/:projectId/agents/:agentId/token-usage";
@@ -427,7 +525,7 @@ test("today's usage that can't be loaded says so", async () => {
   const embed = await embedSection();
 
   expect(await within(embed).findByText("Today's usage could not be loaded.")).toBeInTheDocument();
-  expect(within(embed).queryByRole("meter")).not.toBeInTheDocument();
+  expect(within(embed).queryByRole("meter", { name: "Tokens used today" })).not.toBeInTheDocument();
 });
 
 test("an Editor sets the daily Token Budget and the meter follows", async () => {
@@ -591,4 +689,216 @@ test("an Evaluation budget that can't be loaded keeps the Live sample rate disab
 
   expect(await within(card).findByText("The Evaluation budget could not be loaded. Try again shortly.")).toBeInTheDocument();
   expect(within(card).getByLabelText("Visitor replies judged (%)")).toBeDisabled();
+});
+
+/** The Call settings card, once the saved settings are loaded. */
+async function callSettings() {
+  const card = await screen.findByRole("region", { name: "Call settings" }, { timeout: 5000 });
+  await waitFor(() => {
+    expect(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" })).toBeEnabled();
+  });
+  return card;
+}
+
+const ELEVENLABS_ONLY = [openAi, elevenLabs];
+
+test("calling is off by default, and without a voice-capable credential the Editor is told who can add one", async () => {
+  setUp();
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  expect(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" })).not.toBeChecked();
+  expect(
+    await within(card).findByText(/The Organisation has no voice-capable credential, so the Agent can't take Calls/),
+  ).toBeInTheDocument();
+  expect(within(card).getByRole("link", { name: "Organisation settings" })).toHaveAttribute(
+    "href",
+    `/organisations/${organisationId}/settings/credentials`,
+  );
+  expect(within(card).getByText("Choose a credential to see its voices.")).toBeInTheDocument();
+  // Only voice-capable credentials can be chosen.
+  expect(within(card).getAllByRole("option").map((option) => option.textContent)).toEqual(["Choose a credential"]);
+});
+
+test("an Editor turns calling on with a credential, a voice whose sample plays, and a spoken greeting", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({ credentials: ELEVENLABS_ONLY });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  await user.click(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" }));
+  await user.selectOptions(within(card).getByRole("combobox", { name: "Credential" }), "ElevenLabs");
+  const voice = await within(card).findByRole("combobox", { name: "Voice" });
+  expect(within(voice).getAllByRole("option").map((option) => option.textContent)).toEqual([
+    "Choose a voice",
+    "Ada",
+    "Bryn",
+  ]);
+  await user.selectOptions(voice, "Ada");
+  expect(within(card).getByLabelText("Sample of Ada")).toHaveAttribute("src", "https://voices.example.test/ada.mp3");
+  await user.type(within(card).getByRole("textbox", { name: "Spoken greeting" }), "Hello, how can I help?");
+  await user.click(within(card).getByRole("button", { name: "Save Call settings" }));
+
+  expect(await within(card).findByText("Saved. Calls use these settings from now on.")).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "operational-settings")).toEqual([
+    {
+      route: "operational-settings",
+      body: {
+        calls_enabled: true,
+        call_credential_id: elevenLabs.id,
+        call_voice_id: "voice-ada",
+        spoken_greeting: "Hello, how can I help?",
+      },
+    },
+  ]);
+  expect(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" })).toBeChecked();
+});
+
+test("the saved Call settings are shown, a voice without a sample says so, and calling is turned off", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({
+    credentials: ELEVENLABS_ONLY,
+    callSettings: {
+      calls_enabled: true,
+      call_credential_id: elevenLabs.id,
+      call_voice_id: "voice-bryn",
+      spoken_greeting: "Hi.",
+    },
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  expect(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" })).toBeChecked();
+  expect(within(card).getByRole("combobox", { name: "Credential" })).toHaveValue(elevenLabs.id);
+  expect(await within(card).findByRole("combobox", { name: "Voice" })).toHaveValue("voice-bryn");
+  expect(within(card).getByText("Bryn has no sample to play.")).toBeInTheDocument();
+  expect(within(card).getByRole("textbox", { name: "Spoken greeting" })).toHaveValue("Hi.");
+
+  await user.click(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" }));
+  await user.click(within(card).getByRole("button", { name: "Save Call settings" }));
+
+  expect(await within(card).findByText("Saved. Calls use these settings from now on.")).toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "operational-settings")).toEqual([
+    {
+      route: "operational-settings",
+      body: { calls_enabled: false, call_credential_id: elevenLabs.id, call_voice_id: "voice-bryn", spoken_greeting: "Hi." },
+    },
+  ]);
+});
+
+test("choosing another credential asks for a voice from its account", async () => {
+  const user = userEvent.setup();
+  setUp({
+    credentials: ELEVENLABS_ONLY,
+    callSettings: { call_credential_id: elevenLabs.id, call_voice_id: "voice-ada" },
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+  expect(await within(card).findByRole("combobox", { name: "Voice" })).toHaveValue("voice-ada");
+
+  await user.selectOptions(within(card).getByRole("combobox", { name: "Credential" }), "Choose a credential");
+
+  expect(within(card).getByText("Choose a credential to see its voices.")).toBeInTheDocument();
+});
+
+test("a refused Call settings change says which field and why", async () => {
+  const user = userEvent.setup();
+  setUp({
+    credentials: ELEVENLABS_ONLY,
+    changeSettings: () =>
+      HttpResponse.json(
+        {
+          detail: [
+            {
+              loc: ["body", "call_voice_id"],
+              msg: "Choose the voice the Agent speaks with.",
+              type: "missing",
+            },
+          ],
+        },
+        { status: 422 },
+      ),
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  await user.click(within(card).getByRole("checkbox", { name: "Visitors can call the Agent" }));
+  await user.click(within(card).getByRole("button", { name: "Save Call settings" }));
+
+  expect(await within(card).findByRole("alert")).toHaveTextContent("Choose the voice the Agent speaks with.");
+});
+
+test("when ElevenLabs can't set the Agent up, the Editor is told", async () => {
+  const user = userEvent.setup();
+  const detail =
+    "ElevenLabs couldn't be reached with this credential. Check the credential in Organisation settings, Credentials, or try again shortly.";
+  setUp({
+    credentials: ELEVENLABS_ONLY,
+    changeSettings: () => HttpResponse.json({ detail }, { status: 502 }),
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  await user.click(within(card).getByRole("button", { name: "Save Call settings" }));
+
+  expect(await within(card).findByRole("alert")).toHaveTextContent(detail);
+});
+
+test("when Calls are failing, Embed & limits says so, and saving the Call settings sets the Agent up again and clears it", async () => {
+  const user = userEvent.setup();
+  const { requests } = setUp({
+    credentials: ELEVENLABS_ONLY,
+    callSettings: {
+      calls_enabled: true,
+      call_credential_id: elevenLabs.id,
+      call_voice_id: "voice-ada",
+      spoken_greeting: "Hi.",
+      calls_failing: true,
+    },
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  expect(within(card).getByRole("alert")).toHaveTextContent(
+    "Calls are failing: ElevenLabs couldn't start the Agent's last Call, so Visitors who chose Call were given the unavailable text and the chat. Messaging still works. Check the credential, then save the Call settings to set the Agent up again.",
+  );
+  await user.click(within(card).getByRole("button", { name: "Save Call settings" }));
+
+  expect(await within(card).findByText("Saved. Calls use these settings from now on.")).toBeInTheDocument();
+  expect(within(card).queryByRole("alert")).not.toBeInTheDocument();
+  expect(requests.filter((r) => r.route === "operational-settings")).toHaveLength(1);
+});
+
+test("an Agent whose Calls start has no Calls failing alert on Embed & limits", async () => {
+  setUp({ credentials: ELEVENLABS_ONLY, callSettings: { calls_enabled: true } });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  expect(within(card).queryByText(/Calls are failing/)).not.toBeInTheDocument();
+});
+
+test("voices that can't be listed are explained", async () => {
+  setUp({
+    credentials: [{ ...elevenLabs, id: "c1000000-0000-4000-8000-0000000000ff", name: "Revoked" }],
+    callSettings: { call_credential_id: "c1000000-0000-4000-8000-0000000000ff" },
+  });
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  expect(
+    await within(card).findByText("This credential doesn't have the voice Capability, so it has no voices."),
+  ).toBeInTheDocument();
+});
+
+test("credentials that can't be loaded are reported in the Call settings", async () => {
+  setUp();
+  server.use(
+    http.get("*/api/organisations/:organisationId/credentials", () =>
+      HttpResponse.json({ detail: "Boom" }, { status: 500 }),
+    ),
+  );
+  renderStudio(agentPage(liveHelper.id));
+  const card = await callSettings();
+
+  expect(await within(card).findByText("The credentials could not be loaded. Try again shortly.")).toBeInTheDocument();
 });

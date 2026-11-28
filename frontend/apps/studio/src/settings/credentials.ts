@@ -30,11 +30,18 @@ export const BEDROCK_FAILURE_MESSAGES: Record<CheckFailure, string> = {
   provider_unreachable: "We couldn't reach AWS to check the credential. Try again in a few minutes.",
 };
 
+/** ElevenLabs refuses a key whose permissions leave out ElevenLabs Agents as it refuses a wrong one. */
+export const ELEVENLABS_FAILURE_MESSAGES: Record<CheckFailure, string> = {
+  ...FAILURE_MESSAGES,
+  invalid_key: "ElevenLabs rejected this API key. Check it was copied in full, and that its permissions allow ElevenLabs Agents.",
+};
+
 export function failureMessages(provider: ProviderId): Record<CheckFailure, string> {
-  return provider === "bedrock" ? BEDROCK_FAILURE_MESSAGES : FAILURE_MESSAGES;
+  if (provider === "bedrock") return BEDROCK_FAILURE_MESSAGES;
+  return provider === "elevenlabs" ? ELEVENLABS_FAILURE_MESSAGES : FAILURE_MESSAGES;
 }
 
-export const CAPABILITY_NAMES: Record<Capability, string> = { chat: "Chat", embeddings: "Embeddings", rerank: "Reranking" };
+export const CAPABILITY_NAMES: Record<Capability, string> = { chat: "Chat", embeddings: "Embeddings", rerank: "Reranking", voice: "Voice" };
 
 /** A failed credentials request, with what the API said about it. */
 export class CredentialRequestError extends Error {

@@ -20,7 +20,7 @@ import {
   useProviders,
   useRotateCredential,
 } from "./credentials";
-
+import { VoicePrices } from "./VoicePrice";
 
 /** `2026-06-01T09:30:00Z` → `2026-06-01 09:30 UTC`, the same for every viewer. */
 function when(iso: string): string {
@@ -166,11 +166,14 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
   const remove = useDeleteCredential(organisationId);
   const [done, setDone] = useState<string | null>(null);
   const [deleting, setDeleting] = useState("");
+  // Whose provider explains a failed check or rotation.
+  const [actingOn, setActingOn] = useState<Credential["provider"]>("anthropic");
   if (credentials.isPending) return <p role="status" className={text.muted}>Loading credentials…</p>;
   if (credentials.isError) return <p role="alert" className={text.muted}>The credentials could not be loaded. Try again shortly.</p>;
   const busy = check.isPending || rotate.isPending || remove.isPending;
   const inUse = remove.error instanceof CredentialRequestError && remove.error.references.length > 0 ? remove.error : null;
-  const start = () => {
+  const start = (credential: Credential) => {
+    setActingOn(credential.provider);
     setDone(null);
     check.reset();
     rotate.reset();
@@ -178,7 +181,7 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
   };
   return (
     <div className="flex flex-col gap-3">
-      {inUse ? <InUse name={deleting} error={inUse} /> : <FormError message={credentialFailure(rotate.error ?? remove.error ?? check.error)} />}
+      {inUse ? <InUse name={deleting} error={inUse} /> : <FormError message={credentialFailure(rotate.error ?? remove.error ?? check.error, actingOn)} />}
       {done && <Notice tone="success">{done}</Notice>}
       {credentials.data.length === 0 ? (
         <p className={text.muted}>No credentials yet.</p>
@@ -219,7 +222,7 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
                         credential={credential}
                         busy={busy}
                         onCheck={() => {
-                          start();
+                          start(credential);
                           check.mutate(credential.id, {
                             onSuccess: (checked) => {
                               setDone(checked.check_failure ? null : `${checked.name} passed its check.`);
@@ -227,7 +230,7 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
                           });
                         }}
                         onRotate={(apiKey, finished) => {
-                          start();
+                          start(credential);
                           rotate.mutate(
                             { credentialId: credential.id, apiKey },
                             {
@@ -239,7 +242,7 @@ function CredentialsTable({ organisationId, isOwner }: { organisationId: string;
                           );
                         }}
                         onDelete={() => {
-                          start();
+                          start(credential);
                           setDeleting(credential.name);
                           remove.mutate(credential.id, {
                             onSuccess: () => {
@@ -282,6 +285,7 @@ const PROVIDER_NAMES: Record<Credential["provider"], string> = {
   openai: "OpenAI",
   bedrock: "Amazon Bedrock",
   voyage: "Voyage AI",
+  elevenlabs: "ElevenLabs",
   // The seeded demo provider: canned answers from the Knowledge Base, never a real model.
   demo: "Demo: canned answers, not a real model",
 };
@@ -538,7 +542,15 @@ function AddCredential({ organisationId, providers }: { organisationId: string; 
             <TextField label="AWS region" value={region} onChange={setRegion} placeholder="us-east-1" />
           </>
         ) : (
-          <TextField label="API key" type="password" value={apiKey} onChange={setApiKey} />
+          <>
+            {providerId === "elevenlabs" && (
+              <p className={text.muted}>
+                ElevenLabs carries Calls: it listens and speaks, while your Agents still write every reply. The key's
+                permissions must allow ElevenLabs Agents.
+              </p>
+            )}
+            <TextField label="API key" type="password" value={apiKey} onChange={setApiKey} />
+          </>
         )}
         <fieldset className="text-sm text-ink">
           <legend className={field.label}>Use for</legend>
@@ -584,6 +596,7 @@ export function CredentialsPage({ organisationId, isOwner }: { organisationId: s
         {!isOwner && <p className={text.muted}>Only Owners can add, check, rotate or delete credentials.</p>}
       </div>
       <CredentialsTable organisationId={organisationId} isOwner={isOwner} />
+      <VoicePrices organisationId={organisationId} isOwner={isOwner} />
       {isOwner && providers.data && <AddCredential organisationId={organisationId} providers={providers.data} />}
       {isOwner && providers.isError && <p role="alert">The providers could not be loaded. Try again shortly.</p>}
     </section>

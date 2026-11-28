@@ -130,7 +130,7 @@ test.describe("Organisation cost, navigation and accessibility", () => {
     await expect(page.getByRole("heading", { level: 1, name: "Organisation cost" })).toBeVisible();
 
     await expect(page.getByRole("heading", { name: "Nothing was spent in this period" })).toBeVisible();
-    await expect(page.getByText(/Visitors' Conversations, Playground testing and Evaluation Runs in any Project show up here/)).toBeVisible();
+    await expect(page.getByText(/Visitors' Conversations and Calls, Playground testing and Evaluation Runs in any Project show up here/)).toBeVisible();
     await expect(costTable(page)).toHaveCount(0);
     await expect(page.getByRole("list", { name: "Spend for the period" })).toHaveCount(0);
     // The default period runs up to today, and says so.
@@ -241,7 +241,7 @@ test.describe("Organisation cost, navigation and accessibility", () => {
     expect(amount.font).toMatch(/mono/i);
     expect(amount.font).not.toBe(bodyFont);
     // Every amount column reads like money.
-    await expect(row.getByRole("cell")).toHaveText([/^\$\d/, /^\$\d/, /^\$\d/, /^\$\d/]);
+    await expect(row.getByRole("cell")).toHaveText([/^\$\d/, /^\$\d/, /^\$\d/, /^\$\d/, /^\$\d/]);
 
     const total = table.getByRole("row", { name: /^All Projects/ });
     await expect(total).toBeVisible();

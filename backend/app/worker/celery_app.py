@@ -7,6 +7,8 @@ from app.core.settings import Settings
 
 HEALTH_CHECK_TASK = "worker.health_check"
 CLEAR_BUDGET_ALERTS_TASK = "embed.clear_budget_alerts"
+# Ends Calls past their Maximum Call length or silent for a minute (app.embed.tasks).
+END_IDLE_CALLS_TASK = "embed.end_idle_calls"
 # The usage rollup (app.analytics.tasks), which Beat runs hourly.
 ROLL_UP_TASK = "analytics.roll_up_usage"
 # The retention purge (app.retention.tasks), which Beat runs daily.
@@ -46,6 +48,9 @@ def configure_celery(settings: Settings) -> Celery:
                 "task": CLEAR_BUDGET_ALERTS_TASK,
                 "schedule": crontab(minute="0", hour="0"),
             },
+            # Calls that reached their Maximum Call length or have had no turn for a minute
+            # (their browser may have vanished) end soon after.
+            "end-idle-calls": {"task": END_IDLE_CALLS_TASK, "schedule": 15.0},
             # Hourly, a few minutes past the hour: the current day's usage rollups, and the
             # previous day's finalised once it is over.
             "usage-rollup": {"task": ROLL_UP_TASK, "schedule": crontab(minute=5)},

@@ -22,6 +22,8 @@ from app.agents.models import Agent
 from app.documents.models import Document
 from app.projects.models import FlaggedChunkMode, Project
 from app.tenancy.repository import OrganisationScope
+from app.voice import remote
+from app.voice.remote import VoicePorts
 
 
 class ProjectNotFoundError(Exception):
@@ -273,12 +275,18 @@ async def check_deletion(
 
 
 async def delete_project(
-    session: AsyncSession, project_id: uuid.UUID, *, actor_id: uuid.UUID, requested_at: datetime
+    session: AsyncSession,
+    project_id: uuid.UUID,
+    *,
+    actor_id: uuid.UUID,
+    requested_at: datetime,
+    voice: VoicePorts,
 ) -> str | None:
     """The deletion cascade's database step: deletes the Project and, through the foreign keys'
     ``ON DELETE CASCADE``, everything in it (Documents and their staged editions, Chunks, Tags,
     Agents, their Conversations and Messages), and records ``project.deleted``, in one
-    transaction. Returns the storage prefix whose objects the caller deletes next.
+    transaction. Its Agents' remote agents in the voice layer are removed first (best effort).
+    Returns the storage prefix whose objects the caller deletes next.
 
     Does nothing, returning None, if the Project is gone already or was restored after the
     deletion was asked for: only an archived Project is ever deleted."""
@@ -301,6 +309,11 @@ async def delete_project(
         },
         occurred_at=requested_at,
     )
+    calling = await session.scalars(
+        select(Agent).where(Agent.project_id == project.id, Agent.remote_agent_id.is_not(None))
+    )
+    for agent in calling.all():
+        await remote.remove(session, voice, agent, agent.call_credential_id)
     await session.execute(delete(Project).where(Project.id == project.id))
     await session.commit()
     return storage_prefix(project.organisation_id, project.id)

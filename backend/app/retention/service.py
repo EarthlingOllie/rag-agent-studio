@@ -25,6 +25,7 @@ from app.analytics.rollup import pending_days
 from app.analytics.usage import day_bounds
 from app.conversations.models import Conversation, Message, Search
 from app.conversations.service import ConversationNotFoundError
+from app.embed.call_limits import CallEnd, end_open_call
 from app.evaluation.models import LiveVerdict
 from app.feedback.models import MessageFeedback
 from app.projects.service import get_project
@@ -165,6 +166,7 @@ async def delete_conversation(
         purged = await purge_messages(session, Message.conversation_id == conversation.id, now=now)
         conversation.deleted_at = now
         conversation.token_hash = None
+        await end_open_call(session, conversation, now=now, reason=CallEnd.CONVERSATION_ENDED)
         await audit.record(
             session,
             organisation_id=scope.organisation_id,

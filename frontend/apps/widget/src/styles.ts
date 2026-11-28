@@ -4,7 +4,8 @@
 //
 // WCAG 2.2 AA: every control shows a 2 px focus ring in the text colour of what it sits on
 // (so it contrasts as the Theme's text does), every control is at least 24 × 24 px, and the
-// bubble's opening animation, like any other, is off for Visitors who prefer reduced motion.
+// bubble's opening animation, like any other (the Call view's speaking and listening pulse), is
+// off for Visitors who prefer reduced motion.
 export const STYLES = `
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: transparent; }
@@ -54,6 +55,21 @@ html, body { margin: 0; height: 100%; background: transparent; }
 .error { margin: 0 10px; padding: 6px 8px; border-radius: 6px; background: #fef2f2; color: #991b1b; font-size: 14px; }
 .starters { list-style: none; margin: 0; padding: 0 10px; display: flex; flex-wrap: wrap; gap: 6px; }
 .starters button { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: var(--theme-radius); border: 1px solid var(--theme-primary); background: var(--theme-surface); color: var(--theme-on-surface); cursor: pointer; }
+.choice, .call { display: grid; gap: 8px; padding: 10px; }
+.choice p, .call p { margin: 0; }
+.choice-buttons, .call-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+.choice-buttons button { flex: 1; font: inherit; font-size: 14px; min-height: 40px; padding: 8px 12px; border-radius: var(--theme-radius); border: 1px solid var(--theme-primary); background: var(--theme-primary); color: var(--theme-on-primary); cursor: pointer; }
+.call-state { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.call-state[data-mode="speaking"] { font-weight: 600; }
+.call-state::before { content: ""; flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--theme-muted); }
+.call-state[data-mode="listening"]::before { background: var(--theme-primary); animation: widget-listening 1.6s ease-in-out infinite; }
+.call-state[data-mode="speaking"]::before { background: var(--theme-accent); animation: widget-speaking 0.8s ease-in-out infinite alternate; }
+@keyframes widget-listening { 50% { opacity: 0.35; } }
+@keyframes widget-speaking { from { transform: scale(0.7); } to { transform: scale(1.2); } }
+.call-controls button { font: inherit; font-size: 14px; min-height: 36px; padding: 6px 12px; border-radius: var(--theme-radius); border: 1px solid var(--theme-muted); background: transparent; color: inherit; cursor: pointer; }
+.call-controls button[aria-pressed="true"] { border-color: var(--theme-primary); background: var(--theme-primary); color: var(--theme-on-primary); }
+.call-controls .end-call { border-color: #b91c1c; background: #b91c1c; color: #ffffff; }
+.call-controls button:disabled { opacity: 0.6; cursor: default; }
 :focus-visible { outline: 2px solid var(--theme-on-surface) !important; outline-offset: 2px; }
 .chat header :focus-visible, .launcher :focus-visible { outline-color: var(--theme-on-primary) !important; }
 .launcher :focus-visible { outline-offset: -6px; }

@@ -30,7 +30,7 @@ def test_worker_entrypoint_points_celery_at_the_configured_broker(
     assert "documents.ingest" in entrypoint.app.tasks
 
 
-def test_beat_schedules_the_health_check_budget_alert_reset_usage_rollup_and_purge(
+def test_beat_schedules_the_health_check_budget_alert_reset_call_reaper_rollup_and_purge(
     settings_env: pytest.MonkeyPatch,
 ) -> None:
     entrypoint = _import_worker_entrypoint()
@@ -39,6 +39,7 @@ def test_beat_schedules_the_health_check_budget_alert_reset_usage_rollup_and_pur
     assert [entry["task"] for entry in schedule.values()] == [
         "worker.health_check",
         "embed.clear_budget_alerts",
+        "embed.end_idle_calls",
         "analytics.roll_up_usage",
         "retention.purge_expired",
     ]

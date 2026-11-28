@@ -8,6 +8,14 @@ const BADGES = {
   archived: { label: "Archived", className: "bg-sunken text-muted" },
   instructionsBehind: { label: "Instructions behind", className: "bg-flag-soft text-flag" },
   budgetSpent: { label: "Budget spent", className: "bg-danger-soft text-danger" },
+  /** An Agent whose daily Call minutes budget is spent, so Calls are refused. */
+  callMinutesSpent: { label: "Call minutes spent", className: "bg-danger-soft text-danger" },
+  /** An Agent whose last Call the voice layer couldn't start, so Visitors who chose Call got the chat. */
+  callsFailing: { label: "Calls failing", className: "bg-danger-soft text-danger" },
+  /** A Spoken Message: said in a Call rather than typed. */
+  spoken: { label: "Spoken", className: "bg-sunken text-muted" },
+  /** An Agent's Spoken Message the Visitor talked over; it still holds the whole reply. */
+  interrupted: { label: "Interrupted", className: "bg-flag-soft text-flag" },
   blocked: { label: "Blocked by guardrail", className: "bg-danger-soft text-danger" },
   /** An Agent whose Live Version's Live score is clearly lower than the previous Live Version's. */
   liveScoreDrop: { label: "Live score drop", className: "bg-danger-soft text-danger" },

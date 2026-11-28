@@ -18,6 +18,7 @@ import {
   judgedVerdict,
   playgroundConversation,
   playgroundDetail,
+  visitorCall,
   visitorConversation,
   visitorDetail,
   visitorTrace,
@@ -865,6 +866,70 @@ test("an Editor reads the Visitor's Conversation Rating, the Version it counts f
   ]);
 });
 
+test("each Call shows its minutes and Voice Cost, apart from the Cost of its replies", async () => {
+  setUp();
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+
+  const calls = await screen.findByRole("list", { name: "Calls" });
+
+  expect(within(calls).getAllByRole("listitem").map((call) => call.textContent)).toEqual([
+    "Call · 2026-11-06 10:23 UTC to 10:25 UTC · ended by the Visitor3 minutes · Voice Cost $0.30, apart from the Cost of its replies",
+  ]);
+});
+
+test("an open Call, a Call with no per-minute price and a one-minute Call each say so, and a Conversation without Calls lists none", async () => {
+  const called = {
+    ...visitorDetail,
+    calls: [
+      {
+        id: "ca110000-0000-4000-8000-000000000002",
+        started_at: "2026-11-06T10:23:00Z",
+        ended_at: "2026-11-06T10:23:40Z",
+        minutes: 1,
+        end_reason: "silence",
+        voice_cost_usd: null,
+      },
+      {
+        id: "ca110000-0000-4000-8000-000000000003",
+        started_at: "2026-11-06T10:30:00Z",
+        ended_at: null,
+        minutes: null,
+        end_reason: null,
+        voice_cost_usd: null,
+      },
+    ],
+  };
+  setUp({ details: [called, playgroundDetail] });
+  const { unmount } = renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+
+  const calls = await screen.findByRole("list", { name: "Calls" });
+
+  expect(within(calls).getAllByRole("listitem").map((call) => call.textContent)).toEqual([
+    "Call · 2026-11-06 10:23 UTC to 10:23 UTC · ended after a minute of silence1 minute · Voice Cost unknown: no per-minute price was set",
+    "Call · started 2026-11-06 10:30 UTC · still openMinutes and Voice Cost are counted when it ends",
+  ]);
+  unmount();
+
+  renderStudio(`${conversationsTab}/${PLAYGROUND_CONVERSATION_ID}`);
+  await screen.findByRole("list", { name: "Messages" });
+  expect(screen.queryByRole("list", { name: "Calls" })).not.toBeInTheDocument();
+});
+
+test.each([
+  ["max_length", "ended at the Maximum Call length"],
+  ["conversation_ended", "ended with the Conversation"],
+  ["unavailable", "ended because the Agent was unavailable"],
+  ["something_new", "ended"],
+])("a Call that ended by %s says why", async (reason, why) => {
+  const call = { ...visitorCall, end_reason: reason };
+  setUp({ details: [{ ...visitorDetail, calls: [call] }] });
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+
+  const calls = await screen.findByRole("list", { name: "Calls" });
+
+  expect(within(calls).getByRole("listitem")).toHaveTextContent(`10:25 UTC · ${why}3 minutes`);
+});
+
 test("a Conversation the Visitor didn't rate says so", async () => {
   setUp({ details: [{ ...visitorDetail, rating: null }] });
   renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
@@ -1443,4 +1508,133 @@ test("a reply that failed its Live Verdict is added to the Evaluation Set as any
   expect(requests).toEqual([{ route: "prefill", body: { messageId: VISITOR_REPLY_ID, agentId: hrHelper.id } }]);
   expect(within(editor).getByText(/No link to the Conversation is kept/)).toBeInTheDocument();
   expect(await within(editor).findByLabelText("Question")).toHaveValue("How much leave do I get?");
+});
+
+// Calls (ticket 20-12)
+
+test("Spoken Messages and the replies the Visitor talked over are marked, beside the Call they were in", async () => {
+  type Message = (typeof visitorDetail.messages)[number];
+  const [typedQuestion, typedReply] = visitorDetail.messages as [Message, Message];
+  const spokenQuestion = {
+    ...typedQuestion,
+    id: "e7000000-0000-4000-8000-000000000021",
+    content: "Can I carry leave over?",
+    created_at: "2026-11-06T10:23:10Z",
+    spoken: true,
+    call_id: visitorCall.id,
+  };
+  const spokenReply = {
+    ...typedReply,
+    id: "e7000000-0000-4000-8000-000000000022",
+    content: "Up to five days.",
+    created_at: "2026-11-06T10:23:12Z",
+    feedback: null,
+    spoken: true,
+    call_id: visitorCall.id,
+    interrupted: true,
+  };
+  setUp({ details: [{ ...visitorDetail, messages: [typedQuestion, typedReply, spokenQuestion, spokenReply] }] });
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+
+  const messages = await screen.findByRole("list", { name: "Messages" });
+  const items = within(messages).getAllByRole("listitem", { name: /Visitor|HR helper/ });
+  const marks = items.map((item) => ["Spoken", "Interrupted"].filter((mark) => within(item).queryByText(mark) !== null));
+
+  expect(marks).toEqual([[], [], ["Spoken"], ["Spoken", "Interrupted"]]);
+  expect(within(items[3] as HTMLElement).getByText("Interrupted")).toHaveAttribute(
+    "title",
+    "The Visitor talked over this reply; it is kept whole, as its Trace shows.",
+  );
+  expect(within(items[2] as HTMLElement).getByText("Spoken")).toHaveAttribute("title", "Said in the Call of 2026-11-06 10:23 UTC.");
+  // Each Call is a row with when it started and its minutes.
+  expect(within(screen.getByRole("list", { name: "Calls" })).getByRole("listitem")).toHaveTextContent(
+    "Call · 2026-11-06 10:23 UTC to 10:25 UTC · ended by the Visitor3 minutes",
+  );
+});
+
+test("a Spoken Message of a Call the Conversation no longer lists is still marked spoken", async () => {
+  const [typedQuestion] = visitorDetail.messages as [(typeof visitorDetail.messages)[number]];
+  const spokenQuestion = { ...typedQuestion, spoken: true, call_id: "ca110000-0000-4000-8000-00000000000f" };
+  setUp({ details: [{ ...visitorDetail, messages: [spokenQuestion], calls: [] }] });
+  renderStudio(`${conversationsTab}/${VISITOR_CONVERSATION_ID}`);
+
+  const messages = await screen.findByRole("list", { name: "Messages" });
+
+  expect(within(messages).getByText("Spoken")).toHaveAttribute("title", "Said in a Call.");
+});
+
+const calledConversation = {
+  ...visitorConversation,
+  id: "c7000000-0000-4000-8000-00000000000c",
+  preview: "Can I carry leave over?",
+  calls: 2,
+  call_minutes: 1,
+};
+
+test("the list shows each Conversation's Calls and is filtered to those with a Call", async () => {
+  const silent = { ...calledConversation, id: "c7000000-0000-4000-8000-00000000000d", preview: "Hello", calls: 1, call_minutes: 4 };
+  const { queries } = setUp({ conversations: [playgroundConversation, calledConversation, silent] });
+  renderStudio(conversationsTab);
+  const list = await screen.findByRole("list", { name: "Conversations" });
+  // Only a Conversation with a Call says so.
+  expect(within(list).getAllByText("Calls")).toHaveLength(2);
+  expect((await rows()).map((row) => row.slice(9))).toEqual([
+    ["Testing leave"],
+    ["2 · 1 minute", "Can I carry leave over?"],
+    ["1 · 4 minutes", "Hello"],
+  ]);
+  const hasCall = within(filters()).getByLabelText("Has a Call");
+  expect(within(hasCall).getAllByRole("option").map((option) => option.textContent)).toEqual([
+    "With or without",
+    "With a Call",
+    "Without a Call",
+  ]);
+
+  await userEvent.selectOptions(hasCall, "With a Call");
+  await waitFor(async () => {
+    expect((await rows()).map((row) => row.at(-1))).toEqual(["Can I carry leave over?", "Hello"]);
+  });
+  expect(queries.at(-1)?.get("has_call")).toBe("true");
+
+  await userEvent.selectOptions(hasCall, "Without a Call");
+  await waitFor(async () => {
+    expect((await rows()).map((row) => row.at(-1))).toEqual(["Testing leave"]);
+  });
+  expect(queries.at(-1)?.get("has_call")).toBe("false");
+
+  await userEvent.selectOptions(hasCall, "With or without");
+  await waitFor(async () => {
+    expect(await rows()).toHaveLength(3);
+  });
+  expect(queries.at(-1)?.has("has_call")).toBe(false);
+});
+
+test.each([
+  ["?call=yes", "yes"],
+  ["?call=no", "no"],
+  ["?call=maybe", ""],
+])("a Has a Call filter in the URL (%s) is kept when it is one", async (search, kept) => {
+  const { queries } = setUp();
+  renderStudio(`${conversationsTab}${search}`);
+  await screen.findByRole("group", { name: "Filter Conversations" });
+
+  expect(within(filters()).getByLabelText("Has a Call")).toHaveValue(kept);
+  await waitFor(() => {
+    expect(queries.at(-1)?.get("has_call") ?? "").toBe({ yes: "true", no: "false" }[kept] ?? "");
+  });
+});
+
+test("an Agent's Conversations view is filtered to those with a Call too", async () => {
+  const { queries } = setUp({ conversations: [playgroundConversation, calledConversation] });
+  renderStudio(`${projectPage}/agents/${hrHelper.id}`);
+  await openSection("Agent views", "Conversations");
+  await rows();
+
+  await userEvent.selectOptions(within(filters()).getByLabelText("Has a Call"), "With a Call");
+
+  await waitFor(async () => {
+    expect((await rows()).map((row) => row.at(-1))).toEqual(["Can I carry leave over?"]);
+  });
+  expect(queries.at(-1)?.get("agent_id")).toBe(hrHelper.id);
+  expect(queries.at(-1)?.get("has_call")).toBe("true");
 });

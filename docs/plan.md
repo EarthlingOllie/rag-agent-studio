@@ -14,13 +14,14 @@ This is an interview capstone. It must run end-to-end locally with `docker compo
 
 ### In scope
 - **Accounts:** Organisations and Members with Owner and Editor roles. Email and password sign-in, invites, password reset, TOTP MFA that Owners can make mandatory, and login rate limiting.
-- **Provider Credentials:** Anthropic, OpenAI, Bedrock (role or access keys) and Voyage, with envelope encryption and a live check when saved. The Organisation sets a Default Model.
+- **Provider Credentials:** Anthropic, OpenAI, Bedrock (role or access keys) and Voyage, with envelope encryption and a live check when saved. The Organisation sets a Default Model. ElevenLabs is a Provider Credential with the voice Capability, for Calls.
 - **Projects:**
   - Knowledge Base: upload Documents, process them with Docling and Celery, use Tags, and view and manage them.
   - Embedding Model: chosen per Project. Switching it re-embeds in the background.
   - Project Instructions: Draft, Versions and a Current Version.
 - **Agents:** highly configurable, with Draft, immutable Versions, a Live Version, Live History, bulk publish and bulk revert, the Playground, Archive, and Operational Settings.
 - **Embed:** an Embed Snippet backed by an iframe widget. Allowed Origins are enforced, the Theme applies with per-Agent overrides, the widget targets WCAG 2.2 AA, and Conversations resume.
+- **Calls:** a Visitor can talk to an Agent instead of typing, and move between the two in one Conversation; a Member can call the Draft from the Playground. ElevenLabs listens, takes turns and speaks; our runtime writes every spoken reply (ADR-0019). Each Agent's Call settings (calling on or off, credential, voice, spoken greeting), a Maximum Call length and a daily Call minutes budget live in its Operational Settings. Calls record their minutes and a Voice Cost, show in the Conversation viewer and analytics, and never store audio.
 - **Guardrails:** spotlighting, an input classifier (local by default, LLM optional), a canary token, ingestion scanning, and an attack evaluation suite.
 - **Feedback and analytics:**
   - Visitor feedback: Message Feedback and Conversation Ratings.
@@ -30,7 +31,7 @@ This is an interview capstone. It must run end-to-end locally with `docker compo
 - **Platform:**
   - Terraform for AWS and GitHub Actions CI/CD.
   - Observability with Logfire and OpenTelemetry.
-  - Seed data, including an attack panel.
+  - Seed data, including an attack panel. Given an ElevenLabs key and a public base URL, the seeded Product FAQ takes Calls.
 
 ### Out of scope (for now)
 SSO, identified Visitors, tools that act outside the conversation, versioned Documents, inferred sentiment analysis, XLSX and image ingestion, full i18n bundles, a session-list UI, multiple regions, and a custom domain (supported later through a variable).
@@ -63,7 +64,9 @@ SSO, identified Visitors, tools that act outside the conversation, versioned Doc
       KMS (wraps credential data keys)   Secrets Manager (platform secrets)
 ```
 
-**Why it looks like this:** ADR-0001 (pgvector), ADR-0004 (iframe embed), ADR-0010 (AWS runtime) and ADR-0011 (one CloudFront distribution).
+For Calls, the widget's browser joins ElevenLabs Agents over WebRTC with a token the API mints; ElevenLabs calls back into the API's turn endpoint (`/api/widget/agents/{publicId}/llm/v1`) at the platform's public base URL (`PUBLIC_BASE_URL`; in AWS, the CloudFront address).
+
+**Why it looks like this:** ADR-0001 (pgvector), ADR-0004 (iframe embed), ADR-0010 (AWS runtime), ADR-0011 (one CloudFront distribution) and ADR-0019 (Calls through a custom LLM).
 
 ### Chat request pipeline
 1. **Widget boot.** `embed.js` reads `data-agent="pub_…"` and injects an iframe pointing at `/widget/a/{publicId}`. The API answers with the HTML shell, a `Content-Security-Policy: frame-ancestors <Allowed Origins>` header, the resolved Theme as CSS variables, and a bootstrap token. A Conversation token stored in the iframe's (partitioned) storage resumes the Conversation if there was activity in the last 24 hours.
@@ -78,6 +81,12 @@ SSO, identified Visitors, tools that act outside the conversation, versioned Doc
    - retrieved Chunks and the Visitor input, each wrapped in labelled, delimited data blocks (spotlighting).
 6. **Generation.** A Pydantic AI agent streams the reply over SSE. The output filter holds back a trailing window the length of the canary token so a leak spread across stream chunks is still caught. If the canary appears, the stream is cut and replaced with the fallback text, and the event is logged.
 7. **Persist.** The Message is saved with its Trace: provider, model, Agent Version, tokens (input, output, cached), cost frozen from the price table, time to first token and total latency, retrieved Chunks with scores and whether each was cited, and Guardrail outcomes. Usage counters are then incremented.
+
+### Call pipeline
+1. **Set up.** Saving an Agent's Call settings with calling on creates or updates its remote agent in the Organisation's ElevenLabs account through the voice layer port (`app/voice`): a voice, English, the spoken greeting, and our turn endpoint as its custom LLM with a per-Agent secret. It holds none of the Agent's prompt or knowledge. Turning calling off, changing the credential, or archiving or deleting the Agent removes it.
+2. **Start.** A Visitor picks Call. The widget asks for the microphone only then, and the API checks admission (Allowed Origin, rate limits, Token Budget, Call minutes budget, the per-IP cap on open Calls), opens a Call in the Conversation, and returns a short-lived Call token with a WebRTC token from ElevenLabs. The browser loads the ElevenLabs client and joins; audio goes straight to ElevenLabs.
+3. **Each turn.** ElevenLabs transcribes the Visitor and posts the turn to the turn endpoint with the Agent's secret and the Call token. The API runs the same pipeline as a typed message (steps 2 to 7 above), streams the reply back without formatting or citation markers for ElevenLabs to speak, and saves both sides as Spoken Messages with the reply's Trace.
+4. **End.** The Visitor ends the Call, or the platform does at the Maximum Call length or the Silence cut-off. The Call records its minutes and Voice Cost, apart from its replies' model Cost, and daily rollups count Calls and Call minutes per Agent Version.
 
 ### Ingestion pipeline (Celery)
 1. **Upload.** The Studio gets a presigned PUT URL and uploads straight to S3. The API then creates the Document with status `Queued`, deduplicating by content hash within the Project.

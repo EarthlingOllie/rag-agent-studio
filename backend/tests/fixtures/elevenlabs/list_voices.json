@@ -1,0 +1,59 @@
+[
+  {
+    "request": {
+      "method": "GET",
+      "url": "https://api.elevenlabs.io/v2/voices",
+      "params": {
+        "page_size": "100"
+      }
+    },
+    "response": {
+      "status": 200,
+      "json": {
+        "voices": [
+          {
+            "voice_id": "21m00Tcm4TlvDq8ikWAM",
+            "name": "Rachel",
+            "category": "premade",
+            "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/21m00Tcm4TlvDq8ikWAM/df6788f9.mp3"
+          },
+          {
+            "voice_id": "AZnzlk1XvdvUeBnXmlld",
+            "name": "Domi",
+            "category": "premade",
+            "preview_url": "https://storage.googleapis.com/eleven-public-prod/premade/voices/AZnzlk1XvdvUeBnXmlld/69c5373f.mp3"
+          }
+        ],
+        "has_more": true,
+        "total_count": 3,
+        "next_page_token": "cGFnZTI="
+      }
+    }
+  },
+  {
+    "request": {
+      "method": "GET",
+      "url": "https://api.elevenlabs.io/v2/voices",
+      "params": {
+        "page_size": "100",
+        "next_page_token": "cGFnZTI="
+      }
+    },
+    "response": {
+      "status": 200,
+      "json": {
+        "voices": [
+          {
+            "voice_id": "zcAOhNBS3c14rBihAFp1",
+            "name": "Giovanni",
+            "category": "cloned",
+            "preview_url": null
+          }
+        ],
+        "has_more": false,
+        "total_count": 3,
+        "next_page_token": null
+      }
+    }
+  }
+]

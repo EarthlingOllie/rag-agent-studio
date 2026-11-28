@@ -1,6 +1,7 @@
 import { ChatWindow, Composer, Launcher as LauncherButton, MessageBubble } from "@studio/ui";
 import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
+import { type CallMode, type CallSession, joinCall } from "./call";
 import {
   type Boot,
   type Citation,
@@ -9,9 +10,13 @@ import {
   type Launcher,
   NO_LONGER_AVAILABLE,
   type Rating,
+  type Resumed,
   ask,
+  endCall,
   endConversation,
+  interruptCall,
   resume,
+  startCall,
   startConversation,
 } from "./chat";
 import { LAYOUT_MESSAGE, type Layout } from "./embed";
@@ -30,18 +35,55 @@ type Message = {
   refused?: boolean;
   // The Agent is searching its knowledge base for this reply (shown until its text streams).
   searching?: boolean;
+  // Said in a Call rather than typed: a Spoken Message.
+  spoken?: boolean;
 };
 
 /**
  * - `loading`: checking a kept Conversation token, to resume its Conversation.
- * - `chat`: the chat.
+ * - `chat`: the chat (for an Agent that takes Calls, first a choice of Message or Call).
+ * - `call`: a Call, over the Conversation log.
  * - `ending`: the Visitor chose "End chat" without having rated it, so they are asked to first.
  * - `ended`: the Visitor ended the chat.
  * - `retired`: the Agent is archived or no longer live.
  */
-type Phase = "loading" | "chat" | "ending" | "ended" | "retired";
+type Phase = "loading" | "chat" | "call" | "ending" | "ended" | "retired";
 
 const GENERIC = "Something went wrong. Please try again.";
+
+const MINUTE_MS = 60_000;
+
+/** Why the widget returned to the chat when the Agent couldn't answer in a Call. */
+export const CALL_UNAVAILABLE = "The assistant can't answer right now. You can still send a message.";
+
+/** Why the widget returned to the chat when a Call reached the Maximum Call length. */
+export function callLengthReached(minutes: number): string {
+  return `The Call reached its ${String(minutes)}-minute limit. You can still send a message.`;
+}
+
+/** Announced, politely, once a Call has connected. */
+export const CALL_STARTED = "Call started.";
+/** Announced, politely, when a Call ends: with the reason, when it ended for one. */
+export const CALL_ENDED = "Call ended.";
+
+/** What a Call view says the Call is doing. */
+function callState(mode: CallMode | "connecting", muted: boolean, name: string): string {
+  if (mode === "connecting") return "Connecting your call…";
+  if (mode === "speaking") return `${name} is speaking…`;
+  return muted ? "You're muted." : "Listening…";
+}
+
+/** The Conversation's Messages as the log shows them, from the API. */
+function logged(resumed: Resumed): Message[] {
+  return resumed.messages.map((m) => ({
+    role: m.role === "user" ? "visitor" : "agent",
+    text: m.content,
+    citations: m.citations,
+    id: m.id,
+    feedback: m.feedback,
+    spoken: m.spoken,
+  }));
+}
 
 /** The built-in searching status, unless the Agent's UI text overrides it. */
 export const SEARCHING = "Searching the knowledge base…";
@@ -112,6 +154,11 @@ function Sources({ citations }: { citations: Citation[] }) {
  * tells the host page (`host`, the only origin it posts to) how to size its frame. The
  * Conversation token is kept in the iframe's storage, so a Visitor who comes back resumes their
  * Conversation; they can start a new chat or end it.
+ *
+ * For an Agent that takes Calls, the Visitor moves between typing and talking in one
+ * Conversation: the header's Call button starts a Call, and End call returns to the chat. A
+ * reload or page change ends the Call; the resumed Conversation offers "Continue call", which
+ * starts a new Call only when tapped.
  */
 export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?: Launcher | null; host?: string | null }) {
   const type = launcher ?? boot.theme.launcher_type;
@@ -123,19 +170,57 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   // The Conversation Rating, and whether the Visitor dismissed the rating prompt.
   const [rating, setRating] = useState<Rating>(UNRATED);
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setErrorText] = useState<string | null>(null);
+  // Why a Call ended is announced politely, so its note isn't an alert as well.
+  const [quietError, setQuietError] = useState(false);
   // The last completed reply, for screen readers; its `id` makes a repeated reply a new node.
   const [announcement, setAnnouncement] = useState<{ id: number; text: string } | null>(null);
   // The Conversation token, once the bootstrap token has been exchanged for one (or kept from
   // an earlier page load).
   const token = useRef<string | null>(null);
+  // For an Agent that takes Calls: whether the Visitor has chosen Message or Call yet.
+  const [chosen, setChosen] = useState(false);
+  // The Call being held: what it is doing, and whether the Visitor muted it.
+  const [callMode, setCallMode] = useState<CallMode | "connecting">("connecting");
+  const [muted, setMuted] = useState(false);
+  // A resumed Conversation whose Call the page cut off: the Visitor is offered "Continue call".
+  const [continuing, setContinuing] = useState(false);
+  const call = useRef<CallSession | null>(null);
+  // Whether the Call being held has connected (its start was announced).
+  const connected = useRef(false);
+  // Leaves and ends the Call being held, when the widget leaves the page during it.
+  const leaveCall = useRef<(() => void) | null>(null);
+  // Ends the Call when it reaches the Maximum Call length, as the platform does.
+  const callLimit = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const root = useRef<HTMLDivElement | null>(null);
   const opened = useRef(false);
   const focusInput = useRef(false);
 
   function messageBox() {
-    return root.current?.querySelector<HTMLInputElement>('input[name="message"]');
+    return root.current?.querySelector<HTMLInputElement>('input[name="message"], .choice button');
   }
+
+  // Whether the widget is still on the page: a Call that finishes starting after it left is
+  // ended, not joined.
+  const mounted = useRef(true);
+  // A Call doesn't outlive the widget: leaving the page (a reload, a page change, or the widget
+  // going away) leaves the voice session, ends the Call and stops its limit timer. The kept
+  // Call mark stays, so the next page offers "Continue call".
+  useEffect(() => {
+    mounted.current = true;
+    function leavePage() {
+      clearTimeout(callLimit.current);
+      const leaving = leaveCall.current;
+      leaveCall.current = null;
+      leaving?.();
+    }
+    window.addEventListener("pagehide", leavePage);
+    return () => {
+      mounted.current = false;
+      window.removeEventListener("pagehide", leavePage);
+      leavePage();
+    };
+  }, []);
 
   useEffect(() => {
     const target = hostOrigin(host);
@@ -149,6 +234,16 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     else if (opened.current) root.current?.querySelector<HTMLButtonElement>(".launcher button")?.focus();
     opened.current ||= open;
   }, [open, type, bubble, host, boot.theme.launcher_position]);
+
+  function setError(text: string | null, quiet = false) {
+    setErrorText(text);
+    setQuietError(quiet);
+  }
+
+  /** Says `text` politely to screen readers (a repeated text is a new node, so it is said again). */
+  function announce(text: string) {
+    setAnnouncement((last) => ({ id: (last?.id ?? 0) + 1, text }));
+  }
 
   function forget() {
     token.current = null;
@@ -172,15 +267,11 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         } else {
           token.current = kept;
           setRating(resumed.rating);
-          setMessages(
-            resumed.messages.map((m) => ({
-              role: m.role === "user" ? "visitor" : "agent",
-              text: m.content,
-              citations: m.citations,
-              id: m.id,
-              feedback: m.feedback,
-            })),
-          );
+          setMessages(logged(resumed));
+          // A Call cut off by the page going away: a still-open one ends now, and the Visitor
+          // can start a new one.
+          if (resumed.call_open) void endCall(boot, kept);
+          setContinuing(resumed.call_open || store.inCall());
         }
         setPhase("chat");
       },
@@ -197,6 +288,11 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
       },
     );
   }, [boot, store]);
+
+  // The control that started a Call goes away, so focus moves to the Call view.
+  useEffect(() => {
+    if (phase === "call") root.current?.querySelector<HTMLElement>(".call")?.focus();
+  }, [phase]);
 
   useEffect(() => {
     if (focusInput.current && phase === "chat") {
@@ -221,6 +317,9 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   async function send(question: string) {
     setError(null);
     setPending(true);
+    // Typing instead: the cut-off Call is no longer offered.
+    setContinuing(false);
+    store.saveCall(false);
     setMessages((current) => [
       ...current,
       { role: "visitor", text: question, citations: [], feedback: null },
@@ -239,7 +338,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
           // Announced once per reply, however many Searches it makes.
           if (searched) return;
           searched = true;
-          setAnnouncement((last) => ({ id: (last?.id ?? 0) + 1, text: boot.ui_text.searching_status ?? SEARCHING }));
+          announce(boot.ui_text.searching_status ?? SEARCHING);
         },
         onToken: (text) => {
           answer += text;
@@ -263,7 +362,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
         },
       });
       updateReply((reply) => ({ ...reply, id }));
-      setAnnouncement((last) => ({ id: (last?.id ?? 0) + 1, text: `${boot.name}: ${answer}` }));
+      announce(`${boot.name}: ${answer}`);
     } catch (failure) {
       if (failure instanceof ChatError && failure.status === 404) {
         retire();
@@ -280,6 +379,120 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     }
   }
 
+  /** Fills the log from the API: the Spoken Messages, each reply with its sources and Message ID. */
+  async function refreshLog() {
+    const resumed = token.current === null ? null : await resume(boot, token.current).catch(() => null);
+    if (resumed) setMessages(logged(resumed));
+  }
+
+  /**
+   * After a spoken reply: the log from the API. An Agent that couldn't answer has spoken its
+   * Unavailable text and ended the Call, so the Visitor returns to messaging; a retired one is
+   * shown retired.
+   */
+  async function replied(conversation: string) {
+    let resumed: Resumed | null;
+    try {
+      resumed = await resume(boot, conversation);
+    } catch (failure) {
+      if (failure instanceof ChatError && failure.status === 404) {
+        leave();
+        retire();
+      }
+      return;
+    }
+    // The Visitor ended the Call while its log was read back.
+    if (call.current === null) return;
+    if (resumed) setMessages(logged(resumed));
+    if (!resumed?.call_open) await hangUp(boot.ui_text.unavailable_message ?? CALL_UNAVAILABLE);
+  }
+
+  /** Leaves the Call being held, without ending it. */
+  function leave() {
+    clearTimeout(callLimit.current);
+    leaveCall.current = null;
+    call.current?.end();
+    call.current = null;
+    store.saveCall(false);
+  }
+
+  /** New chat or End chat during a Call: leaves the Call and ends it. */
+  function stopCall() {
+    if (phase !== "call") return;
+    leave();
+    announce(CALL_ENDED);
+    // A Call past connecting has its Conversation token.
+    void endCall(boot, token.current as string);
+  }
+
+  /**
+   * Leaves the Call, ends it, and returns to the chat with what was said in the log. Its end, and
+   * why it ended (`failure`), are announced politely; a Call that never connected announces only why.
+   */
+  async function hangUp(failure: string | null = null) {
+    leave();
+    if (token.current !== null) await endCall(boot, token.current);
+    await refreshLog();
+    setError(failure, true);
+    announce([connected.current ? CALL_ENDED : null, failure].filter((part) => part !== null).join(" "));
+    connected.current = false;
+    focusInput.current = true;
+    setPhase("chat");
+  }
+
+  async function startTalking() {
+    setChosen(true);
+    setContinuing(false);
+    setError(null);
+    setMuted(false);
+    setCallMode("connecting");
+    connected.current = false;
+    setPhase("call");
+    try {
+      if (token.current === null) {
+        token.current = await startConversation(boot);
+        store.save(token.current);
+      }
+      const started = await startCall(boot, token.current);
+      if (!mounted.current) {
+        await endCall(boot, token.current);
+        return;
+      }
+      const conversation = token.current;
+      const session = joinCall(boot, started, {
+        onMode: (mode) => {
+          setCallMode(mode);
+          if (connected.current) return;
+          connected.current = true;
+          announce(CALL_STARTED);
+        },
+        // Best effort: the reply being spoken is marked interrupted.
+        onInterruption: () => void interruptCall(boot, conversation),
+        onVisitorWords: (words) => {
+          setMessages((current) => [...current, { role: "visitor", text: words, citations: [], feedback: null, spoken: true }]);
+        },
+        onReply: () => void replied(conversation),
+        onFailure: (failure) => void hangUp(failure.message),
+      });
+      call.current = session;
+      store.saveCall(true);
+      leaveCall.current = () => {
+        session.end();
+        void endCall(boot, conversation);
+      };
+      callLimit.current = setTimeout(() => void hangUp(callLengthReached(started.max_call_minutes)), started.max_call_minutes * MINUTE_MS);
+    } catch (failure) {
+      if (failure instanceof ChatError && failure.status === 404) {
+        retire();
+        return;
+      }
+      if (failure instanceof ChatError && failure.status === 401) forget();
+      const unavailable = failure instanceof ChatError && failure.unavailable ? boot.ui_text.unavailable_message : null;
+      // The Call never started: back to the chat, where the Visitor can still type.
+      await hangUp(unavailable ?? message(failure));
+    }
+  }
+
   function onSend(text: string) {
     const question = text.trim();
     if (question) void send(question);
@@ -289,6 +502,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   function close(next: Phase) {
     if (token.current !== null) void endConversation(boot, token.current);
     forget();
+    setContinuing(false);
     setMessages([]);
     setRating(UNRATED);
     setError(null);
@@ -301,6 +515,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
 
   /** "End chat": a Visitor who hasn't rated a Conversation with a reply is asked to first. */
   function endChat() {
+    stopCall();
     if (token.current !== null && replies > 0 && rating.score === null) setPhase("ending");
     else close("ended");
   }
@@ -324,9 +539,13 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
   );
 
   const name = boot.name;
-  const chatting = phase === "chat";
-  // While the Visitor is asked to rate on "End chat", the Conversation stays in view.
-  const showing = chatting || phase === "ending";
+  // An Agent that takes Calls opens on a choice of Message or Call.
+  const choosing = boot.calls && phase === "chat" && !chosen && messages.length === 0;
+  const chatting = phase === "chat" && !choosing;
+  // While the Visitor is asked to rate on "End chat", and during a Call, the Conversation stays in view.
+  const showing = chatting || phase === "ending" || phase === "call";
+  // New chat and End chat stay in the header during a Call, and end it; not while it connects.
+  const connecting = phase === "call" && callMode === "connecting";
   let footer: ReactNode;
   if (phase === "retired") {
     footer = (
@@ -342,6 +561,51 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     );
   } else if (phase === "ending") {
     footer = ratingPrompt(true);
+  } else if (choosing) {
+    footer = (
+      <div className="choice" role="group" aria-labelledby="choice-prompt">
+        <p id="choice-prompt">How would you like to ask?</p>
+        <div className="choice-buttons">
+          <button
+            type="button"
+            onClick={() => {
+              setChosen(true);
+              focusInput.current = true;
+            }}
+          >
+            {boot.ui_text.message_choice ?? "Message"}
+          </button>
+          <button type="button" onClick={() => void startTalking()}>
+            {boot.ui_text.call_choice ?? "Call"}
+          </button>
+        </div>
+      </div>
+    );
+  } else if (phase === "call") {
+    footer = (
+      <div className="call" role="group" aria-label="Call" tabIndex={-1}>
+        {/* Shown, not read out: a screen reader saying "speaking" would talk over the Agent. */}
+        <p role="status" aria-live="off" className="call-state" data-mode={callMode}>
+          {callState(callMode, muted, name)}
+        </p>
+        <div className="call-controls">
+          <button
+            type="button"
+            aria-pressed={muted}
+            disabled={callMode === "connecting"}
+            onClick={() => {
+              call.current?.setMuted(!muted);
+              setMuted(!muted);
+            }}
+          >
+            Mute
+          </button>
+          <button type="button" className="end-call" disabled={callMode === "connecting"} onClick={() => void hangUp()}>
+            End call
+          </button>
+        </div>
+      </div>
+    );
   } else if (phase === "ended") {
     footer = (
       <div className="notice ended">
@@ -361,7 +625,7 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
     footer = (
       <>
         {error && (
-          <p role="alert" className="error">
+          <p role={quietError ? undefined : "alert"} className="error">
             {error}
           </p>
         )}
@@ -380,6 +644,13 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
               </li>
             ))}
           </ul>
+        )}
+        {continuing && (
+          <p className="continue-call">
+            <button type="button" onClick={() => void startTalking()}>
+              Continue call
+            </button>
+          </p>
         )}
         {ratingPrompt(false)}
         <Composer onSend={onSend} disabled={pending} sendLabel={pending ? "Answering…" : (boot.ui_text.send_button ?? "Send")} />
@@ -405,27 +676,29 @@ export function Widget({ boot, launcher, host = null }: { boot: Boot; launcher?:
             agentName={name}
             logoUrl={boot.logo_url}
             avatarUrl={boot.avatar_url}
-            {...(showing
-              ? { logLabel: "Conversation", announcements: announcement && <p key={announcement.id}>{announcement.text}</p> }
-              : {})}
+            {...(showing ? { logLabel: "Conversation" } : {})}
+            // Already on the page at the choice, so a Call's start is announced.
+            {...(showing || choosing ? { announcements: announcement && <p key={announcement.id}>{announcement.text}</p> } : {})}
             actions={
               <>
-                {chatting && (
+                {(chatting || phase === "call") && (
                   <span className="controls">
+                    {boot.calls && chatting && (
+                      <button type="button" disabled={pending} onClick={() => void startTalking()}>
+                        Call
+                      </button>
+                    )}
                     <button
                       type="button"
-                      disabled={pending}
+                      disabled={pending || connecting}
                       onClick={() => {
+                        stopCall();
                         close("chat");
                       }}
                     >
                       New chat
                     </button>
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={endChat}
-                    >
+                    <button type="button" disabled={pending || connecting} onClick={endChat}>
                       End chat
                     </button>
                   </span>

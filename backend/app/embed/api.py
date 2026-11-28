@@ -9,8 +9,9 @@
   streams as Server-Sent Events from the Live Version. Visitors are anonymous: these routes take
   no Studio session. The iframe shares the API's origin (ADR-0011), so there is no CORS.
 - The Studio's Operational Settings routes (Allowed Origins, the unavailable text, the rate
-  limits and the Token Budget), for Editors and Owners. Changes apply on the next request and are
-  audited. Beside them, today's usage against the Token Budget, for the Studio's meter.
+  limits, the Token Budget and the Call settings), for Editors and Owners. Changes apply on
+  the next request and are audited. Beside them, today's usage against the Token Budget, for
+  the Studio's meter.
 """
 
 import html
@@ -26,12 +27,16 @@ from pydantic import BaseModel, Field, StringConstraints, field_validator
 
 from app.agents.api import NOT_FOUND_RESPONSE, ClockDep, not_found
 from app.agents.models import (
+    CALL_MINUTES_BUDGET_MAX,
     CONVERSATION_RATE_MAX,
     IP_RATE_MAX,
     LIVE_SAMPLE_RATE_MAX,
+    MAX_CALL_MINUTES_MAX,
     ORIGIN_MAX,
+    SPOKEN_GREETING_MAX,
     TOKEN_BUDGET_MAX,
     UNAVAILABLE_TEXT_MAX,
+    VOICE_ID_MAX,
 )
 from app.agents.resolution import NoDefaultModelError, ProviderCredentialGoneError
 from app.agents.service import AgentNotFoundError
@@ -40,15 +45,14 @@ from app.auth.api import Db, ErrorResponse
 from app.core.client_ip import request_ip
 from app.core.settings import Settings
 from app.documents.ports import IngestionPorts
-from app.embed import service
+from app.embed import call_limits, service
 from app.embed.admission import Admission, Refusal
+from app.embed.call_settings import CallSettingsChange, CallSettingsError
 from app.embed.tokens import TokenSigner
-from app.evaluation.live import sample_reply
+from app.embed.visitor_turn import ServingPorts, Unavailable, VisitorTurnEvent, serve_turn
 from app.evaluation.tasks import enqueue_live_verdict
 from app.guardrails.pipeline import RefusalEvent
-from app.mail.port import Mailer
 from app.playground.api import QUESTION_MAX
-from app.playground.service import Answered, answer
 from app.projects.service import ProjectNotFoundError
 from app.runtime.errors import ErrorEvent
 from app.runtime.runtime import (
@@ -62,6 +66,8 @@ from app.tenancy.api import ORGANISATION_PREFIX
 from app.tenancy.policy import Scope
 from app.theme import images
 from app.theme.resolve import font_stylesheet_url, theme_stylesheet, widget_theme
+from app.voice.api import Voice, voice_layer_failed
+from app.voice.port import VoiceLayerError
 
 NO_LONGER_AVAILABLE = "This assistant is no longer available."
 TEMPORARILY_UNAVAILABLE = service.DEFAULT_UNAVAILABLE_TEXT
@@ -90,6 +96,26 @@ AdmissionDep = Annotated[Admission, Depends(get_admission)]
 
 
 VisitorIp = Annotated[str, Depends(request_ip)]
+
+
+def get_serving(request: Request, admission: AdmissionDep) -> ServingPorts:
+    state = request.app.state
+    settings: Settings = state.settings
+    ingestion: IngestionPorts = state.ingestion
+    return ServingPorts(
+        sessionmaker=state.sessionmaker,
+        gateway=state.model_gateway,
+        guardrails=state.guardrails,
+        embedders=ingestion.embedders,
+        clock=state.clock,
+        admission=admission,
+        mailer=state.mailer,
+        studio_url=str(settings.studio_url),
+        enqueue_live_verdict=enqueue_live_verdict,
+    )
+
+
+Serving = Annotated[ServingPorts, Depends(get_serving)]
 
 
 # The shell
@@ -143,6 +169,7 @@ async def widget_shell(public_id: str, db: Db, signer: Signer, clock: ClockDep) 
             "ui_text": experience.ui_text.model_dump(mode="json"),
             "rating_prompt_after": experience.rating_prompt_after,
             "citations": found.citations,
+            "calls": found.calls,
         }
     )
     # The Theme's values are validated (hex colours, a whole radius, an allowlisted font), so
@@ -161,7 +188,9 @@ async def widget_shell(public_id: str, db: Db, signer: Signer, clock: ClockDep) 
         ),
         headers={
             **_HEADERS,
-            "Content-Security-Policy": service.frame_ancestors(found.allowed_origins),
+            "Content-Security-Policy": service.shell_policy(
+                found.allowed_origins, calls=found.calls
+            ),
         },
     )
 
@@ -290,13 +319,12 @@ def _sse(event: str, data: dict[str, Any]) -> str:
     },
 )
 async def send_message(
-    request: Request,
     public_id: str,
     body: WidgetMessageRequest,
     db: Db,
     signer: Signer,
     clock: ClockDep,
-    admission: AdmissionDep,
+    serving: Serving,
     ip: VisitorIp,
     authorization: Authorization = "",
 ) -> StreamingResponse:
@@ -311,102 +339,58 @@ async def send_message(
     # The Agent's own words for "can't answer now", read on every request so a change applies
     # at once.
     unavailable = await service.unavailable_text(db, public_id)
-    settings: Settings = request.app.state.settings
-    mailer: Mailer = request.app.state.mailer
-    studio_url = str(settings.studio_url)
     try:
-        admitted = await service.prepare_turn(
-            db, signer, public_id, token, body.content, admission=admission, ip=ip, now=clock.now()
+        conversation = await service.visitor_conversation(
+            db, signer, public_id, token, now=clock.now()
         )
-    except service.NotAdmittedError as refused:
-        reason = RATE_LIMITED
-        if refused.reason is Refusal.TOKEN_BUDGET:
-            reason = BUDGET_EXHAUSTED
-            await service.budget_exhausted(
-                db, refused.agent_id, mailer=mailer, studio_url=studio_url, now=clock.now()
-            )
-        return _event_stream(_one(_sse("unavailable", {"reason": reason, "message": unavailable})))
     except service.InvalidTokenError:
         raise _invalid() from None
+    agent = await service.agent_of(db, conversation)
+    try:
+        turn = await serve_turn(db, agent, conversation, body.content, ip, ports=serving)
     except (AgentNotServedError, AgentNotLiveError):
         raise _gone() from None
     except (NoDefaultModelError, ProviderCredentialGoneError):
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, unavailable) from None
-    ingestion: IngestionPorts = request.app.state.ingestion
-    prepared = admitted.turn
-
-    async def spent(event: Answered) -> None:
-        # The reply's actual usage counts against today's Token Budget; the reply that spends
-        # it raises the alert.
-        used = event.event.input_tokens + event.event.output_tokens
-        total = await admission.record_usage(admitted.limits.public_id, used)
-        if total >= admitted.limits.daily_token_budget:
-            async with request.app.state.sessionmaker() as session:
-                await service.budget_exhausted(
-                    session,
-                    admitted.agent_id,
-                    mailer=mailer,
-                    studio_url=studio_url,
-                    now=request.app.state.clock.now(),
-                )
 
     async def events() -> AsyncIterator[str]:
-        async for event in answer(
-            prepared,
-            sessionmaker=request.app.state.sessionmaker,
-            gateway=request.app.state.model_gateway,
-            guardrails=request.app.state.guardrails,
-            embedders=ingestion.embedders,
-            clock=request.app.state.clock,
-            searches=True,
-        ):
-            if isinstance(event, SearchEvent):
-                # Visitors are told the Agent is searching, never what for: the model's
-                # queries are internal to the reply (spec 13).
-                yield _sse("search", {})
-            elif isinstance(event, TokenEvent):
-                yield _sse("token", {"text": event.text})
-            elif isinstance(event, ReplaceEvent):
-                yield _sse("replace", {"text": event.text})
-            elif isinstance(event, RetractEvent):
-                yield _sse("retract", {})
-            elif isinstance(event, RefusalEvent):
-                yield _sse("refusal", {"text": event.text})
-            elif isinstance(event, ErrorEvent):
-                # The event's message is written for Editors (it may name the model or say to
-                # rotate the Provider Credential); Visitors get the Agent's unavailable text.
-                yield _sse("error", {"code": event.kind, "message": unavailable})
-            elif isinstance(event, CitationEvent):
-                # Only when the Live Version shows citations to Visitors.
-                if prepared.config.retrieval.citations:
-                    yield _sse(
-                        "citation",
-                        {
-                            "label": event.label,
-                            "document_name": event.chunk.document_name,
-                            "passage": event.chunk.text,
-                        },
-                    )
-            else:
-                await spent(event)
-                yield _sse("done", {"message_id": str(event.message_id)})
-                # Only once the reply is stored and sent: it may be chosen for a Live Verdict,
-                # judged in the background.
-                chosen = await sample_reply(
-                    request.app.state.sessionmaker,
-                    admitted.agent_id,
-                    event.message_id,
-                    event.event,
-                    clock=request.app.state.clock,
-                )
-                if chosen is not None:
-                    await enqueue_live_verdict(chosen)
+        async for event in turn:
+            yield _visitor_sse(event, unavailable)
 
     return _event_stream(events())
 
 
-async def _one(event: str) -> AsyncIterator[str]:
-    yield event
+def _visitor_sse(event: VisitorTurnEvent, unavailable: str) -> str:
+    """One Server-Sent Event for what serving the Visitor's turn yielded."""
+    if isinstance(event, Unavailable):
+        reason = BUDGET_EXHAUSTED if event.reason is Refusal.TOKEN_BUDGET else RATE_LIMITED
+        return _sse("unavailable", {"reason": reason, "message": unavailable})
+    if isinstance(event, SearchEvent):
+        # Visitors are told the Agent is searching, never what for: the model's queries are
+        # internal to the reply (spec 13).
+        return _sse("search", {})
+    if isinstance(event, TokenEvent):
+        return _sse("token", {"text": event.text})
+    if isinstance(event, ReplaceEvent):
+        return _sse("replace", {"text": event.text})
+    if isinstance(event, RetractEvent):
+        return _sse("retract", {})
+    if isinstance(event, RefusalEvent):
+        return _sse("refusal", {"text": event.text})
+    if isinstance(event, ErrorEvent):
+        # The event's message is written for Editors (it may name the model or say to rotate
+        # the Provider Credential); Visitors get the Agent's unavailable text.
+        return _sse("error", {"code": event.kind, "message": unavailable})
+    if isinstance(event, CitationEvent):
+        return _sse(
+            "citation",
+            {
+                "label": event.label,
+                "document_name": event.chunk.document_name,
+                "passage": event.chunk.text,
+            },
+        )
+    return _sse("done", {"message_id": str(event.message_id)})
 
 
 def _event_stream(events: AsyncIterator[str]) -> StreamingResponse:
@@ -436,6 +420,11 @@ class WidgetMessageOut(BaseModel):
     citations: list[WidgetCitationOut]
     # The Visitor's thumbs on an answer (Message Feedback); null when none was given.
     feedback: WidgetFeedbackOut | None
+    # A Spoken Message: said in a Call (the Visitor's transcribed words or the reply the Agent
+    # spoke) rather than typed.
+    spoken: bool
+    # A spoken reply the Visitor talked over. It keeps its whole text.
+    interrupted: bool
 
 
 class WidgetRatingOut(BaseModel):
@@ -448,6 +437,9 @@ class WidgetRatingOut(BaseModel):
 class WidgetConversationOut(BaseModel):
     messages: list[WidgetMessageOut]
     rating: WidgetRatingOut
+    # Whether the Conversation has a Call open. A Call the Agent couldn't answer in has ended,
+    # so the widget returns the Visitor to messaging.
+    call_open: bool
 
 
 @widget_router.get(
@@ -488,12 +480,15 @@ async def get_conversation(
                         comment=m.feedback.comment,
                     )
                 ),
+                spoken=m.spoken,
+                interrupted=m.interrupted,
             )
             for m in resumed.messages
         ],
         rating=WidgetRatingOut(
             score=resumed.rating.score, prompt_dismissed=resumed.rating.prompt_dismissed
         ),
+        call_open=resumed.call_open,
     )
 
 
@@ -532,6 +527,14 @@ ConversationRate = Annotated[int, Field(ge=1, le=CONVERSATION_RATE_MAX)]
 IpRate = Annotated[int, Field(ge=1, le=IP_RATE_MAX)]
 TokenBudget = Annotated[int, Field(ge=1, le=TOKEN_BUDGET_MAX)]
 LiveSampleRate = Annotated[int, Field(ge=0, le=LIVE_SAMPLE_RATE_MAX, strict=True)]
+MaxCallMinutes = Annotated[int, Field(ge=1, le=MAX_CALL_MINUTES_MAX)]
+CallMinutesBudget = Annotated[int, Field(ge=1, le=CALL_MINUTES_BUDGET_MAX)]
+VoiceId = Annotated[
+    str, StringConstraints(strip_whitespace=True, min_length=1, max_length=VOICE_ID_MAX)
+]
+SpokenGreeting = Annotated[
+    str, StringConstraints(strip_whitespace=True, max_length=SPOKEN_GREETING_MAX)
+]
 
 
 class OperationalSettingsOut(BaseModel):
@@ -551,6 +554,26 @@ class OperationalSettingsOut(BaseModel):
     # The Live sample rate: the whole percentage (0 to 100) of Visitor replies chosen at random
     # to be judged by the Evaluation Model in the background (a Live Verdict). 0 judges none.
     live_sample_rate: int
+    # The Call settings. Whether Visitors can talk to the Agent in a Call (off by default).
+    calls_enabled: bool
+    # The voice-capable Provider Credential (ElevenLabs) Calls use, and the voice of its
+    # account the Agent speaks with; null until chosen.
+    call_credential_id: uuid.UUID | None
+    call_voice_id: str | None
+    # What the Agent says when a Call opens a new Conversation; empty says nothing.
+    spoken_greeting: str
+    # The Maximum Call length, in minutes (10 by default): the platform ends a Call that long
+    # after it started.
+    max_call_minutes: int
+    # The Call minutes budget: how many minutes of Calls the Agent's Visitors may use per UTC
+    # date (60 by default). Once the day's minutes reach it, Calls are refused with the
+    # unavailable text and Visitors are offered messaging. The Playground doesn't count.
+    call_minutes_budget: int
+    # The Calls failing alert: the voice layer couldn't start one of the Agent's Calls (its
+    # remote agent gone, the key revoked, the provider unreachable), so Visitors who chose Call
+    # got the unavailable text and the chat. Messaging is unaffected. Saving the Call settings
+    # sets the remote agent up again and clears it, as does the next Call that starts.
+    calls_failing: bool
 
 
 class OperationalSettingsChange(BaseModel):
@@ -563,6 +586,16 @@ class OperationalSettingsChange(BaseModel):
     ip_messages_per_minute: IpRate | None = None
     daily_token_budget: TokenBudget | None = None
     live_sample_rate: LiveSampleRate | None = None
+    # Turning calling on needs a voice-capable credential of this Organisation and a voice its
+    # account offers; saving sets up the Agent's remote agent in the voice layer, and turning
+    # calling off removes it.
+    calls_enabled: Annotated[bool, Field(strict=True)] | None = None
+    call_credential_id: uuid.UUID | None = None
+    call_voice_id: VoiceId | None = None
+    # Null or blank: no spoken greeting.
+    spoken_greeting: SpokenGreeting | None = None
+    max_call_minutes: MaxCallMinutes | None = None
+    call_minutes_budget: CallMinutesBudget | None = None
 
     @field_validator("conversation_messages_per_minute", "ip_messages_per_minute", mode="before")
     @classmethod
@@ -578,6 +611,14 @@ class OperationalSettingsChange(BaseModel):
         # Leaving the budget out keeps it; there is no "no budget".
         if value is None:
             raise ValueError("The Token Budget must be a whole number of tokens.")
+        return value
+
+    @field_validator("max_call_minutes", "call_minutes_budget", mode="before")
+    @classmethod
+    def _a_call_limit_is_a_number(cls, value: object) -> object:
+        # Leaving a limit out keeps it; there is no "no limit".
+        if value is None:
+            raise ValueError("A Call limit must be a whole number of minutes.")
         return value
 
     @field_validator("live_sample_rate", mode="before")
@@ -597,6 +638,15 @@ def _out(found: service.OperationalSettings) -> OperationalSettingsOut:
         ip_messages_per_minute=found.ip_messages_per_minute,
         daily_token_budget=found.daily_token_budget,
         live_sample_rate=found.live_sample_rate,
+        calls_enabled=found.calls_enabled,
+        call_credential_id=None
+        if found.call_credential_id is None
+        else uuid.UUID(found.call_credential_id),
+        call_voice_id=found.call_voice_id,
+        spoken_greeting=found.spoken_greeting,
+        max_call_minutes=found.max_call_minutes,
+        call_minutes_budget=found.call_minutes_budget,
+        calls_failing=found.calls_failing,
     )
 
 
@@ -617,7 +667,10 @@ async def get_operational_settings(
 @settings_router.patch(
     "/operational-settings",
     operation_id="changeOperationalSettings",
-    responses=NOT_FOUND_RESPONSE,
+    responses={
+        **NOT_FOUND_RESPONSE,
+        502: {"model": ErrorResponse, "description": "The voice layer couldn't set the Agent up"},
+    },
 )
 async def change_operational_settings(
     project_id: uuid.UUID,
@@ -626,13 +679,22 @@ async def change_operational_settings(
     scope: Scope,
     db: Db,
     clock: ClockDep,
+    voice: Voice,
 ) -> OperationalSettingsOut:
     """Changes the settings given. The next request uses them, without publishing, and the
     change is recorded as an Audit Event with the before and after values (a Live sample rate
     change as ``agent.live_sample_rate_changed``). A Live sample rate above 0 is refused with
     the typed error ``evaluation_budget_required`` while the Organisation has no Evaluation
-    budget."""
+    budget.
+
+    Call settings are refused with a 422 naming the field and reason: turning calling on while
+    the Organisation has no voice-capable credential (``no_voice_credential``), a credential
+    of another Organisation (``unknown_credential``) or without the voice Capability
+    (``not_voice_capable``), a voice its account doesn't offer (``voice_unavailable``), or no
+    credential or voice chosen (``missing``). A 502 means the voice layer couldn't set the
+    Agent up; nothing is saved then."""
     blank_text = "unavailable_text" in body.model_fields_set and body.unavailable_text is None
+    blank_greeting = "spoken_greeting" in body.model_fields_set and body.spoken_greeting is None
     try:
         found = await service.change_operational_settings(
             db,
@@ -645,10 +707,26 @@ async def change_operational_settings(
             ip_messages_per_minute=body.ip_messages_per_minute,
             daily_token_budget=body.daily_token_budget,
             live_sample_rate=body.live_sample_rate,
+            max_call_minutes=body.max_call_minutes,
+            call_minutes_budget=body.call_minutes_budget,
+            call=CallSettingsChange(
+                calls_enabled=body.calls_enabled,
+                call_credential_id=body.call_credential_id,
+                call_voice_id=body.call_voice_id,
+                spoken_greeting="" if blank_greeting else body.spoken_greeting,
+            ),
+            voice=voice,
             now=clock.now(),
         )
     except (ProjectNotFoundError, AgentNotFoundError):
         raise not_found() from None
+    except CallSettingsError as error:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            [{"loc": ["body", error.field], "msg": error.message, "type": error.kind}],
+        ) from None
+    except VoiceLayerError:
+        raise voice_layer_failed() from None
     except service.EvaluationBudgetRequiredError:
         raise HTTPException(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -713,6 +791,38 @@ async def get_token_usage(
         date=found.date,
         tokens_used=found.tokens_used,
         daily_token_budget=found.daily_token_budget,
+        exhausted=found.exhausted,
+        resets_at=found.resets_at,
+    )
+
+
+class CallMinutesOut(BaseModel):
+    # The UTC date counted: today's.
+    date: date
+    # Minutes of the Agent's Visitors' Calls that ended today, each rounded up. The Playground
+    # doesn't count.
+    minutes_used: int
+    call_minutes_budget: int
+    # Whether today's budget is spent, so Calls are refused and Visitors offered messaging.
+    exhausted: bool
+    # Midnight UTC, when a new day's counter starts.
+    resets_at: datetime
+
+
+@settings_router.get("/call-minutes", operation_id="getCallMinutes", responses=NOT_FOUND_RESPONSE)
+async def get_call_minutes(
+    project_id: uuid.UUID, agent_id: uuid.UUID, scope: Scope, db: Db, clock: ClockDep
+) -> CallMinutesOut:
+    """Today's (UTC) Call minutes against the Agent's Call minutes budget, for the Studio's
+    meter."""
+    try:
+        found = await call_limits.usage(db, scope, project_id, agent_id, now=clock.now())
+    except (ProjectNotFoundError, AgentNotFoundError):
+        raise not_found() from None
+    return CallMinutesOut(
+        date=found.date,
+        minutes_used=found.minutes_used,
+        call_minutes_budget=found.call_minutes_budget,
         exhausted=found.exhausted,
         resets_at=found.resets_at,
     )

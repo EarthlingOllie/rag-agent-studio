@@ -64,6 +64,9 @@ class ConversationSummaryOut(BaseModel):
     guardrail_events: int
     # How many of its replies failed their Live Verdict.
     failed_live_verdicts: int
+    # How many Calls it had (open or ended), and the minutes of those that ended.
+    calls: int
+    call_minutes: int
 
 
 class ConversationPageOut(BaseModel):
@@ -130,6 +133,10 @@ async def list_conversations(
             )
         ),
     ] = None,
+    has_call: Annotated[
+        bool | None,
+        Query(description="true: only those with a Call, open or ended; false: only those without"),
+    ] = None,
     page: Annotated[int, Query(ge=1)] = 1,
     page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 25,
 ) -> ConversationPageOut:
@@ -144,6 +151,7 @@ async def list_conversations(
         rating=rating,
         guardrail=guardrail,
         live_verdict=live_verdict,
+        has_call=has_call,
     )
     try:
         result = await service.list_conversations(
@@ -169,6 +177,8 @@ async def list_conversations(
                 deleted_at=row.conversation.deleted_at,
                 guardrail_events=row.guardrail_events,
                 failed_live_verdicts=row.failed_live_verdicts,
+                calls=row.calls,
+                call_minutes=row.call_minutes,
             )
             for row in result.rows
         ],
@@ -197,6 +207,13 @@ class ConversationMessageOut(MessageOut):
     # When its text (and any feedback comment) was purged, by the Retention Window or the
     # Conversation's deletion: ``content`` is then empty. Null while it is kept.
     purged_at: datetime | None
+    # A Spoken Message: said in a Call (the Visitor's transcribed words, or the reply the Agent
+    # spoke) rather than typed; ``call_id`` names the Call (one of ``calls``), null when typed.
+    spoken: bool
+    call_id: uuid.UUID | None
+    # An interrupted reply: the Visitor talked over this spoken Agent Message. Its ``content``
+    # still holds the whole reply.
+    interrupted: bool
 
 
 class RatingChangeRead(BaseModel):
@@ -222,6 +239,22 @@ class ConversationRatingRead(BaseModel):
     changes: list[RatingChangeRead]
 
 
+class CallOut(BaseModel):
+    id: uuid.UUID
+    started_at: datetime
+    # Null while it is open.
+    ended_at: datetime | None
+    # Its length rounded up to whole minutes, by the platform's clock; null while it is open.
+    minutes: int | None
+    # Why it ended (the Visitor, the Maximum Call length, silence, the Conversation ending or the
+    # Agent being unavailable); null while it is open.
+    end_reason: str | None
+    # What the voice layer cost, in US dollars, frozen when it ended (minutes times the
+    # per-minute price then); apart from the Cost of its replies. Null while it is open, and
+    # when no per-minute price was set.
+    voice_cost_usd: Dollars | None
+
+
 class ConversationDetailOut(BaseModel):
     id: uuid.UUID
     agent_id: uuid.UUID
@@ -234,6 +267,8 @@ class ConversationDetailOut(BaseModel):
     rating: ConversationRatingRead | None
     # When an Owner deleted it on request (its text is purged); null otherwise.
     deleted_at: datetime | None
+    # Its Calls, oldest first, each with its minutes and Voice Cost.
+    calls: list[CallOut]
 
 
 def _number(version_id: uuid.UUID | None, numbers: dict[uuid.UUID, int]) -> int | None:
@@ -310,11 +345,25 @@ async def get_conversation(
                 fallback=m.fallback,
                 feedback=_feedback_read(read.feedback.get(m.id), read.version_numbers),
                 purged_at=m.purged_at,
+                spoken=m.spoken,
+                call_id=m.call_id,
+                interrupted=m.interrupted,
             )
             for m in read.messages
         ],
         rating=_rating_read(read),
         deleted_at=conversation.deleted_at,
+        calls=[
+            CallOut(
+                id=call.id,
+                started_at=call.started_at,
+                ended_at=call.ended_at,
+                minutes=call.minutes,
+                end_reason=call.end_reason,
+                voice_cost_usd=call.voice_cost_usd,
+            )
+            for call in read.calls
+        ],
     )
 
 

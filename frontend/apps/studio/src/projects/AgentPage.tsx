@@ -1,8 +1,9 @@
 import { Link, Outlet, useNavigate, useParams, useSearch } from "@tanstack/react-router";
-import { createContext, type SubmitEvent, useCallback, useContext, useId, useState } from "react";
+import { createContext, type SubmitEvent, useCallback, useContext, useEffect, useId, useRef, useState } from "react";
 
 import { FormError } from "../auth/AuthLayout";
 import {
+  Badge,
   button,
   ConfirmDialog,
   Dialog,
@@ -24,11 +25,15 @@ import { TopBarActions } from "../shell/TopBarActions";
 import {
   type Agent,
   type Citation,
+  type Conversation,
   agentFailure,
   askPlayground,
   draftChangeFailure,
+  endPlaygroundCall,
   instructionsUsed,
+  readConversation,
   startConversation,
+  startPlaygroundCall,
   useAgent,
   useArchiveOrRestoreAgent,
   useDeleteAgent,
@@ -41,9 +46,11 @@ import { LiveHistory } from "./AgentLiveHistory";
 import { LiveStatus, PublishAgent } from "./AgentPublish";
 import { AgentVersions } from "./AgentVersions";
 import { DraftEditor } from "./DraftEditor";
+import { useOperationalSettings } from "./embed";
 import { AddToEvaluationSet } from "./EvaluationCaseEditor";
 import { useInstructionsVersions } from "./instructions";
 import { useOrganisationRole } from "./ProjectsPage";
+import { type CallMode, type CallSession, joinCall } from "./playgroundCall";
 import { PlaygroundTrace, TraceFold } from "./Trace";
 import { AgentAnalyticsLink } from "./AnalyticsTab";
 
@@ -85,7 +92,51 @@ type ChatMessage = {
   messageId?: string;
   // The input Guardrail blocked the question: the content is the Agent's refusal text.
   refused?: boolean;
+  // Said in a Playground Call rather than typed: a Spoken Message.
+  spoken?: boolean;
 };
+
+/** The Playground Conversation's Messages as saved: how a Call's turns reach the Playground. */
+function savedMessages(saved: Conversation): ChatMessage[] {
+  return saved.messages.map((message): ChatMessage => {
+    if (message.role === "user") return { role: "user", content: message.content, spoken: message.spoken };
+    return {
+      role: "assistant",
+      content: message.content,
+      spoken: message.spoken,
+      messageId: message.id,
+      instructions: `Instructions: ${instructionsUsed(message)}`,
+      usage: `${String(message.input_tokens)} input and ${String(message.output_tokens)} output tokens · ${String(message.latency_ms)} ms`,
+      ...(message.searches.length > 0 ? { searches: message.searches } : {}),
+      ...(message.citations.length > 0
+        ? {
+            // Just cited, so its Document is still there.
+            citations: message.citations.map((citation) => ({
+              ...citation,
+              chunk_id: citation.chunk_id as string,
+              document_id: citation.document_id as string,
+              document_name: citation.document_name as string,
+            })),
+          }
+        : {}),
+    };
+  });
+}
+
+/** Why a Playground Call ended without the Editor ending it. */
+export const CALL_DROPPED = "The call dropped. You can call again or type a question.";
+export const CALL_UNAVAILABLE = "The Draft couldn't answer, so the call ended.";
+
+/** A Playground Call being held: what it is doing, whether the Editor muted it, and whether the
+ * API started it, so the Studio is joining it in the voice layer. */
+type CallState = { mode: CallMode | "connecting"; muted: boolean; joining: boolean };
+
+/** What the Call panel says the Call is doing. */
+function callState(mode: CallMode | "connecting", muted: boolean): string {
+  if (mode === "connecting") return "Connecting the call…";
+  if (muted) return "Muted: the Draft can't hear you.";
+  return mode === "speaking" ? "The Draft is speaking…" : "Listening…";
+}
 
 /** Where a citation chip leads: the cited Chunk in the Document viewer. */
 function chunkHref(organisationId: string, projectId: string, citation: Citation): string {
@@ -185,6 +236,100 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
   // The answer being added to the Evaluation Set.
   const [adding, setAdding] = useState<string | null>(null);
   const path = { organisation_id: organisationId, project_id: agent.project_id, agent_id: agent.id };
+  // Whether the Agent's calling is on: the Playground offers a Call only then.
+  const settings = useOperationalSettings(path);
+  // The Playground Call being held: what it is doing, and whether the Editor muted it.
+  const [call, setCall] = useState<CallState | null>(null);
+  // Why the last Call ended, when the Editor didn't end it.
+  const [callEnded, setCallEnded] = useState<string | null>(null);
+  const session = useRef<CallSession | null>(null);
+  // The Conversation the joined Call is in; null when no Call is joined.
+  const callConversation = useRef<string | null>(null);
+
+  // A Call doesn't outlive the Playground: leaving the page leaves the voice session and ends it.
+  useEffect(
+    () => () => {
+      const conversation = callConversation.current;
+      if (conversation === null) return;
+      callConversation.current = null;
+      session.current?.end();
+      void endPlaygroundCall({ ...path, conversation_id: conversation }).catch(() => undefined);
+    },
+    // Mounted per Agent (its key), so the path is the same for its whole life.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
+  /** Shows the Conversation as saved; returns it. */
+  async function readBack(conversation: string): Promise<Conversation> {
+    const saved = await readConversation({ ...path, conversation_id: conversation });
+    setMessages(savedMessages(saved));
+    return saved;
+  }
+
+  /** Starts a Call with the Draft in the Conversation (a new one if none is open yet). With the
+   * fake voice layer the Editor "says" the question box's text, or "Hello.". */
+  async function startCall() {
+    setError(null);
+    setWasReset(false);
+    setCallEnded(null);
+    setCall({ mode: "connecting", muted: false, joining: false });
+    try {
+      const conversation = conversationId ?? (await startConversation(path)).id;
+      setConversationId(conversation);
+      const started = await startPlaygroundCall({ ...path, conversation_id: conversation }, instructionsVersionId || null);
+      const said = question.trim() || "Hello.";
+      setQuestion("");
+      callConversation.current = conversation;
+      session.current = joinCall(started, [said], {
+        onWords: (words) => {
+          setMessages((current) => [...current, { role: "user", content: words, spoken: true }]);
+        },
+        onReply: () => {
+          void replied(conversation);
+        },
+        onMode: (mode) => {
+          setCall((current) => ({ ...(current as CallState), mode }));
+        },
+        onDropped: () => {
+          void hangUp(CALL_DROPPED);
+        },
+      });
+      // Joining the voice layer: the Editor can mute or end the Call from now on.
+      setCall((current) => ({ ...(current as CallState), joining: true }));
+    } catch (failure) {
+      setCall(null);
+      setError(failure as Error);
+    }
+  }
+
+  /** The Draft spoke a reply: it is read back with its Searches, sources and Trace. A Draft that
+   * couldn't answer ended the Call. */
+  async function replied(conversation: string) {
+    try {
+      const saved = await readBack(conversation);
+      if (!saved.call_open) await hangUp(CALL_UNAVAILABLE);
+    } catch (failure) {
+      setError(failure as Error);
+    }
+  }
+
+  /** Leaves the Call, ends it and shows what was said; `why` says why when the Editor didn't end it. */
+  async function hangUp(why: string | null = null) {
+    const conversation = callConversation.current;
+    if (conversation === null) return;
+    callConversation.current = null;
+    session.current?.end();
+    session.current = null;
+    setCall(null);
+    setCallEnded(why);
+    try {
+      await endPlaygroundCall({ ...path, conversation_id: conversation });
+      await readBack(conversation);
+    } catch (failure) {
+      setError(failure as Error);
+    }
+  }
 
   function appendToAnswer(update: (answer: ChatMessage) => ChatMessage) {
     setMessages((current) => [...current.slice(0, -1), update(current[current.length - 1] as ChatMessage)]);
@@ -239,12 +384,13 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
     }
   }
 
-  /** Starts a new Playground Conversation; the next question is asked in it. */
+  /** Starts a new Playground Conversation, ending an open Call first; the next question is asked in it. */
   async function reset() {
     setError(null);
     setWasReset(false);
     setPending(true);
     try {
+      await hangUp();
       const conversation = await startConversation(path);
       setConversationId(conversation.id);
       setMessages([]);
@@ -271,6 +417,19 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
           Playground
         </h2>
         <p className={text.muted}>Chat with this Draft. Playground Conversations are recorded but kept out of metrics.</p>
+        {settings.data?.calls_enabled === false && (
+          <p className={text.muted}>
+            Calling is off for this Agent. Turn it on in{" "}
+            <Link
+              to="/organisations/$organisationId/projects/$projectId/agents/$agentId/embed"
+              params={{ organisationId, projectId: agent.project_id, agentId: agent.id }}
+              className={text.link}
+            >
+              Embed &amp; limits
+            </Link>{" "}
+            to call the Draft.
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap items-start gap-3">
         <InstructionsPicker
@@ -280,9 +439,22 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
           onChange={setInstructionsVersionId}
         />
         <div className="flex items-center gap-3 pt-7">
+          {settings.data?.calls_enabled && (
+            <button
+              type="button"
+              disabled={pending || call !== null}
+              onClick={() => {
+                void startCall();
+              }}
+              className={button.secondary}
+            >
+              <Icon name="phone" />
+              Call the Draft
+            </button>
+          )}
           <button
             type="button"
-            disabled={pending}
+            disabled={pending || call?.joining === false}
             onClick={() => {
               void reset();
             }}
@@ -301,9 +473,10 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
             <li
               key={index}
               aria-label="You"
-              className="max-w-[85%] self-end rounded-[18px] border border-line bg-surface px-4 py-3 text-[15px] whitespace-pre-wrap text-ink"
+              className="flex max-w-[85%] flex-col items-end gap-1.5 self-end"
             >
-              {message.content}
+              <span className="rounded-[18px] border border-line bg-surface px-4 py-3 text-[15px] whitespace-pre-wrap text-ink">{message.content}</span>
+              {message.spoken && <Badge kind="spoken" />}
             </li>
           ) : (
             <li key={index} aria-label={agent.name} className="flex gap-3">
@@ -328,6 +501,11 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
                     />
                   )}
                 </div>
+                {message.spoken && (
+                  <span className="self-start">
+                    <Badge kind="spoken" />
+                  </span>
+                )}
                 {message.refused && <p className="text-xs font-medium text-flag">Blocked by the input Guardrail: the model wasn&apos;t asked.</p>}
                 {message.citations && <Sources citations={message.citations} organisationId={organisationId} projectId={agent.project_id} />}
                 {message.instructions && <p className={text.small}>{message.instructions}</p>}
@@ -351,30 +529,61 @@ function Playground({ agent, organisationId }: { agent: Agent; organisationId: s
         />
       )}
       <FormError message={agentFailure(error)} />
-      <form
-        aria-label="Ask the Draft"
-        onSubmit={onSubmit}
-        className="flex items-end gap-2 rounded-[26px] border border-line bg-surface py-1.5 pr-1.5 pl-4 focus-within:border-accent has-[textarea:focus]:outline-2 has-[textarea:focus]:outline-offset-2 has-[textarea:focus]:outline-accent"
-      >
-        <label htmlFor="question" className="sr-only">
-          Question
-        </label>
-        <textarea
-          id="question"
-          name="question"
-          rows={1}
-          maxLength={4000}
-          placeholder="Ask the Draft a question"
-          value={question}
-          onChange={(event) => {
-            setQuestion(event.target.value);
-          }}
-          className="min-h-9 flex-1 resize-none bg-transparent py-2 text-[15px] text-ink placeholder:text-muted focus:outline-none"
-        />
-        <button type="submit" disabled={pending} className={button.primary}>
-          {pending ? "Answering…" : "Send"}
-        </button>
-      </form>
+      {callEnded && <Notice tone="info">{callEnded}</Notice>}
+      {call ? (
+        <div role="group" aria-label="Call" className={`${surface.panel} flex flex-wrap items-center gap-3`}>
+          <p role="status" className="min-w-0 flex-1 text-sm text-ink-2">
+            {callState(call.mode, call.muted)}
+          </p>
+          <button
+            type="button"
+            aria-pressed={call.muted}
+            disabled={!call.joining}
+            onClick={() => {
+              session.current?.setMuted(!call.muted);
+              setCall({ ...call, muted: !call.muted });
+            }}
+            className={button.secondary}
+          >
+            Mute
+          </button>
+          <button
+            type="button"
+            disabled={!call.joining}
+            onClick={() => {
+              void hangUp();
+            }}
+            className={button.danger}
+          >
+            End call
+          </button>
+        </div>
+      ) : (
+        <form
+          aria-label="Ask the Draft"
+          onSubmit={onSubmit}
+          className="flex items-end gap-2 rounded-[26px] border border-line bg-surface py-1.5 pr-1.5 pl-4 focus-within:border-accent has-[textarea:focus]:outline-2 has-[textarea:focus]:outline-offset-2 has-[textarea:focus]:outline-accent"
+        >
+          <label htmlFor="question" className="sr-only">
+            Question
+          </label>
+          <textarea
+            id="question"
+            name="question"
+            rows={1}
+            maxLength={4000}
+            placeholder="Ask the Draft a question"
+            value={question}
+            onChange={(event) => {
+              setQuestion(event.target.value);
+            }}
+            className="min-h-9 flex-1 resize-none bg-transparent py-2 text-[15px] text-ink placeholder:text-muted focus:outline-none"
+          />
+          <button type="submit" disabled={pending} className={button.primary}>
+            {pending ? "Answering…" : "Send"}
+          </button>
+        </form>
+      )}
     </section>
   );
 }

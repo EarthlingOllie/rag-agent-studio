@@ -57,7 +57,7 @@ The CI check that counts Tailwind palette classes (`slate-700`, the `dark:` vari
 _Avoid_: Lint rule, colour check
 
 **Launcher**:
-How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat (filling the screen when open on a phone), or an inline container that shows it in place. For an Agent whose Live Version has calling on, it opens on a choice of Message or Call instead. The Theme sets it; an Embed Snippet's `data-launcher` (with `data-target` naming the inline container) overrides it on that page. While the bubble is open, Tab stays inside the chat (the focus trap); closing it, with its Close button or Escape, returns focus to the Launcher.
+How the widget appears on the host page: a floating bubble in a bottom corner that opens the chat (filling the screen when open on a phone), or an inline container that shows it in place. For an Agent that takes Calls, it opens on a choice of Message or Call instead (the UI text overrides `message_choice` and `call_choice` reword the two buttons, per Agent Version). The Theme sets it; an Embed Snippet's `data-launcher` (with `data-target` naming the inline container) overrides it on that page. While the bubble is open, Tab stays inside the chat (the focus trap); closing it, with its Close button or Escape, returns focus to the Launcher.
 _Avoid_: Chat button, trigger
 
 **Reply announcement**:
@@ -141,7 +141,7 @@ An append-only record of who changed what in an Organisation, and when, with the
 _Avoid_: Activity, history, log
 
 **Demo Organisation**:
-The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ, the Low-budget helper and the Attack panel's Guardrail demo Agent, which always answers with the Naive demo model), published with the shop origin as their Allowed Origin. Its Agents show the Retrieval Mode trade-off over the same Project: the Product FAQ is Agentic, the HR helper Automatic; the seed sets every Agent's Retrieval Mode explicitly, and the Guardrail demo Agent is Automatic so the Attack panel stays deterministic. A fresh one comes with its Seeded history. It is found through the demo Owner's account. `make seed-reset` erases it, its Audit Events included, and builds it again; no other Organisation can be erased. In the AWS demo the seed workflow builds it the same way, as a one-off ECS task (with a reset option for `make seed-reset`).
+The Organisation `make seed` builds for showing the product: Northwind Traders, a fictional company, with a demo Owner and Editor whose sign-in details are published, the Northwind Handbook Project and its synthetic Documents, and the Agents the Demo pages embed (the Product FAQ, the Low-budget helper and the Attack panel's Guardrail demo Agent, which always answers with the Naive demo model), published with the shop origin as their Allowed Origin. Its Agents show the Retrieval Mode trade-off over the same Project: the Product FAQ is Agentic, the HR helper Automatic; the seed sets every Agent's Retrieval Mode explicitly, and the Guardrail demo Agent is Automatic so the Attack panel stays deterministic. It takes Calls only when the seed is given an ElevenLabs key (`SEED_ELEVENLABS_API_KEY`) and the platform has a public base URL: then the seed adds the voice-capable "Northwind ElevenLabs" credential and turns calling on for the Product FAQ, with the account's first voice and a spoken greeting, after the Seeded history (which has no Calls). Without both, calling stays off on every Agent and nothing about Calls is seeded. A fresh one comes with its Seeded history. It is found through the demo Owner's account. `make seed-reset` removes its Agents' Remote agents from the voice layer, erases it, its Audit Events included, and builds it again; no other Organisation can be erased. In the AWS demo the seed workflow builds it the same way, as a one-off ECS task (with a reset option for `make seed-reset`).
 _Avoid_: Sample org, test tenant, sandbox
 
 **Seeded history**:
@@ -179,7 +179,7 @@ _Avoid_: Purge, hard delete
 ## Models
 
 **Provider Credential**:
-A secret an Organisation stores so it can call a model provider.
+A secret an Organisation stores so it can call a model provider, or ElevenLabs for Calls.
 _Avoid_: API key, token, connection
 
 **Capability**:
@@ -191,7 +191,7 @@ The last four characters of a Provider Credential's secret: all of the secret th
 _Avoid_: Hint, preview, redacted key
 
 **Credential check**:
-A live call to the provider that proves a Provider Credential works, made when it is saved, rotated, or re-checked on demand. It passes or fails with a typed reason (invalid key, missing model access, quota exceeded, provider unreachable; for Bedrock also role not assumable and wrong region). A Bedrock check first assumes the role (or checks the access keys), then checks model access in the credential's region.
+A live call to the provider that proves a Provider Credential works, made when it is saved, rotated, or re-checked on demand. It passes or fails with a typed reason (invalid key, missing model access, quota exceeded, provider unreachable; for Bedrock also role not assumable and wrong region). A Bedrock check first assumes the role (or checks the access keys), then checks model access in the credential's region. An ElevenLabs check proves the key may use ElevenLabs Agents; a key whose permissions leave them out fails as an invalid key.
 _Avoid_: Validation, test call, ping
 
 **Bedrock role**:
@@ -215,7 +215,7 @@ Replacing a Provider Credential's secret while keeping its identity, so everythi
 _Avoid_: Re-key, replace, regenerate
 
 **Credential reference**:
-Something that uses a Provider Credential, such as an Agent's model or a Project's Embedding Model. A credential can't be deleted while any reference to it exists.
+Something that uses a Provider Credential, such as an Agent's model, a Project's Embedding Model or the Call settings of an Agent with calling on. A credential can't be deleted while any reference to it exists.
 _Avoid_: Dependency, usage, link
 
 **Default Model**:
@@ -243,11 +243,11 @@ A model that reorders retrieved passages by relevance to a query, built by the M
 _Avoid_: Re-ranker, scorer
 
 **Price table**:
-The platform's price for each provider's models, in US dollars per million input, output and cached input tokens, each with the date it took effect. It lives in the repo as data and is loaded on every migrate; a new price is a new dated entry, so past costs keep the price they were made at.
+The platform's price for each provider's models, in US dollars per million input, output and cached input tokens, each with the date it took effect, and the voice layer's price per Call minute (ElevenLabs), dated the same way. It lives in the repo as data and is loaded on every migrate; a new price is a new dated entry, so past costs keep the price they were made at.
 _Avoid_: Rate card, price list, pricing
 
 **Price override**:
-An Owner's price for one model of one Provider Credential, such as a negotiated rate. Any of the three prices can be overridden; the rest keep the Price table's. Overrides take precedence over the Price table and go with their credential.
+An Owner's price for one model of one Provider Credential, such as a negotiated rate, or the per-minute price of a voice credential, to match its voice plan. Any of a model's three prices can be overridden; the rest keep the Price table's. Overrides take precedence over the Price table and go with their credential.
 _Avoid_: Custom price, discount
 
 **Cost**:
@@ -422,7 +422,7 @@ A suggested question the widget offers a Visitor before the first message. An Ag
 _Avoid_: Suggested prompt, quick reply
 
 **UI text override**:
-An Agent's replacement for one piece of the widget's built-in text, such as the "Send" button or the Launcher's "Message" and "Call" choices. Empty keeps the built-in text.
+An Agent's replacement for one piece of the widget's built-in text, such as the "Send" button or the Launcher's "Message" and "Call" choices (`message_choice` and `call_choice`). Part of the Experience, so it is in the Draft, each Agent Version and their diffs. Empty keeps the built-in text.
 _Avoid_: Translation, label override
 
 **Autosave**:
@@ -446,7 +446,7 @@ In Agentic Retrieval Mode, clearing answer text that already streamed because th
 _Avoid_: Replace (that is the canary's), rollback, undo
 
 **Searching status**:
-What a Visitor sees while an Agentic Agent searches: a short row in the reply, "Searching the knowledge base…" (a UI text override can reword it), replaced as soon as the answer starts streaming, and shown again on a Retraction. Screen readers hear it once per reply, from the same polite region as the Reply announcement. The widget is told only that a Search started (a `search` event with no query), never the query the model wrote.
+What a Visitor sees while an Agentic Agent searches: a short row in the reply, "Searching the knowledge base…" (a UI text override can reword it), replaced as soon as the answer starts streaming, and shown again on a Retraction. In a Call it is spoken once per reply instead (see Spoken text). Screen readers hear it once per reply, from the same polite region as the Reply announcement. The widget is told only that a Search started (a `search` event with no query), never the query the model wrote.
 _Avoid_: Typing indicator, thinking, spinner
 
 **Search limit**:
@@ -518,7 +518,7 @@ The Agent Version currently served to Visitors, with the Instructions Version it
 _Avoid_: Active, production
 
 **Live state**:
-How an Agent stands with Visitors, shown as badges in the Agents list: "Live v3" (its Live Version), or "Not live", plus "Draft" when it has Unpublished changes. Alerts (a spent Token Budget, a Guardrail block rate spike) are badged beside it.
+How an Agent stands with Visitors, shown as badges in the Agents list: "Live v3" (its Live Version), or "Not live", plus "Draft" when it has Unpublished changes. Alerts (a spent Token Budget or Call minutes budget, a Guardrail block rate spike) are badged beside it.
 _Avoid_: Deployment status, publish state
 
 **Current Version**:
@@ -565,7 +565,7 @@ What a Playground answer records in place of a Version when it ran with a Draft:
 A Conversation held in the Playground. It is flagged as such, so metrics and the Token Budget leave it out; its cost still counts.
 
 **Playground reset**:
-Starting a new Playground Conversation, so the Draft is tested from a clean slate with no remembered turns. The earlier Playground Conversation is kept as it was.
+Starting a new Playground Conversation, so the Draft is tested from a clean slate with no remembered turns. The earlier Playground Conversation is kept as it was. A reset during a Playground Call ends the Call first.
 _Avoid_: Clear, restart, new chat
 
 **Provider error**:
@@ -600,10 +600,10 @@ What a Visitor sees in place of the chat when the Agent is archived, in an archi
 _Avoid_: Error page, 404
 
 **Operational Settings**:
-An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits, Token Budget, the Call settings, Maximum Call length, Call minutes budget and Live sample rate. Allowed Origins, the Unavailable text, the rate limits, the Token Budget and the Live sample rate are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`, or `agent.live_sample_rate_changed` for the Live sample rate) holding the before and after values of the settings it changed.
+An Agent's settings that take effect immediately and are not part of any Draft or Version: Allowed Origins, the Unavailable text, the Theme override, rate limits, Token Budget, the Call settings, Maximum Call length, Call minutes budget and Live sample rate. Allowed Origins, the Unavailable text, the rate limits, the Token Budget, the Live sample rate, the Call settings and the two Call limits are edited through their own endpoint (the Theme override through its own, Owners only), apply on the next request without publishing, and every change is an Audit Event (`agent.operational_settings_changed`, or `agent.live_sample_rate_changed` for the Live sample rate) holding the before and after values of the settings it changed.
 
 **Unavailable text**:
-What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit or because the day's Token Budget is spent). Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
+What Visitors are told, in the Agent's own words, when it can't answer (no model to answer with, a provider failure, a message refused by a rate limit or because the day's Token Budget is spent). In a Call it is spoken, and the Call ends. Part of the Operational Settings; left empty, it is the platform's default, "This assistant is temporarily unavailable. Please try again later."
 _Avoid_: Error message, offline message
 
 **Theme override**:
@@ -615,7 +615,7 @@ How many Visitor messages an Agent admits in any one minute, per Conversation (i
 _Avoid_: Throttling (that is sign-in protection), quota
 
 **Admission control**:
-The check every Visitor message passes, after its Conversation token is accepted and before anything is saved or a model is called: first the Agent's Token Budget, then its Rate limits. It admits the message or refuses it with a reason, and a refusal reaches the Visitor as the Unavailable text. The Playground never goes through it.
+The check every Visitor message passes, after its Conversation token is accepted and before anything is saved or a model is called: first the Agent's Token Budget, then its Rate limits. It admits the message or refuses it with a reason, and a refusal reaches the Visitor as the Unavailable text. Starting a Call passes the same checks, then the Call's own: no other Call open in the Conversation, fewer than two open Calls for the IP address with the Agent, and the day's Call minutes budget not spent. The Playground never goes through it.
 
 **Trusted proxies**:
 The load balancers and CDN ranges (`TRUSTED_PROXIES`; in AWS the VPC, where the ALB is, and CloudFront's origin-facing ranges) whose `X-Forwarded-For` entries are believed when finding a client's IP address for per-IP limits: the per-IP Rate limit and sign-in protection. The client is the right-most address that isn't a trusted proxy; anything a client wrote itself is ignored. With none, the connection's own address is the client's. Nothing else believes forwarding headers (uvicorn's own handling is off).
@@ -625,7 +625,7 @@ The maximum tokens an Agent's Visitor replies may use per UTC date (1,000,000 by
 _Avoid_: Quota, spend limit (cost is tracked separately)
 
 **Budget alert**:
-The flag an Agent carries once its Token Budget is spent for the day, raised by the first reply that reaches it or the first message it refuses. The Studio shows it as a "Budget exhausted" badge on the Agent list and the Agent page, and raising it emails every Owner once per Agent per day. A Beat task clears the flags at midnight UTC.
+The flag an Agent carries once its Token Budget is spent for the day, raised by the first reply that reaches it or the first message it refuses; the Call minutes budget has its own, raised by the first Call it refuses. The Studio shows them as "Budget spent" and "Call minutes spent" badges on the Agent list and the Agent page, and raising either emails every Owner once per Agent per day. A Beat task clears the flags at midnight UTC.
 _Avoid_: Budget warning, alarm
 
 **Allowed Origins**:
@@ -689,42 +689,84 @@ One Visitor's thread of Messages with an Agent, whether typed or spoken in a Cal
 _Avoid_: Session, chat, thread
 
 **Call**:
-A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. The Agent is asked exactly what it would be asked for a typed Message; only formatting and citation markers are left out of what is spoken (ADR-0019). Only a Visitor in the widget, or a Member in the Playground, starts one (a Playground Call speaks with the Agent's Call settings and stays out of metrics and the Call minutes budget; its Voice Cost still counts); the Conversation log shows it as text while it is spoken, and its audio is never stored. A Conversation has one Call at a time and may have several over its life: a reload ends the Call, and the resumed widget offers to continue with a new one. The spoken greeting opens only a Call that starts an empty Conversation, and the Visitor ends the Call to type. While an Agentic Agent searches, the Searching status is spoken; a Guardrail refusal is spoken and the Call goes on; anything that makes the Agent unavailable speaks the Unavailable text, ends the Call and returns the Visitor to messaging.
+A spoken stretch of a Visitor's Conversation: the Visitor talks and the same Agent answers aloud. It belongs to the Conversation it happens in, so what was said joins the typed Messages and the Agent remembers both. The Agent is asked exactly what it would be asked for a typed Message; only formatting and citation markers are left out of what is spoken (ADR-0019). Only a Visitor in the widget, or a Member in the Playground, starts one (a Playground Call speaks with the Agent's Call settings and stays out of metrics and the Call minutes budget; its Voice Cost still counts); the Conversation log shows it as text while it is spoken, and its audio is never stored. A Conversation has one Call at a time and may have several over its life, and one IP address holds at most two open Calls with an Agent (the platform's cap); starting another is refused with the Unavailable text and the Visitor is offered messaging. A Call ends when the Visitor ends it, at the Maximum Call length, at the Silence cut-off, or when its Conversation ends (the Visitor's "End chat" or an Owner deleting it); ending records its minutes, its length from start to end by the platform's clock rounded up, and adds them to the Agent's Call minutes for the UTC date: a reload ends the Call, and the resumed widget offers to continue with a new one. The spoken greeting opens only a Call that starts an empty Conversation, and the Visitor ends the Call to type. While an Agentic Agent searches, the Searching status is spoken; a Guardrail refusal is spoken and the Call goes on; anything that makes the Agent unavailable speaks the Unavailable text, ends the Call and returns the Visitor to messaging.
 _Avoid_: Voice chat, voice session, phone call
 
 **Call token**:
-A short-lived, signed token the widget is given when a Call starts, bound to its Conversation. The voice layer presents it with every spoken turn, together with a secret only it holds; a turn is answered only when both are good.
+A short-lived, signed token the widget is given when a Call starts, bound to the Call and its Conversation and lasting the Maximum Call length in force when the Call started. The widget hands it to the Voice layer, which presents it with every spoken turn (as its custom LLM's extra body), together with the Remote agent's secret; a turn is answered only when both are good and the Call is still open.
 _Avoid_: Voice token, session key
 
+**Playground Call**:
+A Call a Member holds with the Agent's Draft from the Playground, offered only while the Agent's calling is on. It speaks with the Agent's Call settings and Remote agent and goes through the same turn endpoint as a Visitor's Call, with a Playground Call token; the Draft answers with the Project Instructions picked in the Instructions picker when it started. Both sides are saved as Spoken Messages of the Playground Conversation, each reply with its Trace, its Searches' queries and its sources. It passes no Admission control and stays out of metrics, the Token Budget and the Call minutes budget; its Voice Cost and its replies' model Cost count in Organisation cost. It ends as any Call does (End call, a Playground reset, the Maximum Call length, the Silence cut-off, a reply the Draft can't give), recorded as ended in the Playground when the Member ends it.
+_Avoid_: Test call, Draft call
+
+**Playground Call token**:
+The Call token of a Playground Call: signed like a Call token but of its own kind, so neither stands for the other. The turn endpoint answers its turns with the Draft, outside the Visitor limits.
+
 **Calls failing alert**:
-An Agent's alert that Visitors' Calls can't start because the voice layer refuses them (its agent is gone, the key was revoked, the provider is down). Visitors get the Unavailable text and messaging keeps working; saving the Call settings sets the voice layer up again.
+An Agent's alert that Visitors' Calls can't start because the Voice layer refuses them (its remote agent is gone, the key was revoked, the provider is unreachable): raised by the first Call (a Visitor's or a Playground Call) the Voice layer can't start, and shown as a "Calls failing" badge on the Agents list and the Agent's page and as a notice in the Call settings on Embed & limits. Visitors who chose Call get the Unavailable text (reason `voice_unavailable`) and the chat, and messaging keeps working. Saving the Call settings sets the remote agent up again and clears it, as does the next Call that starts, or turning calling off; other Operational Settings changes leave it.
 _Avoid_: Voice error, call outage
 
+**Microphone refusal**:
+A Call that can't go ahead because the Visitor's microphone can't be used. The widget asks for the microphone only after the Visitor chooses Call; when they refuse it, the host page's Permissions Policy (or an insecure page) blocks it, or there is no microphone to use, the widget ends the Call, says why in a short sentence and opens the chat. It raises no Calls failing alert.
+
+**Spoken greeting**:
+What an Agent's Remote agent says as a Call opens a Conversation that has no Messages yet, from the Call settings. It is only spoken, never saved as a Message; a Call in a Conversation that already has Messages (typed, or from an earlier Call) opens with the Agent listening.
+_Avoid_: Voice greeting, first message, welcome message
+
+**Continue call**:
+What the widget offers on a resumed Conversation whose last Call the page cut off (a reload or a page change ends the Call). Tapping it starts a new Call in the same Conversation; the microphone is never opened until the Visitor taps.
+_Avoid_: Rejoin, reconnect, resume call
+
 **Spoken Message**:
-A Message said in a Call rather than typed: the Visitor's words as transcribed, or the Agent's reply as the model wrote it. An Agent's Spoken Message the Visitor talked over is marked interrupted and still holds the whole reply, so it matches its Trace. It takes Message Feedback, counts in a Version's metrics and is judged like a typed one.
+A Message said in a Call rather than typed: the Visitor's words as transcribed, or the Agent's reply as the model wrote it. An Agent's Spoken Message the Visitor talked over is marked interrupted (the widget tells the API when the voice layer reports the Visitor talking over a reply) and still holds the whole reply, so it matches its Trace: a reply talked over while it was still being answered is finished, saved whole and marked when saved. It takes Message Feedback, counts in a Version's KPIs, can be chosen for a Live Verdict and added to the Evaluation Set like a typed one, with no special case. The Conversations viewer marks it "Spoken" (naming its Call) and an interrupted reply "Interrupted". The Purge clears its text as it clears a typed Message's, while its Call keeps its minutes and Voice Cost.
 _Avoid_: Voice message, transcript line, utterance
 
 **Call settings**:
-Whether an Agent takes Calls (off by default), the voice-capable Provider Credential and the voice it speaks with (a Credential reference), and its spoken greeting. Calls are held in English. Part of the Operational Settings, so they apply at once and no Version holds them.
+Whether an Agent takes Calls (off by default), the voice-capable Provider Credential and the voice it speaks with (a Credential reference), and its spoken greeting. Calls are held in English. Part of the Operational Settings, so they apply at once and no Version holds them. Turning calling on is refused while the Organisation has no voice-capable credential, and a voice the credential's account doesn't offer is refused; saving sets up the Agent's Remote agent.
 _Avoid_: Voice config, calling options
 
+**Voice layer**:
+The ElevenLabs Agents service that listens, takes turns and speaks in a Call, while our runtime writes every reply (ADR-0019). The platform reaches it through one port with four operations: set up or update an Agent's Remote agent, remove it, list a credential's voices, and start a Call. Tests and `docker compose` use a scripted fake instead.
+_Avoid_: Voice provider, speech engine, TTS
+
+**Remote agent**:
+An Agent's counterpart in the Voice layer, one per Agent with calling on: it holds the voice, the language, the spoken greeting, our turn endpoint's address (from the platform's public base URL) as its custom LLM, and a per-Agent secret the platform generates and stores encrypted; it has no prompt, tools or knowledge of its own. Saving the Call settings sets it up or updates it, so nobody edits it in ElevenLabs; turning calling off, changing the credential, or archiving or deleting the Agent removes it.
+_Avoid_: ElevenLabs agent, voice agent, voice bot
+
+**Turn endpoint**:
+The OpenAI-compatible chat completions route, under an Agent's public ID, that the Voice layer calls as its Remote agent's custom LLM for every turn of a Call. It takes only the last user message as the Visitor's words, ignoring the history the Voice layer sends, serves them exactly as a typed widget message is served, saves both sides as Spoken Messages, and streams back the text to speak (the Spoken text) as Server-Sent Events.
+_Avoid_: Custom LLM (for our side), voice webhook
+
+**Spoken text**:
+What the Turn endpoint gives the Voice layer to say for a reply: the reply without its Markdown (headings, emphasis, list and quote markers, code marks, table rules, link addresses) or its Chunk labels, released a sentence or line at a time, while the saved Message, its Trace and the Conversation log keep the full text with its sources. The first Search of an Agentic reply speaks the Searching status (or its UI text override) once, as a buffer phrase. Text that could still be retracted (an Agentic reply's text, and its Fallback Text, until the answer is known) is held back until it can't be, so nothing spoken is taken back; Automatic replies are spoken as they stream. A Canary trip stops the reply and speaks the replacement text, and a Guardrail block speaks the refusal text, the Call going on; an unavailable outcome (a rate limit, a spent Token Budget, a provider failure, no model, a retired Agent) speaks the Unavailable text and ends the Call, and the widget, reading the Conversation back, returns the Visitor to messaging.
+_Avoid_: TTS text, transcript (that is the log)
+
+**Call client**:
+The widget's side of a Call: it joins the Call the API started and tells the widget what the Visitor said, when the Agent has spoken, and whether the Agent is speaking or listening, while the reply itself (text, sources, Message ID) comes from our API. Against the fake Voice layer the widget uses its scripted call client, which plays a Call without audio by "saying" the Agent's first starter question.
+_Avoid_: Voice SDK, softphone
+
 **Maximum Call length**:
-How long one Call may last before it is ended (10 minutes by default), timed by the platform. Part of the Operational Settings.
+How long one Call may last before it is ended (10 minutes by default, at most 60), timed by the platform. The widget returns to the chat saying the Call reached its limit, the Call token stops working, and a Beat task ends the Call on the platform at the moment the limit passed. Part of the Operational Settings.
 _Avoid_: Call timeout, session limit
 
+**Silence cut-off**:
+A Call with no turn for 60 seconds is ended by a Beat task (run every 15 seconds), at the moment the minute passed; this also closes Calls whose browser vanished without ending them. A turn that arrives after the minute passed, before the Beat task ran, ends the Call then too and is refused.
+_Avoid_: Idle timeout, hang-up timer
+
 **Call minutes budget**:
-The most minutes of Calls an Agent's Visitors may use per UTC date (60 by default), timed by the platform; once spent, the Agent gets its Budget alert, the Owners are emailed once, and Calls are refused with the Unavailable text and the Visitor is offered messaging. Part of the Operational Settings, beside the Token Budget, which spoken replies also count toward.
+The most minutes of Calls an Agent's Visitors may use per UTC date (60 by default), timed by the platform. Each Call that ends adds its minutes, rounded up, to the Agent's counter for the UTC date it ended; Calls still open count their minutes so far, at least one each, and starts are taken one at a time per Agent, so Calls starting at once can't all take its last minute. Once the day's minutes reach the budget, starting a Call is refused with the Unavailable text (reason `call_minutes_exhausted`) and the Visitor is offered messaging, and the first such refusal of the day raises the Agent's Budget alert ("Call minutes spent") and emails the Owners once. A new UTC date starts a new counter; raising the budget applies at once. Playground Calls don't count. The Studio's Call minutes meter, beside the Token Budget's meter in Embed & limits, shows today's minutes (open Calls included, as starting a Call counts them) against it. Part of the Operational Settings, beside the Token Budget, which spoken replies also count toward.
 _Avoid_: Call quota, voice limit
 
 **Voice Cost**:
-What a Call's voice layer cost in US dollars: its minutes times the per-minute price in effect when it ended, preferring Price overrides. Kept apart from the Cost of the model calls behind each spoken reply.
+What a Call's voice layer cost in US dollars: its minutes times the per-minute price in effect when it ended, preferring the voice credential's Price override; unknown when no price is set. It is frozen when the Call ends, shown on the Call in its Conversation, and rolled up per Agent Version on the UTC day the Call ended into the Agent's cost and Organisation cost. Kept apart from the Cost of the model calls behind each spoken reply.
 _Avoid_: Call charge, voice spend
 
 **Message**:
 One turn in a Conversation, from either the Visitor or the Agent. An Agent Message records what produced it: the Agent Version that answered, or the Draft marker for a Playground answer (Message attribution). A Playground answer also records the Project Instructions it ran with: an Instructions Version or the Draft marker.
 
 **Conversations viewer**:
-The Project's Conversations section in the Studio, also each Agent's Conversations view (there fixed to the Agent). It lists the Project's Conversations beside the open one's transcript, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, by Visitors, Playground or Both (a segmented choice), by Message Feedback (a reply with a thumbs up, with a thumbs down, any feedback, or none), by Conversation Rating (one score from 1 to 5, rated, or not rated), by Guardrail outcome (a reply whose Guardrail blocked, flagged, logged, replaced or allowed it, any Guardrail outcome, or none), and by Live Verdict (a reply whose Live Verdict passed, failed or is an Error, or a reply not judged); each listed Conversation shows its thumbs-up and thumbs-down counts, its current Conversation Rating, how many of its replies have a Guardrail outcome and how many failed their Live Verdict, and a long list is paged. Opening one shows its Messages beside the list, each Agent Message with the Agent Version (a Version chip) or Draft that answered, a "Blocked by guardrail" badge when the input Guardrail blocked the question, its Message Feedback (thumb, comment, the Agent Version it counts for, and when) and its Trace folded under it, and for a Visitor Conversation its Conversation Rating (score, the Agent Version it counts for, when, any dismissal of the Rating prompt) with its Rating change log. Any Member can use it.
+The Project's Conversations section in the Studio, also each Agent's Conversations view (there fixed to the Agent). It lists the Project's Conversations beside the open one's transcript, Visitors' and the Playground's (Playground Conversations flagged), newest first, filtered by Agent, by Agent Version (those with an answer from it), by the UTC days they started on, by Visitors, Playground or Both (a segmented choice), by Message Feedback (a reply with a thumbs up, with a thumbs down, any feedback, or none), by Conversation Rating (one score from 1 to 5, rated, or not rated), by Guardrail outcome (a reply whose Guardrail blocked, flagged, logged, replaced or allowed it, any Guardrail outcome, or none), by Live Verdict (a reply whose Live Verdict passed, failed or is an Error, or a reply not judged), and by whether it had a Call ("Has a Call": with a Call, open or ended, or without); each listed Conversation shows its thumbs-up and thumbs-down counts, its current Conversation Rating, how many of its replies have a Guardrail outcome and how many failed their Live Verdict, and, when it had Calls, how many and their minutes; a long list is paged. Opening one shows its Messages beside the list, each Agent Message with the Agent Version (a Version chip) or Draft that answered, a "Blocked by guardrail" badge when the input Guardrail blocked the question, a "Spoken" badge on Spoken Messages and an "Interrupted" badge on replies the Visitor talked over, its Message Feedback (thumb, comment, the Agent Version it counts for, and when) and its Trace folded under it, and a row for each Call (when it started and ended, why, its minutes and Voice Cost), and for a Visitor Conversation its Conversation Rating (score, the Agent Version it counts for, when, any dismissal of the Rating prompt) with its Rating change log. Any Member can use it.
 _Avoid_: Chat log, transcript list
 
 **Message Feedback**:
@@ -752,7 +794,7 @@ An Agent Version's key numbers over a range of UTC days (the last 30 by default)
 _Avoid_: Stats, dashboard numbers
 
 **Usage rollup**:
-The `usage_daily` row for one Agent Version and one UTC day: Conversations, Messages, token sums, cost, thumbs up and down, rating sum and count, fallback count, Guardrail blocks (for the Block rate), Searches (the sum of the replies' Searches, for Searches per reply), Live Verdicts judged and passed (for the Live score; errors and skipped ones aren't counted), and fixed-bucket histograms (10% wide buckets, which add up across days) of tokens per reply, time to first token and latency, from which percentiles are read. A Beat task runs hourly: it recomputes the current day and finalises each earlier day not yet final for the Organisation (normally the previous day; days a stopped Beat missed are caught up). A final day isn't recomputed, so feedback, a rating or a Live Verdict judged after its day was finalised doesn't move it. Each day's rollup is recomputed in full, so running the task again gives the same rollups. A reply, its tokens, cost, latency, Guardrail block, Searches, Message Feedback and Live Verdict belong to the day the reply was made; a Conversation to the day the Version first replied in it; a Conversation Rating to the day of the Conversation's first reply.
+The `usage_daily` row for one Agent Version and one UTC day: Conversations, Messages, token sums, cost, thumbs up and down, rating sum and count, fallback count, Guardrail blocks (for the Block rate), Searches (the sum of the replies' Searches, for Searches per reply), Live Verdicts judged and passed (for the Live score; errors and skipped ones aren't counted), Visitor Calls, their Call minutes and Voice Cost (on the day each Call ended, for the Version Live when it started; Analytics shows Calls and Call minutes per day, week or month), and fixed-bucket histograms (10% wide buckets, which add up across days) of tokens per reply, time to first token and latency, from which percentiles are read. A Beat task runs hourly: it recomputes the current day and finalises each earlier day not yet final for the Organisation (normally the previous day; days a stopped Beat missed are caught up). A final day isn't recomputed, so feedback, a rating or a Live Verdict judged after its day was finalised doesn't move it. Each day's rollup is recomputed in full, so running the task again gives the same rollups. A reply, its tokens, cost, latency, Guardrail block, Searches, Message Feedback and Live Verdict belong to the day the reply was made; a Conversation to the day the Version first replied in it; a Conversation Rating to the day of the Conversation's first reply.
 _Avoid_: Aggregate, summary table
 
 **Searches per reply**:
@@ -796,7 +838,7 @@ The Version a compared metric favours. A higher thumbs-up rate or mean rating is
 _Avoid_: Winner
 
 **Time series**:
-One metric of an Agent (every Version together: Conversations, replies, cost, mean tokens per reply, thumbs-up rate, mean Conversation Rating, fallback rate, p95 latency or Live score) per day, ISO week (Monday to Sunday) or month over a range of UTC days (the last 30 by default; the first and last periods are clipped to the range), shown in the Project's Analytics section as a chart (one line with an area fill, a hover readout of each point's period, value and sample size, and never two y-axes) or as its Table view. Like the Version KPIs it reads the Usage rollups plus the live partial day, and only Visitor Conversations count. A period with no sample has no value (a gap), not zero. Live History markers on it show where the Live Version changed.
+One metric of an Agent (every Version together: Conversations, replies, cost, mean tokens per reply, thumbs-up rate, mean Conversation Rating, fallback rate, p95 latency, Live score, Calls or Call minutes) per day, ISO week (Monday to Sunday) or month over a range of UTC days (the last 30 by default; the first and last periods are clipped to the range), shown in the Project's Analytics section as a chart (one line with an area fill, a hover readout of each point's period, value and sample size, and never two y-axes) or as its Table view. Like the Version KPIs it reads the Usage rollups plus the live partial day, and only Visitor Conversations count. A period with no sample has no value (a gap), not zero. Live History markers on it show where the Live Version changed.
 _Avoid_: Trend graph, history chart
 
 **Table view**:
@@ -812,7 +854,7 @@ The warning under the Time series when the Project's Knowledge Base changed duri
 _Avoid_: Disclaimer, KB warning
 
 **Organisation cost**:
-What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage and Evaluation Run cost each in their own column beside Visitor usage, and a total. Only Projects and Agents that replied or ran an Evaluation Run in the period have a line; archived ones still do. An Evaluation Run's cost counts on the days its answers were given. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
+What the Organisation spent over a range of UTC days (the last 30 by default), at each reply's frozen Cost, broken down by Project or by Agent (each with its Project), with Playground usage, Evaluation Run cost and the Voice Cost of Visitors' Calls each in their own column beside Visitor usage, and a total. Only Projects and Agents that replied or ran an Evaluation Run in the period have a line; archived ones still do. An Evaluation Run's cost counts on the days its answers were given. Visitor usage on days before today comes from the Usage rollups and today's is counted live; Playground usage, which never goes into the rollups, comes from the raw Messages. Shown on the Owner-only Cost page.
 _Avoid_: Billing, invoice, spend report
 
 ## Evaluation

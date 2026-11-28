@@ -101,6 +101,13 @@ class Settings(BaseSettings):
     invite_ttl_seconds: int = Field(default=7 * 24 * 60 * 60, gt=0)
     # The Studio's public address; links in emails point here.
     studio_url: HttpUrl = HttpUrl("http://localhost:5173")
+    # The platform's public base URL: where the voice layer reaches the turn endpoint for
+    # Calls, so it must be reachable from the public internet (locally, through a tunnel).
+    # Unset, the Studio's address, which serves the API too.
+    public_base_url: HttpUrl | None = None
+    # Which voice layer holds Calls: ElevenLabs Agents, or the scripted fake (`docker compose`,
+    # tests), which sets up remote agents in memory and joins Calls with no audio.
+    voice_layer: Literal["elevenlabs", "fake"] = "elevenlabs"
     # The demo pages (ticket 10-03): the fictional shop pages ask `GET /api/demo/agents` which of
     # the Demo Organisation's Agents to embed, and the low-budget page's button spends that
     # Agent's Token Budget. Off, those routes answer 404; on in `docker compose` and the AWS demo.

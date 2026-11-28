@@ -118,6 +118,19 @@ async def _new_bedrock_body(owner: SignedUpMember, add_member: MemberFactory) ->
 _CREDENTIAL = "/api/organisations/{organisation_id}/credentials/{credential_id}"
 
 
+async def _a_voice_credential(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    response = await owner.client.post(
+        f"/api/organisations/{owner.organisation_id}/credentials",
+        json={
+            "name": f"Isolation {uuid.uuid4().hex[:12]}",
+            "provider": "elevenlabs",
+            "api_key": "sk-isolation-voice-only-0000",
+        },
+    )
+    assert response.status_code == 201, response.text
+    return {"credential_id": response.json()["id"]}, None
+
+
 async def _a_credential_to_list(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, _ = await _a_credential(owner, add_member)
     return params | {"capability": "chat"}, None
@@ -131,6 +144,11 @@ async def _a_chat_model_choice(owner: SignedUpMember, add_member: MemberFactory)
 async def _a_price_override(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     params, _ = await _a_credential(owner, add_member)
     return params, {"model": "gpt-4.1", "input": "1.5"}
+
+
+async def _a_voice_price_override(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
+    params, _ = await _a_voice_credential(owner, add_member)
+    return params, {"per_minute": "0.05"}
 
 
 async def _a_theme(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
@@ -475,6 +493,24 @@ async def _a_playground_conversation(owner: SignedUpMember, add_member: MemberFa
     return params | {"conversation_id": started.json()["id"]}, None
 
 
+async def _a_calling_playground_conversation(
+    owner: SignedUpMember, add_member: MemberFactory
+) -> Prepared:
+    """A Playground Conversation with an Agent whose calling is on (the fake voice layer)."""
+    params, _ = await _a_playground_conversation(owner, add_member)
+    credential, _ = await _a_voice_credential(owner, add_member)
+    turned_on = await owner.client.patch(
+        _AGENT.format(organisation_id=owner.organisation_id, **params) + "/operational-settings",
+        json={
+            "calls_enabled": True,
+            "call_credential_id": credential["credential_id"],
+            "call_voice_id": "fake-voice-ada",
+        },
+    )
+    assert turned_on.status_code == 200, turned_on.text
+    return params, None
+
+
 async def _a_playground_question(owner: SignedUpMember, add_member: MemberFactory) -> Prepared:
     # Answering needs a Default Model; the gateway's fake chat model answers.
     params, body = await _a_chat_model_choice(owner, add_member)
@@ -743,6 +779,7 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute("GET", _AGENT + "/operational-settings", EDITOR, _an_agent),
     ScopedRoute("PATCH", _AGENT + "/operational-settings", EDITOR, _operational_settings),
     ScopedRoute("GET", _AGENT + "/token-usage", EDITOR, _an_agent),
+    ScopedRoute("GET", _AGENT + "/call-minutes", EDITOR, _an_agent),
     ScopedRoute("GET", _AGENT + "/theme-override", EDITOR, _an_agent),
     ScopedRoute("PUT", _AGENT + "/theme-override", OWNER, _a_colour_override),
     ScopedRoute(
@@ -767,6 +804,8 @@ PROJECT_SCOPED_ROUTES = [
     ScopedRoute(
         "GET", _CONVERSATION + "/messages/{message_id}/trace", EDITOR, _a_playground_answer
     ),
+    ScopedRoute("POST", _CONVERSATION + "/calls", EDITOR, _a_calling_playground_conversation),
+    ScopedRoute("DELETE", _CONVERSATION + "/calls/current", EDITOR, _a_playground_conversation),
     ScopedRoute("GET", _EVALUATION + "/cases", EDITOR, _an_agent),
     ScopedRoute("POST", _EVALUATION + "/cases", EDITOR, _an_evaluation_case),
     ScopedRoute("GET", _EVALUATION + "/cases/{case_id}", EDITOR, _an_evaluation_case),
@@ -881,8 +920,10 @@ ORGANISATION_SCOPED_ROUTES = [
     ScopedRoute("POST", f"{_CREDENTIAL}/rotate", OWNER, _a_credential),
     ScopedRoute("DELETE", _CREDENTIAL, OWNER, _a_credential),
     ScopedRoute("GET", f"{_CREDENTIAL}/models/{{capability}}", EDITOR, _a_credential_to_list),
+    ScopedRoute("GET", f"{_CREDENTIAL}/voices", EDITOR, _a_voice_credential),
     ScopedRoute("GET", f"{_CREDENTIAL}/prices", EDITOR, _a_credential),
     ScopedRoute("PUT", f"{_CREDENTIAL}/prices", OWNER, _a_price_override),
+    ScopedRoute("PUT", f"{_CREDENTIAL}/voice-price", OWNER, _a_voice_price_override),
     ScopedRoute("GET", "/api/organisations/{organisation_id}/default-model", EDITOR),
     ScopedRoute(
         "PUT", "/api/organisations/{organisation_id}/default-model", OWNER, _a_chat_model_choice

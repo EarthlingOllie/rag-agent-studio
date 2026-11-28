@@ -45,6 +45,8 @@ FULL_DEFAULT_DRAFT: dict[str, Any] = {
             "rate_conversation": None,
             "unavailable_message": None,
             "searching_status": None,
+            "message_choice": None,
+            "call_choice": None,
         },
         "rating_prompt_after": 3,
     },

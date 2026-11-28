@@ -1,16 +1,18 @@
-"""Conversation and Message tables, introduced for the Playground and extended in spec 07.
+"""Conversation and Message tables, introduced for the Playground and extended in spec 07, and
+the Calls of spec 20.
 
 A Playground Conversation has ``is_playground`` set, so metrics (spec 07) can leave it out.
 """
 
 import enum
 import uuid
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    Date,
     DateTime,
     Float,
     ForeignKey,
@@ -69,6 +71,78 @@ class Conversation(IdMixin, Base):
     # When an Owner deleted it on request: its Messages' text and feedback comments are purged
     # and its Conversation token cleared, while its numbers stay for the metrics.
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class Call(IdMixin, Base):
+    """A Call (spec 20): a Visitor talking to the Agent inside one of their Conversations, through
+    the voice layer. Its Spoken Messages name it. It is open until ``ended_at`` is set."""
+
+    __tablename__ = "calls"
+    __table_args__ = (
+        # Admission counts an IP address's open Calls, and Beat looks for open Calls to end.
+        Index("ix_calls_open_ip", "ip", postgresql_where=text("ended_at IS NULL")),
+    )
+
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+    )
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey(Conversation.id, ondelete="CASCADE"), index=True
+    )
+    # The Version that was Live when the Call started; None for a Playground Call, which the
+    # Draft answers. Versions only go with their Agent, which takes its Conversations and Calls
+    # with it.
+    agent_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("agent_versions.id", ondelete="CASCADE")
+    )
+    # A Playground Call's Project Instructions: the Instructions Version the Editor picked, or
+    # None for the Instructions Draft. Always None for a Visitor's Call (its Version pins them).
+    instructions_version_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(
+            "project_instructions_versions.id",
+            name="fk_calls_instructions_version",
+            ondelete="CASCADE",
+        )
+    )
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # The Visitor's IP address when the Call started: the voice layer, not the Visitor, sends
+    # its turns, so their rate limit counts against this address. An address holds at most
+    # ``app.embed.call_limits.CALLS_PER_IP`` open Calls with one Agent.
+    ip: Mapped[str] = mapped_column(String(64))
+    # The Agent's Maximum Call length when the Call started: changing it applies to the next
+    # Call, so this Call's token, the widget's timer and Beat all keep to this one.
+    max_call_minutes: Mapped[int] = mapped_column(Integer)
+    # When the turn endpoint last took a turn of the Call, by the platform's clock; None until
+    # the first. A Call with no turn for a minute is ended (``app.embed.call_limits``).
+    last_turn_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Set when it ends: its minutes, rounded up, and why it ended (a ``CallEnd``).
+    minutes: Mapped[int | None] = mapped_column(Integer)
+    end_reason: Mapped[str | None] = mapped_column(String(32))
+    # Its Voice Cost in US dollars, frozen when it ends: its minutes times the voice credential's
+    # per-minute price then (``app.pricing.table.voice_cost``). Null while open, and when no
+    # price was set.
+    voice_cost_usd: Mapped[Decimal | None] = mapped_column(Numeric(18, 9))
+    # The Visitor's Spoken Message whose reply the Visitor talked over before that reply was
+    # saved: the reply is marked interrupted when it is (``app.embed.calls.interrupt``). A
+    # Message ID, kept without a foreign key, as Messages already name their Call.
+    interrupted_turn_id: Mapped[uuid.UUID | None] = mapped_column()
+
+
+class CallMinutesUsed(Base):
+    """An Agent's Call minutes counter for one UTC date: the minutes of its Visitors' Calls that
+    ended that day, measured against its Call minutes budget. Playground Calls don't count."""
+
+    __tablename__ = "call_minutes_used"
+
+    agent_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("agents.id", ondelete="CASCADE"), primary_key=True
+    )
+    day: Mapped[date] = mapped_column(Date, primary_key=True)
+    organisation_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("organisations.id", ondelete="CASCADE"), index=True
+    )
+    minutes: Mapped[int] = mapped_column(Integer)
 
 
 class Message(IdMixin, Base):
@@ -134,6 +208,15 @@ class Message(IdMixin, Base):
     # Conversation deleted on request (``app.retention``); ``content`` is then empty. Every
     # number and attribution stays.
     purged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # A Spoken Message: said in a Call (the Visitor's transcribed words, or the reply the voice
+    # layer spoke), rather than typed. ``call_id`` names the Call.
+    spoken: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
+    call_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey(Call.id, ondelete="SET NULL"), index=True
+    )
+    # An interrupted reply: the Visitor talked over this spoken Agent Message. It keeps its
+    # whole text, so the Agent may refer to words the Visitor never heard.
+    interrupted: Mapped[bool] = mapped_column(Boolean, default=False, server_default=false())
 
 
 class Search(IdMixin, Base):

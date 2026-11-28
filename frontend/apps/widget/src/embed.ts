@@ -3,7 +3,7 @@
  * snippet's `data-agent` (the Agent's public ID), optional `data-launcher` (`bubble` or
  * `inline`; without it the Theme's Launcher applies) and `data-target` (a selector for the
  * inline container), and injects an iframe for the widget shell, served from the origin the
- * script itself came from.
+ * script itself came from, which may ask for the microphone (for Calls).
  *
  * The widget sizes its frame by posting layout messages to the host page. They are sent only
  * to the host's origin (passed in the frame's address), and taken here only from the frame's
@@ -49,6 +49,8 @@ export function mount(script: HTMLOrSVGScriptElement | null): HTMLIFrameElement 
   src.searchParams.set("host", location.origin);
   if (launcher === "bubble" || launcher === "inline") src.searchParams.set("launcher", launcher);
   const frame = document.createElement("iframe");
+  // The widget asks for the microphone only when a Visitor chooses Call.
+  frame.allow = "microphone";
   frame.src = src.href;
   frame.title = "Chat";
   layout(frame, { launcher: launcher === "inline" ? "inline" : "bubble", open: false, position: "bottom-right" });

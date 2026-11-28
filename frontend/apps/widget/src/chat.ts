@@ -31,10 +31,15 @@ export type Boot = {
     rate_conversation: string | null;
     unavailable_message: string | null;
     searching_status: string | null;
+    /** The choice screen's two buttons, reworded per Agent; null keeps "Message" and "Call". */
+    message_choice: string | null;
+    call_choice: string | null;
   };
   citations: boolean;
   /** After how many replies the Visitor is asked to rate the Conversation; 0 asks only when they end the chat. */
   rating_prompt_after: number;
+  /** Whether the Agent takes Calls: the Launcher's panel then opens on a choice of Message or Call. */
+  calls: boolean;
 };
 
 /** A source an answer cited; `passage` is the cited text, sent with a live answer but not with a resumed one. */
@@ -75,8 +80,8 @@ function base(boot: Boot): string {
   return `/api/widget/agents/${encodeURIComponent(boot.agent)}`;
 }
 
-function request(method: string, url: string, token?: string, body?: unknown): Promise<Response> {
-  const init: RequestInit & { headers: Record<string, string> } = { method, headers: {} };
+function request(method: string, url: string, token?: string, body?: unknown, keepalive = false): Promise<Response> {
+  const init: RequestInit & { headers: Record<string, string> } = { method, headers: {}, ...(keepalive ? { keepalive } : {}) };
   if (token) init.headers.Authorization = `Bearer ${token}`;
   if (body !== undefined) {
     init.headers["Content-Type"] = "application/json";
@@ -242,5 +247,40 @@ export async function dismissRatingPrompt(boot: Boot, token: string): Promise<vo
     await request("POST", `${ratingUrl(boot)}/dismissal`, token);
   } catch {
     // Unreachable: the prompt stays hidden in this page anyway.
+  }
+}
+
+/** A Call started in the Conversation: what the browser joins the voice layer with, and the Call token it hands over. */
+export type StartedCall = Schemas["StartedCallOut"];
+
+/** Starts a Call in the token's Conversation. */
+export async function startCall(boot: Boot, token: string): Promise<StartedCall> {
+  const response = await request("POST", `${base(boot)}/conversation/calls`, token);
+  if (!response.ok) throw await refused(response);
+  return (await response.json()) as StartedCall;
+}
+
+/**
+ * Ends the Conversation's open Call. Best effort: the widget leaves the Call either way. The
+ * request outlives the page, so a reload or a page change mid-Call still ends it.
+ */
+export async function endCall(boot: Boot, token: string): Promise<void> {
+  try {
+    await request("DELETE", `${base(boot)}/conversation/calls/current`, token, undefined, true);
+  } catch {
+    // Unreachable: the platform ends a Call nobody is in on its own.
+  }
+}
+
+/**
+ * Tells the API the Visitor talked over the reply being spoken in the Conversation's open Call,
+ * so that reply is marked interrupted (it keeps its whole text). Best effort: the Call goes on
+ * either way.
+ */
+export async function interruptCall(boot: Boot, token: string): Promise<void> {
+  try {
+    await request("POST", `${base(boot)}/conversation/calls/current/interruptions`, token);
+  } catch {
+    // Unreachable: the reply simply stays unmarked.
   }
 }

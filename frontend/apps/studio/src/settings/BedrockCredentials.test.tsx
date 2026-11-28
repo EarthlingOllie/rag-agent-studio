@@ -33,6 +33,7 @@ test("Bedrock is offered alongside the API-key providers", async () => {
     "OpenAI",
     "Amazon Bedrock",
     "Voyage AI",
+    "ElevenLabs",
   ]);
 });
 

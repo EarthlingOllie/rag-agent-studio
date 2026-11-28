@@ -51,6 +51,12 @@ class UsageDaily(IdMixin, Base):
     tokens_histogram: Mapped[dict[str, int]] = mapped_column(JSONB)
     # The sum of the replies' frozen costs, in US dollars (replies with no known price add 0).
     cost_usd: Mapped[Decimal] = mapped_column(Numeric(18, 9))
+    # The Voice Cost of the Version's Visitor Calls that ended this day (Calls with no known
+    # price add 0).
+    voice_cost_usd: Mapped[Decimal] = mapped_column(Numeric(18, 9), server_default=text("0"))
+    # The Version's Visitor Calls that ended this day, and their minutes (each rounded up).
+    calls: Mapped[int] = mapped_column(Integer, server_default=text("0"))
+    call_minutes: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     # Message Feedback on this day's replies.
     thumbs_up: Mapped[int] = mapped_column(Integer)
     thumbs_down: Mapped[int] = mapped_column(Integer)

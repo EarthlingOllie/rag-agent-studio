@@ -117,6 +117,14 @@
             "title": "Budget Exhausted",
             "type": "boolean"
           },
+          "call_budget_exhausted": {
+            "title": "Call Budget Exhausted",
+            "type": "boolean"
+          },
+          "calls_failing": {
+            "title": "Calls Failing",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -184,6 +192,8 @@
           "live_version",
           "has_unpublished_changes",
           "budget_exhausted",
+          "call_budget_exhausted",
+          "calls_failing",
           "block_rate_alert",
           "live_score_drop_alert"
         ],
@@ -844,11 +854,169 @@
         "title": "BulkTagRequest",
         "type": "object"
       },
+      "CallJoinOut": {
+        "properties": {
+          "conversation_token": {
+            "title": "Conversation Token",
+            "type": "string"
+          },
+          "greet": {
+            "title": "Greet",
+            "type": "boolean"
+          },
+          "voice_layer": {
+            "enum": [
+              "elevenlabs",
+              "fake"
+            ],
+            "title": "Voice Layer",
+            "type": "string"
+          }
+        },
+        "required": [
+          "voice_layer",
+          "conversation_token",
+          "greet"
+        ],
+        "title": "CallJoinOut",
+        "type": "object"
+      },
+      "CallMinutesOut": {
+        "properties": {
+          "call_minutes_budget": {
+            "title": "Call Minutes Budget",
+            "type": "integer"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "exhausted": {
+            "title": "Exhausted",
+            "type": "boolean"
+          },
+          "minutes_used": {
+            "title": "Minutes Used",
+            "type": "integer"
+          },
+          "resets_at": {
+            "format": "date-time",
+            "title": "Resets At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "minutes_used",
+          "call_minutes_budget",
+          "exhausted",
+          "resets_at"
+        ],
+        "title": "CallMinutesOut",
+        "type": "object"
+      },
+      "CallOut": {
+        "properties": {
+          "end_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Reason"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minutes"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          },
+          "voice_cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voice Cost Usd"
+          }
+        },
+        "required": [
+          "id",
+          "started_at",
+          "ended_at",
+          "minutes",
+          "end_reason",
+          "voice_cost_usd"
+        ],
+        "title": "CallOut",
+        "type": "object"
+      },
+      "CallRefusedOut": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "rate_limited",
+              "budget_exhausted",
+              "call_open",
+              "too_many_calls",
+              "call_minutes_exhausted",
+              "voice_unavailable"
+            ],
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "detail",
+          "reason"
+        ],
+        "title": "CallRefusedOut",
+        "type": "object"
+      },
       "Capability": {
         "enum": [
           "chat",
           "embeddings",
-          "rerank"
+          "rerank",
+          "voice"
         ],
         "title": "Capability",
         "type": "string"
@@ -1143,6 +1311,64 @@
         "title": "ChangeState",
         "type": "string"
       },
+      "ChatCompletionRequest": {
+        "description": "An OpenAI chat completions request. Only the last user message and the Call token count;\nthe model, the history and any other options are ignored.",
+        "properties": {
+          "elevenlabs_extra_body": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VoiceLayerExtraBody"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "title": "Messages",
+            "type": "array"
+          }
+        },
+        "required": [
+          "messages"
+        ],
+        "title": "ChatCompletionRequest",
+        "type": "object"
+      },
+      "ChatMessage": {
+        "properties": {
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "ChatMessage",
+        "type": "object"
+      },
       "CheckFailedResponse": {
         "properties": {
           "detail": {
@@ -1419,6 +1645,13 @@
             "title": "Agent Name",
             "type": "string"
           },
+          "calls": {
+            "items": {
+              "$ref": "#/components/schemas/CallOut"
+            },
+            "title": "Calls",
+            "type": "array"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1477,7 +1710,8 @@
           "last_activity_at",
           "messages",
           "rating",
-          "deleted_at"
+          "deleted_at",
+          "calls"
         ],
         "title": "ConversationDetailOut",
         "type": "object"
@@ -1506,6 +1740,18 @@
               }
             ],
             "title": "Agent Version Number"
+          },
+          "call_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Id"
           },
           "config_source": {
             "anyOf": [
@@ -1617,6 +1863,10 @@
             ],
             "title": "Instructions Version Number"
           },
+          "interrupted": {
+            "title": "Interrupted",
+            "type": "boolean"
+          },
           "latency_ms": {
             "anyOf": [
               {
@@ -1676,6 +1926,10 @@
           "role": {
             "title": "Role",
             "type": "string"
+          },
+          "spoken": {
+            "title": "Spoken",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1698,7 +1952,10 @@
           "agent_version_number",
           "fallback",
           "feedback",
-          "purged_at"
+          "purged_at",
+          "spoken",
+          "call_id",
+          "interrupted"
         ],
         "title": "ConversationMessageOut",
         "type": "object"
@@ -1709,6 +1966,10 @@
             "format": "uuid",
             "title": "Agent Id",
             "type": "string"
+          },
+          "call_open": {
+            "title": "Call Open",
+            "type": "boolean"
           },
           "created_at": {
             "format": "date-time",
@@ -1731,7 +1992,7 @@
           },
           "messages": {
             "items": {
-              "$ref": "#/components/schemas/MessageOut"
+              "$ref": "#/components/schemas/PlaygroundMessageOut"
             },
             "title": "Messages",
             "type": "array"
@@ -1743,7 +2004,8 @@
           "is_playground",
           "created_at",
           "last_activity_at",
-          "messages"
+          "messages",
+          "call_open"
         ],
         "title": "ConversationOut",
         "type": "object"
@@ -1889,6 +2151,14 @@
             "title": "Agent Name",
             "type": "string"
           },
+          "call_minutes": {
+            "title": "Call Minutes",
+            "type": "integer"
+          },
+          "calls": {
+            "title": "Calls",
+            "type": "integer"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1985,7 +2255,9 @@
           "rating",
           "deleted_at",
           "guardrail_events",
-          "failed_live_verdicts"
+          "failed_live_verdicts",
+          "calls",
+          "call_minutes"
         ],
         "title": "ConversationSummaryOut",
         "type": "object"
@@ -2271,12 +2543,17 @@
           "visitor_usd": {
             "title": "Visitor Usd",
             "type": "string"
+          },
+          "voice_usd": {
+            "title": "Voice Usd",
+            "type": "string"
           }
         },
         "required": [
           "visitor_usd",
           "playground_usd",
           "evaluation_usd",
+          "voice_usd",
           "total_usd"
         ],
         "title": "CostAmountsOut",
@@ -2307,11 +2584,16 @@
           "total_usd": {
             "title": "Total Usd",
             "type": "string"
+          },
+          "voice_usd": {
+            "title": "Voice Usd",
+            "type": "string"
           }
         },
         "required": [
           "total_usd",
-          "per_conversation_usd"
+          "per_conversation_usd",
+          "voice_usd"
         ],
         "title": "CostOut",
         "type": "object"
@@ -2365,12 +2647,17 @@
           "visitor_usd": {
             "title": "Visitor Usd",
             "type": "string"
+          },
+          "voice_usd": {
+            "title": "Voice Usd",
+            "type": "string"
           }
         },
         "required": [
           "visitor_usd",
           "playground_usd",
           "evaluation_usd",
+          "voice_usd",
           "total_usd",
           "project_id",
           "project_name",
@@ -2535,6 +2822,7 @@
               "anthropic",
               "openai",
               "voyage",
+              "elevenlabs",
               "demo"
             ],
             "title": "Provider",
@@ -2742,11 +3030,22 @@
             "default": "per million tokens",
             "title": "Unit",
             "type": "string"
+          },
+          "voice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/VoicePriceOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "credential_id",
-          "models"
+          "models",
+          "voice"
         ],
         "title": "CredentialPricesOut",
         "type": "object"
@@ -5657,186 +5956,6 @@
         "title": "MessageFeedbackRead",
         "type": "object"
       },
-      "MessageOut": {
-        "properties": {
-          "agent_version_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Agent Version Id"
-          },
-          "config_source": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Config Source"
-          },
-          "content": {
-            "title": "Content",
-            "type": "string"
-          },
-          "cost_usd": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Cost Usd"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "first_token_ms": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "First Token Ms"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "input_tokens": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Input Tokens"
-          },
-          "instructions_source": {
-            "anyOf": [
-              {
-                "enum": [
-                  "draft",
-                  "version"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Instructions Source"
-          },
-          "instructions_version_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Instructions Version Id"
-          },
-          "instructions_version_number": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Instructions Version Number"
-          },
-          "latency_ms": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Latency Ms"
-          },
-          "model_name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model Name"
-          },
-          "model_provider": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Model Provider"
-          },
-          "output_tokens": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Output Tokens"
-          },
-          "role": {
-            "title": "Role",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "role",
-          "content",
-          "created_at",
-          "config_source",
-          "instructions_source",
-          "instructions_version_id",
-          "instructions_version_number",
-          "agent_version_id",
-          "model_provider",
-          "model_name",
-          "input_tokens",
-          "output_tokens",
-          "first_token_ms",
-          "latency_ms",
-          "cost_usd"
-        ],
-        "title": "MessageOut",
-        "type": "object"
-      },
       "MetricRowOut": {
         "properties": {
           "a": {
@@ -6160,6 +6279,55 @@
             ],
             "title": "Allowed Origins"
           },
+          "call_credential_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Credential Id"
+          },
+          "call_minutes_budget": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Minutes Budget"
+          },
+          "call_voice_id": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Voice Id"
+          },
+          "calls_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Calls Enabled"
+          },
           "conversation_messages_per_minute": {
             "anyOf": [
               {
@@ -6212,6 +6380,31 @@
             ],
             "title": "Live Sample Rate"
           },
+          "max_call_minutes": {
+            "anyOf": [
+              {
+                "maximum": 60.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Call Minutes"
+          },
+          "spoken_greeting": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spoken Greeting"
+          },
           "unavailable_text": {
             "anyOf": [
               {
@@ -6237,6 +6430,41 @@
             "title": "Allowed Origins",
             "type": "array"
           },
+          "call_credential_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Credential Id"
+          },
+          "call_minutes_budget": {
+            "title": "Call Minutes Budget",
+            "type": "integer"
+          },
+          "call_voice_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Voice Id"
+          },
+          "calls_enabled": {
+            "title": "Calls Enabled",
+            "type": "boolean"
+          },
+          "calls_failing": {
+            "title": "Calls Failing",
+            "type": "boolean"
+          },
           "conversation_messages_per_minute": {
             "title": "Conversation Messages Per Minute",
             "type": "integer"
@@ -6253,6 +6481,14 @@
             "title": "Live Sample Rate",
             "type": "integer"
           },
+          "max_call_minutes": {
+            "title": "Max Call Minutes",
+            "type": "integer"
+          },
+          "spoken_greeting": {
+            "title": "Spoken Greeting",
+            "type": "string"
+          },
           "unavailable_text": {
             "title": "Unavailable Text",
             "type": "string"
@@ -6264,7 +6500,14 @@
           "conversation_messages_per_minute",
           "ip_messages_per_minute",
           "daily_token_budget",
-          "live_sample_rate"
+          "live_sample_rate",
+          "calls_enabled",
+          "call_credential_id",
+          "call_voice_id",
+          "spoken_greeting",
+          "max_call_minutes",
+          "call_minutes_budget",
+          "calls_failing"
         ],
         "title": "OperationalSettingsOut",
         "type": "object"
@@ -6507,6 +6750,31 @@
         "title": "OverridePricesRequest",
         "type": "object"
       },
+      "OverrideVoicePriceRequest": {
+        "description": "The voice credential's price per Call minute, in US dollars; null clears the override,\nso the platform's price applies.",
+        "properties": {
+          "per_minute": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Per Minute"
+          }
+        },
+        "required": [
+          "per_minute"
+        ],
+        "title": "OverrideVoicePriceRequest",
+        "type": "object"
+      },
       "PasswordResetAccepted": {
         "properties": {
           "detail": {
@@ -6551,6 +6819,263 @@
           "name"
         ],
         "title": "PersonOut",
+        "type": "object"
+      },
+      "PlaygroundCitationOut": {
+        "properties": {
+          "chunk_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Chunk Id"
+          },
+          "document_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Id"
+          },
+          "document_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Document Name"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "label",
+          "chunk_id",
+          "document_id",
+          "document_name",
+          "rank"
+        ],
+        "title": "PlaygroundCitationOut",
+        "type": "object"
+      },
+      "PlaygroundMessageOut": {
+        "properties": {
+          "agent_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Agent Version Id"
+          },
+          "citations": {
+            "items": {
+              "$ref": "#/components/schemas/PlaygroundCitationOut"
+            },
+            "title": "Citations",
+            "type": "array"
+          },
+          "config_source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Config Source"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "cost_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cost Usd"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "first_token_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Token Ms"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "input_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Input Tokens"
+          },
+          "instructions_source": {
+            "anyOf": [
+              {
+                "enum": [
+                  "draft",
+                  "version"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Source"
+          },
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          },
+          "instructions_version_number": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Number"
+          },
+          "latency_ms": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Latency Ms"
+          },
+          "model_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Name"
+          },
+          "model_provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Provider"
+          },
+          "output_tokens": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Output Tokens"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "searches": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Searches",
+            "type": "array"
+          },
+          "spoken": {
+            "title": "Spoken",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "role",
+          "content",
+          "created_at",
+          "config_source",
+          "instructions_source",
+          "instructions_version_id",
+          "instructions_version_number",
+          "agent_version_id",
+          "model_provider",
+          "model_name",
+          "input_tokens",
+          "output_tokens",
+          "first_token_ms",
+          "latency_ms",
+          "cost_usd",
+          "spoken",
+          "searches",
+          "citations"
+        ],
+        "title": "PlaygroundMessageOut",
         "type": "object"
       },
       "PrefillOut": {
@@ -6854,6 +7379,7 @@
           "openai",
           "bedrock",
           "voyage",
+          "elevenlabs",
           "demo"
         ],
         "title": "Provider",
@@ -8506,6 +9032,24 @@
         "title": "StartImageUploadResponse",
         "type": "object"
       },
+      "StartPlaygroundCallRequest": {
+        "properties": {
+          "instructions_version_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Instructions Version Id"
+          }
+        },
+        "title": "StartPlaygroundCallRequest",
+        "type": "object"
+      },
       "StartUploadRequest": {
         "properties": {
           "filename": {
@@ -8573,6 +9117,34 @@
           "expires_at"
         ],
         "title": "StartUploadResponse",
+        "type": "object"
+      },
+      "StartedCallOut": {
+        "properties": {
+          "call_id": {
+            "format": "uuid",
+            "title": "Call Id",
+            "type": "string"
+          },
+          "call_token": {
+            "title": "Call Token",
+            "type": "string"
+          },
+          "join": {
+            "$ref": "#/components/schemas/CallJoinOut"
+          },
+          "max_call_minutes": {
+            "title": "Max Call Minutes",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "call_id",
+          "call_token",
+          "join",
+          "max_call_minutes"
+        ],
+        "title": "StartedCallOut",
         "type": "object"
       },
       "SuggestedChangeOut": {
@@ -9928,7 +10500,9 @@
           "mean_rating",
           "fallback_rate",
           "p95_latency_ms",
-          "live_score"
+          "live_score",
+          "calls",
+          "call_minutes"
         ],
         "title": "TimeSeriesMetric",
         "type": "string"
@@ -10424,6 +10998,32 @@
         "additionalProperties": false,
         "description": "Overrides of the widget's built-in text. None keeps the built-in text.",
         "properties": {
+          "call_choice": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Choice"
+          },
+          "message_choice": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Choice"
+          },
           "rate_conversation": {
             "anyOf": [
               {
@@ -10484,6 +11084,32 @@
         "additionalProperties": false,
         "description": "Overrides of the widget's built-in text. None keeps the built-in text.",
         "properties": {
+          "call_choice": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Call Choice"
+          },
+          "message_choice": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message Choice"
+          },
           "rate_conversation": {
             "anyOf": [
               {
@@ -10541,7 +11167,9 @@
           "send_button",
           "rate_conversation",
           "unavailable_message",
-          "searching_status"
+          "searching_status",
+          "message_choice",
+          "call_choice"
         ],
         "title": "UiText",
         "type": "object"
@@ -10948,6 +11576,98 @@
         "title": "VersionNumberOut",
         "type": "object"
       },
+      "VoiceLayerExtraBody": {
+        "properties": {
+          "call_token": {
+            "default": "",
+            "maxLength": 1000,
+            "title": "Call Token",
+            "type": "string"
+          }
+        },
+        "title": "VoiceLayerExtraBody",
+        "type": "object"
+      },
+      "VoiceOut": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sample_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sample Url"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "sample_url"
+        ],
+        "title": "VoiceOut",
+        "type": "object"
+      },
+      "VoicePriceOut": {
+        "properties": {
+          "effective": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Effective"
+          },
+          "override": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Override"
+          },
+          "platform": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Platform"
+          },
+          "unit": {
+            "const": "per minute",
+            "default": "per minute",
+            "title": "Unit",
+            "type": "string"
+          }
+        },
+        "required": [
+          "platform",
+          "override",
+          "effective"
+        ],
+        "title": "VoicePriceOut",
+        "type": "object"
+      },
       "WidgetCitationOut": {
         "properties": {
           "document_name": {
@@ -10975,6 +11695,10 @@
       },
       "WidgetConversationOut": {
         "properties": {
+          "call_open": {
+            "title": "Call Open",
+            "type": "boolean"
+          },
           "messages": {
             "items": {
               "$ref": "#/components/schemas/WidgetMessageOut"
@@ -10988,7 +11712,8 @@
         },
         "required": [
           "messages",
-          "rating"
+          "rating",
+          "call_open"
         ],
         "title": "WidgetConversationOut",
         "type": "object"
@@ -11050,6 +11775,10 @@
             "title": "Id",
             "type": "string"
           },
+          "interrupted": {
+            "title": "Interrupted",
+            "type": "boolean"
+          },
           "role": {
             "enum": [
               "user",
@@ -11057,6 +11786,10 @@
             ],
             "title": "Role",
             "type": "string"
+          },
+          "spoken": {
+            "title": "Spoken",
+            "type": "boolean"
           }
         },
         "required": [
@@ -11064,7 +11797,9 @@
           "role",
           "content",
           "citations",
-          "feedback"
+          "feedback",
+          "spoken",
+          "interrupted"
         ],
         "title": "WidgetMessageOut",
         "type": "object"
@@ -12496,7 +13231,7 @@
     },
     "/api/organisations/{organisation_id}/cost": {
       "get": {
-        "description": "What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most\n366 days), including today's so far, by Project or by Agent. Playground usage and Evaluation\nRuns are each in their own column. Owners only.",
+        "description": "What the Organisation spent over the UTC days `start` to `end` (both inclusive, at most\n366 days), including today's so far, by Project or by Agent. Playground replies, Evaluation\nRuns and Calls' Voice Cost (Visitor and Playground Calls) are each in their own column.\nOwners only.",
         "operationId": "getOrganisationCost",
         "parameters": [
           {
@@ -13371,6 +14106,168 @@
         "summary": "Rotate Credential",
         "tags": [
           "credentials"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/voice-price": {
+      "put": {
+        "description": "Overrides the voice credential's price per Call minute, to match the voice plan; Voice\nCost uses it from the next Call that ends. Owners only.",
+        "operationId": "overrideCredentialVoicePrice",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OverrideVoicePriceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VoicePriceOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Only Owners can do this"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not a credential that carries Calls"
+          }
+        },
+        "summary": "Override Credential Voice Price",
+        "tags": [
+          "prices"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/credentials/{credential_id}/voices": {
+      "get": {
+        "description": "The voices the credential's ElevenLabs account offers, for the voice picker.",
+        "operationId": "listVoices",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "credential_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Credential Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/VoiceOut"
+                  },
+                  "title": "Response Listvoices",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This credential doesn't have the voice Capability, so it has no voices."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "ElevenLabs couldn't be reached with this credential. Check the credential in Organisation settings, Credentials, or try again shortly."
+          }
+        },
+        "summary": "List Voices",
+        "tags": [
+          "voice"
         ]
       }
     },
@@ -15512,6 +16409,80 @@
         "summary": "Archive Agent",
         "tags": [
           "agents"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/call-minutes": {
+      "get": {
+        "description": "Today's (UTC) Call minutes against the Agent's Call minutes budget, for the Studio's\nmeter.",
+        "operationId": "getCallMinutes",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallMinutesOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Call Minutes",
+        "tags": [
+          "embed"
         ]
       }
     },
@@ -17843,7 +18814,7 @@
         ]
       },
       "patch": {
-        "description": "Changes the settings given. The next request uses them, without publishing, and the\nchange is recorded as an Audit Event with the before and after values (a Live sample rate\nchange as ``agent.live_sample_rate_changed``). A Live sample rate above 0 is refused with\nthe typed error ``evaluation_budget_required`` while the Organisation has no Evaluation\nbudget.",
+        "description": "Changes the settings given. The next request uses them, without publishing, and the\nchange is recorded as an Audit Event with the before and after values (a Live sample rate\nchange as ``agent.live_sample_rate_changed``). A Live sample rate above 0 is refused with\nthe typed error ``evaluation_budget_required`` while the Organisation has no Evaluation\nbudget.\n\nCall settings are refused with a 422 naming the field and reason: turning calling on while\nthe Organisation has no voice-capable credential (``no_voice_credential``), a credential\nof another Organisation (``unknown_credential``) or without the voice Capability\n(``not_voice_capable``), a voice its account doesn't offer (``voice_unavailable``), or no\ncredential or voice chosen (``missing``). A 502 means the voice layer couldn't set the\nAgent up; nothing is saved then.",
         "operationId": "changeOperationalSettings",
         "parameters": [
           {
@@ -17917,6 +18888,16 @@
               }
             },
             "description": "Validation Error"
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The voice layer couldn't set the Agent up"
           }
         },
         "summary": "Change Operational Settings",
@@ -18011,7 +18992,7 @@
     },
     "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}": {
       "get": {
-        "description": "The Playground Conversation and its Messages, oldest first.",
+        "description": "The Playground Conversation and its Messages, oldest first, each answer with its\nKnowledge Searches' queries and the Chunks it cited, and whether a Playground Call is open\nin it. Messages said in a Playground Call are marked spoken.",
         "operationId": "getPlaygroundConversation",
         "parameters": [
           {
@@ -18088,6 +19069,197 @@
           }
         },
         "summary": "Get Conversation",
+        "tags": [
+          "playground"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/calls": {
+      "post": {
+        "description": "Starts a Call with the Agent's Draft in the Playground Conversation, with the Agent's Call\nsettings, answering with the Instructions Draft or the chosen Instructions Version. The\nspoken greeting opens a Conversation with no Messages. The Call token returned is a\nPlayground Call token: its turns are answered by the Draft and are kept out of metrics, the\nToken Budget and the Call minutes budget. An Agent with calling off refuses with a 409.",
+        "operationId": "startPlaygroundCall",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/StartPlaygroundCallRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartedCallOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Project or Agent is archived, the Agent's calling is off, or the Conversation already has a Call open."
+          },
+          "422": {
+            "description": "The Instructions Version isn't one of the Project's."
+          },
+          "502": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "ElevenLabs couldn't be reached with this credential. Check the credential in Organisation settings, Credentials, or try again shortly."
+          }
+        },
+        "summary": "Start Call",
+        "tags": [
+          "playground"
+        ]
+      }
+    },
+    "/api/organisations/{organisation_id}/projects/{project_id}/agents/{agent_id}/playground/conversations/{conversation_id}/calls/current": {
+      "delete": {
+        "description": "Ends the Playground Conversation's open Call, freezing its minutes and Voice Cost; with no\nCall open, nothing changes. What was said stays as Spoken Messages.",
+        "operationId": "endPlaygroundCall",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "agent_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Agent Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "conversation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Conversation Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "organisation_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Organisation Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "Not found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "End Call",
         "tags": [
           "playground"
         ]
@@ -20523,6 +21695,24 @@
               ],
               "description": "Only those with a reply whose Live Verdict passed (`passed`), failed (`failed`) or couldn't be judged (`error`), or with a reply that wasn't chosen to be judged (`not_judged`)",
               "title": "Live Verdict"
+            }
+          },
+          {
+            "description": "true: only those with a Call, open or ended; false: only those without",
+            "in": "query",
+            "name": "has_call",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "true: only those with a Call, open or ended; false: only those without",
+              "title": "Has Call"
             }
           },
           {
@@ -24312,6 +25502,217 @@
         ]
       }
     },
+    "/api/widget/agents/{public_id}/conversation/calls": {
+      "post": {
+        "description": "Starts a Call in the token's Conversation with the Agent's Live Version, which the Call\nrecords. Admission control runs first, as for a message (the rate limits and the Token\nBudget; the start counts against the rate limits), then the Call limits (one Call at a time\nin a Conversation, two at once for an IP address with the Agent, the day's Call minutes\nbudget): a refusal is a 503 with the Agent's unavailable text and the reason, and so is a\nvoice layer that can't start the Call; nothing is recorded then. The first refusal of a day\nfor the Call minutes budget raises the Agent's alert and emails its Owners. An Agent with\ncalling off refuses with a 409.",
+        "operationId": "startWidgetCall",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StartedCallOut"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant is no longer available."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This assistant doesn't take Calls."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CallRefusedOut"
+                }
+              }
+            },
+            "description": "Admission control refused the Call, or the voice layer couldn't start it"
+          }
+        },
+        "summary": "Start Call",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/conversation/calls/current": {
+      "delete": {
+        "description": "Ends the token's Conversation's open Call, recording when it ended and adding its minutes\n(rounded up) to the Agent's Call minutes for the day; with no Call open, nothing changes.\nWhat was said stays in the Conversation as Spoken Messages.",
+        "operationId": "endWidgetCall",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "End Call",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/conversation/calls/current/interruptions": {
+      "post": {
+        "description": "The Visitor talked over the reply being spoken in the token's Conversation's open Call:\nthat Agent Message is marked interrupted, and keeps its whole text. With no reply being\nspoken, nothing changes.",
+        "operationId": "interruptWidgetCall",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <conversation token>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <conversation token>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "This chat has expired. Reload the page to start a new one."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Interrupt Call",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
     "/api/widget/agents/{public_id}/conversation/rating": {
       "put": {
         "description": "Rates the token's Conversation from 1 to 5, or changes its rating; the first rating and\neach change are kept in a change log. The rating belongs to the Agent Version of the last\nreply before it. Refused until the Agent has replied.",
@@ -24523,6 +25924,91 @@
           }
         },
         "summary": "Start Conversation",
+        "tags": [
+          "widget"
+        ]
+      }
+    },
+    "/api/widget/agents/{public_id}/llm/v1/chat/completions": {
+      "post": {
+        "description": "Answers one turn of a Call, for the voice layer. The Visitor's words (the last user\nmessage) are answered by the Agent's Live Version as a typed widget message is, with the\nearlier turns of the Conversation as history, and saved with the reply as Spoken Messages\nof the Call.",
+        "operationId": "answerCallTurn",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "public_id",
+            "required": true,
+            "schema": {
+              "title": "Public Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "`Bearer <the Agent's secret>`",
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "default": "",
+              "description": "`Bearer <the Agent's secret>`",
+              "title": "Authorization",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatCompletionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Server-Sent Events, as OpenAI streams chat completions: `chat.completion.chunk` objects whose `choices[0].delta.content` is the text to speak (the reply, the Agent's refusal or replacement text, or its unavailable text), then one with `finish_reason` `stop`, then `[DONE]`."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The API key isn't this Agent's."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            },
+            "description": "The Call token is invalid or expired, or the Call has ended."
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Chat Completions",
         "tags": [
           "widget"
         ]

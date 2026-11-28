@@ -115,13 +115,36 @@ class MessageOut(BaseModel):
     cost_usd: Dollars | None
 
 
+class PlaygroundCitationOut(BaseModel):
+    # The Chunk label the answer cited it by: [C1] is rank 1.
+    label: str
+    # Null once the Chunk's Document is deleted.
+    chunk_id: uuid.UUID | None
+    document_id: uuid.UUID | None
+    document_name: str | None
+    rank: int
+
+
+class PlaygroundMessageOut(MessageOut):
+    # A Spoken Message: said in a Playground Call (the Editor's transcribed words, or the reply
+    # the Draft spoke) rather than typed.
+    spoken: bool
+    # The queries of the Knowledge Searches an answer made, in order (Agentic Retrieval Mode);
+    # empty for a question.
+    searches: list[str]
+    # The Chunks an answer cited, in label order; empty for a question.
+    citations: list[PlaygroundCitationOut]
+
+
 class ConversationOut(BaseModel):
     id: uuid.UUID
     agent_id: uuid.UUID
     is_playground: bool
     created_at: datetime
     last_activity_at: datetime
-    messages: list[MessageOut]
+    messages: list[PlaygroundMessageOut]
+    # Whether the Conversation has a Playground Call open.
+    call_open: bool
 
 
 class TracedChunkOut(BaseModel):
@@ -250,15 +273,37 @@ async def instructions_numbers(db: Db, messages: list[Message]) -> dict[uuid.UUI
 
 
 def _out(
-    conversation: Conversation, messages: list[Message], numbers: dict[uuid.UUID, int]
+    conversation: Conversation,
+    messages: list[Message],
+    numbers: dict[uuid.UUID, int],
+    read: service.ConversationExtras | None = None,
 ) -> ConversationOut:
+    extras = read or service.ConversationExtras({}, {}, call_open=False)
     return ConversationOut(
         id=conversation.id,
         agent_id=conversation.agent_id,
         is_playground=conversation.is_playground,
         created_at=conversation.created_at,
         last_activity_at=conversation.last_activity_at,
-        messages=[MessageOut(**message_fields(m, numbers)) for m in messages],
+        messages=[
+            PlaygroundMessageOut(
+                **message_fields(m, numbers),
+                spoken=m.spoken,
+                searches=extras.searches.get(m.id, []),
+                citations=[
+                    PlaygroundCitationOut(
+                        label=c.label,
+                        chunk_id=c.chunk_id,
+                        document_id=c.document_id,
+                        document_name=c.document_name,
+                        rank=c.rank,
+                    )
+                    for c in extras.citations.get(m.id, [])
+                ],
+            )
+            for m in messages
+        ],
+        call_open=extras.call_open,
     )
 
 
@@ -349,14 +394,17 @@ async def start_conversation(
 async def get_conversation(
     project_id: uuid.UUID, agent_id: uuid.UUID, conversation_id: uuid.UUID, scope: Scope, db: Db
 ) -> ConversationOut:
-    """The Playground Conversation and its Messages, oldest first."""
+    """The Playground Conversation and its Messages, oldest first, each answer with its
+    Knowledge Searches' queries and the Chunks it cited, and whether a Playground Call is open
+    in it. Messages said in a Playground Call are marked spoken."""
     try:
         conversation, messages = await service.get_conversation(
             db, scope, project_id, agent_id, conversation_id
         )
     except (ProjectNotFoundError, AgentNotFoundError, service.ConversationNotFoundError):
         raise not_found() from None
-    return _out(conversation, messages, await _numbers(db, messages))
+    extras = await service.conversation_extras(db, conversation, messages)
+    return _out(conversation, messages, await _numbers(db, messages), extras)
 
 
 @router.get(

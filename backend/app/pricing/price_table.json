@@ -5,7 +5,9 @@
     "To change a price from a date, add a new entry with that effective_from rather than editing the old one, so past costs keep their price.",
     "Embedding and rerank models have no output tokens (output 0) and no cache discount (cached_input = input).",
     "Cohere Rerank 3.5 on Bedrock is priced per search query, not per token, so it has no entry; Owners can override it per credential.",
-    "The demo model (provider demo) costs nothing: it answers with canned text and calls no provider."
+    "The demo model (provider demo) costs nothing: it answers with canned text and calls no provider.",
+    "voice_prices are the voice layer's US dollars per Call minute, by provider, dated the same way; a voice credential's Price override can replace it.",
+    "ElevenLabs Agents: the published per-minute rate for conversational AI calls; Owners on another plan override it per credential."
   ],
   "currency": "USD",
   "unit": "per million tokens",
@@ -177,6 +179,14 @@
       "input": "0",
       "output": "0",
       "cached_input": "0"
+    }
+  ],
+  "voice_unit": "per minute",
+  "voice_prices": [
+    {
+      "provider": "elevenlabs",
+      "effective_from": "2025-06-01",
+      "per_minute": "0.10"
     }
   ]
 }
