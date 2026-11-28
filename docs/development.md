@@ -308,8 +308,9 @@ There are two job queues, `general` and `runs` (`studio-general` and `studio-run
 | `evaluation.live_verdict` | Judges a sampled live answer (a Live Verdict) | The API after a sampled answer, the sweeper | general |
 | `suggestions.run` | Runs a Suggestion run: gathers evidence, proposes and checks changes | The API (ask for Suggestions), the sweeper (one queued too long) | runs |
 | `projects.re_embed` | Re-embeds a Project's Chunks with a new Embedding Model | The API (start a Re-embed), its own retry, the sweeper | general |
-| `projects.delete` | Deletes an archived Project and its data | The API (delete a Project); the sweeper finishes a missed one itself | general |
-| `embed.clear_budget_alerts` | Clears the previous day's Token Budget alert flags | Beat, hourly on the hour | general |
+| `projects.delete` | Deletes an archived Project and its data, removing its Agents' remote agents from the voice layer | The API (delete a Project); the sweeper finishes a missed one itself | general |
+| `embed.clear_budget_alerts` | Clears the previous day's Token Budget and Call minutes alert flags | Beat, hourly on the hour | general |
+| `embed.end_idle_calls` | Ends Calls past their Maximum Call length or silent for a minute | Beat, every 15 seconds | general |
 | `analytics.roll_up_usage` | Builds the usage rollups | Beat, hourly at five past | general |
 | `retention.purge_expired` | Purges Message text and comments older than each Retention Window | Beat, hourly at 35 past | general |
 | `jobs.sweep` | The sweeper: sends again jobs queued too long and recovers jobs whose heartbeat stopped | Beat, every minute, and each worker as it starts | general |

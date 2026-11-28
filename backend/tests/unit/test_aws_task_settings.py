@@ -151,8 +151,8 @@ def test_the_api_is_told_its_own_bedrock_trust_principal(monkeypatch: pytest.Mon
 
 # Calls (spec 20): ElevenLabs reaches the turn endpoint at the public base URL, CloudFront's
 # address, which serves the API; the seed turns calling on only when it is set.
-@pytest.mark.parametrize("container", ["api", "worker", "seed"])
-def test_the_api_worker_and_seed_are_told_the_public_base_url(
+@pytest.mark.parametrize("container", ["api", "worker-general", "worker-runs", "seed"])
+def test_the_api_worker_pools_and_seed_are_told_the_public_base_url(
     container: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _use_task_env(container, monkeypatch)
